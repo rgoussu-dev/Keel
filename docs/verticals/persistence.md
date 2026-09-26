@@ -13,7 +13,9 @@ keel add persistence
 Kotlin, Gradle or Maven), `go-http`, `rust-http` and `ts-http`, each
 through one predicate-selected adapter; on a stack with no server the
 install is refused — a CLI is told it lacks an HTTP server entrypoint,
-and `web-components` that persistence has no adapter for its stack.
+its hint naming `keel add entrypoint http` first where the project can
+grow one, and `web-components` that persistence has no adapter for its
+stack.
 
 ## The two dials
 

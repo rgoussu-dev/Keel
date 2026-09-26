@@ -97,9 +97,10 @@ parallel:
   previewed for every vertical (I4: each vertical is installed or a
   `keel.project-status` card, and the card agrees with the preview —
   `ready` Ok, `needs` Ok staging what naming its prerequisites with it
-  stages, a refusal on the card the add's own, code and sentence —
-  and I5, the same outcome as greenfield: Ok on both sides, or refused
-  under the same code in the same sentence), plus a user `Dockerfile`
+  stages, a refusal on the card the add's own, code, sentence and
+  data, the entrypoint it names as its action included — and I5, the
+  same outcome as greenfield: Ok on both sides, or refused under the
+  same code in the same sentence), plus a user `Dockerfile`
   or `.github/workflows/ci.yml` seeded wherever the add would create
   it.
 - `composite` — every product under every repository layout its install

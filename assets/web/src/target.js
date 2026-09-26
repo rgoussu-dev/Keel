@@ -20,19 +20,20 @@
  * whole target, and adopting one computed for the previous pick would
  * undo the pick.
  *
- * **A run is about one subject** — the stack a `keel new` builds, the
- * verticals a `keel add` layers on as such, the one it re-renders, or
- * `keel add module` as such. The old menus describe nothing about a
- * new subject, so they start afresh. Ticking another card into an
- * add, or out of it, is not a new subject — the set grows or shrinks,
- * like the greenfield extras — so the answers stay and the next
- * preview drops the ones no adapter of the new set asks
- * ({@link previewed}); moving between adding and re-rendering is,
- * and so is re-rendering another vertical, and those start their
- * answers afresh too: a re-render reads what the manifest recorded,
- * and has no business with what an add was asked. Renaming the
- * context an `add-module` run creates is not a new subject either,
- * and keeps them.
+ * **A run is about one subject** — the stack a `keel new` builds,
+ * the verticals a `keel add` layers on as such, the one it
+ * re-renders, `keel add module` as such, or the entrypoint
+ * `keel add entrypoint` grows the project by — another entrypoint
+ * is another subject. The old menus describe nothing about a new
+ * subject, so they start afresh. Ticking another card into an add, or
+ * out of it, is not a new subject — the set grows or shrinks, like the
+ * greenfield extras — so the answers stay and the next preview drops
+ * the ones no adapter of the new set asks ({@link previewed}); moving
+ * between adding and re-rendering is, and so is re-rendering another
+ * vertical, and those start their answers afresh too: a re-render reads
+ * what the manifest recorded, and has no business with what an add was
+ * asked. Renaming the context an `add-module` run creates is not a new
+ * subject either, and keeps them.
  *
  * **A new preset is the exception, and keeps everything.** A build
  * system, a module layout, the peer context, a product's repository
@@ -871,6 +872,7 @@ function subject(target) {
       ? `add-vertical:reapply:${verticalsOf(target).join(',')}`
       : 'add-vertical';
   }
+  if (target.kind === 'add-entrypoint') return `add-entrypoint:${target.entrypoint ?? ''}`;
   return target.kind;
 }
 

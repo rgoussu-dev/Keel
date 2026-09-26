@@ -361,6 +361,26 @@ describe('a keel project’s "Also scaffold" boxes', () => {
     );
   });
 
+  it('keeps the answers of an entrypoint re-picked, and starts another entrypoint afresh', () => {
+    // The monitoring stack growth asks is that entrypoint's run: picked
+    // again from the Project step or its group, it is the same run; a
+    // move to the vertical tab, or to another entrypoint, is not.
+    const growing = answer(retarget(brownfield(), { kind: 'add-entrypoint', entrypoint: 'http' }), {
+      binding: { kind: 'answer', adapter: 'observability/monitoring-compose', question: 'stack' },
+      value: 'lgtm',
+    });
+    expect(growing.answers).toEqual({ 'observability/monitoring-compose': { stack: 'lgtm' } });
+    const again = retarget(growing, { kind: 'add-entrypoint', entrypoint: 'http' });
+    expect(again.answers).toEqual(growing.answers);
+    expect(again.generation).toBeGreaterThan(growing.generation);
+    expect(retarget(growing, { kind: 'add-entrypoint', entrypoint: 'cli' }).answers).toEqual({});
+    expect(retarget(growing, { kind: 'add-vertical', verticals: [] })).toMatchObject({
+      target: { kind: 'add-vertical', verticals: [] },
+      answers: {},
+    });
+    expect(verticalsOf(growing.target)).toEqual([]);
+  });
+
   it('reads the verticals of a target, and none of any other', () => {
     expect(verticalsOf({ kind: 'add-vertical', verticals: ['ci', 'iac'] })).toEqual(['ci', 'iac']);
     expect(verticalsOf({ kind: 'add-module', module: 'billing' })).toEqual([]);

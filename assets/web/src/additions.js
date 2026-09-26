@@ -17,6 +17,10 @@
  *     several at a time, a "needs" card ticking what it needs
  *     (`target.js`'s `toggleVertical`); one plan, one Generate, and
  *     the run is only ever what the ticks add — the delta.
+ *   - **After adding an entrypoint** — what only an entrypoint the
+ *     project can grow stops, under the action its refusal names:
+ *     **Add HTTP server** (`keel add entrypoint http`), then each card,
+ *     saying whether it comes with the entrypoint or is added after it.
  *   - **Installed** — what the project has, ticked and locked: an
  *     installed vertical with a **Re-render** action of its own
  *     (`target.js`'s `rerender`), since a re-render is a different
@@ -44,11 +48,21 @@
  * @typedef {{ value: string, label: string, meta: string, doc: string, badge?: string }} AddCard
  * @typedef {{ value: string, label: string, meta: string, doc: string, rerender: boolean, pressed: boolean }} Installed
  * @typedef {{ path: string, label: string }} ServiceLink
- * @typedef {{ ready: AddCard[], needs: AddCard[], refused: Refused[], elsewhere: Refused[], services: ServiceLink[], installed: Installed[], inServices: Installed[], chosen: string[], rerendering: string | null }} AdditionsGroup
+ * @typedef {Refused & { comes: boolean, note: string }} GrowCard
+ * @typedef {{ word: string, name: string, meta: string, items: GrowCard[] }} GrowGroup
+ * @typedef {{ ready: AddCard[], needs: AddCard[], grows: GrowGroup[], refused: Refused[], elsewhere: Refused[], services: ServiceLink[], installed: Installed[], inServices: Installed[], chosen: string[], rerendering: string | null }} AdditionsGroup
  * @typedef {{ value: string, label: string, doc: string }} RefreshChoice
  */
 
-import { belongsElsewhere, needsBadge, refused, refusedOf, titles } from './readiness.js';
+import { entrypointName } from './project.js';
+import {
+  belongsElsewhere,
+  growingOf,
+  needsBadge,
+  refused,
+  refusedOf,
+  titles,
+} from './readiness.js';
 import { refreshOf, rerendering, verticalsOf } from './target.js';
 
 /**
@@ -62,7 +76,13 @@ import { refreshOf, rerendering, verticalsOf } from './target.js';
  * is its services' rather than anything the root installed, so it is
  * `inServices` instead, locked the same way; empty anywhere else.
  *
- * @param {{ installed: ReadonlyArray<{ id: string, title: string, description: string, reapplicable?: boolean }>, available: ReadonlyArray<{ id: string, title: string, description: string, readiness: string, requires: ReadonlyArray<string>, refusal?: { code: string, message: string, refusal?: { kind: string } } }>, provided?: ReadonlyArray<{ id: string, title: string, note: string }>, services?: ReadonlyArray<{ path: string, directory: string, label: string }> }} status
+ * `grows` holds, per entrypoint the project can grow, what only that
+ * entrypoint stops: the entrypoint's name and command, and each card
+ * with its refusal's sentence and a note on what the entrypoint makes
+ * of it — it comes with it, or is added after it, a linked project
+ * too where it waits on one. Those cards are in no other part.
+ *
+ * @param {{ installed: ReadonlyArray<{ id: string, title: string, description: string, reapplicable?: boolean }>, available: ReadonlyArray<{ id: string, title: string, description: string, readiness: string, requires: ReadonlyArray<string>, refusal?: import('./readiness.js').RefusalDescriptor }>, provided?: ReadonlyArray<{ id: string, title: string, note: string }>, services?: ReadonlyArray<{ path: string, directory: string, label: string }>, entrypoints?: ReadonlyArray<import('./project.js').EntrypointStatus> }} status
  * @param {object | null} target
  * @returns {AdditionsGroup}
  */
@@ -90,6 +110,20 @@ export function additionsGroup(status, target) {
     needs: status.available
       .filter((vertical) => vertical.readiness === 'needs')
       .map((vertical) => ({ ...card(vertical), badge: needsBadge(vertical, titleOf) })),
+    grows: growingOf(status.available).map((group) => ({
+      word: group.word,
+      name: entrypointName(status, group.word),
+      meta: `keel add entrypoint ${group.word}`,
+      items: group.items.map(({ comes, linked, ...item }) => ({
+        ...item,
+        comes,
+        note: comes
+          ? 'Comes with it.'
+          : linked
+            ? 'Added after it, once a linked project serves it.'
+            : 'Added after it.',
+      })),
+    })),
     refused: refusedOf(status.available),
     elsewhere: status.available.filter(belongsElsewhere).map(refused),
     services: serviceLinks(status),
@@ -165,7 +199,8 @@ export function refreshChoices(preview, target, status) {
 
 /**
  * What an add holds, spelled for the review: the verticals by title,
- * in the order they install, then the re-renders beside them.
+ * in the order they install, then the re-renders beside them. An
+ * entrypoint's add names no vertical; it has a row of its own.
  *
  * @param {{ installed: ReadonlyArray<{ id: string, title: string }>, available: ReadonlyArray<{ id: string, title: string }> }} status
  * @param {object | null} target
@@ -176,6 +211,43 @@ export function additionsSummary(status, target) {
   return {
     adds: verticalsOf(target).map(titleOf).join(', '),
     refreshes: refreshOf(target).map(titleOf).join(', '),
+  };
+}
+
+/**
+ * What adding the entrypoint `word` names does, in the sentences its
+ * form says it in: what becomes of the project — the agent harness
+ * re-rendered only where the project has one — then, by title, what
+ * the run installs (the status's `installs`), what _Add verticals_
+ * takes after it, and what waits on a linked project too. A list with
+ * nothing in it says nothing.
+ *
+ * @param {{ installed: ReadonlyArray<{ id: string, title: string }>, available: ReadonlyArray<import('./readiness.js').ReadinessEntry>, entrypoints?: ReadonlyArray<import('./project.js').EntrypointStatus> }} status
+ * @param {string} word
+ * @returns {{ summary: string, notes: string[] }}
+ */
+export function entrypointNotes(status, word) {
+  const titleOf = titles(status.available, status.installed);
+  const installs = (status.entrypoints ?? []).find((entry) => entry.word === word)?.installs ?? [];
+  const after = growingOf(status.available)
+    .filter((group) => group.word === word)
+    .flatMap((group) => group.items)
+    .filter((item) => !item.comes);
+  const named = (lead, items) => (items.length === 0 ? [] : [`${lead}: ${items.join(', ')}.`]);
+  const harness = status.installed.some(({ id }) => id === 'agent-harness');
+  return {
+    summary: `The project becomes the preset with both entrypoints: what that preset has and this project lacks is added,${harness ? ' the agent harness is re-rendered to speak of both,' : ''} and keel writes nothing of the entrypoint already here — on the JVM, the queued formatter still formats the whole project.`,
+    notes: [
+      ...named('Comes with it', installs.map(titleOf)),
+      ...named(
+        'Added after it, from Add verticals',
+        after.filter((item) => !item.linked).map((item) => item.title),
+      ),
+      ...named(
+        'Added after it, once a linked project serves it',
+        after.filter((item) => item.linked).map((item) => item.title),
+      ),
+    ],
   };
 }
 

@@ -165,14 +165,14 @@ Every refusal of a vertical or a file is **data first**: a `Refusal`
 ([`refusal.ts`](../src/domain/contract/refusal.ts)), carried by a
 `RefusalError` beside its code and the sentence written from it.
 
-| Kind            | Carries                                                                                                                                                                                                                                             | Raised when                                                                                       |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `unavailable`   | the vertical, what is `missing` (entrypoint, peer, identity tags), the stacks that carry it and which of those come with it (`comesWith`), in a product's service the other services that can take it or have it (`elsewhere`), a reason of its own | nothing keel can add makes it install here — or, with `repositoryOnly`, not in a monorepo service |
-| `needs`         | the verticals, and each equally small set of prerequisites                                                                                                                                                                                          | two sets would each do — a tie, which is the user's to settle                                     |
-| `elsewhere`     | the vertical, and each service with how ready it is there (and, in a monorepo, what only its root may carry, or that the root builds it for the service)                                                                                            | it is asked of a composite product rather than one of its services                                |
-| `incompatible`  | the verticals                                                                                                                                                                                                                                       | each installs alone, but no order installs them together                                          |
-| `path-conflict` | the file, the adapter, and the block it lacks if that is the conflict                                                                                                                                                                               | a file the run would write, or patch inside, is in the way                                        |
-| `path-missing`  | the file, and the adapter that patches it                                                                                                                                                                                                           | a file the run patches is gone                                                                    |
+| Kind            | Carries                                                                                                                                                                                                                                                                                                      | Raised when                                                                                       |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| `unavailable`   | the vertical, what is `missing` (entrypoint, peer, identity tags), the stacks that carry it and which of those come with it (`comesWith`), in a product's service the other services that can take it or have it (`elsewhere`), the entrypoint a project could grow to have it (`grow`), a reason of its own | nothing keel can add makes it install here — or, with `repositoryOnly`, not in a monorepo service |
+| `needs`         | the verticals, and each equally small set of prerequisites                                                                                                                                                                                                                                                   | two sets would each do — a tie, which is the user's to settle                                     |
+| `elsewhere`     | the vertical, and each service with how ready it is there (and, in a monorepo, what only its root may carry, or that the root builds it for the service)                                                                                                                                                     | it is asked of a composite product rather than one of its services                                |
+| `incompatible`  | the verticals                                                                                                                                                                                                                                                                                                | each installs alone, but no order installs them together                                          |
+| `path-conflict` | the file, the adapter, and the block it lacks if that is the conflict                                                                                                                                                                                                                                        | a file the run would write, or patch inside, is in the way                                        |
+| `path-missing`  | the file, and the adapter that patches it                                                                                                                                                                                                                                                                    | a file the run patches is gone                                                                    |
 
 One builder, [`refusals.ts`](../src/domain/core/refusals.ts), reads
 that data as a sentence, and every surface speaks it: the planner's
@@ -194,8 +194,30 @@ or _which comes with it_, naming no `--with`, where the refusal's
 backend/: `--with backend:persistence`_, where a product's other
 service can take it; _`keel link <path>` first_; _`cd backend && keel add persistence`_;
 _move `go.mod` aside_ before `keel new`, never after, where the file
-may be a product root's own), and `keel ui` receives the refusal itself
-in the 422 body, as `error.refusal`.
+may be a product root's own; _`keel add entrypoint http`, then `keel
+add persistence`_ on a project that can grow the entrypoint it lacks),
+and `keel ui` receives the refusal itself in the 422 body, as
+`error.refusal`.
+
+**A refusal carries the action where there is one.** On a project on
+disk, a vertical whose gap is an entrypoint — alone, or with a linked
+project — is read again by the planner over the project as `keel add
+entrypoint` would leave it (`PlanScope.grown`, the scope `growth.ts`'s
+`grownScope` gives the grown project, with what growing installs and
+the tags those promote). Where that admits it, the
+refusal carries the entrypoint as data, `grow: { entrypoint, comes }`:
+the word the command takes, and whether the vertical comes with it
+(`true` for observability, which the preset with both entrypoints
+installs of its own; `false` for persistence or a container image,
+which then install by their own `keel add`, and for the gateway, which
+then needs `keel link` too). The sentence does not change, so the two
+phases still say one thing (I5), and a card and its add carry the same
+action (`add-readiness.ts`' `addScopeOf`, which both read). It is
+offered only where the command would run: never before `keel new`,
+where an entrypoint gap still means choosing another preset; never in
+a monorepo product, on a front end, or on a project growth refuses
+(below); and never where the grown project would still refuse the
+vertical for another reason — a rule, a re-render.
 
 And it **never prints a tag.** A gap is a fact about tags — the unmet
 `requires` of the adapter nearest to matching, as `coverageGap` and the
@@ -391,6 +413,15 @@ service, growth is refused as `keel.wrong-scope`: the product records
 each service by its preset. A polyrepo service has no product root to
 record it, and grows as a repository of its own.
 
+Every surface reads that one answer. `keel.project-status` reports each
+back entrypoint (`entrypoints`): whether the project has it, and what
+the command would install, or its refusal where it would refuse — the
+scope, then growth's own, then the planner's of what growth installs
+(`handlers/add-entrypoint.ts`' `entrypointReading`). And a vertical only
+the entrypoint stops is refused carrying the command as its action
+([Refusals](#refusals), above), which the CLI's hint,
+`keel add --list` and `keel ui` offer.
+
 ### Conflicts
 
 A `predicate` says when a piece **applies**. A `Conflict` says when an
@@ -446,7 +477,7 @@ renders from that. See [`keel ui`](ui.md#the-dials-are-narrowed-by-the-same-rule
 
 Concretely, the menus that narrow as answers land. The first five are
 the same functions behind both front ends, in `domain/core/dials.ts`;
-the last two are brownfield and live with the project status:
+the last three are brownfield and live with the project status:
 
 | menu                       | filtered by                                                                        |
 | -------------------------- | ---------------------------------------------------------------------------------- |
@@ -456,17 +487,20 @@ the last two are brownfield and live with the project status:
 | extra verticals (`--with`) | the planner's readiness: ready, or needs others first — coverage, rules and order  |
 | the stack drill-down       | presets no setting of their dials can build are absent from all four steps at once |
 | `keel add module`          | `canAddModule` — the control is greyed out where adding a context would be illegal |
+| `keel add entrypoint`      | `entrypoints` — each back entrypoint, offered, or refused with the command's own   |
 | `keel add` cards           | the planner's readiness over the project, its installed verticals and their rules  |
 
 A preset is hidden only when **every** setting of its dials is
 refused. Anything stricter would take away a preset reachable by
 moving a dial.
 
-The last two rows are brownfield rather than menus, and the shape is
+The last three rows are brownfield rather than menus, and the shape is
 the same: `ProjectStatusHandler` answers for a project already on disk
 with the function the command's own front door refuses by, and a form
 reads the answer before the click. `canAddModule` greys the bounded
-context control out, with `moduleRefusal` saying why. Two rules say
+context control out, with `moduleRefusal` saying why; `entrypoints`
+offers each back entrypoint the project lacks, with what adding it
+installs, or greys it out with its refusal. Two rules say
 the same sentence about two doors, because two different pieces own
 them — `walking-skeleton/peer-context-needs-modulith` for the second
 context `keel new --with-peer-context` scaffolds, and

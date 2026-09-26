@@ -10,11 +10,13 @@
  * the project lacks, a dev environment and observability when HTTP
  * arrives; and the agent harness re-rendered, whose runbook and skills
  * speak of the entrypoints. The command and its preview read that one
- * function, and the project status is to (roadmap R.2c). Growth adds
- * files and never removes one, and keel writes nothing of the existing
- * entrypoint — on the JVM the queued format task still reformats it.
- * The composition grid holds every single-entrypoint backend cell to
- * its twin (I10).
+ * function, and so do the project status ({@link entrypointReading})
+ * and the refusal of a vertical only the entrypoint stops, which
+ * carries this command as its action (`../add-readiness.ts`
+ * `addScopeOf`). Growth adds files and never removes one, and keel
+ * writes nothing of the existing entrypoint — on the JVM the queued
+ * format task still reformats it. The composition grid holds every
+ * single-entrypoint backend cell to its twin (I10).
  *
  * A sibling of `keel add module` rather than a case of `keel add`: it
  * changes an identity tag, which no vertical may promote, so the
@@ -117,7 +119,14 @@ import {
 } from '../refusals.js';
 import { installedVertical } from '../registry.js';
 import { resolveVertical } from '../resolver.js';
-import { enclosingProduct, nearbyProjects, projectScope, scopeOf } from '../scope.js';
+import {
+  enclosingProduct,
+  nearbyProjects,
+  productPlaceOf,
+  projectScope,
+  scopeOf,
+  type DirectoryScope,
+} from '../scope.js';
 import { entrypointNamed } from '../stack-wizard.js';
 import {
   historyOf,
@@ -145,14 +154,8 @@ export class AddEntrypointHandler implements Handler<AddEntrypointCommand> {
     if (stored === null) {
       return err(await this.notInitialised(scopeRoot, command.cwd, line, command.entrypoint));
     }
-    if (stored.services.length > 0 || where.product !== null) {
-      return err(
-        new DomainError(
-          entrypointScopeSentence(stored.services.length > 0 ? 'root' : 'service'),
-          WRONG_SCOPE_CODE,
-        ),
-      );
-    }
+    const outOfScope = scopeRefusal(where);
+    if (outOfScope !== null) return err(outOfScope);
     // The marker and this command arrived in one release, after
     // 0.5.0-alpha: the keel that scaffolded an unmarked project has no
     // command to pin it for.
@@ -185,7 +188,7 @@ export class AddEntrypointHandler implements Handler<AddEntrypointCommand> {
       });
     }
 
-    const grown: ManifestV2 = { ...stored, tags: growth.tags, projects: growth.projects };
+    const grown = grownManifest(stored, growth);
     const plan = this.planOf(stored, grown, growth);
     if (!plan.ok) return plan;
     const { run, admitted, twin } = plan.value;
@@ -376,14 +379,9 @@ export class AddEntrypointHandler implements Handler<AddEntrypointCommand> {
     if (stack === null) throw new Error(`growth named '${growth.twin}', which is not registered`);
     const harness = stored.verticals.some((v) => v.id === 'agent-harness');
     const twin = (harness ? stack : withoutHarness(stack)).verticals.map((v) => v.id);
-    const lacking = growth.verticals.flatMap((id) => registry.vertical(id) ?? []);
-    const planned = admit(registry, projectScope(registry, grown, growth.rerender), lacking);
+    const planned = admitGrowth(registry, grown, growth);
     if (!planned.ok) return planned;
-    // What the planner adds for what the twin names goes before it.
-    const incoming = [
-      ...planned.value.order.filter((v) => !growth.verticals.includes(v.id)),
-      ...lacking,
-    ];
+    const incoming = incomingOf(registry, growth, planned.value);
     const newly = new Map(growth.adapters.map((each) => [each.vertical, new Set(each.adapters)]));
     const order = placed(
       stored.verticals.map((v) => v.id),
@@ -460,6 +458,34 @@ export class AddEntrypointHandler implements Handler<AddEntrypointCommand> {
 }
 
 /**
+ * What `keel add entrypoint <word>` would do in `where`, a directory
+ * holding a manifest, before it reads an answer: the verticals it
+ * would install, by id, in the order it installs them — none where the
+ * entrypoint is there already — or its refusal: inside a monorepo
+ * product; growth's own; the planner's, of what growth installs. The
+ * harness generation is left out: it stops every brownfield command
+ * alike, and a status reports it once. What `keel.project-status`
+ * reports of each back entrypoint, as `./add-module.ts`'
+ * `moduleRefusal` is of `keel add module`.
+ */
+export function entrypointReading(
+  registry: Registry,
+  where: DirectoryScope,
+  word: string,
+): Result<readonly string[]> {
+  const outOfScope = scopeRefusal(where);
+  if (outOfScope !== null) return err(outOfScope);
+  const stored = where.manifest;
+  if (stored === null) throw new Error(`entrypointReading: no project at ${where.cwd}`);
+  const growth = growthOf(registry, stored, word);
+  if (growth.kind === 'refused') return err(growthRefusalError(registry, growth.refusal));
+  if (growth.kind === 'present') return ok([]);
+  const planned = admitGrowth(registry, grownManifest(stored, growth), growth);
+  if (!planned.ok) return planned;
+  return ok(incomingOf(registry, growth, planned.value).map((vertical) => vertical.id));
+}
+
+/**
  * The refusal of `keel add entrypoint` growth answers with, in the
  * words `../refusals.ts` puts it in, under its code — a vertical named
  * by its title, found in `registry`. Exported for a surface that shows
@@ -494,6 +520,59 @@ export function growthRefusalError(registry: Registry, refusal: GrowthRefusal): 
         refusal.code,
       );
   }
+}
+
+/**
+ * The command's refusal of where it runs: inside a monorepo product — at
+ * its root, or below it — which records each service by its stack, and
+ * refuses every entrypoint alike (`keel.wrong-scope`); null anywhere
+ * else, a polyrepo service included.
+ */
+function scopeRefusal(where: DirectoryScope): DomainError | null {
+  const place = productPlaceOf(where);
+  return place === null ? null : new DomainError(entrypointScopeSentence(place), WRONG_SCOPE_CODE);
+}
+
+/** The project `stored` records, with the tags and `projects` `growth` folds in. */
+function grownManifest(stored: ManifestV2, growth: GrowthPlan): ManifestV2 {
+  return { ...stored, tags: growth.tags, projects: growth.projects };
+}
+
+/** The verticals growth installs, registered, in the twin's order. */
+function lackingOf(registry: Registry, growth: GrowthPlan): readonly Vertical[] {
+  return growth.verticals.flatMap((id) => registry.vertical(id) ?? []);
+}
+
+/**
+ * What a run growth plans installs: what the planner adds for what the
+ * twin names, then that, in the twin's order.
+ */
+function incomingOf(
+  registry: Registry,
+  growth: GrowthPlan,
+  admitted: AdmittedSet,
+): readonly Vertical[] {
+  return [
+    ...admitted.order.filter((v) => !growth.verticals.includes(v.id)),
+    ...lackingOf(registry, growth),
+  ];
+}
+
+/**
+ * The verticals growth installs, admitted on `grown` — the harness it
+ * re-renders planned as if it were not there yet, as `keel add --refresh`
+ * plans one — closed over their prerequisites, or refused.
+ */
+function admitGrowth(
+  registry: Registry,
+  grown: ManifestV2,
+  growth: GrowthPlan,
+): Result<AdmittedSet> {
+  return admit(
+    registry,
+    projectScope(registry, grown, growth.rerender),
+    lackingOf(registry, growth),
+  );
 }
 
 /**

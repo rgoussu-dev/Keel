@@ -31,9 +31,14 @@ no logic.
 - `keel add --list` inside a project prints `keel.project-status` —
   one dispatch, the readiness the add front door plans by — never a
   list of its own; `availableVerticals` is only the catalog it prints
-  where there is no project.
+  where there is no project. A card whose refusal carries `grow` is
+  printed under the command it names (_After 'keel add entrypoint
+  http':_), not under _Not for this project:_, with what that command
+  makes of it in `hint.ts`' words (`growNote`), where the remedy lives.
 - A refusal's sentence is the domain's and the same in both phases;
   what to type next is the CLI's. `contract/hint.ts` builds the
   `hint:` line `unwrap` prints under a `RefusalError` from its fields,
-  per command (`--with` under `keel new`, `cd <service>` under `keel
-add`) — never by reading the sentence.
+  per command (`--with` under `keel new`, `cd <service>` under
+  `keel add`, and `keel add entrypoint http` first where an
+  `unavailable` refusal carries `grow`) — never by reading the
+  sentence.

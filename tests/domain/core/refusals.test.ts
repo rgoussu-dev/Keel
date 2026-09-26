@@ -522,6 +522,20 @@ describe('the refusals built from a gap', () => {
     expect(unavailableRefusal(names, observability, gap).refusal).not.toHaveProperty('comesWith');
   });
 
+  it('carries the entrypoint to add as data, and says the same sentence with it or without', () => {
+    const grow = { entrypoint: 'http', comes: true };
+    const growing = unavailableRefusal(names, observability, { ...gap, grow });
+    const fixed = unavailableRefusal(names, observability, gap);
+    expect(growing.refusal).toMatchObject({ kind: 'unavailable', grow });
+    expect(fixed.refusal).not.toHaveProperty('grow');
+    // `keel new --with` of a preset meets the gap with no action to
+    // carry, and must say what `keel add` says (grid I5): the command
+    // is the front end's to spell, never the sentence's.
+    expect(growing.code).toBe(fixed.code);
+    expect(growing.message).toBe(fixed.message);
+    expect(growing.message).not.toMatch(/keel add|entrypoint http/);
+  });
+
   it("names a product's other service only where one can take it or has it", () => {
     const backend = { path: 'backend', stack: 'quarkus-rest' };
     const alone = unavailableRefusal(names, observability, gap);

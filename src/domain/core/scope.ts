@@ -366,6 +366,19 @@ export function planScopeOf(
 }
 
 /**
+ * Where `where` sits in a monorepo product, for a command no product
+ * takes yet — `keel add entrypoint`, which would leave the product's
+ * record of a service's stack out of date: at its root (`root`), below
+ * it (`service`, a service or any other directory of the product), or
+ * in none (null) — a polyrepo service included, which has no product
+ * root to keep true.
+ */
+export function productPlaceOf(where: DirectoryScope): 'root' | 'service' | null {
+  if ((where.manifest?.services.length ?? 0) > 0) return 'root';
+  return where.product === null ? null : 'service';
+}
+
+/**
  * What the product gives the service `where` is, when it is a
  * monorepo service; empty anywhere else. @see provisionsFor
  */

@@ -19,15 +19,17 @@
  * Generate, and half of them on a CLI project a refusal met after the
  * click. The directory decides the flow now: the page opens a keel
  * project on its Options, where the preset steps have collapsed into
- * one read-only Project step, and the same "Also scaffold" group holds
- * what the project has, ticked and locked, beside the boxes sorted by
- * what the project status read before anything was clicked. A tick
- * posts only what it adds. IaC's card says it needs Container image and
- * Distribution, one click ticks all three, and the page makes one plan
- * of them, one Generate, and stays on Options with the report — the
- * three now among what is locked, the next thing to do being to add
- * more, not to pick a directory. On a CLI project, Observability is
- * under "Not for this project" with its sentence before any click.
+ * one Project step, read-only but for the entrypoint the project can
+ * grow, and the same "Also scaffold" group holds what the project has,
+ * ticked and locked, beside the boxes sorted by what the project status
+ * read before anything was clicked. A tick posts only what it adds.
+ * IaC's card says it needs Container image and Distribution, one click
+ * ticks all three, and the page makes one plan of them, one Generate,
+ * and stays on Options with the report — the three now among what is
+ * locked, the next thing to do being to add more, not to pick a
+ * directory. On a CLI project, Observability is under "After adding
+ * HTTP server" before any click, beside the button that adds the
+ * server — which brings it along.
  *
  * **The harness is a switch.** Under "Comes with", the Agent harness
  * chip is a toggle button: pressed off from the keyboard, the body
@@ -77,8 +79,9 @@
  * service; the click points the page one directory down, onto that
  * service's Options, where what the product gives it is locked with
  * where it comes from and a pipeline — read only at the repository
- * root — is under "Not for this project". Seeded in-process, a
- * TypeScript product, and never generated.
+ * root — is under "Not for this project", and the entrypoint the
+ * service lacks is not offered, its tab off with the reason. Seeded
+ * in-process, a TypeScript product, and never generated.
  *
  * Skip rules are the shared ones (`skipE2E`), and each `describe`
  * carries the browser guard because its `beforeAll` launches one.
@@ -643,7 +646,7 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — composing an a
       );
       await act(seen, () => Promise.resolve());
       // One page: the directory decided the flow, and the preset steps
-      // are one read-only step on this rail.
+      // are one step on this rail, read-only but for its ways in.
       expect(await railSteps(tab)).toEqual([
         'directory',
         'project',
@@ -678,7 +681,7 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — composing an a
       expect(await locked(tab, 'vcs').isChecked()).toBe(true);
 
       // What the project is, where a new one's preset steps would ask
-      // it: words, not tags, and nothing to change.
+      // it: words, not tags, and nothing to change but its ways in.
       await goToStep(seen, tab, 'project');
       const profile = tab.locator('#project-profile');
       expect(await profile.locator('dt').allTextContents()).toEqual([
@@ -689,7 +692,7 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — composing an a
         'Build system',
         'Module layout',
       ]);
-      expect(await profile.locator('dd').allTextContents()).toEqual([
+      expect(await profile.locator('dd > span').allTextContents()).toEqual([
         'ts-http',
         'Backend or tool',
         'TypeScript (Node)',
@@ -700,11 +703,15 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — composing an a
       expect(await tab.locator('#project-installed li[data-id="vcs"]').textContent()).toBe(
         'Version control',
       );
-      expect(
-        await tab
-          .locator('keel-add-form input, keel-add-form select, keel-add-form button')
-          .count(),
-      ).toBe(0);
+      // The one control on the step: the CLI the project can grow, on
+      // the line that says what its ways in are.
+      const controls = tab.locator(
+        'keel-add-form input, keel-add-form select, keel-add-form button',
+      );
+      expect(await controls.count()).toBe(1);
+      const offer = profile.locator('dd', { hasText: 'HTTP server' }).getByRole('button');
+      expect(await offer.textContent()).toBe('Add CLI');
+      expect(await offer.getAttribute('title')).toBe('keel add entrypoint cli');
     },
     E2E_TIMEOUT_MS,
   );
@@ -794,16 +801,19 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — composing an a
   );
 
   it(
-    'shows what a CLI project cannot carry before any click, each with its sentence',
+    'shows what only the server a CLI project can grow stops before any click, under that action',
     async () => {
       await openProject(cliUi.url, tab, seen);
-      const refused = tab.locator('#extras-refused');
-      // Collapsed: it answers a question rather than asking one.
-      expect(await refused.getAttribute('open')).toBeNull();
-      const observability = refused.locator('li[data-id="observability"]');
+      // Not "not for this project": for it, one command away.
+      expect(await tab.locator('#extras-refused').count()).toBe(0);
+      const grow = tab.locator('#extras-grow-http');
+      expect(await grow.locator('h4').textContent()).toBe('After adding HTTP server');
+      expect(await grow.locator('#grow-http').textContent()).toBe('Add HTTP server');
+      const observability = grow.locator('li[data-id="observability"]');
       expect(await observability.locator('.refused-title').textContent()).toBe('Observability');
-      expect(await observability.textContent()).toContain(
-        'Observability needs an entrypoint this project does not have: HTTP server — a REST endpoint',
+      expect(await observability.textContent()).toContain('Comes with it.');
+      expect(await grow.locator('li[data-id="persistence"]').textContent()).toContain(
+        'Added after it.',
       );
       expect(await card(tab, 'observability').count()).toBe(0);
       // Before any click: nothing has been previewed to find it out.
@@ -963,10 +973,25 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a product and 
       expect(await locked(tab, 'containerization').isDisabled()).toBe(true);
       expect(await tab.locator('#rerender-containerization').count()).toBe(0);
       // A pipeline is not offered in a monorepo service: it is said,
-      // with why, before any click.
+      // with why, before any click — collapsed, since it answers a
+      // question rather than asking one.
       expect(await card(tab, 'ci').count()).toBe(0);
-      expect(await tab.locator('#extras-refused li[data-id="ci"]').textContent()).toContain(
+      const refused = tab.locator('#extras-refused');
+      expect(await refused.getAttribute('open')).toBeNull();
+      expect(await refused.locator('summary').textContent()).toMatch(
+        /^Not for this project \(\d+\)$/,
+      );
+      expect(await refused.locator('li[data-id="ci"]').textContent()).toContain(
         'Continuous integration cannot go in a monorepo service',
+      );
+      await refused.locator('summary').click();
+      expect(await refused.locator('li[data-id="ci"]').isVisible()).toBe(true);
+      // Nor is an entrypoint offered: the product records this service
+      // by its stack. The tab says so rather than going missing.
+      expect(await tab.locator('#extras-grow-cli').count()).toBe(0);
+      expect(await tab.locator('#tab-entrypoint').isDisabled()).toBe(true);
+      expect(await tab.locator('#entrypoint-refusal').textContent()).toContain(
+        'this project is a service of a product',
       );
       expect(await card(tab, 'persistence').count()).toBe(1);
       expect(seen.posted('/api/install')).toEqual([]);

@@ -27,7 +27,7 @@ import type { DocsReport, InstallTarget, PresetAnswers, RefreshProposal } from '
 import type { QuestionChoice } from './composition.js';
 import type { InstalledModule, ServiceRef } from './manifest.js';
 import type { TreeChange } from './ports/tree.js';
-import type { Refusal } from './refusal.js';
+import type { GrowAction, Refusal } from './refusal.js';
 import type { Tag } from './tags.js';
 
 /* ------------------------------------------------------------------ *
@@ -552,6 +552,19 @@ export interface ReadinessGap {
    * never one a plan makes of its own accord.
    */
   readonly refresh?: RefreshGap;
+  /**
+   * The back entrypoint whose addition lets it install — `keel add
+   * entrypoint <word>` — and whether it comes with that entrypoint,
+   * read over the project as the command would leave it
+   * (`PlanScope.grown`). Present only where {@link entrypoint} is what
+   * stops it, alone or with {@link peer}, the scope is a project on
+   * disk that growth takes, and the project growing leaves takes it —
+   * or would once linked, where {@link peer} names a link too; absent
+   * everywhere else, and always before `keel new` writes
+   * anything, where an entrypoint gap still means choosing another
+   * preset.
+   */
+  readonly grow?: GrowAction;
 }
 
 /** What {@link ReadinessGap.refresh} names: what to re-render, and what installs with it. */
@@ -761,12 +774,13 @@ export interface InstalledVerticalDescriptor extends VerticalDescriptor {
  * - `ready` — `keel add <id>` installs it on its own;
  * - `needs` — `keel add <id>` installs it, and {@link requires} first;
  * - `unavailable` — `keel add <id>` refuses it, and {@link refusal} is
- *   what it says.
+ *   what it says; where that refusal carries `grow`, adding that
+ *   entrypoint first is what lets it install.
  *
  * The composition grid holds every card to `keel.preview` of its add:
  * `ready` previews Ok, `needs` previews Ok with its prerequisites in
  * the plan, and a card carrying a refusal previews as that refusal,
- * code and sentence.
+ * code, sentence and data — the action it names included.
  */
 export interface AvailableVerticalDescriptor extends VerticalDescriptor {
   readonly readiness: 'ready' | 'needs' | 'unavailable';
@@ -875,6 +889,38 @@ export interface RefusalDescriptor {
 }
 
 /**
+ * One back entrypoint of a project, as `keel add entrypoint` would
+ * answer it there. @see ProjectStatus.entrypoints
+ */
+export interface EntrypointStatus {
+  /** The word `keel add entrypoint` takes for it: `cli`, `http`. */
+  readonly word: string;
+  /** How the stack finder offers it: `HTTP server — a REST endpoint`. */
+  readonly label: string;
+  /** Whether the project has it already. */
+  readonly present: boolean;
+  /**
+   * The verticals `keel add entrypoint <word>` would install, by id, in
+   * the order it installs them: what the preset with both entrypoints
+   * has and the project lacks — a dev environment and observability
+   * where a CLI grows its server — after the prerequisites the planner
+   * adds for them. Absent where the entrypoint is {@link present}, and
+   * where the command would be refused.
+   */
+  readonly installs?: readonly string[];
+  /**
+   * Why `keel add entrypoint <word>` would be refused before it reads
+   * an answer — inside a monorepo product, where keel adds no
+   * entrypoint yet; growth's own refusal (a front end, no preset that
+   * is this project with it, bounded contexts wired into the existing
+   * entrypoints alone); or the planner's, of what growing installs —
+   * the refusal its front door gives. Absent where the command would
+   * run, and where the entrypoint is {@link present}.
+   */
+  readonly refusal?: RefusalDescriptor;
+}
+
+/**
  * The harness generation a project was written at, beside the one
  * this keel writes. @see ProjectStatus.harnessGeneration
  */
@@ -957,6 +1003,18 @@ export interface ProjectStatus {
    * control is off rather than only that it is.
    */
   readonly moduleRefusal?: RefusalDescriptor;
+  /**
+   * Each back entrypoint, in the order the stack finder lists them —
+   * whether the project has it, and, where it does not, what `keel add
+   * entrypoint` would install, or why it would refuse to add it: the
+   * command's own reading (`domain/core/handlers/add-entrypoint.ts`
+   * `entrypointReading`), so a front end offers the entrypoint a
+   * project can grow and says why where it cannot. The
+   * harness-generation gate is left out, as {@link moduleRefusal}
+   * leaves it: {@link harnessGeneration} reports it once. Absent when
+   * the directory is not a keel project.
+   */
+  readonly entrypoints?: readonly EntrypointStatus[];
   /**
    * The harness generation the manifest was stamped at, and the one
    * this keel writes. Where they differ, `keel add` refuses every

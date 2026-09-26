@@ -10,10 +10,11 @@
  * `keel new --with` and `keel add` say one thing about one fact. The
  * structured half is for acting: `keel ui` receives it in the 422
  * body, and the CLI builds the remedy only a command line has from
- * it (`keel link <path>` first, the stack that carries both, moving a
- * file aside before `keel new`). Tags travel here and nowhere else —
- * a sentence names an entrypoint by its label and a vertical by its
- * title, never a tag no command can add.
+ * it (`keel link <path>` first, `keel add entrypoint http` first, the
+ * stack that carries both, moving a file aside before `keel new`).
+ * Tags travel here and nowhere else — a sentence names an entrypoint
+ * by its label and a vertical by its title, never a tag no command
+ * can add.
  *
  * The sentences are built in one place, `domain/core/refusals.ts`,
  * from these fields. The two about files are spelled here instead
@@ -79,7 +80,11 @@ export interface UnavailableRefusal {
    * out by what the project does have.
    */
   readonly missing: {
-    /** Entrypoints (`arch.server-http`): fixed at `keel new`. */
+    /**
+     * Entrypoints (`arch.server-http`): `keel new` chooses them, and
+     * `keel add entrypoint` adds a back one — {@link grow}, where that
+     * is what lets the vertical install.
+     */
     readonly entrypoint?: readonly Tag[];
     /** What a linked project would project here (`peer.api.rest`): `keel link`. */
     readonly peer?: readonly Tag[];
@@ -146,6 +151,38 @@ export interface UnavailableRefusal {
     readonly verticals: readonly string[];
     readonly prerequisites: readonly string[];
   };
+  /**
+   * The entrypoint whose addition lets the vertical install here —
+   * `keel add entrypoint <word>` — where what stops it is that
+   * entrypoint, alone or with a linked project ({@link missing}), that
+   * command would grow this project, and the project it leaves would
+   * take the vertical — or would once linked, where a linked project
+   * is missing too. Absent anywhere else: before `keel new` writes
+   * anything, where an entrypoint gap means choosing another preset;
+   * in a monorepo product, where keel adds no entrypoint yet; wherever
+   * growth itself is refused; and where the grown project would still
+   * refuse the vertical — a rule, a re-render.
+   */
+  readonly grow?: GrowAction;
+}
+
+/**
+ * What {@link UnavailableRefusal.grow} names: the entrypoint to add,
+ * and what becomes of the vertical once it is there — read by the
+ * planner over the project as that entrypoint would leave it.
+ */
+export interface GrowAction {
+  /** The word `keel add entrypoint` takes for it: `http`, `cli`. */
+  readonly entrypoint: string;
+  /**
+   * Whether the vertical comes with the entrypoint — the preset with
+   * both entrypoints has it as its own, and adding the entrypoint
+   * installs it, as it does observability: `true`. `false` where it
+   * installs by its own `keel add` once the entrypoint is there, as
+   * persistence and a container image do — after `keel link`, too,
+   * where a linked project is also {@link UnavailableRefusal.missing}.
+   */
+  readonly comes: boolean;
 }
 
 /** {@link Refusal} for a vertical asked of a product root rather than a service. */

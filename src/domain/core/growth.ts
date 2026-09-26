@@ -9,9 +9,12 @@
  * other entrypoint's bootstrap newly matches, and the twin's verticals
  * the project lacks install — so the whole answer is a reading of the
  * adapter set before and after one tag. The command and its preview
- * read this one function (roadmap R.2b); `keel.project-status` and the
- * refusal builder are to (R.2c) — as every surface reads readiness
- * through `./planner.ts`.
+ * read this one function (roadmap R.2b), and so do `keel.project-status`
+ * and `keel add`'s front door (`./add-readiness.ts` `addScopeOf`), which
+ * hand the planner the scope {@link grownScope} gives the grown project:
+ * the planner reads a vertical only the entrypoint stops again over it,
+ * so its refusal carries the entrypoint as the action (R.2c) — as every
+ * surface reads readiness through `./planner.ts`.
  *
  * **The twin** is found through the drill-down `./profile.ts` walks:
  * the tags less anything a vertical can add, plus the new entrypoint,
@@ -50,9 +53,10 @@ import { emitsFor } from './adapters/context-support.js';
 import { PEER_CONTEXT_TAG, PEER_MODULE } from './adapters/module-layout.js';
 import { assemblyRefusal, conflictsOf, wouldViolate } from './compatibility.js';
 import { harnessActivatedBy, peerContextOffered, piecesOf, withoutHarness } from './dials.js';
-import { acquirableIn, matchingIds } from './planner.js';
+import { acquirableIn, matchingIds, plan, tagsAfter, type PlanScope } from './planner.js';
 import type { UncoverableEntrypointReason } from './refusals.js';
 import { assemblableStacks, installedVertical } from './registry.js';
+import { projectScope } from './scope.js';
 import { axesOf, entrypointNamed, pathFor, wizardPaths } from './stack-wizard.js';
 import { stackTagsFor } from './stacks.js';
 import { boundedContextVertical } from './verticals/bounded-context.js';
@@ -223,6 +227,50 @@ export function growthOf(registry: Registry, manifest: ManifestV2, word: string)
     adapters: newly,
     verticals: dialed.verticals.map(({ id }) => id).filter((id) => !has.has(id)),
     rerender: rerendersOf(manifest),
+  };
+}
+
+/**
+ * The scope the project `manifest` records plans on once `growth` has
+ * run: its tags grown, with what the run promotes — the adapters that
+ * newly match, then the verticals it installs, folded as the planner
+ * folds a plan — and the twin's `projects`, and the verticals growth
+ * installs, with what the planner closes them over, among what it has;
+ * or null where the planner refuses what growth installs, as the
+ * command then does. What a vertical only the entrypoint stops is read
+ * again over, to say whether adding the entrypoint lets it install
+ * (`./planner.ts` `GrownScope`).
+ */
+export function grownScope(
+  registry: Registry,
+  manifest: ManifestV2,
+  growth: GrowthPlan,
+): PlanScope | null {
+  const grown: ManifestV2 = { ...manifest, tags: growth.tags, projects: growth.projects };
+  // Planned as the command admits it: the set by id, the re-rendered
+  // harness as if it were not there yet.
+  const planned = plan(
+    registry,
+    projectScope(registry, grown, growth.rerender),
+    [...growth.verticals].sort(),
+  );
+  if (planned.kind !== 'planned') return null;
+  const own = projectScope(registry, grown);
+  const incoming = planned.order.flatMap(({ id }) => registry.vertical(id) ?? []);
+  const newly = growth.adapters.flatMap(({ vertical: id, adapters }) => {
+    const vertical = installedVertical(registry, id);
+    if (vertical === null) return [];
+    return [{ ...vertical, adapters: vertical.adapters.filter((a) => adapters.includes(a.id)) }];
+  });
+  const installed = [
+    ...own.installed,
+    ...incoming.map(({ id }) => id).filter((id) => !own.installed.includes(id)),
+  ];
+  return {
+    ...own,
+    tags: [...tagsAfter([...newly, ...incoming], own.tags)].sort(),
+    installed,
+    rules: conflictsOf(installed.flatMap((id) => installedVertical(registry, id) ?? [])),
   };
 }
 

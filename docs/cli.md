@@ -435,24 +435,47 @@ refused pointing at `keel link <path>`. Both are read from the same
 planner `keel new --with` and its menu read, before a file moves, and
 the refusal is the same sentence `keel new --with` gives, under the
 same code — the remedy only `keel add` has is the `hint:` line under
-it (_"quarkus-cli-rest carries both this project's entrypoints and
-persistence"_, or, for a vertical that stack comes with, _"…has
-this project's entrypoints and comes with observability"_). In a
-monorepo product's service, a vertical it cannot carry is refused
-naming another service of the product that can take it, or has it
-(_"Persistence has no adapter for this project's stack; backend/ can
-take it"_), read from the product root's list of services — the card
-in `keel add --list` and the page say the same; a polyrepo service
-has no product root to read them from, and is refused as a project of
-its own. At the root of a composite product, a vertical the
-root cannot carry is refused under `keel.wrong-scope`, naming the
-services that can take it, read from each service's own manifest, and
-the hint says where to `cd` (`cd backend && keel add persistence`).
-One no service could take and the services that could have it have
-already — code style, the agent harness, the image the root builds for
-each, observability in the one service that carries it — is there, as
-`keel new --with` of it on the product sets it aside: the add is an Ok
-that writes nothing, exits 0, and says where it is:
+it. Where what stops the vertical is an entrypoint the project can
+grow, the refusal carries that command as its action, and the hint
+spells it:
+
+```
+$ keel add persistence      # in a go-cli project
+Persistence needs an entrypoint this project does not have: HTTP
+server — a REST endpoint
+  hint: 'keel add entrypoint http', then 'keel add persistence'
+```
+
+— _"'keel add entrypoint http' brings observability with it"_ for a
+vertical the preset with both entrypoints comes with, and for a
+service gateway, which also needs a linked project, _"'keel add
+entrypoint http', then 'keel link <path>' a project it can wire, then
+'keel add gateway'"_. The action is offered only where
+[`keel add entrypoint`](#keel-add-entrypoint) would run and the grown
+project would take the vertical, or would once linked where a linked
+project is missing too — never in a monorepo product or on a front
+end. On a project growth refuses (a modulith whose contexts are wired
+into its one entrypoint, for now), or where growing would still leave
+the vertical refused (iac beside a distribution taken as an extra, which
+would need a re-render), the hint names the stack that carries both
+instead: _"go-cli-http carries both this project's entrypoints and
+persistence"_, or, for a vertical that stack comes with, _"…has this
+project's entrypoints and comes with observability"_. In a monorepo
+product's service, a vertical it cannot carry is refused naming another
+service of the product that can take it, or has it (_"Persistence has no
+adapter for this project's stack; backend/ can take it"_), read from the
+product root's list of services — the card in `keel add --list`
+and the page say the same; a polyrepo service has no product root to
+read them from, and is refused as a project of its own. At the root of a
+composite product, a vertical the root cannot carry is refused under
+`keel.wrong-scope`, naming the services that can take it, read from each
+service's own manifest, and the hint says where to `cd` (`cd backend &&
+keel add persistence`). One no service could take and the services that
+could have it have already — code style, the agent harness, the image
+the root builds for each, observability in the one service that carries
+it — is there, as `keel new --with` of it on the product sets it
+aside: the add is an Ok that writes nothing, exits 0, and says where it
+is:
 
 ```
 $ keel add code-style      # at a fullstack monorepo root
@@ -536,14 +559,14 @@ never a profile's; in `Cargo.toml`, a table header on a line of its
 own. Where none ranks, the entry goes at the end of its list, as
 before.
 
-| Option            | Meaning                                                                                                                                      |
-| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `-y, --yes`       | Non-interactive — defaults for every question.                                                                                               |
-| `--dry-run`       | Print the plan; write nothing.                                                                                                               |
-| `--list`          | List the verticals and what `keel add` would do with each here — ready, with what it needs first, or why not — then exit.                    |
-| `--reapply`       | Re-render installed verticals from their recorded answers.                                                                                   |
-| `--refresh <ids>` | Installed verticals to re-render in the same run, comma-separated — the ones the run proposes refreshing. See below.                         |
-| `--set <k=v>`     | Preset an answer for a vertical being added (same shape as `keel new`). A re-rendered adapter's recorded answers cannot be changed this way. |
+| Option            | Meaning                                                                                                                                                             |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `-y, --yes`       | Non-interactive — defaults for every question.                                                                                                                      |
+| `--dry-run`       | Print the plan; write nothing.                                                                                                                                      |
+| `--list`          | List the verticals and what `keel add` would do with each here — ready, with what it needs first, after an entrypoint the project can grow, or why not — then exit. |
+| `--reapply`       | Re-render installed verticals from their recorded answers.                                                                                                          |
+| `--refresh <ids>` | Installed verticals to re-render in the same run, comma-separated — the ones the run proposes refreshing. See below.                                                |
+| `--set <k=v>`     | Preset an answer for a vertical being added (same shape as `keel new`). A re-rendered adapter's recorded answers cannot be changed this way.                        |
 
 `keel add --list` reads the project it runs in and says, for every
 vertical not installed, what `keel add <id>` would do — before you run
@@ -572,6 +595,27 @@ its services have is listed apart, under `In its services, nothing to
 add:`, each naming them. In a monorepo service, what the product gives
 it is listed apart the same way, under
 `From the product, nothing to add:`, each with where it comes from.
+
+On a project that can grow the entrypoint it lacks, what only that
+entrypoint stops is not "not for this project" — it is one command
+away, and listed under it, each saying whether it comes with the
+entrypoint or needs a linked project too:
+
+```
+$ keel add --list          # in a go-cli project
+Ready to add here:
+  ci                Continuous integration — The pipeline every push has to pass: …
+  dev-env           Development environment — Local development environment: …
+  toolchain         Toolchain — Records the project's toolchain needs …
+After 'keel add entrypoint http':
+  containerization  Container image — A runtime image for the service: …
+  distribution      Distribution — The release path on a tag push: …
+  gateway           Service gateway, once 'keel link <path>' links a project it can wire — …
+  iac               Infrastructure as code — Where this project runs — …
+  observability     Observability, which comes with it — Health probes, …
+  persistence       Persistence — SQL persistence: …
+Installed: vcs, walking-skeleton, agent-harness, code-style, dev-container — 'keel add <id> --reapply' re-renders one
+```
 
 A refusal is printed in the words `keel add <id>` would refuse it
 with. A vertical that two sets of prerequisites would each serve is
@@ -1006,6 +1050,16 @@ already. It is refused, before a file moves, when:
   it is rendered, and nothing keel has yet wires one into a new
   entrypoint. A modulith with the skeleton's context alone grows.
 
+A refusal that only this command would lift carries it as its
+action: `keel add observability` on a CLI project is refused in the
+sentence `keel new --with` gives it, and its hint is _'keel add
+entrypoint http' brings observability with it_ (see
+[`keel add`](#keel-add)); `keel add --list` lists such verticals under
+_After 'keel add entrypoint http':_, `keel.project-status` reports
+each back entrypoint, what the command would install, and why it would
+refuse where it would (`entrypoints`), and [`keel ui`](ui.md) offers
+the command wherever those do.
+
 Two things stay as they are, knowingly. A project linked to another
 (`keel link`) that starts serving HTTP now offers that project what it
 did not: the other project's record of it is left alone, and the
@@ -1062,14 +1116,17 @@ Open the printed URL — **the token in it is what authorises the page**
 the directory decides the flow. Point it at an empty directory and it
 is `keel new`; point it at an existing keel project and it opens on
 that project's **Options**, where it becomes `keel add` /
-`keel add module`: the preset steps collapse into one read-only
-**Project** step saying what the project is, and Options shows the same
+`keel add module` / `keel add entrypoint`: the preset steps collapse
+into one **Project** step saying what the project is — read-only, but
+for the back entrypoint it can grow — and Options shows the same
 **Also scaffold** group a new project gets, with what is installed
 ticked and locked, a **Re-render** (`--reapply`) beside each installed
 vertical, and every vertical not installed in the parts
-`keel add --list` prints — ready, ready once something else is, and not
-for this project with the refusal's own sentence, collapsed — several
-ticked into one run. Generate runs `keel add` of what the ticks add.
+`keel add --list` prints — ready, ready once something else is, after
+the entrypoint the project can grow with its **Add HTTP server**, and
+not for this project with the refusal's own sentence, collapsed —
+several ticked into one run. Generate runs `keel add` of what the
+ticks add.
 
 Full reference, including the JSON API and how the loopback port is
 protected: [the local scaffolder](ui.md).

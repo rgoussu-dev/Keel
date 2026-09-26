@@ -133,12 +133,14 @@ observability` was refused with the hint _"…, or scaffold
   --stack=quarkus-cli-rest --with observability'"_ — a `--with` that
   preset only sets aside, since observability comes with it. The hint
   now reads _"…, which comes with it: 'keel new
-  --stack=quarkus-cli-rest'"_, and `keel add observability` on the
-  scaffolded project _"quarkus-cli-rest has this project's
-  entrypoints and comes with observability"_; the refusal records it
-  (`comesWith`, beside `carriedBy`), and its sentence is unchanged. A
-  vertical one service of a product cannot carry was refused as if the
-  service were a project alone — `keel new --stack=fullstack --with
+  --stack=quarkus-cli-rest'"_, and `keel add observability` on a
+  project that cannot grow the server it lacks _"quarkus-cli-rest has
+  this project's entrypoints and comes with observability"_ — on the
+  scaffolded one it names `keel add entrypoint http` (see _Changed_);
+  the refusal records it (`comesWith`, beside `carriedBy`), and its
+  sentence is unchanged. A vertical one service of a product cannot
+  carry was refused as if the service were a project alone —
+  `keel new --stack=fullstack --with
 frontend:persistence` said _"Persistence has no adapter for this
   project's stack"_, the hint only _"drop 'frontend:persistence' from
   --with"_. The sentence now names another service that can take it,
@@ -549,6 +551,50 @@ new` the terminal adds the way past it (move it aside, or start in
 
 ### Changed
 
+- **A refusal an entrypoint would lift names the command that adds
+  it.** `keel add observability` on a CLI project was refused in the
+  sentence `keel new --with` gives it — _Observability needs an
+  entrypoint this project does not have: HTTP server — a REST
+  endpoint_ — its `hint:` naming the preset that carries both and ending
+  _a project's entrypoints are fixed at 'keel new'_, untrue since
+  `keel add entrypoint`; a service gateway, which lacks a linked
+  project too, got no hint at all. The sentence and the code
+  (`keel.uncoverable-vertical`) are unchanged. Where the project can
+  grow the entrypoint it lacks, the refusal now carries the action as
+  data, `grow: { "entrypoint": "http", "comes": true }` — in the 422
+  body's `error.refusal` and on the project status's card alike — read
+  by the planner over the project as the command would leave it, and the
+  hint spells it: _'keel add entrypoint http' brings observability with
+  it_; _'keel add entrypoint http', then 'keel add persistence'_ for a
+  vertical the grown project takes by its own add; _…, then 'keel link
+  <path>' a project it can wire, then 'keel add gateway'_ for the
+  gateway. It is offered only where the command would run and the grown
+  project would take the vertical, or would once linked where a linked
+  project is missing too: not in a monorepo product, not on a front end,
+  not where growing would leave it refused for another reason, and not,
+  for now, on a modulith whose contexts are wired into its one
+  entrypoint — where the hint still names the preset that carries both,
+  without the old closing clause. `keel add --list` lists such
+  verticals under _After 'keel add entrypoint http':_, each saying
+  whether it comes with the entrypoint, rather than under _Not for this
+  project:_, where only what growing would not let in stays:
+  distribution on a Quarkus CLI built with Maven, refused for its build
+  system, or iac beside a distribution taken as an extra, which growing
+  would leave needing a re-render. `keel.project-status` gains
+  `entrypoints`: each back entrypoint, by its word and label, whether
+  the project has it, and what `keel add entrypoint` would install, or
+  its refusal where it would refuse. And `keel ui` offers the command:
+  under _After adding HTTP server_ in Options, beside an **Add HTTP
+  server** button, each card saying what the server makes of it; as an
+  **Add an entrypoint** tab beside the bounded context's, disabled with
+  its reason where the command would be refused, whose form names what
+  the run installs; and on the Project step's Adapters line. The page
+  previews it as `keel add entrypoint http --yes`, asks what it asks —
+  adding HTTP, the monitoring stack's shape; adding a CLI, nothing —
+  and reviews it as it does a bounded context. `keel new --with` is
+  unchanged: before a project exists, an entrypoint gap still names the
+  preset to scaffold.
+
 - **A plugin vertical may no longer be named `module` or
   `entrypoint`.** `keel add` reads either word as a command of its own
   — `keel add module <name>`, and now `keel add entrypoint
@@ -914,8 +960,10 @@ distribution iac`) — _Not for this project_, collapsed, each with the
   line, built from the refusal's fields — _"drop 'persistence' from
   --with, or scaffold go-cli-http, which carries it"_ under `keel new`,
   _"go-cli-http carries both this project's entrypoints and
-  persistence"_ under `keel add`, `keel link <path>` first for the
-  gateway, `cd backend && keel add persistence` at a product root.
+  persistence"_ under `keel add` where the project cannot grow the
+  entrypoint it lacks (where it can, it names `keel add entrypoint
+  http` first, as an entry above says), `keel link <path>` first for
+  the gateway, `cd backend && keel add persistence` at a product root.
   Every sentence is built in one place from a structured refusal —
   which vertical, what the project lacks, the nearest stacks that carry
   it, the services it belongs in, the file in the way — and names no
@@ -1183,10 +1231,12 @@ entrypoint http` on a CLI project, or `keel add entrypoint cli` on an
   recorded, the report names the `keel link` that records it.
   `keel ui`'s API takes it as the target
   `{ "kind": "add-entrypoint", "entrypoint": "http" }`, which it
-  previews and installs as the CLI does; the page does not offer it
-  yet. The composition grid holds all 192 single-entrypoint backend
-  cells to their twins, both ways, on every dial setting (I10, hard):
-  128 grow, and the 64 with the peer context are refused. See
+  previews and installs as the CLI does, and the page offers it wherever
+  the project can grow one: on the Project step's Adapters line, as an
+  **Add an entrypoint** tab, and on a refusal's **Add HTTP server** (see
+  _Changed_). The composition grid holds all 192 single-entrypoint
+  backend cells to their twins, both ways, on every dial setting (I10,
+  hard): 128 grow, and the 64 with the peer context are refused. See
   `docs/cli.md` → `keel add entrypoint`.
 
 - **A weekly composition sweep covers what the grid cannot afford to.**

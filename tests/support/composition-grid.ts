@@ -52,6 +52,7 @@
 import { createHash } from 'node:crypto';
 import os from 'node:os';
 import path from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 import fs from 'fs-extra';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import type { Action, ResultOf } from '../../src/domain/kernel/action.js';
@@ -67,6 +68,7 @@ import {
 import type { Registry } from '../../src/domain/contract/ports/registry.js';
 import type { Tree, TreeChange } from '../../src/domain/contract/ports/tree.js';
 import { SETTINGS_TARGET } from '../../src/domain/contract/hook.js';
+import { RefusalError, type Refusal } from '../../src/domain/contract/refusal.js';
 import {
   dialsQuery,
   previewQuery,
@@ -87,7 +89,7 @@ export const INVARIANTS = {
   I1: 'no cell throws; every refusal is an Err with a code',
   I2: 'every extra keel.dials offers, posted with its prerequisites, previews Ok',
   I3: 'every extras set the CLI accepts is reachable from the menu',
-  I4: 'a keel.project-status card agrees with its add: ready ⇔ Ok, needs ⇔ Ok with its closure, a refusal ⇔ the same code and sentence, provided ⇔ Ok staging nothing with its note; and at a monorepo product root, what keel.dials shows as coming with the product ⇔ an add that stages and runs nothing',
+  I4: 'a keel.project-status card agrees with its add: ready ⇔ Ok, needs ⇔ Ok with its closure, a refusal ⇔ the same code, sentence and data, provided ⇔ Ok staging nothing with its note; and at a monorepo product root, what keel.dials shows as coming with the product ⇔ an add that stages and runs nothing',
   I5: 'keel new --with v and keel add v on the same stack reach the same outcome, code and sentence',
   I6: 'no refusal names a lang. / framework. / runtime. / pkg. / layout. / arch. tag',
   I7: 'in every composite service, under both layouts, every vertical is Ok or a coded, scope-aware refusal: never a file in the way, and keel.wrong-scope where the polyrepo twin is Ok',
@@ -184,6 +186,8 @@ export interface Outcome<T> {
   readonly value: T | null;
   /** The refusal's or the throw's message; null when Ok. */
   readonly message: string | null;
+  /** A refusal's structured half, where it has one (`RefusalError.refusal`). */
+  readonly refusal?: Refusal;
 }
 
 /**
@@ -471,8 +475,9 @@ export async function layoutsOf(grid: Grid, stack: string): Promise<readonly Rep
  *   prerequisites with it stages ({@link Grid.twin}, which records
  *   nothing): the closure the card shows is the one the add installs;
  * - a card carrying a refusal previews as that refusal, under the same
- *   code, in the same sentence — whatever its readiness says, since a
- *   tied `needs` is refused too.
+ *   code, in the same sentence, with the same data — the action it
+ *   names, where it names one (`grow`), included — whatever its
+ *   readiness says, since a tied `needs` is refused too.
  *
  * An `unavailable` card with no refusal to show is a violation of its
  * own. Records the cell `cell` under I4 when the card, or its absence,
@@ -515,7 +520,11 @@ async function agrees(
   outcome: Outcome<InstallPreview>,
 ): Promise<boolean> {
   if (card.refusal !== undefined) {
-    return outcome.verdict === card.refusal.code && outcome.message === card.refusal.message;
+    return (
+      outcome.verdict === card.refusal.code &&
+      outcome.message === card.refusal.message &&
+      isDeepStrictEqual(outcome.refusal, card.refusal.refusal)
+    );
   }
   if (outcome.verdict !== OK) return false;
   switch (card.readiness) {
@@ -850,9 +859,11 @@ async function attempt<A extends Action>(
 ): Promise<Outcome<ResultOf<A>>> {
   try {
     const result = await mediator.dispatch(action);
-    return result.ok
-      ? { verdict: OK, value: result.value, message: null }
-      : { verdict: result.error.code, value: null, message: result.error.message };
+    if (result.ok) return { verdict: OK, value: result.value, message: null };
+    const { code, message } = result.error;
+    return result.error instanceof RefusalError
+      ? { verdict: code, value: null, message, refusal: result.error.refusal }
+      : { verdict: code, value: null, message };
   } catch (thrown) {
     const error = thrown instanceof Error ? thrown : new Error(String(thrown));
     return { verdict: `${THROWN}${error.name}`, value: null, message: error.message };

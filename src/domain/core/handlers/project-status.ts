@@ -31,6 +31,10 @@
  *     a front end opens it at.
  *   - `canAddModule` / `moduleRefusal` — `keel add module`'s gates that
  *     turn on the project alone (`./add-module.ts` `moduleRefusal`).
+ *   - `entrypoints` — each back entrypoint, there or not, and where
+ *     it is not, what `keel add entrypoint` would install, or why it
+ *     would refuse (`./add-entrypoint.ts` `entrypointReading`); a card
+ *     only that entrypoint stops carries it as its action (`grow`).
  *   - `harnessGeneration` — the gate every brownfield command but the
  *     harness's own passes first, reported once rather than as the
  *     same refusal on every card.
@@ -50,6 +54,7 @@ import type { ManifestStore } from '../../contract/ports/manifest-store.js';
 import type { Registry } from '../../contract/ports/registry.js';
 import type {
   AvailableVerticalDescriptor,
+  EntrypointStatus,
   ProjectStatus,
   ProjectStatusQuery,
   ProvidedVerticalDescriptor,
@@ -58,7 +63,7 @@ import type {
 } from '../../contract/queries.js';
 import { RefusalError } from '../../contract/refusal.js';
 import { moduleLayoutOf } from '../adapters/module-layout.js';
-import { addReadiness, productRootReading } from '../add-readiness.js';
+import { addReadiness, addScopeOf, productRootReading } from '../add-readiness.js';
 import { projectProfile, serviceLabel } from '../profile.js';
 import { inServicesNote, providedNote } from '../refusals.js';
 import { installedVertical, verticalTitle } from '../registry.js';
@@ -69,7 +74,9 @@ import {
   type DirectoryScope,
   type NearbyReading,
 } from '../scope.js';
+import { ENTRYPOINTS } from '../stack-wizard.js';
 import { boundedContextVertical } from '../verticals/bounded-context.js';
+import { entrypointReading } from './add-entrypoint.js';
 import { moduleRefusal } from './add-module.js';
 
 /** The ports this query needs. */
@@ -109,6 +116,7 @@ export class ProjectStatusHandler implements Handler<ProjectStatusQuery> {
     const registry = this.deps.registry;
     const installedIds = new Set(manifest.verticals.map((v) => v.id));
     const provisions = provisionsHere(registry, where);
+    const scope = addScopeOf(registry, where);
     const available: AvailableVerticalDescriptor[] = [];
     const provided: ProvidedVerticalDescriptor[] = [];
     for (const vertical of [...registry.verticals()].sort(byId)) {
@@ -129,7 +137,7 @@ export class ProjectStatusHandler implements Handler<ProjectStatusQuery> {
         });
         continue;
       }
-      const ready = addReadiness(registry, where, vertical);
+      const ready = addReadiness(registry, where, vertical, scope);
       available.push({
         ...describe(registry, vertical.id),
         readiness: ready.readiness,
@@ -161,6 +169,7 @@ export class ProjectStatusHandler implements Handler<ProjectStatusQuery> {
       moduleLayout: moduleLayoutOf(manifest.tags),
       canAddModule: module === null,
       ...(module === null ? {} : { moduleRefusal: describeRefusal(module) }),
+      entrypoints: entrypointsOf(registry, where, manifest),
       harnessGeneration: {
         found: manifest.harnessGeneration ?? null,
         expected: HARNESS_GENERATION,
@@ -190,6 +199,27 @@ function uninitialised(scopeRoot: string, nearby: NearbyReading): ProjectStatus 
     canAddModule: false,
     ...(module === null ? {} : { moduleRefusal: describeRefusal(module) }),
   };
+}
+
+/**
+ * Each back entrypoint, in the finder's order, as `keel add entrypoint`
+ * would answer it in `where`: there already, or what it would install,
+ * or its refusal where it would refuse (`./add-entrypoint.ts`
+ * `entrypointReading`).
+ */
+function entrypointsOf(
+  registry: Registry,
+  where: DirectoryScope,
+  manifest: ManifestV2,
+): readonly EntrypointStatus[] {
+  return ENTRYPOINTS.filter((entry) => entry.side === 'back').map((entry) => {
+    const described = { word: entry.word, label: entry.label };
+    if (manifest.tags.includes(entry.tag)) return { ...described, present: true };
+    const reading = entrypointReading(registry, where, entry.word);
+    return reading.ok
+      ? { ...described, present: false, installs: reading.value }
+      : { ...described, present: false, refusal: describeRefusal(reading.error) };
+  });
 }
 
 /**

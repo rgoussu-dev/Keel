@@ -714,6 +714,210 @@ describe('placement in a monorepo service', () => {
   });
 });
 
+describe('an entrypoint the project could grow', () => {
+  // What adding HTTP serves, what reads it, and what needs a link too:
+  // an HTTP service's metrics, a dashboard over them, and a bridge that
+  // wires a linked project into the server.
+  const serve = vertical(
+    'acme-serve',
+    [adapter('acme-serve', ['lang.acme', 'arch.server-http'], { promotes: ['acme.served'] })],
+    { promotes: ['acme.served'] },
+  );
+  const dash = vertical('acme-dash', [adapter('acme-dash', ['acme.served'])]);
+  const wire = vertical('acme-wire', [
+    adapter('acme-wire', ['lang.acme', 'arch.server-http', 'peer.acme.api']),
+  ]);
+  const flat = vertical('acme-flat', [adapter('acme-flat', ['lang.acme', 'arch.server-http'])], {
+    conflicts: [
+      {
+        id: 'acme-flat/one-way-in',
+        when: ['arch.cli', 'arch.server-http'],
+        reason: 'flat takes one way in',
+      },
+    ],
+  });
+  // The bridge again, with the flat rule: the grown project lacks its
+  // link and breaks the rule.
+  const flatWire = vertical(
+    'acme-flatwire',
+    [adapter('acme-flatwire', ['lang.acme', 'arch.server-http', 'peer.acme.api'])],
+    {
+      conflicts: [
+        {
+          id: 'acme-flatwire/one-way-in',
+          when: ['arch.cli', 'arch.server-http'],
+          reason: 'flat takes one way in',
+        },
+      ],
+    },
+  );
+  const layered = vertical(
+    'acme-layered',
+    [adapter('acme-layered', ['lang.acme', 'arch.server-http'])],
+    {
+      conflicts: [
+        { id: 'acme-layered/no-flat', when: ['layout.basic'], reason: 'layered needs layers' },
+      ],
+    },
+  );
+  const local = registryOf([
+    {
+      origin: pluginOrigin('grow'),
+      stacks: STACKS,
+      verticals: [serve, dash, wire, flatWire, flat, layered, metrics],
+    },
+  ]);
+  const CLI: readonly Tag[] = [...ACME_TAGS, 'arch.cli'];
+  const HTTP: readonly Tag[] = [...CLI, 'arch.server-http'];
+  /** The CLI project, and the same with HTTP grown — which installs `installed` too. */
+  const growing = (installed: readonly string[] = []): PlanScope => ({
+    ...on(CLI),
+    grown: [{ entrypoint: 'arch.server-http', scope: on(HTTP, installed) }],
+  });
+  const gapOf = (scope: PlanScope, id: string, of = local) => {
+    const ready = readiness(of, scope, id);
+    if (ready.kind !== 'unavailable') throw new Error(`${id} is ${ready.kind}`);
+    return ready.gap;
+  };
+
+  it('names the entrypoint whose addition lets it install, by the word the command takes', () => {
+    expect(gapOf(growing(), 'acme-serve')).toEqual({
+      entrypoint: ['arch.server-http'],
+      peer: [],
+      identity: [],
+      rules: [],
+      nearestStacks: ['acme-cli-http'],
+      grow: { entrypoint: 'http', comes: false },
+    });
+  });
+
+  it('says it comes with the entrypoint where growing installs it', () => {
+    expect(gapOf(growing(['acme-serve']), 'acme-serve').grow).toEqual({
+      entrypoint: 'http',
+      comes: true,
+    });
+  });
+
+  it('offers it where the vertical then needs another first, which its own add installs', () => {
+    // Traced back, what stops the dashboard is the server its supplier needs.
+    expect(gapOf(growing(), 'acme-dash')).toMatchObject({
+      entrypoint: ['arch.server-http'],
+      identity: [],
+      grow: { entrypoint: 'http', comes: false },
+    });
+  });
+
+  it('offers it beside a link, where the link is all the grown project still lacks', () => {
+    expect(gapOf(growing(), 'acme-wire')).toMatchObject({
+      entrypoint: ['arch.server-http'],
+      peer: ['peer.acme.api'],
+      grow: { entrypoint: 'http', comes: false },
+    });
+  });
+
+  it('offers nothing where growing leaves it refused for another reason', () => {
+    // The grown project breaks the vertical's own rule, which the CLI
+    // project does not: the gap is the entrypoint alone, and no action.
+    expect(gapOf(growing(), 'acme-flat')).toMatchObject({
+      entrypoint: ['arch.server-http'],
+      identity: [],
+      rules: [],
+    });
+    expect(gapOf(growing(), 'acme-flat')).not.toHaveProperty('grow');
+    expect(gapOf(on(HTTP), 'acme-flat')).toMatchObject({ rules: ['acme-flat/one-way-in'] });
+  });
+
+  it('offers nothing beside a link where the grown project would break a rule as well', () => {
+    // Linking would not let it in: the link is not all it still lacks.
+    expect(gapOf(growing(), 'acme-flatwire')).toMatchObject({
+      entrypoint: ['arch.server-http'],
+      peer: ['peer.acme.api'],
+      rules: [],
+    });
+    expect(gapOf(growing(), 'acme-flatwire')).not.toHaveProperty('grow');
+    expect(gapOf(on(HTTP), 'acme-flatwire')).toMatchObject({
+      peer: ['peer.acme.api'],
+      rules: ['acme-flatwire/one-way-in'],
+    });
+  });
+
+  it('offers nothing where the grown project lacks a link the gap never named', () => {
+    // On the CLI the plain adapter lacks the server alone; once grown,
+    // what serving promotes excludes it, and the wired one lacks a link
+    // — which a refusal naming no linked project would never mention.
+    const shy = vertical('acme-shy', [
+      adapter('acme-shy', [], {
+        name: 'plain',
+        predicate: { requires: ['lang.acme', 'arch.server-http'], excludes: ['acme.served'] },
+      }),
+      adapter('acme-shy', ['lang.acme', 'arch.server-http', 'peer.acme.api'], { name: 'wired' }),
+    ]);
+    const of = registryOf([
+      { origin: pluginOrigin('shy'), stacks: STACKS, verticals: [serve, shy] },
+    ]);
+    const served = on([...HTTP, 'acme.served'], ['acme-serve']);
+    const scope: PlanScope = {
+      ...on(CLI),
+      grown: [{ entrypoint: 'arch.server-http', scope: served }],
+    };
+    expect(gapOf(served, 'acme-shy', of)).toMatchObject({
+      entrypoint: [],
+      peer: ['peer.acme.api'],
+      identity: [],
+      rules: [],
+    });
+    expect(gapOf(scope, 'acme-shy', of)).toMatchObject({
+      entrypoint: ['arch.server-http'],
+      peer: [],
+    });
+    expect(gapOf(scope, 'acme-shy', of)).not.toHaveProperty('grow');
+  });
+
+  it('offers nothing but where the scope says the project can grow, and that entrypoint', () => {
+    // Before `keel new` writes anything, a preset is chosen instead.
+    expect(gapOf(on(CLI), 'acme-serve')).not.toHaveProperty('grow');
+    const other: PlanScope = {
+      ...on(CLI),
+      grown: [{ entrypoint: 'arch.cli', scope: on(HTTP) }],
+    };
+    expect(gapOf(other, 'acme-serve')).not.toHaveProperty('grow');
+  });
+
+  it('offers nothing where the gap is not an entrypoint alone: another language, a rule, a link alone', () => {
+    // Growing adds the entrypoint and changes nothing else, so a gap
+    // naming more is never read again — even over a grown scope that
+    // would take the vertical.
+    const beta: PlanScope = {
+      ...on(['lang.beta', 'arch.hexagonal', 'arch.cli']),
+      grown: [{ entrypoint: 'arch.server-http', scope: on(HTTP) }],
+    };
+    expect(readiness(local, on(HTTP), 'acme-serve')).toEqual({ kind: 'ready' });
+    expect(gapOf(beta, 'acme-serve')).toMatchObject({ identity: ['lang.acme'] });
+    expect(gapOf(beta, 'acme-serve')).not.toHaveProperty('grow');
+    const flatCli: PlanScope = {
+      ...on([...CLI, 'layout.basic']),
+      grown: [{ entrypoint: 'arch.server-http', scope: on(HTTP) }],
+    };
+    expect(readiness(local, on(HTTP), 'acme-layered')).toEqual({ kind: 'ready' });
+    expect(gapOf(flatCli, 'acme-layered')).toMatchObject({
+      entrypoint: ['arch.server-http'],
+      rules: ['acme-layered/no-flat'],
+    });
+    expect(gapOf(flatCli, 'acme-layered')).not.toHaveProperty('grow');
+    const http: PlanScope = { ...on(HTTP), grown: [] };
+    expect(gapOf(http, 'acme-wire')).toMatchObject({ entrypoint: [], peer: ['peer.acme.api'] });
+    expect(gapOf(http, 'acme-wire')).not.toHaveProperty('grow');
+  });
+
+  it('carries it on the plan a front door refuses with, too', () => {
+    expect(plan(local, growing(), ['acme-serve'])).toMatchObject({
+      kind: 'unavailable',
+      vertical: 'acme-serve',
+      gap: { grow: { entrypoint: 'http', comes: false } },
+    });
+  });
+});
+
 describe('refreshProposals', () => {
   const tags = [...ACME_TAGS, 'arch.server-http'];
 

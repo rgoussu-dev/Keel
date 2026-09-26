@@ -187,7 +187,7 @@ on the guided path — they carry no `lang.*` tag, but their services do.
 The tree reads backwards too: `profile.ts` places a scaffolded project
 on it from its manifest's tags (`axesOf`, the reading a preset is
 placed by), so `keel.project-status` says what a project is in the
-wizard's words — the page's read-only Project step — and no front end
+wizard's words — the page's Project step — and no front end
 reads a tag to say it. `growth.ts` reads it with one entrypoint more:
 the preset a project would be with it is its **twin**, what adding
 that entrypoint must leave byte for byte, and `growthOf` is the one
@@ -211,7 +211,23 @@ pass kept where it would have written it), as the twin records it.
 A rule the entrypoint's tag breaks is `growthOf`'s to refuse
 (`keel.incompatible`): `installVerticals` takes every rule the manifest
 it is handed breaks as standing, and the handler hands it the grown
-one. See `docs/cli.md` → Finding a stack, and → `keel add entrypoint`.
+one. The same reading gives a refusal its action: `add-readiness.ts`'
+`addScopeOf` — the scope both the cards and the add front door plan on
+— hands the planner, for each back entrypoint the project could grow
+there, the scope `growthOf`'s `grownScope` reads the grown project as
+(`PlanScope.grown`), and a gap that is that entrypoint, alone or with a
+link, is read again over it (`ReadinessGap.grow`, which
+`unavailableRefusal` carries as data, never in the sentence). That
+scope's tags carry what the run promotes — the adapters that newly
+match, then what it installs, folded by `planner.ts`' `tagsAfter` as a
+plan is — or a vertical a plugin's twin feeds, or excludes, would be
+read otherwise than the grown project reads it. It is handed in, not
+computed where it is read, because `growth.ts` imports the planner and
+`scope.ts`: either reading growth itself is an import cycle, which
+dependency-cruiser refuses. The status's `entrypoints` reads the
+command's own answer, what it would install or why it would refuse
+(`handlers/add-entrypoint.ts`' `entrypointReading`). See `docs/cli.md`
+→ Finding a stack, and → `keel add entrypoint`.
 
 **The stack presets are data.** `stack-presets.json`, because nothing in
 a `Stack` is code — `tags` and `projects` are strings and every other

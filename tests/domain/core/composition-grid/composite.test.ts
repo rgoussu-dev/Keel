@@ -21,13 +21,14 @@
  *     services have — the add is an Ok that stages nothing, and says
  *     so), or a `keel.project-status` card, and the card agrees with
  *     the preview of its add — `ready` Ok, `needs` Ok with its
- *     prerequisites in the plan, a refusal the add's own, code and
- *     sentence. And at the root, both phases read one answer: what
- *     `keel.dials` shows as coming with the product under that layout
- *     — its own verticals, and what `keel new --with` sets aside as
- *     already in its services — is exactly what `keel add` at the root
- *     answers with an Ok that stages and runs nothing. A polyrepo
- *     product's root is no project at all, and shows no cards.
+ *     prerequisites in the plan, a refusal the add's own, code,
+ *     sentence and data — the action it names included. And at the
+ *     root, both phases read one answer: what `keel.dials` shows as
+ *     coming with the product under that layout — its own verticals,
+ *     and what `keel new --with` sets aside as already in its
+ *     services — is exactly what `keel add` at the root answers with
+ *     an Ok that stages and runs nothing. A polyrepo product's root is
+ *     no project at all, and shows no cards.
  *   - **A service cell is Ok or refused for its scope** (I7): never
  *     a file in the way, and — where the same service under the
  *     polyrepo layout, a repository of its own, is Ok — Ok or

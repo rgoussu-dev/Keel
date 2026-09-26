@@ -25,12 +25,13 @@ import {
 import {
   docsCheckQuery,
   projectStatusQuery,
+  type AvailableVerticalDescriptor,
   type HarnessGenerationStatus,
   type ProjectStatus,
 } from '../../../domain/contract/queries.js';
-import { RefusalError } from '../../../domain/contract/refusal.js';
+import { RefusalError, type GrowAction } from '../../../domain/contract/refusal.js';
 import type { ServeUi } from '../../web/contract/server.js';
-import { refusalHint, type HintedCommand } from './hint.js';
+import { growNote, refusalHint, type HintedCommand } from './hint.js';
 import {
   toolchainCheckQuery,
   toolchainInstallCommand,
@@ -202,7 +203,7 @@ export function buildProgram(deps: CliDeps): Command {
     .option('--dry-run', 'print the plan without writing any file', false)
     .option(
       '--list',
-      'list the verticals and whether each can be added here — ready, with what it needs first, or why not — then exit',
+      'list the verticals and whether each can be added here — ready, with what it needs first, after an entrypoint the project can grow, or why not — then exit',
       false,
     )
     .option(
@@ -563,7 +564,9 @@ function printOptionList(
 /**
  * `keel add --list` inside a project: every vertical not installed,
  * grouped by what `keel add <id>` would do with it — install it, install
- * it with what it needs first, or refuse it, in the refusal's own
+ * it with what it needs first, install it after the entrypoint its
+ * refusal names as the way in (`keel add entrypoint http`, which it may
+ * come with), or refuse it, in the refusal's own
  * sentence — then, in a monorepo service, what the product gives it,
  * or at a product root what its services have, then what is
  * installed, what `--reapply` re-renders apart
@@ -587,7 +590,11 @@ function printReadiness(status: ProjectStatus, log: Logger): void {
   const row = (id: string, text: string): string => `  ${id.padEnd(width)}  ${text}`;
   const ready = status.available.filter((v) => v.readiness === 'ready');
   const needs = status.available.filter((v) => v.readiness === 'needs');
-  const refused = status.available.filter((v) => v.readiness === 'unavailable');
+  const unavailable = status.available.filter((v) => v.readiness === 'unavailable');
+  const growing = (v: AvailableVerticalDescriptor): GrowAction | undefined =>
+    v.refusal?.refusal?.kind === 'unavailable' ? v.refusal.refusal.grow : undefined;
+  const refused = unavailable.filter((v) => growing(v) === undefined);
+  const words = [...new Set(unavailable.flatMap((v) => growing(v)?.entrypoint ?? []))];
   if (ready.length > 0) {
     log.info('Ready to add here:');
     for (const v of ready) log.info(row(v.id, `${v.title} — ${v.description}`));
@@ -597,6 +604,17 @@ function printReadiness(status: ProjectStatus, log: Logger): void {
     for (const v of needs) {
       const after = `${v.title}, after ${v.requires.join(', ')} — ${v.description}`;
       log.info(row(v.id, v.refusal?.message ?? after));
+    }
+  }
+  // What an entrypoint the project can grow lets in is for this
+  // project, one command away: listed under that command, each saying
+  // whether it comes with the entrypoint or takes its own add after.
+  for (const word of words) {
+    log.info(`After 'keel add entrypoint ${word}':`);
+    for (const v of unavailable) {
+      if (growing(v)?.entrypoint !== word) continue;
+      const when = v.refusal?.refusal === undefined ? '' : growNote(v.refusal.refusal);
+      log.info(row(v.id, `${v.title}${when} — ${v.description}`));
     }
   }
   if (refused.length > 0) {

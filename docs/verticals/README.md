@@ -94,14 +94,16 @@ Reading a cell:
 
 - **Other dials can move it.** `distribution` on `quarkus-cli` and
   `quarkus-cli-kotlin` covers Gradle, their default; on Maven it is
-  refused, as on every other CLI. CLI release adapters for the other
-  families are the intended growth path.
+  refused, as on every other CLI without a server: after
+  `keel add entrypoint http`, where a CLI can grow one, it takes the
+  container release. CLI release adapters for the other families are
+  the intended growth path.
 - **`gateway` needs a peer.** It wires linked projects, so with none
   linked it is refused everywhere: on a CLI for the HTTP server it
   lacks, elsewhere pointing at `keel link`. Run `keel link <path>` in
-  both projects, then `keel add gateway` on each side. It is not
-  offered as an extra at `keel new`, and every service of a product
-  has it from the start.
+  both projects — on a CLI, after `keel add entrypoint http` — then
+  `keel add gateway` on each side. It is not offered as an extra at
+  `keel new`, and every service of a product has it from the start.
 - **`distribution` and `iac` come after what they need.** On an HTTP
   server or an SPA, `distribution` is the container family: its
   release pipeline builds the `containerization` Dockerfile, and each
@@ -110,9 +112,10 @@ Reading a cell:
   composed CLI + HTTP Quarkus stack on Gradle ships native binaries when
   `distribution` comes alone. `iac` keys on the `dist.container-image`
   tag the container family promotes, so it needs `containerization` and
-  `distribution`, in that order; a CLI never carries it, and is refused
-  for the HTTP server it lacks. See [`distribution`](distribution.md)
-  and [`iac`](iac.md).
+  `distribution`, in that order; a CLI is refused it for the HTTP
+  server it lacks, and, where it can grow one, takes it after
+  `keel add entrypoint http`, its own add bringing what it needs. See
+  [`distribution`](distribution.md) and [`iac`](iac.md).
 - **A monorepo product's services are directories of one
   repository.** The product root holds its version control, and its
   [`fullstack`](fullstack.md) glue builds each service's image

@@ -37,16 +37,17 @@ that suits how you are working.
 It also reads what your project already is, and it is **one page for
 both phases**: the directory decides the flow. Point it at a directory
 holding a keel manifest and the preset steps collapse into one
-read-only **Project** step — what the project is, settled — and
-Options shows the same **Also scaffold** group a new project gets, with
-what the project has ticked and locked, each installed vertical with a
-**Re-render** of its own; every vertical it has not installed sorted by
-what `keel add` would do with it — ready, ready once something else is,
-or not for this project and why — to tick several of at once; and "add
-a bounded context", disabled with the reason wherever `keel add module`
-would refuse it. Generate runs `keel add` of what the ticks add. The
-commands stay two: `keel new` on an empty directory, `keel add` on a
-project.
+**Project** step — what the project is, settled but for the entrypoint
+it can grow — and Options shows the same **Also scaffold** group a new
+project gets, with what the project has ticked and locked, each
+installed vertical with a **Re-render** of its own; every vertical it
+has not installed sorted by what `keel add` would do with it — ready,
+ready once something else is, after the entrypoint the project can grow,
+or not for this project and why — to tick several of at once; and "add a
+bounded context" and "add an entrypoint", each disabled with the reason
+wherever `keel add module` or `keel add entrypoint` would refuse it.
+Generate runs `keel add` of what the ticks add. The commands stay two:
+`keel new` on an empty directory, `keel add` on a project.
 
 ## The page
 
@@ -155,16 +156,19 @@ with the same words.
 
 ## Options on a keel project
 
-A keel project's rail has no preset steps: `keel new` answered them,
-and the manifest remembers. They collapse into one read-only
-**Project** step, which says what the project is in the words the
-wizard asked it in — _Preset ts-http · Building Backend or tool · Language
-TypeScript (Node) · Adapters HTTP server · Build system npm · Module
-layout basic_, a product root's services, the bounded contexts — and
-lists what it has installed. The manifest records tags, not a preset
-id; the drill-down is a reading of those very tags, so read back they
-give the answers `keel new` was given and the preset they lead to, and
-the page never sees a tag.
+A keel project's rail has no preset steps: `keel new` answered them, and
+the manifest remembers. They collapse into one **Project** step,
+read-only but for its ways in, which says what the project is in the
+words the wizard asked it in — _Preset ts-http · Building Backend or
+tool · Language TypeScript (Node) · Adapters HTTP server · Build system
+npm · Module layout basic_, a product root's services, the bounded
+contexts — and lists what it has installed. The manifest records tags,
+not a preset id; the drill-down is a reading of those very tags, so read
+back they give the answers `keel new` was given and the preset they lead
+to, and the page never sees a tag. One answer is no longer settled for
+good: where the project can grow the back entrypoint it lacks, its
+Adapters line offers it — **Add HTTP server** on a CLI project, **Add
+CLI** on an HTTP one — as `keel add entrypoint`.
 
 Options then holds the same **Also scaffold** group a new project's
 Options step does — one control for both phases, where the page used to
@@ -181,6 +185,14 @@ Generate posts only what the ticks add — the delta — as `keel add`:
   title — Infrastructure as code _needs Container image, Distribution_
   — and **ticking it ticks them**, since the add installs them with it
   either way; unticking one unticks every ticked card that needs it.
+- **After adding HTTP server** — on a project that can grow the
+  entrypoint it lacks, what only that entrypoint stops: its refusal
+  carries `keel add entrypoint http` as its action, so the part opens
+  with an **Add HTTP server** button, then each card saying what the
+  server makes of it — Observability _comes with it_, Persistence and
+  Container image are _added after it_, and a Service gateway _once a
+  linked project serves it_ too. Open rather than collapsed: it is for
+  this project, one run away.
 - **Installed** — every vertical the project has, its box ticked and
   disabled: an add cannot take one back, and nothing ticked there joins
   the run. Each one `keel add` names has a **Re-render** button beside
@@ -208,10 +220,12 @@ Generate posts only what the ticks add — the delta — as `keel add`:
 - **Not for this project** — collapsed, one line each: the sentence
   `keel add <id>` would refuse it with, word for word. _Observability
   needs an entrypoint this project does not have: HTTP server — a REST
-  endpoint._ Kept rather than hidden, because an absent option answers
-  "why can I not have observability?" with nothing. In a monorepo
-  service, a vertical another service of the product can take, or has,
-  names that service there too: _…; backend/ can take it_.
+  endpoint_, on a project that cannot grow one — a modulith whose
+  contexts are wired into its one entrypoint, for now. Kept rather than
+  hidden, because an absent option answers "why can I not have
+  observability?" with nothing. In a monorepo service, a vertical
+  another service of the product can take, or has, names that service
+  there too: _…; backend/ can take it_.
 - **Belongs in a service** — at a composite product's root, an
   **Open backend/ (quarkus-rest · Gradle)** button per service, which
   points the page at that directory and opens its Options; then what
@@ -239,6 +253,22 @@ sentence: _A bounded context needs the modulith layout: …_, its rule's
 id kept in the status's data rather than its words. A flag a sentence
 names, `--module-layout=modulith` here, is set as one literal the line
 never breaks inside.
+
+"Add an entrypoint" is there wherever the project lacks a back
+entrypoint, and disabled with the refusal `keel add entrypoint` would
+give where it would refuse — at a product root or in a monorepo
+service, on a front end, on a modulith whose contexts are wired into
+its one entrypoint. It is the run every **Add HTTP server** on the
+page starts: the entrypoint as a card, what the run installs with it —
+on a CLI, a dev environment and observability — and what it lets in
+after, a plan previewed as `keel add entrypoint http --yes`, what it
+asks on the Questions step — adding HTTP, the monitoring stack's shape;
+adding a CLI, nothing — and a review row, _Entrypoint HTTP server_, as
+a bounded context has its own. Generate grows the project into the
+preset with both entrypoints; the page then re-reads it, and what the
+server stopped is installed (what came with it), ready, ready once
+something else is, or — the service gateway — waiting only on
+`keel link`.
 
 ## Finding a stack: the same drill-down, step for step
 
@@ -583,8 +613,10 @@ the target is broken is a menu that cannot be used to fix it.
 { "kind": "add-entrypoint", "entrypoint": "http" }
 ```
 
-The page does not offer `add-entrypoint` yet; the API takes it, so a
-script can preview and run `keel add entrypoint` as the CLI does.
+The page posts `add-entrypoint` wherever it offers the entrypoint — the
+Project step's Adapters line, the "Add an entrypoint" tab, a refusal's
+**Add HTTP server** — and a script can preview and run it as the CLI
+does.
 
 `GET /api/project` is what the brownfield half reads before it offers
 anything — the answer each brownfield command's own front door would
@@ -625,6 +657,10 @@ give, asked before it is run:
     "message": "A bounded context needs the modulith layout: …",
     "refusal": { "kind": "unavailable", "vertical": "bounded-context", "rules": ["bounded-context/context-needs-modulith"], … }
   },
+  "entrypoints": [
+    { "word": "cli", "label": "CLI — a command-line entrypoint", "present": false, "installs": [] },
+    { "word": "http", "label": "HTTP server — a REST endpoint", "present": true }
+  ],
   "harnessGeneration": { "found": 1, "expected": 1 }
 }
 ```
@@ -646,30 +682,37 @@ order; `unavailable` carries the `refusal` the add would answer with,
 code, sentence and data exactly as its 422 body would (a `needs` whose
 prerequisites two verticals tie on carries one too). `moduleRefusal`
 is why `keel add module` would be refused before it reads a name,
-present exactly when `canAddModule` is false. `harnessGeneration` is
-the marker the manifest carries (`found`, null when none) beside the
-generation this keel writes: where they differ, every add but
-`agent-harness` is refused until the harness is brought forward — at a
-monorepo product root, whose services have the harness, that one too,
-and there nothing brings the root's own forward, so the refusal of an
-add the root runs names the keel that scaffolded it, to pin (one of
-only what its services or the root have already, not re-rendered,
-says who has it, and one the root cannot carry is refused as in any
-generation, first) — one fact, reported
-once rather than on every card. An installed entry is
-`reapplicable` where `keel add <id> --reapply` can re-render it — not a
-product's glue (`fullstack`) nor a bounded context, which the manifest
-records and no `keel add` names. At a composite product's root,
-`services` lists each service as the product recorded it (`path`,
-`stack`, `buildSystem`) with the `directory` to open it at and a
-`label` for its button (`quarkus-rest · Gradle`), and `provided` lists
-what its services have that none of them could take again — each with
-the `note` `keel add <id>` answers at the root, an Ok that stages
-nothing, naming them; in a monorepo service, `provided` lists what the
-product gives it — its repository's version control, the image the
-product root builds — each with the `note` `keel add <id>` answers
-there. Both are empty anywhere else. `keel add --list` prints the
-same status.
+present exactly when `canAddModule` is false. `entrypoints` is each back
+entrypoint, by the word `keel add entrypoint` takes and the label
+the finder offers it under: whether the project has it, and, where it
+lacks it, what the command would install (`installs`, by id — a dev
+environment and observability where a CLI grows its server; nothing
+where an HTTP project grows its CLI) or, where it would refuse to add
+it, that `refusal`, code and sentence — so a page offers the entrypoint
+where it can and says why where it cannot. An `unavailable` card whose
+refusal carries `grow` is one that entrypoint lets in (below).
+`harnessGeneration` is the marker the manifest carries (`found`, null
+when none) beside the generation this keel writes: where they differ,
+every add but `agent-harness` is refused until the harness is brought
+forward — at a monorepo product root, whose services have the harness,
+that one too, and there nothing brings the root's own forward, so the
+refusal of an add the root runs names the keel that scaffolded it, to
+pin (one of only what its services or the root have already, not
+re-rendered, says who has it, and one the root cannot carry is refused
+as in any generation, first) — one fact, reported once rather than on
+every card. An installed entry is `reapplicable` where
+`keel add <id> --reapply` can re-render it — not a product's
+glue (`fullstack`) nor a bounded context, which the manifest records and
+no `keel add` names. At a composite product's root, `services` lists
+each service as the product recorded it (`path`, `stack`, `buildSystem`)
+with the `directory` to open it at and a `label` for its button
+(`quarkus-rest · Gradle`), and `provided` lists what its services
+have that none of them could take again — each with the `note`
+`keel add <id>` answers at the root, an Ok that stages nothing,
+naming them; in a monorepo service, `provided` lists what the product
+gives it — its repository's version control, the image the product root
+builds — each with the `note` `keel add <id>` answers there. Both
+are empty anywhere else. `keel add --list` prints the same status.
 
 `add-vertical` names its verticals as `verticals` — a set, planned
 and installed in one run with what it needs, exactly as `keel add a b`
@@ -744,7 +787,8 @@ it: the same fields the CLI builds its `hint:` line from
       "kind": "unavailable",
       "vertical": "persistence",
       "missing": { "entrypoint": ["arch.server-http"] },
-      "carriedBy": ["go-cli-http"]
+      "carriedBy": ["go-cli-http"],
+      "grow": { "entrypoint": "http", "comes": false }
     }
   }
 }
@@ -752,7 +796,13 @@ it: the same fields the CLI builds its `hint:` line from
 
 The sentence is the same whichever phase met the fact: the extra
 refused on the new-project form and the card refused on the project it
-scaffolds read word for word alike.
+scaffolds read word for word alike. What differs is the action: on a
+project that can grow the entrypoint it lacks, the refusal carries it
+as `grow` — the word `keel add entrypoint` takes, and whether the
+vertical `comes` with it or is added after — which is what puts the
+card under _After adding HTTP server_. A preset refused on the
+new-project form carries none: there, an entrypoint gap still means
+choosing the preset that has it.
 
 **Every refusal, including the ones raised at the bottom of the
 install.** Most are decided at a handler's front door and were always
@@ -766,15 +816,16 @@ the one thing an HTTP layer can only read as a crash, so that answered
 `Err` rail — and both front doors ask the planner first, so it is
 refused before anything runs, in the same code. It arrives here as a
 422 like any other, and the page no longer waits for one: the project
-status carries the same refusal on the card, so Container image sits
-under _Not for this project_ before any click, in the words the finder
-uses — _"Container image needs an entrypoint this project does not
-have: HTTP server — a REST endpoint"_ — never a tag no command can
-add. Pointed at a composite product's root, a vertical the root cannot
-carry is refused naming the services that can take it
-(`keel.wrong-scope`), and listed under _Belongs in a service_ beside a
-button into each service; one they already have is no refusal, and is
-listed under _In its services_, locked.
+status carries the same refusal on the card, so Container image is
+said before any click, in the words the finder uses — _"Container
+image needs an entrypoint this project does not have: HTTP server — a
+REST endpoint"_ — never a tag no command can add: under _After adding
+HTTP server_ where the project can grow one, and under _Not for this
+project_ where it cannot. Pointed at a composite product's root, a
+vertical the root cannot carry is refused naming the services that
+can take it (`keel.wrong-scope`), and listed under _Belongs in a
+service_ beside a button into each service; one they already have is
+no refusal, and is listed under _In its services_, locked.
 
 A vertical that installs only once another has is no longer refused
 at all: distribution on a project with no container image yet

@@ -14,7 +14,11 @@ import os from 'node:os';
 import path from 'node:path';
 import fs from 'fs-extra';
 import { describe, expect, it } from 'vitest';
-import { refusalHint, type HintedCommand } from '../../../src/application/cli/contract/hint.js';
+import {
+  growNote,
+  refusalHint,
+  type HintedCommand,
+} from '../../../src/application/cli/contract/hint.js';
 import { buildProgram } from '../../../src/application/cli/contract/program.js';
 import { newProjectCommand } from '../../../src/domain/contract/commands.js';
 import type { Refusal } from '../../../src/domain/contract/refusal.js';
@@ -38,6 +42,21 @@ const observabilityOnCli: Refusal = {
   comesWith: ['quarkus-cli-rest'],
 };
 
+/** The same, on a project that can grow the entrypoint it lacks. */
+const persistenceGrowing: Refusal = {
+  ...persistenceOnCli,
+  carriedBy: ['go-cli-http'],
+  grow: { entrypoint: 'http', comes: false },
+};
+
+/** A gateway on a CLI project lacks the entrypoint and a linked project. */
+const gatewayOnCli: Refusal = {
+  kind: 'unavailable',
+  vertical: 'gateway',
+  missing: { entrypoint: ['arch.server-http'], peer: ['peer.ui.spa'] },
+  carriedBy: [],
+};
+
 /** Refused in a product's front end, whose backend could take it. */
 const persistenceInFrontend: Refusal = {
   kind: 'unavailable',
@@ -54,10 +73,49 @@ const TABLE: readonly {
   readonly hint: string | null;
 }[] = [
   {
-    why: 'a missing entrypoint on keel add names the stack that carries both',
+    // A modulith whose contexts are wired into its one entrypoint, say.
+    why: 'an entrypoint a project cannot grow, on keel add, names the stack that carries both',
     refusal: persistenceOnCli,
     command: 'add',
-    hint: "quarkus-cli-rest carries both this project's entrypoints and persistence; a project's entrypoints are fixed at 'keel new'",
+    hint: "quarkus-cli-rest carries both this project's entrypoints and persistence",
+  },
+  {
+    why: 'an entrypoint the project can grow, on keel add, is the command to run first',
+    refusal: persistenceGrowing,
+    command: 'add',
+    hint: "'keel add entrypoint http', then 'keel add persistence'",
+  },
+  {
+    why: 'an entrypoint the vertical comes with, on keel add, is all there is to run',
+    refusal: { ...observabilityOnCli, grow: { entrypoint: 'http', comes: true } },
+    command: 'add',
+    hint: "'keel add entrypoint http' brings observability with it",
+  },
+  {
+    // It used to get no hint: no stack comes with a linked project.
+    why: 'an entrypoint and a linked project, on keel add, are both run first',
+    refusal: { ...gatewayOnCli, grow: { entrypoint: 'http', comes: false } },
+    command: 'add',
+    hint: "'keel add entrypoint http', then 'keel link <path>' a project it can wire, then 'keel add gateway'",
+  },
+  {
+    why: 'an entrypoint and a linked project a project cannot grow, on keel add, leave it to the sentence',
+    refusal: gatewayOnCli,
+    command: 'add',
+    hint: null,
+  },
+  {
+    // Only a project on disk grows; a preset is chosen instead.
+    why: 'an entrypoint on keel new is another stack to scaffold, whatever the refusal carries',
+    refusal: persistenceGrowing,
+    command: 'new',
+    hint: "drop 'persistence' from --with, or scaffold go-cli-http, which carries it: 'keel new --stack=go-cli-http --with persistence'",
+  },
+  {
+    why: 'a rule of the vertical’s own leaves the remedy to the rule, whatever the refusal carries',
+    refusal: { ...persistenceGrowing, because: 'no', rules: ['acme/no'] },
+    command: 'add',
+    hint: null,
   },
   {
     why: 'a missing entrypoint on keel new offers dropping it, or that stack',
@@ -66,10 +124,10 @@ const TABLE: readonly {
     hint: "drop 'persistence' from --with, or scaffold quarkus-cli-rest, which carries it: 'keel new --stack=quarkus-cli-rest --with persistence'",
   },
   {
-    why: 'a missing entrypoint on keel add names the stack that comes with it, as coming with it',
+    why: 'an entrypoint a project cannot grow, on keel add, names the stack that comes with it, as coming with it',
     refusal: observabilityOnCli,
     command: 'add',
-    hint: "quarkus-cli-rest has this project's entrypoints and comes with observability; a project's entrypoints are fixed at 'keel new'",
+    hint: "quarkus-cli-rest has this project's entrypoints and comes with observability",
   },
   {
     // Naming it there would only be set aside, as already there.
@@ -340,7 +398,7 @@ describe('refusalHint', () => {
     );
     // `keel add` names no service: it runs in one.
     expect(refusalHint(persistenceOnCli, 'add', named)).toBe(
-      "quarkus-cli-rest carries both this project's entrypoints and persistence; a project's entrypoints are fixed at 'keel new'",
+      "quarkus-cli-rest carries both this project's entrypoints and persistence",
     );
   });
 
@@ -380,6 +438,21 @@ describe('refusalHint', () => {
     // Without the field, the pair to drop, as before.
     const { elsewhere: _dropped, ...alone } = persistenceInFrontend;
     expect(refusalHint(alone, 'new', named)).toBe("drop 'frontend:persistence' from --with");
+  });
+});
+
+describe('growNote', () => {
+  it('says what an entrypoint makes of a vertical it lets in, as its hint does', () => {
+    expect(growNote({ ...observabilityOnCli, grow: { entrypoint: 'http', comes: true } })).toBe(
+      ', which comes with it',
+    );
+    expect(growNote(persistenceGrowing)).toBe('');
+    expect(growNote({ ...gatewayOnCli, grow: { entrypoint: 'http', comes: false } })).toBe(
+      ", once 'keel link <path>' links a project it can wire",
+    );
+    // No action, nothing to say: the sentence is the listing's.
+    expect(growNote(persistenceOnCli)).toBe('');
+    expect(growNote(gatewayOnCli)).toBe('');
   });
 });
 
@@ -429,8 +502,47 @@ describe('a refusal at the command line', () => {
           }),
         ),
       );
+      // One sentence in both phases; the project on disk can grow the
+      // entrypoint it lacks, which is the remedy only it has.
       await expect(run(['add', 'persistence', '--yes', '--dry-run'])).rejects.toThrow(
-        `${sentence}\n  hint: go-cli-http carries both this project's entrypoints and persistence; a project's entrypoints are fixed at 'keel new'`,
+        `${sentence}\n  hint: 'keel add entrypoint http', then 'keel add persistence'`,
+      );
+      await expect(run(['add', 'observability', '--yes', '--dry-run'])).rejects.toThrow(
+        "Observability needs an entrypoint this project does not have: HTTP server — a REST endpoint\n  hint: 'keel add entrypoint http' brings observability with it",
+      );
+      await expect(run(['add', 'gateway', '--yes', '--dry-run'])).rejects.toThrow(
+        "Service gateway needs an entrypoint this project does not have: HTTP server — a REST endpoint\n  hint: 'keel add entrypoint http', then 'keel link <path>' a project it can wire, then 'keel add gateway'",
+      );
+    } finally {
+      await fs.remove(cwd);
+    }
+  });
+
+  it('names the stack that carries both where the project cannot grow the entrypoint', async () => {
+    const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-cli-hint-'));
+    try {
+      const { mediator, run } = program(cwd);
+      // The peer context is wired into the CLI alone, and keel does not
+      // yet wire a context into a new entrypoint: growth refuses, so the
+      // refusal carries no action and the hint offers none.
+      expectOk(
+        await mediator.dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'go-cli',
+            answers: {},
+            interactive: false,
+            dryRun: false,
+            moduleLayout: 'modulith',
+            withPeerContext: true,
+          }),
+        ),
+      );
+      await expect(run(['add', 'persistence', '--yes', '--dry-run'])).rejects.toThrow(
+        "Persistence needs an entrypoint this project does not have: HTTP server — a REST endpoint\n  hint: go-cli-http carries both this project's entrypoints and persistence",
+      );
+      await expect(run(['add', 'gateway', '--yes', '--dry-run'])).rejects.toThrow(
+        /^Service gateway needs an entrypoint this project does not have: HTTP server — a REST endpoint$/,
       );
     } finally {
       await fs.remove(cwd);

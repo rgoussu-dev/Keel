@@ -200,7 +200,7 @@ describe('keel add --list', () => {
     expect(dispatched).toEqual([projectStatusQuery({ cwd: '/tmp/demo' })]);
   });
 
-  it('prints what keel add would do with each vertical here, refusals in their own words', async () => {
+  it('prints what keel add would do with each vertical here, and what an entrypoint lets in', async () => {
     const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-cli-list-'));
     try {
       const logger = new FakeLogger();
@@ -228,12 +228,22 @@ describe('keel add --list', () => {
       const printed = await list();
       const heading = (text: string): number => printed.indexOf(text);
       expect(heading('Ready to add here:')).toBeGreaterThanOrEqual(0);
-      expect(heading('Not for this project:')).toBeGreaterThan(heading('Ready to add here:'));
+      // What only the HTTP server stops is this project's, one command
+      // away — no longer "not for this project", which this CLI,
+      // scaffolded with no extras, has nothing under.
+      expect(heading("After 'keel add entrypoint http':")).toBeGreaterThan(
+        heading('Ready to add here:'),
+      );
+      expect(heading('Not for this project:')).toBe(-1);
       const line = (id: string): string | undefined =>
         printed.find((entry) => entry.trimStart().startsWith(`${id} `));
       expect(line('ci')).toContain('Continuous integration');
-      expect(line('observability')).toContain(
-        'Observability needs an entrypoint this project does not have: HTTP server — a REST endpoint',
+      expect(line('observability')).toMatch(
+        /^ {2}observability +Observability, which comes with it — /,
+      );
+      expect(line('persistence')).toMatch(/^ {2}persistence +Persistence — SQL persistence/);
+      expect(line('gateway')).toMatch(
+        /^ {2}gateway +Service gateway, once 'keel link <path>' links a project it can wire — /,
       );
       expect(printed.at(-1)).toMatch(/^Installed: .*vcs.*--reapply' re-renders one$/);
       expect(logger.messages('warn')).toEqual([]);

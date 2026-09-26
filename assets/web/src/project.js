@@ -8,7 +8,10 @@
  * the manifest reads as and the choices that made it, in the words the
  * wizard asked them in — the status words them (`profile`), so no tag
  * reaches the page — its services at a product root, its bounded
- * contexts, and what it has installed.
+ * contexts, and what it has installed. Its **Adapters** line offers the
+ * back entrypoint the project lacks where `keel add entrypoint` would
+ * add it ({@link entrypointOffers}): the project's ways in are no
+ * longer settled for good at `keel new`.
  *
  * **What stops everything.** One fact stops every card alike: a project written by another
  * harness generation, which `keel add` refuses to half-patch — every
@@ -25,31 +28,41 @@
  * under.
  *
  * @typedef {{ found: number|null, expected: number }} HarnessGeneration
- * @typedef {{ label: string, value: string }} Row
+ * @typedef {{ word: string, label: string, present: boolean, installs?: ReadonlyArray<string>, refusal?: { code: string, message: string } }} EntrypointStatus
+ * @typedef {{ word: string, name: string, gloss: string, meta: string, refusal: string|null }} EntrypointOffer
+ * @typedef {{ label: string, value: string, offers?: EntrypointOffer[] }} Row
  * @typedef {{ id: string, title: string }} Had
  * @typedef {{ rows: Row[], installed: Had[] }} ProjectSummary
  */
 
+/** The profile line that says what a project's ways in are. */
+const ADAPTERS = 'Adapters';
+
 /**
- * The Project step's read-only summary: one row per settled answer —
- * the preset first, then the drill-down's answers and the dials, as the
- * status words them — then a row per service of a product, the bounded
- * contexts, and what the project has, by title: what its manifest
- * records, then what a monorepo service has from its product — but not
- * what a product root's services have, which is theirs: the root lists
- * each service instead.
+ * The Project step's summary, read-only but for its ways in: one row
+ * per settled answer — the preset first, then the drill-down's answers
+ * and the dials, as the status words them — then a row per service of a
+ * product, the bounded contexts, and what the project has, by title:
+ * what its manifest records, then what a monorepo service has from its
+ * product — but not what a product root's services have, which is
+ * theirs: the root lists each service instead. The Adapters line
+ * carries the entrypoints the project could add (`offers`), the one
+ * thing on the step to act on.
  *
- * @param {{ profile?: { preset: string|null, facts: ReadonlyArray<Row> }, services?: ReadonlyArray<{ path: string, label: string }>, modules?: ReadonlyArray<{ name: string }>, installed?: ReadonlyArray<{ id: string, title?: string }>, provided?: ReadonlyArray<{ id: string, title?: string }> }|null} status the `/api/project` payload
+ * @param {{ profile?: { preset: string|null, facts: ReadonlyArray<Row> }, services?: ReadonlyArray<{ path: string, label: string }>, modules?: ReadonlyArray<{ name: string }>, installed?: ReadonlyArray<{ id: string, title?: string }>, provided?: ReadonlyArray<{ id: string, title?: string }>, entrypoints?: ReadonlyArray<EntrypointStatus> }|null} status the `/api/project` payload
  * @returns {ProjectSummary}
  */
 export function projectSummary(status) {
   const preset = status?.profile?.preset ?? null;
   const modules = status?.modules ?? [];
   const had = (vertical) => ({ id: vertical.id, title: vertical.title || vertical.id });
+  const offers = entrypointOffers(status).filter((offer) => offer.refusal === null);
   return {
     rows: [
       ...(preset === null ? [] : [{ label: 'Preset', value: preset }]),
-      ...(status?.profile?.facts ?? []),
+      ...(status?.profile?.facts ?? []).map((fact) =>
+        fact.label === ADAPTERS && offers.length > 0 ? { ...fact, offers } : fact,
+      ),
       ...(status?.services ?? []).map((service) => ({
         label: `${service.path}/`,
         value: service.label,
@@ -68,6 +81,46 @@ export function projectSummary(status) {
       ...((status?.services ?? []).length > 0 ? [] : (status?.provided ?? [])),
     ].map(had),
   };
+}
+
+/**
+ * The back entrypoints a keel project lacks, as `keel add entrypoint`
+ * would answer each there — the status's `entrypoints`, those not
+ * present: the word the command takes, the entrypoint's name and gloss
+ * (its finder label, split where it is written `name — gloss`), the
+ * command, and the sentence it would be refused with, or null where it
+ * would run. Empty where the project has them all, and where the
+ * status reports none — a directory that is no keel project.
+ *
+ * @param {{ entrypoints?: ReadonlyArray<EntrypointStatus> }|null} status the `/api/project` payload
+ * @returns {EntrypointOffer[]}
+ */
+export function entrypointOffers(status) {
+  return (status?.entrypoints ?? [])
+    .filter((entrypoint) => !entrypoint.present)
+    .map((entrypoint) => {
+      const [name = entrypoint.word, ...gloss] = entrypoint.label.split(' — ');
+      return {
+        word: entrypoint.word,
+        name,
+        gloss: gloss.join(' — '),
+        meta: `keel add entrypoint ${entrypoint.word}`,
+        refusal: entrypoint.refusal?.message ?? null,
+      };
+    });
+}
+
+/**
+ * The name of the entrypoint `word` names, as the status labels it —
+ * `HTTP server` for `http` — or the word itself where it labels none.
+ *
+ * @param {{ entrypoints?: ReadonlyArray<EntrypointStatus> }|null} status the `/api/project` payload
+ * @param {string} word
+ * @returns {string}
+ */
+export function entrypointName(status, word) {
+  const label = (status?.entrypoints ?? []).find((entrypoint) => entrypoint.word === word)?.label;
+  return label === undefined ? word : (label.split(' — ')[0] ?? word);
 }
 
 /**

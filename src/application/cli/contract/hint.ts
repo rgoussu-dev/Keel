@@ -8,6 +8,8 @@
  * can *do* about it is not neutral — drop it from `--with`, or scaffold
  * the stack that carries it (with nothing to name, where that stack
  * comes with it), or name the product's service that can take it;
+ * add the entrypoint it needs first, on a project that can grow one
+ * (`keel add entrypoint http`, which brings observability with it);
  * link a project first; `cd` into the
  * service it belongs to — or, to re-render it, the one that installed
  * it — or name that service in `--with`; move a file
@@ -21,7 +23,7 @@
  */
 
 import type { ServiceExtras } from '../../../domain/contract/commands.js';
-import type { ElsewhereService, Refusal } from '../../../domain/contract/refusal.js';
+import type { ElsewhereService, GrowAction, Refusal } from '../../../domain/contract/refusal.js';
 
 /** The command a refusal came back to — what its remedy is spelled for. */
 export type HintedCommand = 'new' | 'add';
@@ -71,6 +73,19 @@ export function refusalHint(
     case 'path-missing':
       return null;
   }
+}
+
+/**
+ * What `keel add --list` says after the title of a vertical it lists
+ * under the entrypoint the refusal names as the way in: that it comes
+ * with the entrypoint, or waits on `keel link` too; nothing where its
+ * own add simply follows, and where the refusal names no entrypoint.
+ * The same reading {@link refusalHint} spells the remedy from.
+ */
+export function growNote(refusal: Refusal): string {
+  if (refusal.kind !== 'unavailable' || refusal.grow === undefined) return '';
+  if (refusal.grow.comes) return ', which comes with it';
+  return waitsOnLink(refusal) ? ", once 'keel link <path>' links a project it can wire" : '';
 }
 
 /**
@@ -144,11 +159,14 @@ function unavailableHint(
   }
   if (command === 'add') {
     if (refusal.because !== undefined) return null;
+    if (refusal.grow !== undefined) return growHint(refusal, refusal.grow);
     if (peerOnly) return `link a project it can wire first — 'keel link <path>' — then add it`;
+    // No entrypoint this project can grow lets it in: the stack that
+    // has it is all there is to name.
     if (entrypointOnly && nearest !== undefined) {
       return comesWith
-        ? `${nearest} has this project's entrypoints and comes with ${vertical}; a project's entrypoints are fixed at 'keel new'`
-        : `${nearest} carries both this project's entrypoints and ${vertical}; a project's entrypoints are fixed at 'keel new'`;
+        ? `${nearest} has this project's entrypoints and comes with ${vertical}`
+        : `${nearest} carries both this project's entrypoints and ${vertical}`;
     }
     return null;
   }
@@ -169,6 +187,26 @@ function unavailableHint(
   return comesWith
     ? `${drop}, or scaffold ${nearest}, which comes with it: 'keel new --stack=${nearest}'`
     : `${drop}, or scaffold ${nearest}, which carries it: 'keel new --stack=${nearest} --with ${vertical}'`;
+}
+
+/**
+ * The remedy for a vertical an entrypoint the project could grow would
+ * let in: that command — which installs the vertical itself where it
+ * comes with it, and is followed by the vertical's own add otherwise,
+ * after `keel link` where a linked project is missing too.
+ */
+function growHint(refusal: Extract<Refusal, { kind: 'unavailable' }>, grow: GrowAction): string {
+  const first = `'keel add entrypoint ${grow.entrypoint}'`;
+  if (grow.comes) return `${first} brings ${refusal.vertical} with it`;
+  const add = `'keel add ${refusal.vertical}'`;
+  return waitsOnLink(refusal)
+    ? `${first}, then 'keel link <path>' a project it can wire, then ${add}`
+    : `${first}, then ${add}`;
+}
+
+/** Whether what an entrypoint lets in lacks a linked project as well. */
+function waitsOnLink(refusal: Extract<Refusal, { kind: 'unavailable' }>): boolean {
+  return (refusal.missing.peer ?? []).length > 0;
 }
 
 function elsewhereHint(

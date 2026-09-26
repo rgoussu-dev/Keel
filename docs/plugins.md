@@ -477,7 +477,12 @@ the project as it was; only its harness elements (skills, doc
 sections, hooks) are replayed on the grown tags, wherever the agent
 harness is installed — the ones that matched before of a vertical
 whose adapters only partly newly match included — and recorded where
-`keel new` of the twin records them.
+`keel new` of the twin records them. Where a project of your family
+can grow, a vertical of yours that only the missing entrypoint stops,
+and that the grown project takes — read with what growing installs
+and the tags those promote — is refused carrying `keel add entrypoint
+<word>` as its action, as keel's own are
+([Refusals](composition.md#refusals)).
 
 ### What an adapter promotes, and what a vertical reads
 

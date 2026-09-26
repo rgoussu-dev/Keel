@@ -96,7 +96,7 @@ import type {
 } from '../../contract/commands.js';
 import { effectiveTags, HARNESS_GENERATION, projectScopeRoot } from '../../contract/manifest.js';
 import { NOT_INITIALISED_CODE, notInitialisedSentence } from '../../contract/nearby.js';
-import { productRootReading, type ProductRootReading } from '../add-readiness.js';
+import { addScopeOf, productRootReading, type ProductRootReading } from '../add-readiness.js';
 import { harnessGenerationRefusal } from '../harness-generation.js';
 import { runActions } from '../actions.js';
 import { ContributionConflictError, newOwnership, type HarnessContribution } from '../apply.js';
@@ -120,14 +120,7 @@ import {
 } from '../refusals.js';
 import { listVerticalIds } from '../registry.js';
 import { nearestVertical, unknownIdSentence } from '../nearest-id.js';
-import {
-  nearbyProjects,
-  planScopeOf,
-  provisionsHere,
-  scopeOf,
-  siblingsOf,
-  type Provision,
-} from '../scope.js';
+import { nearbyProjects, provisionsHere, scopeOf, siblingsOf, type Provision } from '../scope.js';
 import {
   historyOf,
   REAPPLY_FROZEN_ANSWERS_CODE,
@@ -294,7 +287,8 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
     // what comes in together: an incoming vertical's own, and an
     // installed one's, against every tag the run would add. A vertical
     // this project cannot carry is refused here, in the words its card
-    // already showed — never discovered inside an adapter. A reapply
+    // already showed — never discovered inside an adapter — carrying the
+    // entrypoint to add where that is what it lacks. A reapply
     // re-renders what is there, so it has nothing to plan.
     let admitted: AdmittedSet | null = null;
     // What the report says of the plan: `--refresh` is a list beside
@@ -302,7 +296,7 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
     // the run installs, and of a move only among the ones named.
     let told: AdmittedSet | null = null;
     if (!reapply) {
-      const scope = planScopeOf(
+      const scope = addScopeOf(
         registry,
         where,
         rerender.map((v) => v.id),

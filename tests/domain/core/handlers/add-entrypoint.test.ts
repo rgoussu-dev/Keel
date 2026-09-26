@@ -36,7 +36,7 @@ import {
   projectScopeRoot,
   type ManifestV2,
 } from '../../../../src/domain/contract/manifest.js';
-import { previewQuery } from '../../../../src/domain/contract/queries.js';
+import { previewQuery, projectStatusQuery } from '../../../../src/domain/contract/queries.js';
 import { RefusalError } from '../../../../src/domain/contract/refusal.js';
 import type { Stack } from '../../../../src/domain/contract/stack.js';
 import type { RunActionsInputs } from '../../../../src/domain/core/actions.js';
@@ -943,6 +943,42 @@ describe('keel add entrypoint, refused', () => {
       "HTTP server cannot be added here yet: this project's bounded context 'guestbook' is wired into its existing entrypoints, and keel does not yet wire a context into a new one",
     );
     expect(await manifestBytes()).toBe(manifest);
+  });
+
+  it('where the planner refuses what the twin has and the project lacks, as the project status reports it', async () => {
+    const needy = acmeVertical('acme-needy', [
+      acmeAdapter('acme-needy', 'main', ['cap.acme-none'], () => ({})),
+    ]);
+    registry = registryOf([
+      {
+        origin: pluginOrigin('acme'),
+        verticals: [acmeSkeleton, acmeHarness, acmeNotes, acmeBase, acmeObservability, needy],
+        stacks: [
+          acmeStack('acme-cli', ['arch.cli'], [acmeSkeleton, acmeHarness, acmeNotes]),
+          acmeStack(
+            'acme-cli-http',
+            ['arch.cli', 'arch.server-http'],
+            [acmeSkeleton, acmeHarness, acmeNotes, acmeBase, acmeObservability, needy],
+          ),
+        ],
+      },
+    ]);
+    await scaffold('acme-cli');
+    const manifest = await manifestBytes();
+
+    const error = expectErr(await grow('http'));
+
+    expect(await manifestBytes()).toBe(manifest);
+    const status = expectOk(await mediator().dispatch(projectStatusQuery({ cwd })));
+    expect(status.entrypoints?.find((entry) => entry.word === 'http')?.refusal).toEqual({
+      code: error.code,
+      message: error.message,
+      ...(error instanceof RefusalError ? { refusal: error.refusal } : {}),
+    });
+    // Nor does a card name the command as its way in.
+    const observability = status.available.find((card) => card.id === 'acme-obs')?.refusal;
+    expect(observability?.refusal).toMatchObject({ kind: 'unavailable' });
+    expect(observability?.refusal).not.toHaveProperty('grow');
   });
 });
 

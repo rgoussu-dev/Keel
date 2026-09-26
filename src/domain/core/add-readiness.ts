@@ -24,19 +24,31 @@
  *     take what this one cannot, or has it (`./scope.ts` `siblingsOf`).
  *
  * {@link addReadiness} composes them for one vertical, as a card reads
- * it; the front door composes them for the set it was given. The
- * composition grid holds the two to each other through `keel.preview`
- * (I4). What is not here is the harness-generation gate: it refuses
- * every vertical alike (but the harness itself, outside a monorepo
- * product root), so a status reports it once, not on every card.
+ * it; the front door composes them for the set it was given — both over
+ * {@link addScopeOf}, whose scope carries the project as each entrypoint
+ * it could grow would leave it, so a vertical only that entrypoint stops
+ * is refused naming it as the way in, on the card and on the click
+ * alike. The composition grid holds the two to each other through
+ * `keel.preview` (I4). What is not here is the harness-generation gate:
+ * it refuses every vertical alike (but the harness itself, outside a
+ * monorepo product root), so a status reports it once, not on every
+ * card.
  */
 
 import type { Vertical } from '../contract/composition.js';
 import type { Registry } from '../contract/ports/registry.js';
 import type { ElsewhereService, RefusalError } from '../contract/refusal.js';
+import { growthOf, grownScope } from './growth.js';
 import { amongServices, foresee, readinessAmong } from './plan-refusal.js';
-import { readiness } from './planner.js';
-import { planScopeOf, productServiceScopes, siblingsOf, type DirectoryScope } from './scope.js';
+import { readiness, type GrownScope, type PlanScope } from './planner.js';
+import {
+  planScopeOf,
+  productPlaceOf,
+  productServiceScopes,
+  siblingsOf,
+  type DirectoryScope,
+} from './scope.js';
+import { ENTRYPOINTS } from './stack-wizard.js';
 
 /** How ready one vertical is for `keel add` here, as a card reads it. */
 export interface AddReadiness {
@@ -62,12 +74,15 @@ export interface AddReadiness {
  * harness-generation gate aside. `vertical` is registered, neither
  * installed here nor given by the product (`./scope.ts`
  * `provisionsHere`) nor, at a product root, in its services already
- * ({@link productRootReading}), and `where` holds a manifest.
+ * ({@link productRootReading}), and `where` holds a manifest. `scope`
+ * is {@link addScopeOf} `where`, which a caller asking of every vertical
+ * reads once.
  */
 export function addReadiness(
   registry: Registry,
   where: DirectoryScope,
   vertical: Vertical,
+  scope: PlanScope = addScopeOf(registry, where),
 ): AddReadiness {
   const atRoot = productRootReading(registry, where, vertical);
   if (atRoot?.kind === 'included') {
@@ -76,7 +91,7 @@ export function addReadiness(
   if (atRoot !== null) return { readiness: 'unavailable', requires: [], refusal: atRoot.refusal };
   const { readiness: ready, refusal } = foresee(
     registry,
-    planScopeOf(registry, where),
+    scope,
     vertical,
     siblingsOf(registry, where),
   );
@@ -94,6 +109,36 @@ export function addReadiness(
     case 'included':
       throw new Error(`addReadiness: '${vertical.id}' is there already`);
   }
+}
+
+/**
+ * The scope `keel add` plans onto in `where`, a directory holding a
+ * manifest — `./scope.ts`'s {@link planScopeOf}, `except` the
+ * installed verticals the run re-renders — with each back entrypoint
+ * the project lacks that `keel add entrypoint` would add there, grown
+ * ({@link PlanScope.grown}): so a vertical only that entrypoint stops is
+ * refused carrying the command as its action, and a card and the add
+ * carry the same. None inside a monorepo product, at its root or below
+ * it, which the command refuses; none where growth refuses the
+ * project, or the planner what growth installs. Never offered where
+ * the command would refuse.
+ */
+export function addScopeOf(
+  registry: Registry,
+  where: DirectoryScope,
+  except: readonly string[] = [],
+): PlanScope {
+  const scope = planScopeOf(registry, where, except);
+  const manifest = where.manifest;
+  if (manifest === null || productPlaceOf(where) !== null) return scope;
+  const grown = ENTRYPOINTS.filter(
+    (entry) => entry.side === 'back' && !manifest.tags.includes(entry.tag),
+  ).flatMap((entry): GrownScope[] => {
+    const growth = growthOf(registry, manifest, entry.word);
+    const after = growth.kind === 'grows' ? grownScope(registry, manifest, growth) : null;
+    return after === null ? [] : [{ entrypoint: entry.tag, scope: after }];
+  });
+  return grown.length === 0 ? scope : { ...scope, grown };
 }
 
 /**

@@ -238,6 +238,11 @@ export function moduleRulesRefusal(vertical: Vertical, broken: readonly Conflict
  * is where the service stands in the repository, or a re-render, which
  * say what to do here. Where none could, the refusal is the one a
  * single project gets, word for word.
+ *
+ * Where the gap names the entrypoint a project could grow as the way in
+ * (`ReadinessGap.grow`), the refusal carries it as data for a front end
+ * to offer, and the sentence does not change: a command in it would
+ * tell `keel new --with` of a preset to run `keel add` (grid I5).
  */
 export function unavailableRefusal(
   names: RefusalNames,
@@ -286,6 +291,7 @@ export function unavailableRefusal(
     ...(broken.length > 0
       ? { because: rulesSentence(broken), rules: broken.map((conflict) => conflict.id) }
       : {}),
+    ...(gap.grow === undefined ? {} : { grow: gap.grow }),
   };
   return refusalError(refusal, broken.length > 0 ? INCOMPATIBLE_CODE : UNCOVERED_CODE, names);
 }

@@ -6231,7 +6231,7 @@ project that took extras is not I10's; a CLI project with dev-env as
 an extra keeps its definition's shape, its README's order and its
 manifest's rows as that extra left them, which `docs/cli.md` says.
 
-#### R.2c — The refusal carries the action (M)
+#### R.2c — The refusal carries the action (M) ✅
 
 **The field.** `UnavailableRefusal` gains
 `grow?: { entrypoint: string; comes: boolean }`:
@@ -6291,6 +6291,251 @@ under _Changed_.
 
 **Leaves out:** greenfield. There, an entrypoint gap still means
 choosing the nearest preset.
+
+**Landed as data on the refusal, and no golden moved.** The sentence
+and the code of every refusal are as they were; the action travels
+beside them.
+
+- **The field.** `UnavailableRefusal.grow` is a `GrowAction`,
+  `{ entrypoint, comes }`, in `refusal.ts`, and `ReadinessGap.grow`
+  carries the same from the planner; `unavailableRefusal` copies it
+  across and words nothing new. `missing.entrypoint`'s doc no longer
+  says "fixed at `keel new`": `keel new` chooses the entrypoints, and
+  `keel add entrypoint` adds a back one, which `grow` names where that
+  lets the vertical in.
+- **The planner's what-if.** `PlanScope.grown` lists, for each back
+  entrypoint the project could grow, a `GrownScope`: the entrypoint's
+  tag and the scope the grown project plans on. `gapOf` hands its gap
+  to `growOf`, which acts only on a gap that is entrypoints, or
+  entrypoints and a peer, with no identity tag and no rule. It reads
+  the vertical again over the grown scope. `included` means it comes
+  (`comes: true`); `ready` or `needs` means its own add installs it
+  once the entrypoint is there (`false`); an `unavailable` whose gap is
+  the link alone, where the gap named a peer already, means `false`
+  too. Anything else offers no action.
+- **Where the grown scope comes from.** `growth.ts`'s `grownScope`
+  folds the grown tags and the twin's `projects` into the manifest,
+  plans the verticals growth installs as the command admits them (the
+  set by id, the re-rendered harness as if not there yet), and counts
+  them installed, with what the planner closed them over. Its tags
+  carry what the run promotes: the adapters that newly match, then
+  what it installs, folded by the planner's new `tagsAfter` as a plan
+  folds them (`seedFor` now reads it too), so a vertical such a tag
+  feeds reads `ready` there, and one it excludes reads refused. It is
+  null where the planner refuses what growth installs, as the command
+  then does.
+  `add-readiness.ts`'s `addScopeOf` builds the scope for `keel add`:
+  `planScopeOf`, plus a grown scope for each back entrypoint the
+  project lacks where `growthOf` grows. It builds none inside a
+  monorepo product (`scope.ts`'s new `productPlaceOf`, which the
+  handler's scope gate now reads too). The cards (`addReadiness`,
+  which the status now calls with one scope for every card) and the
+  add front door (`add-vertical.ts`) both plan on it, so a card and
+  its click carry the same action.
+- **The status.** `ProjectStatus.entrypoints` lists an
+  `EntrypointStatus` per back entrypoint: its word, its finder label,
+  whether the project has it, and, where it lacks it, what
+  `keel add entrypoint` would install (`installs`), or the refusal
+  where it would refuse. Both are the command's own reading, exported
+  from the handler as `entrypointReading`: the scope, then growth's
+  refusal (`growthRefusalError`), then the planner's refusal of what
+  growth installs (`admitGrowth`, which the run's `planOf` now shares),
+  or what the run installs, in its order (`incomingOf`, shared too). The
+  field is optional, and absent where no project is, as
+  `harnessGeneration` is.
+- **The CLI.** `hint.ts`'s `add` branch reads `grow`:
+  - _'keel add entrypoint http' brings observability with it_;
+  - _'keel add entrypoint http', then 'keel add persistence'_;
+  - _'keel add entrypoint http', then 'keel link <path>' a project it
+    can wire, then 'keel add gateway'_ for the gateway on a CLI, which
+    had no hint.
+
+  Where there is no action, the old hint stays, less its closing
+  clause: _go-cli-http carries both this project's entrypoints and
+  persistence_. `keel add --list` prints the cards a `grow` names under
+  _After 'keel add entrypoint http':_, each as its title — _which
+  comes with it_ for observability, _once 'keel link <path>' links a
+  project it can wire_ for the gateway, both `hint.ts`' `growNote` —
+  and its description. On a CLI
+  that can grow a server, only what growing would not let in is left
+  under _Not for this project:_ — on the default scaffolds, distribution
+  on a Quarkus CLI built with Maven, refused for its build system.
+
+- **The page** reads no tag; of a refusal's `missing` it asks only
+  whether a linked project is missing too, never which:
+  - `readiness.js`: `growingOf` groups the cards whose refusal carries
+    `grow` by entrypoint, and `refusedOf` leaves them out.
+  - `additions.js`: the group's `grows`, each named by the status's
+    label, with its command and, per card, _Comes with it._, _Added
+    after it._, or _Added after it, once a linked project serves it._
+  - `project.js`: `entrypointOffers` and `entrypointName` read the
+    status's `entrypoints`, and `projectSummary` hangs the addable ones
+    on the Adapters line.
+  - `command.js` spells `keel add entrypoint http`.
+  - `target.js` makes each entrypoint a subject of its own.
+  - `<keel-add-form>` draws the _After adding HTTP server_ part with
+    its **Add HTTP server** button, before _Installed_; an **Add an
+    entrypoint** tab beside the bounded context's, disabled with its
+    reason where the command would refuse; the entrypoint as a card,
+    with what the run installs, what _Add verticals_ takes after it and
+    what waits on a link too, in `additions.js`' `entrypointNotes`; and
+    the Project step's **Add HTTP server**.
+  - `<keel-app>` completes, hints and reviews it as it does a module
+    (_Entrypoint HTTP server_).
+  - `steps.js`' step docs say so.
+
+**Grid.** Nothing moved. The greenfield, brownfield, composite and
+growth grid goldens, the planner-readiness golden, R.2a's
+`growth.golden.json` and the docs matrix regenerate byte-identical in
+the order the grid reads them, and the known files are as they were.
+I4 now holds each card to its add by its data as well as its code and
+sentence (`holdCard`, over the refusal the preview came back with), so
+every brownfield and composite card carries the action its click does,
+and it passes. Either half losing the action fails it: a card without
+it breaks I4 on 52 of brownfield's cells. Both losing it, as a change
+to the scope they share would, I4 cannot see; `project-status.test.ts`
+holds the action itself, on every CLI preset.
+
+**The proof.** A probe held every card on every single-service preset,
+on every dial setting with the harness on and off (300 cells), to its
+add's refusal as data, the action included, and then grew each cell
+whose cards carry an action and read the status again:
+
+- 792 unavailable cards; 368 carry `grow`, all `http`, on the 64 CLI
+  cells that can grow a server;
+- observability comes with it on all 64; containerization, iac,
+  persistence and the gateway are added after it on 64 each, the
+  gateway waiting on a link too; distribution on 48. On the other 16,
+  all Quarkus CLIs, distribution carries no action: on the 8 built
+  with Gradle its native release is ready already, and on the 8 built
+  with Maven it is refused for the build system, an identity gap, and
+  is the one card those 8 cells leave under _Not for this project_;
+- every card equals its add's refusal: code, sentence and data;
+- once grown, every card that comes was installed, and every other
+  was ready, needed a prerequisite, or, the gateway, lacked only its
+  link — held since by `project-status.test.ts` on every CLI preset
+  and build system, as `keel new` leaves it, without the agent harness
+  and as a modulith, with what the status said the entrypoint installs
+  against what it installed;
+- the status offers a missing back entrypoint on 128 cells (64 each
+  way) and refuses 88 on 76 cells: the one it lacks on each of the 64
+  with the peer context, and both on each of `web-components`' 12. No
+  card on those cells carries it.
+
+**The tests.**
+
+- `planner.test.ts` adds 10 cases on a fixture family: the word,
+  comes, a prerequisite traced back to the server, a link as well, a
+  rule the grown project breaks, with a link or without, a link the
+  grown project lacks that the gap never named, no grown scope or
+  another entrypoint's, an identity gap, a rule the project breaks
+  already or a link alone — each over a grown scope that would take
+  the vertical — and the plan a front door refuses with.
+- `refusals.test.ts` adds one: the field carried, the sentence and
+  code unchanged.
+- `growth.test.ts` adds 6 for `grownScope`: the grown project, what
+  the planner closes growth over, the tags growing installs promote
+  (what they feed offered the entrypoint, what they exclude not), what
+  a newly matching adapter promotes, the rules of what growing
+  installs, and the planner's refusal of it.
+- `project-status.test.ts` adds 10: a CLI, an HTTP project, a peer
+  modulith, a front end, a monorepo product's root and service, a
+  polyrepo service, and a plugin's vertical only a Go CLI takes, named
+  on its card in a polyrepo service and in no monorepo one. Each holds
+  every field against the command it reports, and each card against
+  its add, data included. The other three grow every CLI preset for
+  real, on each build system it offers or the one it builds with — as
+  `keel new` leaves it, without the agent harness, and as a modulith —
+  and hold each card's action, and what the status said the entrypoint
+  installs, to the project it left. The stale-generation case finds
+  the entrypoint still offered.
+- `add-entrypoint.test.ts` adds one: the planner's refusal of what the
+  twin has and the project lacks, which the status reports as the
+  command gives it.
+- `hint.test.ts` goes from 32 to 40 cases. The three old literals lose
+  the closing clause, the command line holds the grown hints on
+  `go-cli` and the fallback on its peer modulith, and `growNote` says
+  what `--list` says.
+- `add.test.ts`'s list case reads the new group.
+- `additions.test.ts` adds three and rewrites one — two of the new
+  ones hold `entrypointNotes`, the harness re-rendered or not, and what
+  it lets in the same either way — `project.test.ts` and
+  `command.test.ts` add one and extend one each, and `target.test.ts`
+  adds one.
+- In the browser, `ui-refusal` rewrites its first case and adds one.
+  The new case takes the action from the group, previews
+  `keel add entrypoint http --yes`, reviews it, finds the Project
+  step's offer pressed, and leaves for a vertical; the form says what
+  the run installs and re-renders. From a vertical, it then takes the
+  same run from the **Add an entrypoint** tab, which opens on the
+  server, and from the Project step's offer. `ui-compose`'s CLI
+  and Project-step cases read the new part and the offer. Its product
+  case now holds the collapsed _Not for this project_, which
+  `ui-refusal` no longer reaches, and the entrypoint tab off in a
+  monorepo service.
+- The four suites pass: 44 tests.
+
+`docs/cli.md` (the refusal section, `--list`, `keel add entrypoint`),
+`docs/ui.md`, `docs/composition.md` (Refusals, Growing an entrypoint),
+`docs/plugins.md`, four vertical pages and the verticals README's
+prose, the README,
+`src/domain/core/AGENTS.md`, `src/application/cli/AGENTS.md`,
+`src/application/web/AGENTS.md`, `assets/AGENTS.md`, `tests/AGENTS.md`
+(I4) and `tests/e2e/AGENTS.md` say what changed. CHANGELOG, under
+_Changed_, and R.2b's _Added_ entry no longer says the page does not
+offer it.
+
+Beyond the text above:
+
+- **The hint names the vertical by its id.** The text writes
+  _Observability_. The CLI's contract has only the refusal, which names
+  the vertical by id, as every hint does.
+- **The gateway's hint spells the whole way in:** _then 'keel link
+  <path>' a project it can wire, then 'keel add gateway'_, where the
+  text stops at the link.
+- **No action, the old hint.** Where the refusal carries none, a
+  project growth refuses among them, the hint still names the stack
+  that carries both, less the clause R.2b made untrue.
+- **What the what-if accepts.** The text reads `ready` as the
+  answer. `needs` counts too: iac is added after the server, and its
+  own add brings its image and release. A grown project that would
+  still refuse the vertical for another reason gets no action. On
+  `quarkus-cli --with distribution`, iac would need
+  `--refresh distribution` after growing, so its hint names the stack.
+- **Handed in, not computed.** The planner answers `grow`, as the text
+  says, but over scopes `addScopeOf` hands it: `growth.ts` imports the
+  planner and `scope.ts`, so either reading growth itself is an import
+  cycle, which dependency-cruiser refuses.
+- **The planner's refusal too.** The status reports the planner's
+  refusal of what growth installs, which the command gives, beside the
+  scope and growth's own. No shipped cell reaches it; a plugin family
+  in `add-entrypoint.test.ts` does.
+- **I4 holds the data.** The text keeps I4 as it was. It compared code
+  and sentence alone, so a card and its click could disagree on the
+  action unseen; it now compares the refusal's data too.
+- **One tab.** The text has `<keel-add-form>` preview the entrypoint
+  as it does a module. It has one **Add an entrypoint** tab, not one
+  per entrypoint. The tab opens on the first entrypoint the project can
+  grow, and is off with the first one's reason where it can grow none.
+- **The docs beyond the two named:** `docs/composition.md`,
+  `docs/plugins.md`, and the containerization, distribution,
+  observability and persistence pages and the verticals README, whose
+  refusals now come with the command.
+- **What adding it installs.** The text has the status report each
+  back entrypoint, whether it is present, and its refusal. It also
+  reports what the command would install (`installs`), so the
+  entrypoint's form names everything that comes with it — a dev
+  environment beside observability, which is `ready` on a CLI and so
+  is no card the action names — rather than only the cards it lets in.
+
+Not done here: greenfield, as the text says; the page offers no
+`keel link`, so it says the gateway waits on one rather than linking
+it; a vertical that growing leaves needing a re-render gets no
+action; and neither does one whose nearest adapter lacks more than the
+entrypoint, though another would take it once grown: on a Quarkus CLI
+built with Maven, distribution is refused for Gradle, which its native
+release needs, while growing a server, then its container image,
+would let the container release in.
 
 ### R.3 — moduliths grow too
 

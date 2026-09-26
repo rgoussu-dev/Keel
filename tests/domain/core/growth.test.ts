@@ -32,8 +32,10 @@ import {
 } from '../../../src/domain/contract/manifest.js';
 import type { BuildSystemOption, Stack } from '../../../src/domain/contract/stack.js';
 import { BASIC_LAYOUT, MODULITH_LAYOUT } from '../../../src/domain/core/adapters/module-layout.js';
-import { growthOf, rerendersOf } from '../../../src/domain/core/growth.js';
+import { growthOf, grownScope, rerendersOf } from '../../../src/domain/core/growth.js';
+import { readiness } from '../../../src/domain/core/planner.js';
 import { pluginOrigin, registryOf } from '../../../src/domain/core/registry.js';
+import { projectScope } from '../../../src/domain/core/scope.js';
 
 /* ---- Scenario ---------------------------------------------------- */
 
@@ -629,5 +631,163 @@ describe('growthOf', () => {
         refusal: { contexts: [{ name: 'guestbook', marker: PEER }] },
       });
     });
+  });
+});
+
+describe('grownScope', () => {
+  /** What growth reads `manifest`, a scaffold of `preset`, as grown by `word`, over `registry`. */
+  const grown = (
+    registry: ReturnType<typeof family>,
+    preset: Stack,
+    word: string,
+    manifest: ManifestV2 = scaffoldOf(preset),
+  ) => {
+    const growth = growthOf(registry, manifest, word);
+    if (growth.kind !== 'grows') throw new Error(`${preset.id} does not grow by ${word}`);
+    return grownScope(registry, manifest, growth);
+  };
+
+  /**
+   * What stops `id` on the CLI project, its scope carrying HTTP grown
+   * as {@link grownScope} reads it, as the add front door plans on it.
+   */
+  const gapOn = (registry: ReturnType<typeof family>, id: string) => {
+    const manifest = scaffoldOf(CLI);
+    const scope = grown(registry, CLI, 'http', manifest);
+    const ready = readiness(
+      registry,
+      {
+        ...projectScope(registry, manifest),
+        grown: scope === null ? [] : [{ entrypoint: 'arch.server-http', scope }],
+      },
+      id,
+    );
+    if (ready.kind !== 'unavailable') throw new Error(`${id} is ${ready.kind}`);
+    return ready.gap;
+  };
+
+  /** Promotes a tag once the server is there, as a metrics exporter would. */
+  const metrics = vertical(
+    'acme-metrics',
+    [adapter('acme-metrics', 'main', ['lang.acme', 'arch.server-http'])],
+    ['acme.metrics'],
+  );
+
+  it('reads the project as growing would leave it: the grown tags, and what it installs as there', () => {
+    const registry = family();
+    const scope = grown(registry, CLI, 'http');
+    expect(scope?.tags).toEqual([
+      'arch.cli',
+      'arch.hexagonal',
+      'arch.server-http',
+      'lang.acme',
+      'layout.basic',
+      'runtime.acme',
+    ]);
+    // In the order the planner installs them, after what the project has.
+    expect(scope?.installed).toEqual(['acme-skeleton', 'agent-harness', 'acme-dev', 'acme-obs']);
+    // What the grown project has is there already; nothing else is.
+    expect(readiness(registry, scope!, 'acme-obs')).toEqual({ kind: 'included' });
+    expect(readiness(registry, scope!, 'acme-native')).toEqual({ kind: 'ready' });
+  });
+
+  it('counts what the planner closes growth over as there too, with what it promotes', () => {
+    const dash = vertical('acme-dash', [adapter('acme-dash', 'main', ['acme.metrics'])]);
+    const twin = stack(
+      'acme-cli-http',
+      ['arch.cli', 'arch.server-http'],
+      [skeleton, harness, observability, dev, dash],
+    );
+    const scope = grown(family([CLI, HTTP, twin, SPA], [metrics, dash]), CLI, 'http');
+    expect(scope?.installed).toEqual([
+      'acme-skeleton',
+      'agent-harness',
+      'acme-dev',
+      'acme-metrics',
+      'acme-dash',
+      'acme-obs',
+    ]);
+    expect(scope?.tags).toContain('acme.metrics');
+  });
+
+  it('carries the tags growing promotes, so what they feed is offered the entrypoint and what they exclude is not', () => {
+    const alerts = vertical('acme-alerts', [adapter('acme-alerts', 'main', ['acme.metrics'])]);
+    const plain = vertical('acme-plain', [
+      adapter('acme-plain', 'main', ['lang.acme', 'arch.server-http'], ['acme.metrics']),
+    ]);
+    const twin = stack(
+      'acme-cli-http',
+      ['arch.cli', 'arch.server-http'],
+      [skeleton, harness, observability, dev, metrics],
+    );
+    const registry = family([CLI, HTTP, twin, SPA], [metrics, alerts, plain]);
+    const scope = grown(registry, CLI, 'http');
+    expect(scope?.tags).toContain('acme.metrics');
+    expect(readiness(registry, scope!, 'acme-alerts')).toEqual({ kind: 'ready' });
+    expect(readiness(registry, scope!, 'acme-plain')).toMatchObject({ kind: 'unavailable' });
+    // On the CLI, both are stopped by the server alone; only one is let in by it.
+    expect(gapOn(registry, 'acme-alerts')).toMatchObject({
+      entrypoint: ['arch.server-http'],
+      identity: [],
+      grow: { entrypoint: 'http', comes: false },
+    });
+    expect(gapOn(registry, 'acme-plain')).toMatchObject({ entrypoint: ['arch.server-http'] });
+    expect(gapOn(registry, 'acme-plain')).not.toHaveProperty('grow');
+  });
+
+  it('carries what an adapter the entrypoint newly matches promotes', () => {
+    const tracing = vertical(
+      'acme-tracing',
+      [
+        adapter('acme-tracing', 'cli', ['lang.acme', 'arch.cli']),
+        {
+          ...adapter('acme-tracing', 'http', ['lang.acme', 'arch.server-http']),
+          promotes: ['acme.traced'],
+        },
+      ],
+      ['acme.traced'],
+    );
+    const spans = vertical('acme-spans', [adapter('acme-spans', 'main', ['acme.traced'])]);
+    const registry = family(undefined, [tracing, spans]);
+    const manifest = scaffoldOf(CLI, {
+      verticals: ['acme-skeleton', 'agent-harness', 'acme-tracing'],
+    });
+    const scope = grown(registry, CLI, 'http', manifest);
+    expect(scope?.tags).toContain('acme.traced');
+    expect(readiness(registry, scope!, 'acme-spans')).toEqual({ kind: 'ready' });
+  });
+
+  it('holds the grown project to the rules of what growing installs, offering no action to what would break one', () => {
+    const quiet: Vertical = {
+      ...vertical('acme-quiet', [adapter('acme-quiet', 'main', ['lang.acme'])]),
+      conflicts: [{ id: 'acme-quiet/no-noise', when: ['acme.noise'], reason: 'quiet' }],
+    };
+    const loud = vertical(
+      'acme-loud',
+      [adapter('acme-loud', 'main', ['lang.acme', 'arch.server-http'])],
+      ['acme.noise'],
+    );
+    const twin = stack(
+      'acme-cli-http',
+      ['arch.cli', 'arch.server-http'],
+      [skeleton, harness, observability, dev, quiet],
+    );
+    const registry = family([CLI, HTTP, twin, SPA], [quiet, loud]);
+    expect(readiness(registry, grown(registry, CLI, 'http')!, 'acme-loud')).toMatchObject({
+      kind: 'unavailable',
+      gap: { rules: ['acme-quiet/no-noise'] },
+    });
+    expect(gapOn(registry, 'acme-loud')).toMatchObject({ entrypoint: ['arch.server-http'] });
+    expect(gapOn(registry, 'acme-loud')).not.toHaveProperty('grow');
+  });
+
+  it('reads nothing where the planner refuses what growing installs, as the command then does', () => {
+    const needy = vertical('acme-needy', [adapter('acme-needy', 'main', ['acme.none'])]);
+    const twin = stack(
+      'acme-cli-http',
+      ['arch.cli', 'arch.server-http'],
+      [skeleton, harness, observability, dev, needy],
+    );
+    expect(grown(family([CLI, HTTP, twin, SPA], [needy]), CLI, 'http')).toBeNull();
   });
 });
