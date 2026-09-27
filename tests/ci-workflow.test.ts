@@ -13,6 +13,16 @@
  * So the matrix gets a test. This is the thing that fails when the wall
  * is absent, and it runs in `verify` — the fast gate — so the answer
  * arrives in a minute rather than after a JVM build.
+ *
+ * The weekly composition sweep has the same hazard the other way round:
+ * its suites under `tests/sweep/` self-skip unless `KEEL_RUN_SWEEP=1`,
+ * so a workflow that stopped opting in, ran one file of the directory,
+ * pinned the presets it sweeps, skipped its step on the schedule (an
+ * `if:`) or let a red run pass (`continue-on-error`) would report green
+ * over little or nothing. And it is report-only by design — most of an
+ * hour long, and red whenever it finds something to plan — so a trigger
+ * that put it on a push or a pull request would make it a gate nobody
+ * chose.
  */
 
 import fs from 'node:fs';
@@ -23,6 +33,7 @@ import { parse } from 'yaml';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const workflowPath = path.join(repoRoot, '.github', 'workflows', 'ci.yml');
+const sweepPath = path.join(repoRoot, '.github', 'workflows', 'composition-sweep.yml');
 const e2eDir = path.join(repoRoot, 'tests', 'e2e');
 
 interface Shard {
@@ -70,5 +81,55 @@ describe('the CI e2e matrix', () => {
     for (const shard of shards()) {
       expect(shard.tools.trim(), `shard ${shard.id}`).not.toBe('');
     }
+  });
+});
+
+/** What a job or a step may carry that decides whether it runs, and whether it can fail. */
+interface Gated {
+  if?: unknown;
+  'continue-on-error'?: unknown;
+  env?: Record<string, string>;
+}
+
+interface SweepWorkflow {
+  on: Record<string, unknown>;
+  env?: Record<string, string>;
+  jobs: Record<string, Gated & { steps: (Gated & { run?: string })[] }>;
+}
+
+describe('the composition sweep workflow', () => {
+  const sweep = (): SweepWorkflow => parse(fs.readFileSync(sweepPath, 'utf8')) as SweepWorkflow;
+
+  it('runs on a schedule and on dispatch, never on a push or a pull request', () => {
+    expect(Object.keys(sweep().on).sort()).toEqual(['schedule', 'workflow_dispatch']);
+  });
+
+  it('runs every suite under tests/sweep/, opted in, on the presets the dispatch names', () => {
+    const workflow = sweep();
+    // A step sees the workflow's env, then its job's, then its own.
+    const running = Object.values(workflow.jobs).flatMap((job) =>
+      job.steps
+        .filter((step) => /\bvitest run\b/.test(step.run ?? ''))
+        .map((step) => ({
+          run: step.run,
+          env: { ...workflow.env, ...job.env, ...step.env },
+          gates: [job, step],
+        })),
+    );
+    expect(running).toHaveLength(1);
+    // Runs on every event, and fails when it finds something: an `if:`
+    // could skip the schedule, and `continue-on-error` would turn every
+    // red run green.
+    for (const gate of running[0]?.gates ?? []) {
+      expect(gate.if).toBeUndefined();
+      expect(gate['continue-on-error']).toBeUndefined();
+    }
+    // The directory, whole: a file of it would sweep one suite.
+    expect(running[0]?.run).toMatch(/\bvitest run tests\/sweep\/?$/);
+    expect(running[0]?.env['KEEL_RUN_SWEEP']).toBe('1');
+    // Blank on the schedule, so every preset is swept; never a list.
+    expect(running[0]?.env['KEEL_SWEEP_STACKS'] ?? '${{ inputs.stacks }}').toBe(
+      '${{ inputs.stacks }}',
+    );
   });
 });

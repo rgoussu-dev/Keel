@@ -11,10 +11,11 @@
  *
  * This is that patch aimed at `application/cli` rather than
  * `application/api`: the same `MediatorFactory` file name under a
- * different assembly, resolved from the `arch.cli` tag. If the
- * resolution or the anchor were wrong the patch throws at scaffold
- * time; if the rewritten list resolves its peer eagerly it closes the
- * construction cycle instead, which only a container shows.
+ * different assembly, patched by the wiring adapter the `arch.cli` tag
+ * selects (roadmap R.3d). If its assembly or the anchor were wrong the
+ * patch throws at scaffold time; if the rewritten list resolves its
+ * peer eagerly it closes the construction cycle instead, which only a
+ * container shows.
  *
  * One of the 24 cells of the modulith grid (12 stacks × 2 build
  * systems), each of which gets a file of its own — see

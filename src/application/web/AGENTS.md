@@ -64,11 +64,15 @@ socket, the per-run token and the asset roots. The page it serves is
   (`toggleVertical`, which leaves what the project has locked;
   `rerender`, `toggleRefresh`), since one tick can move several boxes
   and the element only says which one it was. What a card shows is
-  read off the project status by a pure module too (`additions.js`,
-  and `project.js` for the read-only Project step), never re-derived in
-  the element: the status already carries each card's readiness and
-  refusal, word for word, and the project's own profile in words — the
-  page never reads a tag.
+  read off the project status by a pure module too (`additions.js`, and
+  `project.js` for the Project step), never re-derived in the element:
+  the status already carries each card's readiness and refusal, word for
+  word — with the entrypoint that would let it in, where a refusal
+  carries one (`grow`) — the project's own profile in words, and each
+  back entrypoint, what adding it installs, and why it cannot be added
+  where it cannot (`entrypoints`) — the page never reads a tag: of a
+  refusal's `missing`, it asks only whether a linked project is missing
+  too, to say a card waits on one, never which.
 - **A response body is read once, as text, and `response.js` says
   what it means.** `api.js` claims the token out of `location` the
   moment it loads, so it cannot be imported without a DOM; what a

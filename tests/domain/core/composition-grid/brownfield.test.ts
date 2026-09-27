@@ -14,9 +14,9 @@
  *     installed or a `keel.project-status` card, and each card agrees
  *     with the preview of its add — `ready` previews Ok, `needs`
  *     previews Ok with the prerequisites it names in the plan, and a
- *     refusal shown on the card is the one the add gives, code and
- *     sentence. The card is read before the click; the preview is the
- *     click.
+ *     refusal shown on the card is the one the add gives, code,
+ *     sentence and data — the action it names included. The card is
+ *     read before the click; the preview is the click.
  *   - **Both phases agree** (I5): `keel add v` on a fresh scaffold
  *     reaches the same outcome as `keel new --with v` on the same
  *     stack — Ok on both sides, or refused on both under one code and

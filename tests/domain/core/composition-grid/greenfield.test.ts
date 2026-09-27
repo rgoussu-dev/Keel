@@ -45,8 +45,10 @@
  *     twice).
  *
  * Holds I6 over every refusal on the way. The menu read is each
- * stack's default dial setting; the others are not covered here (the
- * weekly lane that was to read them was planned and not built).
+ * stack's default dial setting. Every other setting, the full powerset
+ * of each menu, every pair of extras arriving in two runs and every
+ * choice of every question are the weekly composition sweep's
+ * (`tests/sweep/`), report-only: too many dispatches for `verify`.
  */
 
 import { describe } from 'vitest';

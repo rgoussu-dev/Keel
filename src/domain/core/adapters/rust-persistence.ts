@@ -62,6 +62,7 @@ import {
   type RustCrate,
   type RustLayoutPaths,
 } from './rust-module-layout.js';
+import { placeReadmeSection } from '../rank.js';
 import { eolAware, eolOf, withEol } from '../util.js';
 import type {
   Adapter,
@@ -222,7 +223,11 @@ export const rustPersistenceAdapter: Adapter = {
           target: 'README.md',
           apply: eolAware((existing) => {
             if (existing.includes(README_MARKER)) return existing;
-            return `${existing.trimEnd()}\n${readmeSection(adaptersHome(layout, infra))}`;
+            return placeReadmeSection(
+              existing,
+              readmeSection(adaptersHome(layout, infra)),
+              ctx.manifest.tags,
+            );
           }),
         },
       ],

@@ -1,7 +1,7 @@
 /**
- * `walking-skeleton/rust-peer-context` adapter — scaffolds the
- * **second bounded context** under the Rust modulith, opted into with
- * `keel new --with-peer-context`.
+ * `walking-skeleton/rust-peer-context` and its wiring adapters —
+ * scaffold the **second bounded context** under the Rust modulith,
+ * opted into with `keel new --with-peer-context`.
  *
  * With one context the modulith's central claim — that contexts meet
  * only at `user-side/service` — is asserted rather than exercised:
@@ -27,22 +27,44 @@
  * and core, plus the gateway under its `infra/`. The assembly gains a
  * `guestbook` module that wires them and a test proving the wiring
  * really reaches across the seam.
+ *
+ * **A shell, and one wiring adapter per entrypoint.** The shell writes
+ * the three crates and adds them to the workspace's `members`, none of
+ * which an entrypoint shapes; `rust-peer-context-cli` and
+ * `rust-peer-context-http` each write one assembly's `guestbook.rs`,
+ * declare it in that assembly's `main.rs` and add the peer's crates to
+ * that assembly's `Cargo.toml`, and require that entrypoint's tag. A
+ * project carrying both matches both, so which assemblies the context
+ * is wired into is read off the predicates, never off the tags inside
+ * `contribute()`, and `keel add entrypoint` wires it into the new
+ * assembly by installing the one that newly matches (roadmap R.3b).
  */
 
 import { RUST_BOOTSTRAP_ID, rustBootstrapAnswers } from './rust-bootstrap.js';
 import { RUST_CLI_BOOTSTRAP_ID } from './rust-cli-bootstrap.js';
 import { RUST_HTTP_BOOTSTRAP_ID } from './rust-http-bootstrap.js';
-import type { Adapter, ContributionPatch } from '../../contract/composition.js';
+import type { Adapter, ContributionPatch, Tag } from '../../contract/composition.js';
 import { eolOf, withEol } from '../util.js';
 import { MODULITH_LAYOUT_TAG, PEER_CONTEXT_TAG } from './module-layout.js';
-import { addWorkspaceMembers, rustLayout, rustPeerCrates } from './rust-module-layout.js';
+import {
+  addWorkspaceMembers,
+  rustLayout,
+  rustPeerCrates,
+  type RustLayoutPaths,
+  type RustUnit,
+} from './rust-module-layout.js';
 
 export const RUST_PEER_CONTEXT_ID = 'walking-skeleton/rust-peer-context';
+/** The adapter wiring the guestbook context into the CLI's assembly. */
+export const RUST_PEER_CONTEXT_CLI_ID = 'walking-skeleton/rust-peer-context-cli';
+/** The adapter wiring the guestbook context into the HTTP server's assembly. */
+export const RUST_PEER_CONTEXT_HTTP_ID = 'walking-skeleton/rust-peer-context-http';
 
 const TEMPLATE_ROOT = 'composition/walking-skeleton/rust-peer-context/templates';
 
 const WIRING_MARKER = 'mod guestbook;';
 
+/** The shell: the guestbook context's crates and their workspace membership. */
 export const rustPeerContextAdapter: Adapter = {
   id: RUST_PEER_CONTEXT_ID,
   vertical: 'walking-skeleton',
@@ -50,47 +72,75 @@ export const rustPeerContextAdapter: Adapter = {
   predicate: {
     requires: ['lang.rust', MODULITH_LAYOUT_TAG, PEER_CONTEXT_TAG],
   },
-  // Both entrypoints listed because either may be the one present,
-  // and a project carrying both must have its assemblies emitted
-  // before this wires into them.
-  after: [RUST_BOOTSTRAP_ID, RUST_CLI_BOOTSTRAP_ID, RUST_HTTP_BOOTSTRAP_ID],
+  // The workspace manifest it adds the crates to is the base
+  // bootstrap's.
+  after: [RUST_BOOTSTRAP_ID],
   async contribute(ctx) {
     const { projectName } = rustBootstrapAnswers(ctx.manifest, RUST_PEER_CONTEXT_ID);
-    const layout = rustLayout(ctx.manifest.tags, projectName);
-    const peer = rustPeerCrates(layout);
-    const context = await ctx.templates.render(`${TEMPLATE_ROOT}/context`, 'modules', {});
-
-    const typologies = assembliesOf(ctx.manifest.tags);
-    const wirings = await Promise.all(
-      typologies.map((typology) => {
-        const assembly = layout.assembly(typology);
-        const dir = assembly.rootFile.slice(0, assembly.rootFile.lastIndexOf('/'));
-        return ctx.templates.render(`${TEMPLATE_ROOT}/wiring`, dir, {});
-      }),
-    );
-
+    const peer = rustPeerCrates(rustLayout(ctx.manifest.tags, projectName));
     const memberDirs = [peer.contract, peer.core, peer.gateway].map((u) => u.crate.dir);
-    const patches: ContributionPatch[] = [
-      {
-        target: 'Cargo.toml',
-        apply: (existing) => addWorkspaceMembers(existing, memberDirs),
-      },
-    ];
-    for (const typology of typologies) {
-      const assembly = layout.assembly(typology);
-      patches.push(assemblyDepsPatch(assembly.crate.manifest, peerDeps(layout, peer, assembly)));
-      patches.push(assemblyModulePatch(assembly.rootFile));
-    }
-    return { files: [...context, ...wirings.flat()], patches };
+    return {
+      files: await ctx.templates.render(`${TEMPLATE_ROOT}/context`, 'modules', {}),
+      patches: [
+        {
+          target: 'Cargo.toml',
+          apply: (existing) => addWorkspaceMembers(existing, memberDirs),
+        },
+      ],
+    };
   },
 };
 
-/** Which assemblies this project has, from the stack's arch tags. */
-function assembliesOf(tags: readonly string[]): readonly string[] {
-  const typologies: string[] = [];
-  if (tags.includes('arch.cli')) typologies.push('cli');
-  if (tags.includes('arch.server-http')) typologies.push('http');
-  return typologies;
+/** Wires the guestbook context into the CLI's assembly, `application/cli`. */
+export const rustPeerContextCliAdapter: Adapter = wiringAdapter(
+  RUST_PEER_CONTEXT_CLI_ID,
+  'cli',
+  'arch.cli',
+  RUST_CLI_BOOTSTRAP_ID,
+);
+
+/** Wires the guestbook context into the HTTP server's assembly, `application/http`. */
+export const rustPeerContextHttpAdapter: Adapter = wiringAdapter(
+  RUST_PEER_CONTEXT_HTTP_ID,
+  'http',
+  'arch.server-http',
+  RUST_HTTP_BOOTSTRAP_ID,
+);
+
+/**
+ * The adapter that wires the guestbook context into the assembly of
+ * the deployment unit `unit` — `src/guestbook.rs`, its `mod` line in
+ * `main.rs`, and the peer's crates in that assembly's `Cargo.toml` —
+ * on a project carrying `entrypoint`, after the shell and that
+ * entrypoint's bootstrap, whose assembly it lands in.
+ */
+function wiringAdapter(id: string, unit: string, entrypoint: Tag, bootstrap: string): Adapter {
+  return {
+    id,
+    vertical: 'walking-skeleton',
+    covers: [],
+    predicate: {
+      requires: ['lang.rust', MODULITH_LAYOUT_TAG, PEER_CONTEXT_TAG, entrypoint],
+    },
+    after: [RUST_PEER_CONTEXT_ID, bootstrap],
+    async contribute(ctx) {
+      const { projectName } = rustBootstrapAnswers(ctx.manifest, id);
+      const layout = rustLayout(ctx.manifest.tags, projectName);
+      const assembly = layout.assembly(unit);
+      const dir = assembly.rootFile.slice(0, assembly.rootFile.lastIndexOf('/'));
+      return {
+        files: await ctx.templates.render(`${TEMPLATE_ROOT}/wiring`, dir, {}),
+        patches: [
+          assemblyDepsPatch(
+            id,
+            assembly.crate.manifest,
+            peerDeps(layout, rustPeerCrates(layout), assembly),
+          ),
+          assemblyModulePatch(assembly.rootFile),
+        ],
+      };
+    },
+  };
 }
 
 /**
@@ -101,9 +151,9 @@ function assembliesOf(tags: readonly string[]): readonly string[] {
  * gateway does not carry a domain edge along with it.
  */
 function peerDeps(
-  layout: ReturnType<typeof rustLayout>,
+  layout: RustLayoutPaths,
   peer: ReturnType<typeof rustPeerCrates>,
-  assembly: ReturnType<ReturnType<typeof rustLayout>['assembly']>,
+  assembly: RustUnit,
 ): string {
   const entries: readonly (readonly [string, string])[] = [
     ['platform-kernel', layout.kernel.crate.pathFrom(assembly.crate)],
@@ -115,17 +165,18 @@ function peerDeps(
   return entries.map(([name, path]) => `${name} = { path = "${path}" }`).join('\n');
 }
 
-/** Appends the peer's crates to an assembly manifest, once. */
-function assemblyDepsPatch(target: string, deps: string): ContributionPatch {
+/**
+ * Prepends the peer's crates to an assembly manifest's `[dependencies]`,
+ * once, for the adapter `id`.
+ */
+function assemblyDepsPatch(id: string, target: string, deps: string): ContributionPatch {
   return {
     target,
     apply: (existing) => {
       if (existing.includes('guestbook-domain-contract')) return existing;
       const marker = '[dependencies]';
       if (!existing.includes(marker)) {
-        throw new Error(
-          `${RUST_PEER_CONTEXT_ID}: no [dependencies] table in '${target}' to add the peer context to`,
-        );
+        throw new Error(`${id}: no [dependencies] table in '${target}' to add the peer context to`);
       }
       return existing.replace(marker, `${marker}${withEol(`\n${deps}`, eolOf(existing))}`);
     },

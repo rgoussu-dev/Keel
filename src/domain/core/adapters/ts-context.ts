@@ -1,10 +1,8 @@
 /**
- * `bounded-context/ts-context` adapter — the context
+ * `bounded-context/ts-context` and its wiring adapters — the context
  * `keel add module <name>` emits under the TypeScript modulith
  * (`ts-http` and `ts-cli` alike), and the gateway `--consumes <other>`
- * adds to it. The wiring lands in every assembly the arch tags name
- * (`tsAssemblies`), exactly as the Rust and Go context adapters
- * decide it.
+ * adds to it.
  *
  * **One workspace package, plus a `./service` export the peer context
  * has not got.** `tsLayout` rules that a bounded context is a single
@@ -29,13 +27,28 @@
  * and therefore holds for any number of contexts — asserted with
  * three rather than assumed, since two is all it had ever seen.
  *
+ * **A shell, and one wiring adapter per entrypoint.** The shell writes
+ * the context's package and its gateway, which no entrypoint shapes,
+ * and asks for the install that links the package; `ts-context-cli`
+ * and `ts-context-http` each write one assembly's wiring module,
+ * declare the context on that assembly's manifest and add it to that
+ * assembly's mediator, and require that entrypoint's tag. A project
+ * carrying both matches both. What each writes is the same module in
+ * another assembly, so which assemblies a context is wired into is
+ * read off the predicates, never off the tags inside `contribute()` —
+ * and `keel add entrypoint` wires every context into the new assembly
+ * by installing the one wiring adapter that newly matches (roadmap
+ * R.3c).
+ *
  * **The mediator patch has to be repeatable, and the peer's is not.**
- * `ts-peer-context` replaces the whole
+ * `ts-peer-context`'s wiring replaces the whole
  * `createRegistryMediator([createGreetHandler()])` line with a
  * two-entry version; run that twice and the second run finds no match.
  * `keel add module` runs once per context, so this one splices a new
  * entry in before the closing bracket and returns the file unchanged
- * when its entry is already there.
+ * when its entry is already there. The peer is wired first — beside
+ * the bootstrap, before any context is added — so its anchor is
+ * always the bootstrap's own line.
  *
  * **The skeleton's seam method is `greet`.** Every added context
  * publishes `<name>For(subject)`, so a gateway computes the call from
@@ -54,27 +67,39 @@
  * does when it adds its packages.
  */
 
-import type { Adapter, ContributionPatch } from '../../contract/composition.js';
-import { addedContext, CONTEXT_TAG } from './added-context.js';
+import type { Adapter, ContributionPatch, ManifestV2, Tag } from '../../contract/composition.js';
+import { addedContext, CONTEXT_TAG, type AddedContext } from './added-context.js';
 import { MODULITH_LAYOUT_TAG, SKELETON_MODULE } from './module-layout.js';
 import { tsBootstrapAnswers, TS_CLI_BOOTSTRAP_ID, TS_HTTP_BOOTSTRAP_ID } from './ts-bootstrap.js';
 import {
-  tsAssemblies,
+  tsAssembly,
   tsContextPackage,
   tsLayout,
   tsSeamPackage,
+  TS_MEDIATOR_ANCHOR,
   TS_SKELETON_HANDLER_FACTORY,
   TS_SKELETON_SEAM_METHOD,
   type TsAssemblyPaths,
+  type TsContextPaths,
   type TsLayoutPaths,
+  type TsUnit,
 } from './ts-module-layout.js';
-import { tsWorkspaceVars, workspaceInstall } from './ts-workspace.js';
-import { beforeFirstImport, eolAware } from '../util.js';
+import { tsWorkspaceVars, workspaceInstall, type TsWorkspaceVars } from './ts-workspace.js';
+import { beforeFirstImport, codeOnly, eolAware } from '../util.js';
+import { PathConflictError } from '../../contract/refusal.js';
 
 export const TS_CONTEXT_ID = 'bounded-context/ts-context';
+/** The adapter wiring an added context into the CLI's assembly. */
+export const TS_CONTEXT_CLI_ID = 'bounded-context/ts-context-cli';
+/** The adapter wiring an added context into the HTTP server's assembly. */
+export const TS_CONTEXT_HTTP_ID = 'bounded-context/ts-context-http';
 
 const TEMPLATE_ROOT = 'composition/bounded-context/ts-context/templates';
 
+/**
+ * The shell: the context's package, its gateway under `--consumes`,
+ * and the install that links the package into the workspace.
+ */
 export const tsContextAdapter: Adapter = {
   id: TS_CONTEXT_ID,
   vertical: 'bounded-context',
@@ -82,26 +107,110 @@ export const tsContextAdapter: Adapter = {
   predicate: {
     requires: ['lang.typescript', 'runtime.node', MODULITH_LAYOUT_TAG, CONTEXT_TAG],
   },
-  // Ordering hints rather than requirements: under `keel add module`
-  // the bootstraps have long since run, and listing them keeps the
-  // adapter honest about what it patches into.
-  after: [TS_HTTP_BOOTSTRAP_ID, TS_CLI_BOOTSTRAP_ID],
   async contribute(ctx) {
-    const added = addedContext(ctx.manifest, TS_CONTEXT_ID);
-    const { npmScope } = tsBootstrapAnswers(ctx.manifest, TS_CONTEXT_ID);
-    const layout = tsLayout(ctx.manifest.tags, npmScope);
-    const pkg = tsContextPackage(layout, added.name, added.consumes);
-    if (pkg === null) {
-      throw new Error(
-        `${TS_CONTEXT_ID}: no peer seam under layout '${layout.layout}' — the flat trisection has a single hexagon`,
-      );
-    }
-    const { pm, workspaceDep } = tsWorkspaceVars(ctx.manifest.tags);
-    const consumesIsSkeleton = added.consumes === SKELETON_MODULE;
+    const { added, pkg, ws, vars } = contextOf(ctx.manifest, TS_CONTEXT_ID);
+    const rendered = await Promise.all([
+      ctx.templates.render(`${TEMPLATE_ROOT}/context`, '', vars),
+      // A separate render root rather than a subtree of `context`,
+      // because the tree is copied wholesale: left inside it, a
+      // context with no `--consumes` would emit `src/infra/-gateway/`
+      // from the unsubstituted path token.
+      ...(pkg.gatewaySrc === null
+        ? []
+        : [ctx.templates.render(`${TEMPLATE_ROOT}/gateway`, `${pkg.root}/src/infra`, vars)]),
+    ]);
+    return {
+      files: rendered.flat(),
+      actions: [
+        workspaceInstall(TS_CONTEXT_ID, ws.pm, `link the new ${added.name} workspace package`),
+      ],
+    };
+  },
+};
 
-    const vars = {
-      pm,
-      workspaceDep,
+/** Wires the context into the CLI's assembly, `application/cli`. */
+export const tsContextCliAdapter: Adapter = wiringAdapter(
+  TS_CONTEXT_CLI_ID,
+  'cli',
+  'arch.cli',
+  TS_CLI_BOOTSTRAP_ID,
+);
+
+/** Wires the context into the HTTP server's assembly, `application/rest`. */
+export const tsContextHttpAdapter: Adapter = wiringAdapter(
+  TS_CONTEXT_HTTP_ID,
+  'rest',
+  'arch.server-http',
+  TS_HTTP_BOOTSTRAP_ID,
+);
+
+/**
+ * The adapter that wires the context into the assembly of the
+ * deployment unit `unit` — `src/<name>.ts`, the context on the
+ * assembly's manifest, and its handler on `main.ts`'s mediator — on a
+ * project carrying `entrypoint`, after the shell and that entrypoint's
+ * bootstrap. The skeleton a context may consume needs no entry of its
+ * own: it is the assembly's core package, the one the bootstrap
+ * declares and `dependencyPatch` anchors on.
+ */
+function wiringAdapter(id: string, unit: TsUnit, entrypoint: Tag, bootstrap: string): Adapter {
+  return {
+    id,
+    vertical: 'bounded-context',
+    covers: [],
+    predicate: {
+      requires: ['lang.typescript', 'runtime.node', MODULITH_LAYOUT_TAG, CONTEXT_TAG, entrypoint],
+    },
+    after: [TS_CONTEXT_ID, bootstrap],
+    async contribute(ctx) {
+      const { added, layout, pkg, ws, vars } = contextOf(ctx.manifest, id);
+      const assembly = tsAssembly(layout, unit);
+      return {
+        files: await ctx.templates.render(`${TEMPLATE_ROOT}/assembly`, assembly.root, vars),
+        patches: [
+          dependencyPatch(id, layout, assembly, pkg.pkg, ws.workspaceDep),
+          wiringPatch(id, assembly, added.name),
+        ],
+      };
+    },
+  };
+}
+
+/**
+ * The context an add-module run emits, and what its adapters read: the
+ * layout, the context's package, the workspace's package manager, and
+ * the template variables — the same values for the shell and for each
+ * assembly's wiring.
+ */
+function contextOf(
+  manifest: ManifestV2,
+  requesterId: string,
+): {
+  readonly added: AddedContext;
+  readonly layout: TsLayoutPaths;
+  readonly pkg: TsContextPaths;
+  readonly ws: TsWorkspaceVars;
+  readonly vars: Readonly<Record<string, string>>;
+} {
+  const added = addedContext(manifest, requesterId);
+  const { npmScope } = tsBootstrapAnswers(manifest, requesterId);
+  const layout = tsLayout(manifest.tags, npmScope);
+  const pkg = tsContextPackage(layout, added.name, added.consumes);
+  if (pkg === null) {
+    throw new Error(
+      `${requesterId}: no peer seam under layout '${layout.layout}' — the flat trisection has a single hexagon`,
+    );
+  }
+  const ws = tsWorkspaceVars(manifest.tags);
+  const consumesIsSkeleton = added.consumes === SKELETON_MODULE;
+  return {
+    added,
+    layout,
+    pkg,
+    ws,
+    vars: {
+      pm: ws.pm,
+      workspaceDep: ws.workspaceDep,
       module: added.name,
       Module: pascal(added.name),
       MODULE: added.name.toUpperCase(),
@@ -123,45 +232,9 @@ export const tsContextAdapter: Adapter = {
             : `${added.consumes}For`,
       consumesSeamExpr: consumesSeamExpr(added.consumes, consumesIsSkeleton),
       consumesHandlerFactory: consumesIsSkeleton ? TS_SKELETON_HANDLER_FACTORY : '',
-    };
-
-    const assemblies = tsAssemblies(ctx.manifest.tags, layout);
-    if (assemblies.length === 0) {
-      throw new Error(
-        `${TS_CONTEXT_ID}: no assembly in this tag set to wire the ${added.name} context into`,
-      );
-    }
-    const rendered = await Promise.all([
-      ctx.templates.render(`${TEMPLATE_ROOT}/context`, '', vars),
-      ...assemblies.map((assembly) =>
-        ctx.templates.render(`${TEMPLATE_ROOT}/assembly`, assembly.root, vars),
-      ),
-      // A separate render root rather than a subtree of `context`,
-      // because the tree is copied wholesale: left inside it, a
-      // context with no `--consumes` would emit `src/infra/-gateway/`
-      // from the unsubstituted path token.
-      ...(pkg.gatewaySrc === null
-        ? []
-        : [ctx.templates.render(`${TEMPLATE_ROOT}/gateway`, `${pkg.root}/src/infra`, vars)]),
-    ]);
-
-    return {
-      files: rendered.flat(),
-      patches: assemblies.flatMap((assembly) => [
-        dependencyPatch(layout, assembly, pkg.pkg, workspaceDep),
-        ...(added.consumes === null || !consumesIsSkeleton
-          ? []
-          : [
-              dependencyPatch(layout, assembly, `@${layout.scope}/${added.consumes}`, workspaceDep),
-            ]),
-        wiringPatch(assembly, added.name),
-      ]),
-      actions: [
-        workspaceInstall(TS_CONTEXT_ID, pm, `link the new ${added.name} workspace package`),
-      ],
-    };
-  },
-};
+    },
+  };
+}
 
 /**
  * How the assembly gets hold of the consumed context's seam.
@@ -183,7 +256,8 @@ function consumesSeamExpr(consumes: string | null, isSkeleton: boolean): string 
 }
 
 /**
- * Declares a package on the assembly's manifest, once.
+ * Declares a package on the assembly's manifest, once, for the wiring
+ * adapter `id`.
  *
  * Under npm this changes no resolution — hoisting would have found it
  * anyway — and it is emitted regardless, because pnpm genuinely needs
@@ -191,6 +265,7 @@ function consumesSeamExpr(consumes: string | null, isSkeleton: boolean): string 
  * wrong even where it happens to work.
  */
 function dependencyPatch(
+  id: string,
   layout: TsLayoutPaths,
   assembly: TsAssemblyPaths,
   pkg: string,
@@ -204,7 +279,7 @@ function dependencyPatch(
       const anchor = `"${layout.corePkg}": "${workspaceDep}"`;
       if (!existing.includes(anchor)) {
         throw new Error(
-          `${TS_CONTEXT_ID}: no '${layout.corePkg}' dependency in '${target}' to add '${pkg}' beside`,
+          `${id}: no '${layout.corePkg}' dependency in '${target}' to add '${pkg}' beside`,
         );
       }
       return existing.replace(anchor, `${anchor},\n    "${pkg}": "${workspaceDep}"`);
@@ -213,21 +288,29 @@ function dependencyPatch(
 }
 
 /**
- * Wires the context into the assembly: one import and one array
- * entry, which is exactly what the emitted `main.ts` promises adding a
- * bounded context costs.
+ * Wires the context into the assembly, for the wiring adapter `id`:
+ * one import and one array entry, which is exactly what the emitted
+ * `main.ts` promises adding a bounded context costs.
  *
  * Splices into the mediator's argument list rather than replacing a
- * known line. `ts-peer-context` can replace, because it runs at most
- * once and knows what the bootstrap wrote; this adapter runs once per
- * context and would find its own previous edit in the way.
+ * known line. The peer's wiring can replace, because it runs once per
+ * assembly, beside the bootstrap, and knows what that wrote; this runs
+ * once per context and would find its own previous edit in the way.
+ * Where the entry goes turns on the array's last token, comments and
+ * literals aside (`codeOnly`): after a trailing comma — persistence's
+ * list, one entry a line, ends on one — or into an empty array, it gets
+ * a line of its own before the close, and otherwise it follows the last
+ * entry, ahead of any comment after it. Spliced in after that comma, or
+ * after a comment, as `, x()` it would leave a hole in the array. A
+ * `main.ts` with no mediator call is a file in the way, refused naming
+ * it.
  *
  * This patch is what binds the context. An unimported TypeScript
  * module is never loaded — the context would typecheck, lint and run
  * in nothing — which is the JVM failure this adapter family exists to
  * prevent.
  */
-function wiringPatch(assembly: TsAssemblyPaths, context: string): ContributionPatch {
+function wiringPatch(id: string, assembly: TsAssemblyPaths, context: string): ContributionPatch {
   const target = `${assembly.src}/main.ts`;
   const factory = `create${pascal(context)}ContextHandler`;
   const wiringImport = `import { ${factory} } from './${context}.ts';`;
@@ -236,18 +319,18 @@ function wiringPatch(assembly: TsAssemblyPaths, context: string): ContributionPa
     target,
     apply: eolAware((existing) => {
       if (existing.includes(wiringImport)) return existing;
-      const start = existing.indexOf(open);
-      if (start === -1) {
-        throw new Error(
-          `${TS_CONTEXT_ID}: could not find the mediator assembly call in '${target}' — the context would be emitted and loaded by nothing`,
-        );
-      }
-      const close = existing.indexOf('])', start);
+      const { code } = codeOnly(existing);
+      const start = code.indexOf(open);
+      const close = start === -1 ? -1 : code.indexOf('])', start);
       if (close === -1) {
-        throw new Error(`${TS_CONTEXT_ID}: unterminated mediator assembly call in '${target}'`);
+        throw new PathConflictError(target, id, TS_MEDIATOR_ANCHOR);
       }
-      const withEntry = `${existing.slice(0, close)}, ${factory}()${existing.slice(close)}`;
-      return beforeFirstImport(withEntry, wiringImport);
+      const last = code.slice(0, close).trimEnd();
+      const [at, entry] = /[,[]$/.test(last)
+        ? [close, `  ${factory}(),\n`]
+        : [last.length, `, ${factory}()`];
+      const spliced = `${existing.slice(0, at)}${entry}${existing.slice(at)}`;
+      return beforeFirstImport(spliced, wiringImport);
     }),
   };
 }

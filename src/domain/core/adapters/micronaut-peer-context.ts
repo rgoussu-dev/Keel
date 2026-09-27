@@ -1,6 +1,7 @@
 /**
  * The Micronaut peer-context adapters —
- * `walking-skeleton/micronaut-peer-context` and its Kotlin twin.
+ * `walking-skeleton/micronaut-peer-context` and its Kotlin twin, each a
+ * shell and a wiring adapter per entrypoint (`…-cli`, `…-rest`).
  *
  * The two languages diverge more here than under any other framework,
  * because their composition roots already do:
@@ -33,7 +34,7 @@
 import {
   appendToClassBody,
   freshServiceDoc,
-  jvmPeerContextAdapter,
+  jvmPeerContextAdapters,
   peerNames,
   PEER_PORT,
   STALE_SERVICE_DOC,
@@ -106,7 +107,7 @@ function importPackagesPatch(binding: PeerBinding): ContributionPatch {
       if (existing.includes(names.handlerPkg)) return existing;
       if (!existing.includes(anchor)) {
         throw new Error(
-          `${MICRONAUT_PEER_CONTEXT_ID}: could not find the @Import packages entry in MediatorFactory — add "${names.handlerPkg}" manually or SignHandler is never discovered`,
+          `${binding.adapterId}: could not find the @Import packages entry in MediatorFactory — add "${names.handlerPkg}" manually or SignHandler is never discovered`,
         );
       }
       return existing.replace(anchor, widened);
@@ -131,7 +132,7 @@ function javaBinding(binding: PeerBinding): readonly ContributionPatch[] {
         if (existing.includes('GreetingWelcome')) return existing;
         if (!existing.includes(anchorImport) || !existing.includes(providerAnchor)) {
           throw new Error(
-            `${MICRONAUT_PEER_CONTEXT_ID}: could not find the imports to anchor on in MediatorFactory`,
+            `${binding.adapterId}: could not find the imports to anchor on in MediatorFactory`,
           );
         }
         const withImports = existing
@@ -177,12 +178,12 @@ function kotlinBinding(binding: PeerBinding): readonly ContributionPatch[] {
         if (existing.includes('GreetingWelcome')) return existing;
         if (!existing.includes(anchorImport) || !existing.includes(providerAnchor)) {
           throw new Error(
-            `${MICRONAUT_PEER_CONTEXT_KOTLIN_ID}: could not find the imports to anchor on in MediatorFactory`,
+            `${binding.adapterId}: could not find the imports to anchor on in MediatorFactory`,
           );
         }
         if (!existing.includes(staleWiring)) {
           throw new Error(
-            `${MICRONAUT_PEER_CONTEXT_KOTLIN_ID}: could not find the explicit handler list in MediatorFactory — add SignHandler manually or it is never dispatched to`,
+            `${binding.adapterId}: could not find the explicit handler list in MediatorFactory — add SignHandler manually or it is never dispatched to`,
           );
         }
         const withImports = existing
@@ -199,20 +200,40 @@ function kotlinBinding(binding: PeerBinding): readonly ContributionPatch[] {
   ];
 }
 
-/** Micronaut + Java. */
-export const micronautPeerContextAdapter: Adapter = jvmPeerContextAdapter({
+const micronautPeerContext = jvmPeerContextAdapters({
   id: MICRONAUT_PEER_CONTEXT_ID,
   framework: 'micronaut',
   language: 'java',
-  bootstrapIds: [MICRONAUT_REST_BOOTSTRAP_ID, MICRONAUT_CLI_BOOTSTRAP_ID],
+  bootstrapIds: { cli: MICRONAUT_CLI_BOOTSTRAP_ID, rest: MICRONAUT_REST_BOOTSTRAP_ID },
   bind: javaBinding,
 });
 
-/** Micronaut + Kotlin. */
-export const micronautPeerContextKotlinAdapter: Adapter = jvmPeerContextAdapter({
+const micronautPeerContextKotlin = jvmPeerContextAdapters({
   id: MICRONAUT_PEER_CONTEXT_KOTLIN_ID,
   framework: 'micronaut',
   language: 'kotlin',
-  bootstrapIds: [MICRONAUT_REST_KOTLIN_BOOTSTRAP_ID, MICRONAUT_CLI_KOTLIN_BOOTSTRAP_ID],
+  bootstrapIds: {
+    cli: MICRONAUT_CLI_KOTLIN_BOOTSTRAP_ID,
+    rest: MICRONAUT_REST_KOTLIN_BOOTSTRAP_ID,
+  },
   bind: kotlinBinding,
 });
+
+/** Micronaut + Java: the shell. */
+export const micronautPeerContextAdapter: Adapter = micronautPeerContext.shell;
+
+/** Micronaut + Java: the wiring into the CLI's assembly, `application/cli`. */
+export const micronautPeerContextCliAdapter: Adapter = micronautPeerContext.wiring.cli;
+
+/** Micronaut + Java: the wiring into the REST assembly, `application/api`. */
+export const micronautPeerContextRestAdapter: Adapter = micronautPeerContext.wiring.rest;
+
+/** Micronaut + Kotlin: the shell. */
+export const micronautPeerContextKotlinAdapter: Adapter = micronautPeerContextKotlin.shell;
+
+/** Micronaut + Kotlin: the wiring into the CLI's assembly, `application/cli`. */
+export const micronautPeerContextKotlinCliAdapter: Adapter = micronautPeerContextKotlin.wiring.cli;
+
+/** Micronaut + Kotlin: the wiring into the REST assembly, `application/api`. */
+export const micronautPeerContextKotlinRestAdapter: Adapter =
+  micronautPeerContextKotlin.wiring.rest;

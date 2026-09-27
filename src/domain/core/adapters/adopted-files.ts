@@ -14,8 +14,9 @@
  *
  * - `README.md` keeps the user's content, title included, and gains
  *   keel's own README after it, less keel's title
- *   ({@link adoptReadme}). An entrypoint's section, appended by its
- *   own patch, follows it as it would in a fresh project.
+ *   ({@link adoptReadme}). An entrypoint's section, added by its own
+ *   patch at its rank (`rank.ts`), follows it as it would in a fresh
+ *   project.
  * - `.gitignore` keeps the user's entries and gains each of keel's
  *   that it lacks, under keel's own comments ({@link adoptGitignore}).
  *
@@ -100,8 +101,9 @@ export function adoptGitignore(seed: string): (existing: string) => string {
 /**
  * The root `README.md` as a seeded upsert: {@link adoptReadme} of
  * `seed`, then `section`, the caller's own idempotent step. The JVM
- * and TypeScript entrypoints pass the appending of their `### <arch>`
- * section, and so compose onto one README from one seed.
+ * and TypeScript entrypoints pass the adding of their `### <arch>`
+ * section at its rank (`rank.ts`), and so compose onto one README from
+ * one seed.
  */
 export function readmeUpsert(
   seed: string,

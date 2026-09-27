@@ -3,8 +3,9 @@
  * deployment unit onto the Go skeleton: `cmd/cli` (the assembly
  * point, wiring the hexagon by hand) and `internal/app/cli` (the
  * primary adapter mapping flags → greet command → driving port →
- * streams + exit code, with a fake-backed adapter test). Appends the
- * unit's build-and-run instructions to the README.
+ * streams + exit code, with a fake-backed adapter test). Adds the
+ * unit's build-and-run instructions to the README, at its rank
+ * (`rank.ts`).
  *
  * Covers the `entrypoint` dimension under `arch.cli`. The HTTP
  * sibling covers the same dimension under `arch.server-http`; the
@@ -16,6 +17,7 @@
 import { GO_BOOTSTRAP_ID, goBootstrapAnswers } from './go-bootstrap.js';
 import { goLayout, goTemplateVars, type GoLayoutPaths } from './go-module-layout.js';
 import type { Adapter } from '../../contract/composition.js';
+import { placeReadmeSection } from '../rank.js';
 import { eolOf, withEol } from '../util.js';
 
 export const GO_CLI_BOOTSTRAP_ID = 'walking-skeleton/go-cli-bootstrap';
@@ -61,9 +63,8 @@ export const goCliBootstrapAdapter: Adapter = {
           apply: (existing) => {
             // The marker is matched in the file's own line endings: a
             // README checked out as CRLF still has its section.
-            const eol = eolOf(existing);
-            if (existing.includes(withEol(README_MARKER, eol))) return existing;
-            return `${existing.trimEnd()}${withEol(`\n${readmeSection(projectName)}`, eol)}`;
+            if (existing.includes(withEol(README_MARKER, eolOf(existing)))) return existing;
+            return placeReadmeSection(existing, readmeSection(projectName), ctx.manifest.tags);
           },
         },
       ],

@@ -234,6 +234,16 @@ collision is a rule someone has to apply correctly each time, and it
 reads better besides, since `greetingservice.Greeting` says whose
 value crossed.
 
+**Growing an entrypoint wires them all.** A context's wiring is the
+same file in each assembly, written by an adapter of its own per
+entrypoint beside the one that writes the context itself. So
+[`keel add entrypoint http`](../cli.md#keel-add-entrypoint) on a
+`go-cli` modulith writes the peer context's `cmd/http/guestbook.go`,
+where it has one, and each added context's `cmd/http/<name>.go`, with
+their tests, in the order the contexts were added — the tree
+`go-cli-http` given the same history has — and never reads the
+`cmd/cli/` files already there.
+
 ## Verify it runs
 
 ```sh

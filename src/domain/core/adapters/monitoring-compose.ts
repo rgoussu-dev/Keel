@@ -39,6 +39,7 @@ import {
   DEV_COMPOSE_TARGET,
 } from './dev-env-compose.js';
 import type { Adapter, Contribution } from '../../contract/composition.js';
+import { placeReadmeSection } from '../rank.js';
 import { eolAware } from '../util.js';
 
 export const MONITORING_COMPOSE_ID = 'observability/monitoring-compose';
@@ -186,10 +187,10 @@ export const monitoringComposeAdapter: Adapter = {
     }
     const readmePatch = {
       target: 'README.md',
-      apply: (existing: string): string => {
+      apply: eolAware((existing) => {
         if (existing.includes(README_MARKER)) return existing;
-        return `${existing.trimEnd()}\n${readmeSection()}`;
-      },
+        return placeReadmeSection(existing, readmeSection(), ctx.manifest.tags);
+      }),
     };
     const seed = await devComposeSeed(ctx);
     if (stack === 'lgtm') {

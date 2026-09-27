@@ -119,10 +119,10 @@ my-service/
 ```
 
 Both stacks serve both layouts: on `ts-cli` the tree above ends in
-`application/cli/` and everything else is identical. The adapters that
-wire a context into "the assembly" — the peer context below,
-`keel add module` — derive the target from the stack's arch tags, so
-the same wiring lands in whichever deployment unit the project has.
+`application/cli/` and everything else is identical. A context — the
+peer context below, or one `keel add module` adds — is wired into each
+assembly by an adapter of its own per entrypoint, so the same wiring
+lands in whichever deployment units the project has.
 
 **One package per context, deliberately.** In a TypeScript workspace
 the package graph enforces nothing to begin with: an _undeclared_
@@ -236,6 +236,20 @@ Both walls above apply unchanged between two _added_ contexts, and the
 second one is worth restating: `from '@scope/ordering'` inside
 `shipping`'s gateway typechecks perfectly and lints red. The lint is
 the only thing holding it, here as everywhere on this stack.
+
+**Growing an entrypoint wires them all.** A context's wiring is the
+same module in each assembly, written by an adapter of its own per
+entrypoint beside the one that writes the context's package: the
+module (and the peer's wiring test), the context on that assembly's
+`package.json`, and its handler on the mediator its `main.ts` builds.
+So [`keel add entrypoint http`](../cli.md#keel-add-entrypoint) on a
+`ts-cli` modulith writes the peer context's
+`application/rest/src/guestbook.ts` and its test, where it has one,
+and each added context's `application/rest/src/<name>.ts`, in the
+order the contexts were added — the tree `ts-cli-http` given the same
+history has, down to the mediator's handler list, `createGreetHandler()`
+then the peer's then each added context's in turn — and never reads
+the `application/cli/` files already there.
 
 ## Verify it runs
 

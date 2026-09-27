@@ -149,7 +149,11 @@ export type ApplyMode = 'scaffold' | 'install' | 'reapply';
 export interface StagedSkillFile {
   /** Path relative to the project root (`.claude/skills/<name>/…`). */
   readonly path: string;
-  /** sha256 of the staged content, hex — the manifest's provenance hash. */
+  /**
+   * sha256 of the content as staged, hex. The manifest's provenance
+   * hashes the file as the run leaves it instead (`install.ts`
+   * `finalizeHarness`), once every later write of the run is in.
+   */
   readonly sha256: string;
 }
 
@@ -441,6 +445,12 @@ export function realizeHarness(
 ): {
   readonly skills: readonly StagedSkill[];
   readonly files: readonly HarnessFile[];
+  /**
+   * Each of {@link files} in its place, with each directory pointer the
+   * pass left as the project had it where it would have written it:
+   * the order one run writing them all records them in.
+   */
+  readonly order: readonly Pick<HarnessFile, 'adapterId' | 'path'>[];
   readonly skipped: number;
 } {
   const contributions = pending.splice(0);
@@ -451,7 +461,7 @@ export function realizeHarness(
   if (!tags.includes(AGENT_HARNESS_TAG)) {
     if (count > 0)
       logger.info(`skipped ${String(count)} harness elements — no agent-harness in this project`);
-    return { skills: [], files: [], skipped: count };
+    return { skills: [], files: [], order: [], skipped: count };
   }
   assertReminderBudget(contributions);
   const skills: StagedSkill[] = [];
@@ -517,25 +527,27 @@ export function realizeHarness(
     }
   }
   const docs = contributions.flatMap((c) => c.docs);
-  if (docs.length > 0) files.push(...stagePointers(docs, tree));
+  const pointers = stagePointers(docs, tree);
+  const order: Pick<HarnessFile, 'adapterId' | 'path'>[] = [...files, ...pointers.every];
+  files.push(...pointers.written);
   // The index projects what this run realized, laid over the rows
   // already in the slots — an install never sees the contributors it
   // did not run, and `keel docs sync` is what recomputes the set
   // whole. `keel new` runs every contributor, so the two agree there.
-  files.push(
-    ...projectDocsIndex(
-      computeDocsIndex({
-        docs,
-        skills: contributions.flatMap((c) => c.skills),
-        modules: project.modules,
-        services: project.services,
-      }),
-      tree,
-      owners,
-      { merge: true },
-    ),
+  const index = projectDocsIndex(
+    computeDocsIndex({
+      docs,
+      skills: contributions.flatMap((c) => c.skills),
+      modules: project.modules,
+      services: project.services,
+    }),
+    tree,
+    owners,
+    { merge: true },
   );
-  return { skills, files, skipped: 0 };
+  files.push(...index);
+  order.push(...index);
+  return { skills, files, order, skipped: 0 };
 }
 
 /** The region patch landing one doc section in its directory's seeded `AGENTS.md`. */
@@ -552,17 +564,23 @@ function docPatch(doc: DocSection): ContributionPatch {
 /**
  * Writes the `CLAUDE.md` pointer beside every doc that has none — a
  * pointer the project already has, whatever it holds, is its own —
- * and records each one written under the engine.
+ * and records each one written under the engine (`written`); `every`
+ * is each doc's pointer, written or not, in the order they are staged.
  */
-function stagePointers(docs: readonly DocSection[], tree: Tree): HarnessFile[] {
+function stagePointers(
+  docs: readonly DocSection[],
+  tree: Tree,
+): { readonly written: HarnessFile[]; readonly every: Pick<HarnessFile, 'adapterId' | 'path'>[] } {
   const written: HarnessFile[] = [];
+  const every: Pick<HarnessFile, 'adapterId' | 'path'>[] = [];
   for (const directory of new Set(docs.map((doc) => doc.directory))) {
     const target = docPointerTarget(directory);
+    every.push({ adapterId: ENGINE_CONTRIBUTOR_ID, path: target });
     if (tree.exists(target)) continue;
     tree.write(target, DOC_POINTER);
     written.push({ adapterId: ENGINE_CONTRIBUTOR_ID, path: target, sha256: sha256Of(DOC_POINTER) });
   }
-  return written;
+  return { written, every };
 }
 
 /** The engine as a contributor: what a region it writes itself is attributed to. */

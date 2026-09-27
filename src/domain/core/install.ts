@@ -48,6 +48,7 @@
  * returns the next manifest. The caller commits both.
  */
 
+import { createHash } from 'node:crypto';
 import {
   answerKeys,
   answerUnder,
@@ -79,6 +80,7 @@ import { resolveVertical } from './resolver.js';
 import type {
   Adapter,
   Conflict,
+  Contribution,
   DeferredAction,
   InstalledVertical,
   ManifestEntry,
@@ -140,6 +142,34 @@ export interface InstallVerticalInputs {
   /** Replay recorded answers for harness declarations only; never apply domain changes or actions. */
   readonly harnessOnly?: boolean;
   /**
+   * The adapters that install, by id. The vertical still resolves
+   * whole, so `after` orders them among the rest as on a full install;
+   * any other adapter is neither applied nor recorded, and its actions
+   * are kept only under {@link actionsOnly}. Absent, every adapter the
+   * vertical resolves to installs. `keel add entrypoint` installs what
+   * the grown tags newly match this way, and never reads the files the
+   * adapters that matched before wrote.
+   *
+   * The vertical counts as run, so no harness replay reaches the
+   * adapters left out: each is contributed from what the manifest
+   * records, and its harness elements go into the buffer as a replay
+   * would put them (re-rendered, in the `reapply` posture).
+   */
+  readonly only?: ReadonlySet<string>;
+  /**
+   * Replay for the deferred actions alone, the sibling of
+   * {@link harnessOnly}: each adapter that does not install — outside
+   * {@link only}, or every one where there is none — is contributed,
+   * its actions kept in their place, and nothing of it applied or
+   * recorded: no file, answer, tag, toolchain need or harness element.
+   * It resolves its answers from what the manifest records, asking
+   * nothing, and reads no supplied answer. A grown project settles
+   * this way — it queues the `gradle wrapper`, `go mod tidy` or
+   * `pnpm install` its twin queues, which belong to adapters that
+   * matched before the entrypoint did.
+   */
+  readonly actionsOnly?: boolean;
+  /**
    * What the run composes from — read only to word a refusal: a
    * vertical whose dimension is left uncovered for want of a
    * capability names the vertical that adds it. Absent, the refusal
@@ -157,7 +187,8 @@ export interface InstallVerticalResult {
   /**
    * The adapters the verticals resolved to, in the order they ran —
    * what a caller holds supplied answers against once the run is
-   * staged.
+   * staged. One that did not install (`only`, `actionsOnly`) is not
+   * among them: it read no answer.
    */
   readonly adapters: readonly Adapter[];
   /**
@@ -172,7 +203,7 @@ export interface InstallVerticalResult {
 /** Inputs to {@link installVerticals}: one install's inputs, over a list of verticals. */
 export interface InstallVerticalsInputs extends Omit<
   InstallVerticalInputs,
-  'vertical' | 'harnessOnly'
+  'vertical' | 'harnessOnly' | 'only' | 'actionsOnly'
 > {
   /**
    * The verticals to install, in the order they run. Each resolves
@@ -194,6 +225,18 @@ export interface InstallVerticalsInputs extends Omit<
    * installed verticals' after every vertical. Absent, none.
    */
   readonly rules?: readonly Conflict[];
+  /**
+   * Per vertical id among {@link verticals}, the adapters that install
+   * ({@link InstallVerticalInputs.only}). A vertical absent here
+   * installs every adapter it resolves to.
+   */
+  readonly only?: Readonly<Record<string, ReadonlySet<string>>>;
+  /**
+   * Ids among {@link verticals} replayed for their deferred actions
+   * alone ({@link InstallVerticalInputs.actionsOnly}) — every adapter
+   * of each, or each one outside its {@link only}. Absent, none.
+   */
+  readonly actionsOnly?: readonly string[];
 }
 
 /**
@@ -214,7 +257,14 @@ export interface InstallVerticalsInputs extends Omit<
 export async function installVerticals(
   inputs: InstallVerticalsInputs,
 ): Promise<InstallVerticalResult> {
-  const { verticals, rerender = [], rules: around = [], ...run } = inputs;
+  const {
+    verticals,
+    rerender = [],
+    rules: around = [],
+    only = {},
+    actionsOnly = [],
+    ...run
+  } = inputs;
   const owners = inputs.owners ?? newOwnership();
   const harness = inputs.harness ?? [];
   let manifest = inputs.manifest;
@@ -226,6 +276,7 @@ export async function installVerticals(
   const broken = new Set(violatedBy(rules, effectiveTags(manifest)).map((rule) => rule.id));
 
   for (const vertical of verticals) {
+    const installs = only[vertical.id];
     const result = await installVertical({
       ...run,
       vertical,
@@ -233,6 +284,8 @@ export async function installVerticals(
       owners,
       harness,
       ...(rerender.includes(vertical.id) ? { apply: 'reapply' as const } : {}),
+      ...(installs === undefined ? {} : { only: installs }),
+      ...(actionsOnly.includes(vertical.id) ? { actionsOnly: true } : {}),
     });
     manifest = result.manifest;
     const newly = violatedBy(rules, effectiveTags(manifest)).filter((rule) => !broken.has(rule.id));
@@ -296,7 +349,8 @@ function namesOf(inputs: InstallVerticalsInputs): RefusalNames {
 /**
  * Installs one vertical against `inputs.manifest` and `inputs.tree` —
  * the step {@link installVerticals} repeats, and what the harness
- * replay and `keel add module` run on their own.
+ * replay, `keel add module` and `keel add entrypoint`'s replay of each
+ * added context run on their own.
  */
 export async function installVertical(
   inputs: InstallVerticalInputs,
@@ -312,8 +366,25 @@ export async function installVertical(
   const reads: AnswerRead[] = [];
   let skipped = 0;
 
+  const installed: Adapter[] = [];
+
   for (const adapter of ordered) {
     const tags = effectiveTags(running);
+    const installs =
+      inputs.only === undefined ? inputs.actionsOnly !== true : inputs.only.has(adapter.id);
+    if (!installs) {
+      const contribution = await recordedContribution(adapter, running, inputs);
+      if (inputs.only !== undefined) {
+        // The vertical counts as run, so no harness replay reaches this
+        // adapter: its elements are replayed into the buffer here, as
+        // that replay would, or they would be lost.
+        assertDeclared('skills', inputs.vertical, adapter, contribution.skills ?? []);
+        assertDeclared('hooks', inputs.vertical, adapter, contribution.hooks ?? []);
+        collectHarness(adapter, contribution, harness, 'reapply');
+      }
+      if (inputs.actionsOnly === true) collectedActions.push(...(contribution.actions ?? []));
+      continue;
+    }
     // A re-render is "from the recorded answers" for an adapter that
     // has some: they are frozen, so nothing supplied reaches it and
     // nothing is asked — a question it grew since takes its default.
@@ -321,7 +392,6 @@ export async function installVertical(
     // asked like any first install rather than left to its defaults.
     const frozen = inputs.apply === 'reapply' && recordsAnswers(inputs.manifest, adapter);
     const memory = memoryOf(running, frozen ? {} : (inputs.supplied ?? {}), adapter, tags);
-    reads.push(...memory.reads);
     const resolution = await resolveAdapterAnswers(
       adapter,
       memory.answers,
@@ -330,6 +400,8 @@ export async function installVertical(
       tags,
       inputs.harnessOnly === true,
     );
+    installed.push(adapter);
+    reads.push(...memory.reads);
 
     running = foldAnswers(running, adapter.id, resolution.answers, resolution.updates);
 
@@ -370,9 +442,13 @@ export async function installVertical(
     skipped = finalized.skipped;
     collectedSkills.push(...finalized.skills);
   }
-  const final = inputs.harnessOnly
-    ? running
-    : recordVertical(running, inputs.vertical, inputs.now());
+  // A vertical that only replayed its actions installed nothing, and
+  // is recorded as it was.
+  const partial = inputs.only !== undefined || inputs.actionsOnly === true;
+  const final =
+    inputs.harnessOnly || (partial && installed.length === 0)
+      ? running
+      : recordVertical(running, inputs.vertical, inputs.now());
 
   return {
     manifest: final,
@@ -382,9 +458,60 @@ export async function installVertical(
       actions: collectedActions,
       ...(skipped > 0 ? { skippedHarnessElements: skipped } : {}),
     },
-    adapters: ordered,
+    adapters: installed,
     reads,
   };
+}
+
+/**
+ * The paths the adapters `vertical` resolves to on `manifest` would
+ * write whole, each contributed from what the manifest records and
+ * asking nothing — as {@link InstallVerticalInputs.actionsOnly} replays
+ * one — with nothing applied, recorded or collected. What a reading of
+ * a project's files needs to know of an install: where it would write.
+ */
+export async function contributedPaths(
+  inputs: Pick<
+    InstallVerticalInputs,
+    'vertical' | 'manifest' | 'prompt' | 'logger' | 'cwd' | 'templates' | 'processes' | 'registry'
+  >,
+): Promise<readonly string[]> {
+  const tags = effectiveTags(inputs.manifest);
+  const paths: string[] = [];
+  for (const adapter of resolveVertical(inputs.vertical, tags, inputs.registry)) {
+    const contribution = await recordedContribution(adapter, inputs.manifest, inputs);
+    paths.push(...(contribution.files ?? []).map((file) => file.path));
+  }
+  return paths;
+}
+
+/**
+ * `adapter`'s contribution on `manifest`, its questions answered from
+ * what the manifest records, or their defaults, asking nothing.
+ */
+async function recordedContribution(
+  adapter: Adapter,
+  manifest: ManifestV2,
+  inputs: Pick<InstallVerticalInputs, 'prompt' | 'logger' | 'cwd' | 'templates' | 'processes'>,
+): Promise<Contribution> {
+  const tags = effectiveTags(manifest);
+  const resolution = await resolveAdapterAnswers(
+    adapter,
+    memoryOf(manifest, {}, adapter, tags).answers,
+    'non-interactive',
+    inputs.prompt,
+    tags,
+    true,
+  );
+  return adapter.contribute(
+    makeCtx(adapter, resolution.answers, {
+      manifest,
+      logger: inputs.logger,
+      cwd: inputs.cwd,
+      templates: inputs.templates,
+      processes: inputs.processes,
+    }),
+  );
 }
 
 /**
@@ -445,7 +572,15 @@ function assertDeclared(
   );
 }
 
-/** Finalizes a shared install run and records every realized harness file's provenance. */
+/**
+ * Finalizes a shared install run and records every realized harness
+ * file's provenance, as the run leaves the file: see
+ * {@link foldHarnessEntries}. An entry recorded anew goes after every
+ * recorded one; `realized` is the order one run writing every file
+ * the pass realized, and every directory pointer it kept, would record
+ * them in, by `source` and `target` — for a caller that places a new
+ * entry elsewhere (`keel add entrypoint`, where the twin records it).
+ */
 export function finalizeHarness(inputs: {
   readonly manifest: ManifestV2;
   readonly harness: HarnessContribution[];
@@ -457,6 +592,7 @@ export function finalizeHarness(inputs: {
   readonly manifest: ManifestV2;
   readonly skills: readonly StagedSkill[];
   readonly skipped: number;
+  readonly realized: readonly Pick<ManifestEntry, 'source' | 'target'>[];
 } {
   const realized = realizeHarness(
     inputs.harness,
@@ -467,40 +603,94 @@ export function finalizeHarness(inputs: {
     inputs.manifest,
   );
   return {
-    manifest: foldHarnessEntries(inputs.manifest, realized.files, inputs.now()),
+    manifest: foldHarnessEntries(inputs.manifest, realized.files, inputs.tree, inputs.now()),
     skills: realized.skills,
     skipped: realized.skipped,
+    realized: realized.order.map((file) => ({ source: file.adapterId, target: file.path })),
   };
 }
 
+/**
+ * Records the files a run realized: each contributor's entry for each,
+ * and every earlier entry for the same file, takes the hash of the
+ * bytes the run leaves it holding, as shipped and as current
+ * ({@link rehashEntries}).
+ *
+ * Read from the Tree once the whole buffer has run, not as staged: a
+ * harness patch lands in a file another contributor staged earlier in
+ * the realization (code-style's format step in the family kit's
+ * pre-commit hook), and a staged hash would record the file as it
+ * never reached disk. And keel's own later write is shipped too — a
+ * `keel add persistence` writing its section into a directory document
+ * the kit seeded — so one run and two that reach one project record
+ * the same hashes, and keel's write never reads as the user's.
+ */
 function foldHarnessEntries(
   manifest: ManifestV2,
   files: readonly HarnessFile[],
+  tree: Tree,
   now: string,
 ): ManifestV2 {
   const key = (source: string, target: string) => `${source} ${target}`;
-  const currentHashes = new Map(files.map((file) => [file.path, file.sha256]));
+  const hashes = hashesIn(
+    tree,
+    files.map((file) => file.path),
+  );
   const byTarget = new Map<string, ManifestEntry>(
-    manifest.entries.map((entry) => [
-      key(entry.source, entry.target),
-      {
-        ...entry,
-        sha256Current: currentHashes.get(entry.target) ?? entry.sha256Current,
-      },
-    ]),
+    withHashes(manifest.entries, hashes).map((entry) => [key(entry.source, entry.target), entry]),
   );
   for (const file of files) {
     const id = key(file.adapterId, file.path);
-    const prior = byTarget.get(id);
+    const hash = hashes.get(file.path) ?? file.sha256;
     byTarget.set(id, {
       source: file.adapterId,
       target: file.path,
-      sha256Shipped: file.sha256,
-      sha256Current: file.sha256,
-      installedAt: prior?.installedAt ?? now,
+      sha256Shipped: hash,
+      sha256Current: hash,
+      installedAt: byTarget.get(id)?.installedAt ?? now,
     });
   }
   return { ...manifest, entries: [...byTarget.values()] };
+}
+
+/**
+ * Records `paths`, files keel just wrote, as `tree` now holds them:
+ * every entry of `manifest` tracking one, whichever contributor it
+ * names, takes their hash as shipped and as current, and keeps its
+ * `installedAt`. So keel's write never reads as the user's edit — and
+ * an edit of the user's already in the file is recorded with it. A
+ * path `tree` holds no file at leaves its entries as they were.
+ *
+ * {@link finalizeHarness} records what its pass realized this way;
+ * `keel add module` records the index it re-projects after that pass.
+ */
+export function rehashEntries(
+  manifest: ManifestV2,
+  tree: Tree,
+  paths: readonly string[],
+): ManifestV2 {
+  return { ...manifest, entries: withHashes(manifest.entries, hashesIn(tree, paths)) };
+}
+
+function withHashes(
+  entries: readonly ManifestEntry[],
+  hashes: ReadonlyMap<string, string>,
+): ManifestEntry[] {
+  return entries.map((entry) => {
+    const hash = hashes.get(entry.target);
+    return hash === undefined ? entry : { ...entry, sha256Shipped: hash, sha256Current: hash };
+  });
+}
+
+function hashesIn(tree: Tree, paths: readonly string[]): ReadonlyMap<string, string> {
+  return new Map(
+    paths.flatMap((target) => {
+      const bytes = tree.read(target);
+      return bytes === null
+        ? []
+        : [[target, createHash('sha256').update(bytes).digest('hex')] as const];
+    }),
+  );
 }
 
 /**

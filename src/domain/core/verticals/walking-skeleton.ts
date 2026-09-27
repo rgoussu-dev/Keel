@@ -22,14 +22,26 @@ import { PEER_CONTEXT_NEEDS_MODULITH } from '../adapters/module-layout.js';
 import { goBootstrapAdapter } from '../adapters/go-bootstrap.js';
 import { goCliBootstrapAdapter } from '../adapters/go-cli-bootstrap.js';
 import { goHttpBootstrapAdapter } from '../adapters/go-http-bootstrap.js';
-import { goPeerContextAdapter } from '../adapters/go-peer-context.js';
-import { tsPeerContextAdapter } from '../adapters/ts-peer-context.js';
+import {
+  goPeerContextAdapter,
+  goPeerContextCliAdapter,
+  goPeerContextHttpAdapter,
+} from '../adapters/go-peer-context.js';
+import {
+  tsPeerContextAdapter,
+  tsPeerContextCliAdapter,
+  tsPeerContextHttpAdapter,
+} from '../adapters/ts-peer-context.js';
 import { wcPeerContextAdapter } from '../adapters/wc-peer-context.js';
 import { goPortFakeAdapter } from '../adapters/go-port-fake.js';
 import { gradleWrapperAdapter } from '../adapters/gradle-wrapper.js';
 import {
   micronautPeerContextAdapter,
+  micronautPeerContextCliAdapter,
   micronautPeerContextKotlinAdapter,
+  micronautPeerContextKotlinCliAdapter,
+  micronautPeerContextKotlinRestAdapter,
+  micronautPeerContextRestAdapter,
 } from '../adapters/micronaut-peer-context.js';
 import { mavenWrapperAdapter } from '../adapters/maven-wrapper.js';
 import { micronautCliBootstrapAdapter } from '../adapters/micronaut-cli-bootstrap.js';
@@ -39,7 +51,11 @@ import { micronautRestKotlinBootstrapAdapter } from '../adapters/micronaut-rest-
 import { npmInstallAdapter } from '../adapters/npm-install.js';
 import {
   quarkusPeerContextAdapter,
+  quarkusPeerContextCliAdapter,
   quarkusPeerContextKotlinAdapter,
+  quarkusPeerContextKotlinCliAdapter,
+  quarkusPeerContextKotlinRestAdapter,
+  quarkusPeerContextRestAdapter,
 } from '../adapters/quarkus-peer-context.js';
 import { pnpmInstallAdapter } from '../adapters/pnpm-install.js';
 import { quarkusCliBootstrapAdapter } from '../adapters/quarkus-cli-bootstrap.js';
@@ -57,9 +73,17 @@ import { tsHttpBootstrapAdapter } from '../adapters/ts-http-bootstrap.js';
 import { tsPortFakeAdapter } from '../adapters/ts-port-fake.js';
 import {
   springPeerContextAdapter,
+  springPeerContextCliAdapter,
   springPeerContextKotlinAdapter,
+  springPeerContextKotlinCliAdapter,
+  springPeerContextKotlinRestAdapter,
+  springPeerContextRestAdapter,
 } from '../adapters/spring-peer-context.js';
-import { rustPeerContextAdapter } from '../adapters/rust-peer-context.js';
+import {
+  rustPeerContextAdapter,
+  rustPeerContextCliAdapter,
+  rustPeerContextHttpAdapter,
+} from '../adapters/rust-peer-context.js';
 import { springCliBootstrapAdapter } from '../adapters/spring-cli-bootstrap.js';
 import { springCliKotlinBootstrapAdapter } from '../adapters/spring-cli-kotlin-bootstrap.js';
 import { springRestBootstrapAdapter } from '../adapters/spring-rest-bootstrap.js';
@@ -93,19 +117,37 @@ export const walkingSkeletonVertical: Vertical = {
     samplePortFakeAdapter,
     samplePortFakeKotlinAdapter,
     quarkusPeerContextAdapter,
+    quarkusPeerContextCliAdapter,
+    quarkusPeerContextRestAdapter,
     quarkusPeerContextKotlinAdapter,
+    quarkusPeerContextKotlinCliAdapter,
+    quarkusPeerContextKotlinRestAdapter,
     springPeerContextAdapter,
+    springPeerContextCliAdapter,
+    springPeerContextRestAdapter,
     springPeerContextKotlinAdapter,
+    springPeerContextKotlinCliAdapter,
+    springPeerContextKotlinRestAdapter,
     micronautPeerContextAdapter,
+    micronautPeerContextCliAdapter,
+    micronautPeerContextRestAdapter,
     rustPeerContextAdapter,
+    rustPeerContextCliAdapter,
+    rustPeerContextHttpAdapter,
     micronautPeerContextKotlinAdapter,
+    micronautPeerContextKotlinCliAdapter,
+    micronautPeerContextKotlinRestAdapter,
     gradleWrapperAdapter,
     mavenWrapperAdapter,
     goBootstrapAdapter,
     goCliBootstrapAdapter,
     goHttpBootstrapAdapter,
     goPeerContextAdapter,
+    goPeerContextCliAdapter,
+    goPeerContextHttpAdapter,
     tsPeerContextAdapter,
+    tsPeerContextCliAdapter,
+    tsPeerContextHttpAdapter,
     wcPeerContextAdapter,
     goPortFakeAdapter,
     rustBootstrapAdapter,

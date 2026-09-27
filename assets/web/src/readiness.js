@@ -14,6 +14,11 @@
  *   - **Ready** — installs on its own.
  *   - **Needs another capability first** — installs once others have;
  *     the badge names them by title, and ticking the card ticks them.
+ *   - **After adding an entrypoint** — refused now, and let in by an
+ *     entrypoint the project can grow, which its refusal names as its
+ *     action (`grow`): `keel add entrypoint http` brings observability
+ *     with it, and lets persistence be added after. Only a keel project
+ *     can grow one, so only its page has this part.
  *   - **Not for this project** — nothing keel adds of its own accord
  *     makes it install here: what it lacks is the project's to be, or
  *     a re-render only the user may ask for (`keel.needs-refresh`,
@@ -30,9 +35,13 @@
  * without a DOM — the same split `steps.js` and `target.js` live
  * under.
  *
- * @typedef {{ code: string, message: string, refusal?: { kind: string } }} RefusalDescriptor
+ * @typedef {{ entrypoint: string, comes: boolean }} GrowAction
+ * @typedef {{ kind: string, grow?: GrowAction, missing?: { peer?: ReadonlyArray<string> } }} RefusalData
+ * @typedef {{ code: string, message: string, refusal?: RefusalData }} RefusalDescriptor
  * @typedef {{ id: string, title: string, readiness: string, requires: ReadonlyArray<string>, refusal?: RefusalDescriptor }} ReadinessEntry
  * @typedef {{ id: string, title: string, sentence: string }} Refused
+ * @typedef {Refused & { comes: boolean, linked: boolean }} Growing
+ * @typedef {{ word: string, items: Growing[] }} GrowingGroup
  */
 
 /**
@@ -96,8 +105,55 @@ export function needsBadge(vertical, titleOf) {
  */
 export function refusedOf(verticals) {
   return verticals
-    .filter((vertical) => vertical.readiness === 'unavailable' && !belongsElsewhere(vertical))
+    .filter(
+      (vertical) =>
+        vertical.readiness === 'unavailable' &&
+        !belongsElsewhere(vertical) &&
+        growOf(vertical) === null,
+    )
     .map(refused);
+}
+
+/**
+ * The entries of a readiness list an entrypoint the project can grow
+ * lets in — each refused, and carrying that entrypoint as its action —
+ * grouped by the entrypoint, in the order the list first names each.
+ * An entry says whether it comes with the entrypoint, and whether it
+ * waits on a linked project too; its sentence is still the refusal's,
+ * word for word, since that is what `keel add <id>` answers until then.
+ *
+ * @param {ReadonlyArray<ReadinessEntry>} verticals
+ * @returns {GrowingGroup[]}
+ */
+export function growingOf(verticals) {
+  /** @type {GrowingGroup[]} */
+  const groups = [];
+  for (const vertical of verticals) {
+    const grow = growOf(vertical);
+    if (grow === null) continue;
+    let group = groups.find((candidate) => candidate.word === grow.entrypoint);
+    if (group === undefined) {
+      group = { word: grow.entrypoint, items: [] };
+      groups.push(group);
+    }
+    group.items.push({
+      ...refused(vertical),
+      comes: grow.comes,
+      linked: (vertical.refusal?.refusal?.missing?.peer ?? []).length > 0,
+    });
+  }
+  return groups;
+}
+
+/**
+ * The entrypoint an entry's refusal names as the way in, or null where
+ * it names none.
+ *
+ * @param {ReadinessEntry} vertical
+ * @returns {GrowAction | null}
+ */
+export function growOf(vertical) {
+  return vertical.readiness === 'unavailable' ? (vertical.refusal?.refusal?.grow ?? null) : null;
 }
 
 /**

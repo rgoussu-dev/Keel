@@ -114,6 +114,18 @@ describe('commandFor', () => {
     );
   });
 
+  it('spells the entrypoint a project grows by, by the word the command takes, and its answers', () => {
+    expect(line({ kind: 'add-entrypoint', entrypoint: 'http' })).toBe(
+      'keel add entrypoint http --yes',
+    );
+    expect(
+      line(
+        { kind: 'add-entrypoint', entrypoint: 'http' },
+        { 'observability/monitoring-compose': { stack: 'lgtm' } },
+      ),
+    ).toBe('keel add entrypoint http --set observability/monitoring-compose:stack=lgtm --yes');
+  });
+
   it('emits one --set per answer, keyed the way the manifest keys them', () => {
     expect(
       line(
@@ -163,6 +175,9 @@ describe('commandFor', () => {
     expect(commandFor({ cwd: '/tmp', target: { kind: 'new-project' }, answers: {} })).toEqual([]);
     expect(
       commandFor({ cwd: '/tmp', target: { kind: 'add-module', module: '' }, answers: {} }),
+    ).toEqual([]);
+    expect(
+      commandFor({ cwd: '/tmp', target: { kind: 'add-entrypoint', entrypoint: '' }, answers: {} }),
     ).toEqual([]);
   });
 });

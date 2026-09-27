@@ -49,6 +49,20 @@
  * `keel.project-status` asks too, so a front end greys the control out
  * by the front door's own gates, and says why in its own words.
  *
+ * What the front door cannot read is the files the context is wired
+ * into. A composition root that no longer holds its list in a shape
+ * keel can read, or a Kotlin mediator already taking a parameter of
+ * the context's name — `clock`, where persistence injects its `Clock`
+ * — is a fact about that file, which the user may have edited, not
+ * about the manifest: the adapter patching it refuses it as
+ * `keel.path-conflict`, naming the file, before anything is written.
+ * The same clash in the other order is where a card and its add part:
+ * after `keel add module clock` on Micronaut Kotlin, persistence's card
+ * reads the manifest and shows it ready, and only its preview and its
+ * add meet the mediator's `clock` and refuse it. Nothing declares the
+ * names a stack's root takes for its own, which is what would let this
+ * front door refuse `clock` there first (roadmap Q3.5).
+ *
  * Pipeline after that is the `add-vertical` shape: install against a
  * Tree rooted at cwd, and under a real run commit the tree, persist
  * the manifest, then run deferred actions — manifest before actions,
@@ -62,6 +76,11 @@ import { DomainError, err, ok, type Result } from '../../kernel/result.js';
 import type { AddModuleCommand, InstallReport } from '../../contract/commands.js';
 import type { InstalledModule, ManifestV2 } from '../../contract/manifest.js';
 import { projectScopeRoot } from '../../contract/manifest.js';
+import {
+  NO_PROJECT_NEARBY,
+  NOT_INITIALISED_CODE,
+  notInitialisedSentence,
+} from '../../contract/nearby.js';
 import type { Tag, Tree } from '../../contract/composition.js';
 import { runActions } from '../actions.js';
 import { addModuleInputs, CONTEXT_TAG, withoutAddModuleInputs } from '../adapters/added-context.js';
@@ -70,10 +89,11 @@ import { parseModuleName, type ModuleName } from '../adapters/module-name.js';
 import { conflictsOf, violatedBy } from '../compatibility.js';
 import { moduleRulesRefusal } from '../refusals.js';
 import { harnessGenerationRefusal } from '../harness-generation.js';
-import { installVertical } from '../install.js';
+import { installVertical, rehashEntries } from '../install.js';
 import { historyOf, resolvedAdapters, strayAnswerRefusal } from '../supplied-answers.js';
 import { newOwnership, projectDocsIndex } from '../apply.js';
 import { projectDocs } from '../docs-projection.js';
+import { nearbyProjects, type NearbyReading } from '../scope.js';
 import { boundedContextVertical } from '../verticals/bounded-context.js';
 import type { InstallDeps } from './deps.js';
 
@@ -84,6 +104,9 @@ import type { InstallDeps } from './deps.js';
  * assembly was put together.
  */
 const INVALID = 'keel.invalid-module';
+
+/** No project near, and nothing read: where {@link moduleRefusal} is asked of a manifest. */
+const NOTHING_NEARBY: NearbyReading = { ...NO_PROJECT_NEARBY, manifests: new Map() };
 
 /** Executes {@link AddModuleCommand}s. */
 export class AddModuleHandler implements Handler<AddModuleCommand> {
@@ -99,9 +122,17 @@ export class AddModuleHandler implements Handler<AddModuleCommand> {
 
     const scopeRoot = projectScopeRoot(command.cwd);
     const stored = await this.deps.manifests.read(scopeRoot);
-    if (!stored) return err(notInitialised(scopeRoot));
+    if (!stored) {
+      return err(notInitialised(scopeRoot, await nearbyProjects(this.deps, command.cwd)));
+    }
 
-    const stale = harnessGenerationRefusal(stored, `keel add module ${name.value}`);
+    // A product root takes no bounded context in any generation: it is
+    // refused as one below, as the status greys the control out there,
+    // rather than told to pin a keel that refuses it too.
+    const stale =
+      stored.services.length > 0
+        ? null
+        : harnessGenerationRefusal(stored, `keel add module ${name.value}`);
     if (stale !== null) return err(stale);
 
     const gate = admissible(stored, name.value, command.consumes ?? null);
@@ -158,7 +189,8 @@ export class AddModuleHandler implements Handler<AddModuleCommand> {
     // declarations because the directory the contexts live in is the
     // family kit's declaration, and the kit does not run here.
     const next: ManifestV2 = { ...result.manifest, modules: recorded };
-    await this.reindex(command.cwd, next, tree);
+    const indexed = await this.reindex(command.cwd, next, tree);
+    const manifest = rehashEntries(result.manifest, tree, indexed);
 
     const report: InstallReport = {
       subject: name.value,
@@ -175,7 +207,7 @@ export class AddModuleHandler implements Handler<AddModuleCommand> {
 
     await tree.commit();
     await this.deps.manifests.write(scopeRoot, {
-      ...withoutAddModuleInputs(result.manifest),
+      ...withoutAddModuleInputs(manifest),
       modules: [...recorded],
     });
     const runDeferred = this.deps.runDeferred ?? runActions;
@@ -194,9 +226,10 @@ export class AddModuleHandler implements Handler<AddModuleCommand> {
    * about to write, so the new context has its row before anything is
    * committed. Merged rather than replaced: the replay is complete,
    * but a row a person put in the slot by hand is still theirs until
-   * `keel docs sync` says otherwise.
+   * `keel docs sync` says otherwise. Returns the documents it wrote:
+   * the harness pass recorded them before the new row was in.
    */
-  private async reindex(cwd: string, manifest: ManifestV2, tree: Tree): Promise<void> {
+  private async reindex(cwd: string, manifest: ManifestV2, tree: Tree): Promise<readonly string[]> {
     const { regions } = await projectDocs({
       ...this.deps,
       manifest,
@@ -204,7 +237,9 @@ export class AddModuleHandler implements Handler<AddModuleCommand> {
       cwd,
       now: () => manifest.updatedAt,
     });
-    projectDocsIndex(regions, tree, newOwnership(), { merge: true });
+    return projectDocsIndex(regions, tree, newOwnership(), { merge: true }).map(
+      (file) => file.path,
+    );
   }
 }
 
@@ -220,14 +255,19 @@ export class AddModuleHandler implements Handler<AddModuleCommand> {
  * greyed out by the front door's own gates, with the front door's own
  * sentence, cannot say something different from the click. `name`
  * spells the command the product-root sentence tells the user to run
- * in a service; a status, with no name to hand, says `<name>`.
+ * in a service; a status, with no name to hand, says `<name>`. Where
+ * there is no project, `nearby` is where the nearest ones are, with
+ * their manifests (`../scope.ts` `nearbyProjects`, which both read
+ * once), so a directory inside a project points at it rather than at
+ * `keel new`, refused there — or says why it takes no context either.
  */
 export function moduleRefusal(
   manifest: ManifestV2 | null,
   scopeRoot: string,
   name = '<name>',
+  nearby: NearbyReading = NOTHING_NEARBY,
 ): DomainError | null {
-  if (manifest === null) return notInitialised(scopeRoot);
+  if (manifest === null) return notInitialised(scopeRoot, nearby);
 
   if (manifest.services.length > 0) {
     return new DomainError(
@@ -253,11 +293,33 @@ export function moduleRefusal(
   return null;
 }
 
-/** The refusal of `keel add module` where no keel project is. */
-function notInitialised(scopeRoot: string): DomainError {
+/**
+ * The refusal of `keel add module` where no keel project is: pointing
+ * at the project the directory is inside — at its services, where it
+ * is a product root, which takes no bounded context — or the services
+ * below it, where there are, and at scaffolding a modulith where there
+ * are not. Where each project it would point at takes no context
+ * either — the flat layout, which scaffolds default to — it says why
+ * ({@link moduleRefusal} of each, off the manifest the walk read).
+ */
+function notInitialised(scopeRoot: string, nearby: NearbyReading): DomainError {
+  const refusedAt = (named: string): string | null => {
+    const manifest = nearby.manifests.get(named) ?? null;
+    const refused = manifest === null ? null : moduleRefusal(manifest, '');
+    if (refused === null) return null;
+    // A rule's reason opens its own sentence capitalised; here it goes on from one.
+    return `${refused.message.charAt(0).toLowerCase()}${refused.message.slice(1)}`;
+  };
   return new DomainError(
-    `no project initialised at ${scopeRoot} — run 'keel new --stack=<id> --module-layout=modulith' first`,
-    'keel.not-initialised',
+    notInitialisedSentence(
+      scopeRoot,
+      nearby,
+      'keel add module',
+      'keel new --stack=<id> --module-layout=modulith',
+      true,
+      refusedAt,
+    ),
+    NOT_INITIALISED_CODE,
   );
 }
 

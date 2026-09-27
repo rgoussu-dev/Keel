@@ -17,9 +17,9 @@
  * So a run refuses, before anything is committed, every answer its
  * plan does not read ({@link unusedAnswers}):
  *
- *   - keyed to an adapter of a vertical being re-rendered that the
- *     manifest records answers for — {@link REAPPLY_FROZEN_ANSWERS_CODE};
- *   - keyed to an adapter of a vertical the project already has —
+ *   - keyed to an adapter being re-rendered that the manifest records
+ *     answers for — {@link REAPPLY_FROZEN_ANSWERS_CODE};
+ *   - keyed to any other adapter of a vertical the project already has —
  *     {@link FROZEN_ANSWER_CODE}, since reconfiguring is not supported;
  *   - keyed to any other adapter outside the plan —
  *     {@link UNKNOWN_ANSWER_CODE}, naming the plan's adapters that do
@@ -199,13 +199,11 @@ function refusalOf(
   const answer = `${key}:${question}`;
   const own = plan.find((adapter) => adapter.id === key);
   const owner = history.owner(key);
-  if (
-    owner !== null &&
-    Object.keys(history.recorded[key] ?? {}).length > 0 &&
-    plan.some((adapter) => owner.adapters.some((candidate) => candidate.id === adapter.id))
-  ) {
-    // An installed vertical runs only to be re-rendered — from the
-    // answers the manifest records, whichever of its adapters match.
+  if (owner !== null && own !== undefined && Object.keys(history.recorded[key] ?? {}).length > 0) {
+    // An installed adapter runs only to be re-rendered — from the
+    // answers the manifest records. One the plan does not run, though
+    // its vertical's other adapters install (`keel add entrypoint`'s
+    // new bootstrap), is frozen as any installed vertical's is.
     return { code: REAPPLY_FROZEN_ANSWERS_CODE, message: reapplyFrozenSentence(key, owner) };
   }
   if (own === undefined && owner !== null) {

@@ -10,10 +10,11 @@
  * `keel new --with` and `keel add` say one thing about one fact. The
  * structured half is for acting: `keel ui` receives it in the 422
  * body, and the CLI builds the remedy only a command line has from
- * it (`keel link <path>` first, the stack that carries both, moving a
- * file aside before `keel new`). Tags travel here and nowhere else —
- * a sentence names an entrypoint by its label and a vertical by its
- * title, never a tag no command can add.
+ * it (`keel link <path>` first, `keel add entrypoint http` first, the
+ * stack that carries both, moving a file aside before `keel new`).
+ * Tags travel here and nowhere else — a sentence names an entrypoint
+ * by its label and a vertical by its title, never a tag no command
+ * can add.
  *
  * The sentences are built in one place, `domain/core/refusals.ts`,
  * from these fields. The two about files are spelled here instead
@@ -79,7 +80,11 @@ export interface UnavailableRefusal {
    * out by what the project does have.
    */
   readonly missing: {
-    /** Entrypoints (`arch.server-http`): fixed at `keel new`. */
+    /**
+     * Entrypoints (`arch.server-http`): `keel new` chooses them, and
+     * `keel add entrypoint` adds a back one — {@link grow}, where that
+     * is what lets the vertical install.
+     */
     readonly entrypoint?: readonly Tag[];
     /** What a linked project would project here (`peer.api.rest`): `keel link`. */
     readonly peer?: readonly Tag[];
@@ -100,6 +105,26 @@ export interface UnavailableRefusal {
    * tell.
    */
   readonly carriedBy: readonly string[];
+  /**
+   * Among {@link carriedBy}, the stacks that come with the vertical —
+   * their preset installs it as one of its own — in the same order;
+   * absent when none does. Scaffolding one of those is how to have it,
+   * with nothing to name: `--with` of it there is set aside as already
+   * there. Absent too wherever {@link carriedBy} is empty.
+   */
+  readonly comesWith?: readonly string[];
+  /**
+   * Where this project is one service of a product, the product's
+   * other services, in its order, each with how ready the vertical is
+   * there — present only when one of them could take it or has it
+   * already, which is what the sentence names; absent anywhere else,
+   * and then the sentence is the one a single project gets. Filled
+   * where a front door can read the product's services from the
+   * service it was asked in: `keel new` of a product's service extras,
+   * and `keel add` in a monorepo product's service, whose root lists
+   * them.
+   */
+  readonly elsewhere?: readonly ElsewhereService[];
   /**
    * The reason a rule gives — one of the vertical's own this project
    * breaks, or one a piece already installed here declares that the
@@ -126,6 +151,41 @@ export interface UnavailableRefusal {
     readonly verticals: readonly string[];
     readonly prerequisites: readonly string[];
   };
+  /**
+   * The entrypoint whose addition lets the vertical install here —
+   * `keel add entrypoint <word>` — where what stops it is that
+   * entrypoint, alone or with a linked project ({@link missing}), that
+   * command would grow this project as its manifest records it, and
+   * the project it leaves would take the vertical — or would once
+   * linked, where a linked project is missing too. Absent anywhere
+   * else: before `keel new` writes anything, where an entrypoint gap
+   * means choosing another preset; in a monorepo product, where keel
+   * adds no entrypoint yet; wherever growth itself is refused; and
+   * where the grown project would still refuse the vertical — a rule,
+   * a re-render. Present where only the command's reading of the
+   * files refuses it: a bounded context holding a gateway its manifest
+   * record does not name.
+   */
+  readonly grow?: GrowAction;
+}
+
+/**
+ * What {@link UnavailableRefusal.grow} names: the entrypoint to add,
+ * and what becomes of the vertical once it is there — read by the
+ * planner over the project as that entrypoint would leave it.
+ */
+export interface GrowAction {
+  /** The word `keel add entrypoint` takes for it: `http`, `cli`. */
+  readonly entrypoint: string;
+  /**
+   * Whether the vertical comes with the entrypoint — the preset with
+   * both entrypoints has it as its own, and adding the entrypoint
+   * installs it, as it does observability: `true`. `false` where it
+   * installs by its own `keel add` once the entrypoint is there, as
+   * persistence and a container image do — after `keel link`, too,
+   * where a linked project is also {@link UnavailableRefusal.missing}.
+   */
+  readonly comes: boolean;
 }
 
 /** {@link Refusal} for a vertical asked of a product root rather than a service. */
@@ -136,7 +196,11 @@ export interface ElsewhereRefusal {
   readonly services: readonly ElsewhereService[];
 }
 
-/** One service of an {@link ElsewhereRefusal}. */
+/**
+ * One service of an {@link ElsewhereRefusal} — or of an
+ * {@link UnavailableRefusal}'s `elsewhere`, the product's other
+ * services.
+ */
 export interface ElsewhereService {
   /** Directory of the service, relative to the product root. */
   readonly path: string;
@@ -148,6 +212,13 @@ export interface ElsewhereService {
    * reports a {@link Refusal} is itself declared there.
    */
   readonly readiness: 'included' | 'ready' | 'needs' | 'unavailable';
+  /**
+   * Where the vertical is `included` in the service because the
+   * product root gives it the service — the image the root builds for
+   * it — rather than because the service installed it: `true`, since
+   * the service then has nothing of it to re-render. Absent otherwise.
+   */
+  readonly fromProduct?: true;
   /**
    * Where the vertical is `unavailable` in the service because the
    * service is part of a monorepo and the vertical — or one it needs —
@@ -177,6 +248,22 @@ export interface PathConflictRefusal {
    * there at all.
    */
   readonly anchor?: string;
+  /**
+   * A name the file already gives something of its own, where keel
+   * would add one of that name — a Kotlin mediator's `clock`
+   * parameter, beside the `clock` keel injects — when the conflict is
+   * that clash: keel renames neither, and the two would not build.
+   */
+  readonly taken?: string;
+  /**
+   * What keel would have done to the file, left to the user — `attach
+   * it to the dev environment` — when the conflict is that doing it
+   * would rewrite what the user changed since keel scaffolded it (a
+   * dev container's base image of their own): keel does not, and
+   * pointing at the line it would rewrite would only lead the user to
+   * undo their change.
+   */
+  readonly manual?: string;
 }
 
 /** {@link Refusal} for a patch target the project no longer holds. */
@@ -222,7 +309,8 @@ export const PATH_MISSING_CODE = 'keel.path-missing';
  * would have to overwrite or cannot patch: a hosted repository's
  * `README.md` before `keel new`, a hand-written `Dockerfile` before
  * `keel add containerization`, a build script with no block for keel's
- * plugin line (`anchor`).
+ * plugin line (`anchor`), a composition root already using the name
+ * keel would add a parameter under (`taken`).
  *
  * A composition adapter throws it — one of keel's or a plugin's — and
  * it reaches the user as a coded refusal rather than a crash: the
@@ -235,17 +323,23 @@ export class PathConflictError extends RefusalError {
    * @param path the file, relative to the directory the Tree is rooted at
    * @param adapterId the adapter that would have written it
    * @param anchor what the file lacks for keel to patch inside it, if that is the conflict
+   * @param taken the name the file already gives something of its own, if that is the conflict
+   * @param manual what keel leaves to the user rather than rewrite their change, if that is the conflict
    */
   constructor(
     readonly path: string,
     readonly adapterId: string,
     anchor?: string,
+    taken?: string,
+    manual?: string,
   ) {
     const refusal: PathConflictRefusal = {
       kind: 'path-conflict',
       path,
       adapterId,
       ...(anchor === undefined ? {} : { anchor }),
+      ...(taken === undefined ? {} : { taken }),
+      ...(manual === undefined ? {} : { manual }),
     };
     super(pathSentence(refusal), PATH_CONFLICT_CODE, refusal);
     this.name = 'PathConflictError';
@@ -285,6 +379,12 @@ export class PathMissingError extends RefusalError {
 export function pathSentence(refusal: PathConflictRefusal | PathMissingRefusal): string {
   if (refusal.kind === 'path-missing') {
     return `'${refusal.path}' is missing — keel patches it and does not recreate it; restore it`;
+  }
+  if (refusal.manual !== undefined) {
+    return `'${refusal.path}' has changed since keel scaffolded it, and keel does not rewrite what you changed there — ${refusal.manual} yourself, then re-run`;
+  }
+  if (refusal.taken !== undefined) {
+    return `'${refusal.path}' already has a '${refusal.taken}' where keel adds one of that name — keel renames neither, and the two would not build; rename the one there, then re-run`;
   }
   if (refusal.anchor !== undefined) {
     return `'${refusal.path}' has no ${refusal.anchor} — keel adds its lines inside it and does not rewrite the file; add one, then re-run`;

@@ -58,7 +58,7 @@ export class ToolchainInstallHandler implements Handler<ToolchainInstallCommand>
 
   async handle(command: ToolchainInstallCommand): Promise<Result<ToolchainInstallReport>> {
     const cwd = path.resolve(command.cwd);
-    const loaded = await loadBlock(this.deps, cwd);
+    const loaded = await loadBlock(this.deps, cwd, 'keel toolchain install');
     if (!loaded.ok) return loaded;
     const { manifest, block } = loaded.value;
 

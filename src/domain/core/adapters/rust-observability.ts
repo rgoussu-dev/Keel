@@ -22,6 +22,7 @@
 import { rustBootstrapAnswers } from './rust-bootstrap.js';
 import { rustLayout } from './rust-module-layout.js';
 import type { Adapter } from '../../contract/composition.js';
+import { placeReadmeSection } from '../rank.js';
 import { eolAware } from '../util.js';
 
 export const RUST_OBSERVABILITY_ID = 'observability/rust-observability';
@@ -116,7 +117,7 @@ export const rustObservabilityAdapter: Adapter = {
           target: 'README.md',
           apply: eolAware((existing) => {
             if (existing.includes(README_MARKER)) return existing;
-            return `${existing.trimEnd()}\n${readmeSection()}`;
+            return placeReadmeSection(existing, readmeSection(), ctx.manifest.tags);
           }),
         },
       ],

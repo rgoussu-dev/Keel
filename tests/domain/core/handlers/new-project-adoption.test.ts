@@ -10,18 +10,57 @@
  * it (`new-project.test.ts`). The composition grid holds the seeded
  * `keel new` cell Ok on every stack; this holds what lands on disk,
  * one stack per family that writes the two files, and what a later
- * `--reapply` of the walking skeleton makes of them.
+ * `--reapply` makes of them: of the walking skeleton, and on a CRLF
+ * README of every vertical that writes a section into it.
  */
 
 import path from 'node:path';
 import os from 'node:os';
 import fs from 'fs-extra';
 import { afterEach, describe, expect, it } from 'vitest';
-import { addVerticalCommand, newProjectCommand } from '../../../../src/domain/contract/commands.js';
+import {
+  addVerticalCommand,
+  newProjectCommand,
+  type PresetAnswers,
+} from '../../../../src/domain/contract/commands.js';
+import { MIGRATIONS_TOOL_QUESTION } from '../../../../src/domain/core/adapters/migrations-tool.js';
+import { PERSISTENCE_DIALS_ID } from '../../../../src/domain/core/adapters/persistence-engine.js';
 import { expectOk, installMediator } from '../../../support/factory.js';
 
 const USER_README = '# my-repo\n\nWhat this repository is for.\n';
 const USER_GITIGNORE = '# mine\n.env\n*.log\n';
+
+const LIQUIBASE: PresetAnswers = {
+  [PERSISTENCE_DIALS_ID]: { [MIGRATIONS_TOOL_QUESTION.id]: 'liquibase' },
+};
+
+/**
+ * The CRLF cells: a scaffold whose README sections come from every
+ * writer of one — both entrypoints, observability and monitoring, the
+ * dev environment and container, persistence under Flyway and under
+ * Liquibase, the toolchain — and the verticals a reapply re-renders
+ * beside its extras.
+ */
+const CRLF_CELLS: readonly {
+  readonly stack: string;
+  readonly extras: readonly string[];
+  readonly answers: PresetAnswers;
+  readonly reapplied: readonly string[];
+}[] = [
+  ...['go-cli-http', 'rust-cli-http', 'quarkus-cli-rest', 'ts-cli-http'].map((stack) => ({
+    stack,
+    extras: ['persistence', 'toolchain'],
+    answers: {},
+    reapplied: ['walking-skeleton', 'observability', 'dev-env', 'dev-container'],
+  })),
+  { stack: 'go-cli-http', extras: ['persistence'], answers: LIQUIBASE, reapplied: [] },
+  {
+    stack: 'go-cli',
+    extras: ['dev-env', 'toolchain'],
+    answers: {},
+    reapplied: ['walking-skeleton', 'dev-container'],
+  },
+];
 
 const directories: string[] = [];
 
@@ -31,10 +70,12 @@ afterEach(async () => {
 
 const mediator = () => installMediator({ runDeferred: async () => {} });
 
-/** Runs `keel new --stack=<stack>` in a new directory holding `seeded`, and returns it. */
+/** Runs `keel new --stack=<stack> --with <extras>` in a new directory holding `seeded`, and returns it. */
 async function scaffoldIn(
   stack: string,
   seeded: Readonly<Record<string, string>>,
+  extras: readonly string[] = [],
+  answers: PresetAnswers = {},
 ): Promise<string> {
   const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-adoption-'));
   directories.push(cwd);
@@ -43,7 +84,14 @@ async function scaffoldIn(
   }
   expectOk(
     await mediator().dispatch(
-      newProjectCommand({ cwd, stack, answers: {}, interactive: false, dryRun: false }),
+      newProjectCommand({
+        cwd,
+        stack,
+        extraVerticals: extras,
+        answers,
+        interactive: false,
+        dryRun: false,
+      }),
     ),
   );
   return cwd;
@@ -131,14 +179,27 @@ describe('keel new in a directory holding README.md and .gitignore', () => {
     expect(adopted['README.md']).toBe(fresh['README.md']);
   });
 
-  it.each(['go-cli-http', 'rust-cli-http', 'quarkus-cli-rest', 'ts-cli-http'])(
+  it.each(
+    CRLF_CELLS.map((cell) => {
+      const liquibase = cell.answers === LIQUIBASE ? ' (liquibase)' : '';
+      return [`${cell.stack} --with ${cell.extras.join(',')}${liquibase}`, cell] as const;
+    }),
+  )(
     '%s adopts a CRLF README in its line endings, and --reapply finds nothing to add',
-    async (stack) => {
+    async (_, { stack, extras, answers, reapplied }) => {
       // A README cloned on Windows under `core.autocrlf`: the
-      // adoption and every entrypoint's section keep its CRLF, and
-      // each section's marker is found again in them, so a reapply
-      // neither appends a second copy nor refuses as a divergence.
-      const cwd = await scaffoldIn(stack, { 'README.md': USER_README.replace(/\n/g, '\r\n') });
+      // adoption and every section keep its CRLF, and each section's
+      // marker is found again in them, so a reapply of every vertical
+      // that wrote one neither appends a second copy nor refuses as a
+      // divergence. The monitoring stack's guard once looked for its
+      // marker in LF alone, and a reapply of observability added its
+      // section twice.
+      const cwd = await scaffoldIn(
+        stack,
+        { 'README.md': USER_README.replace(/\n/g, '\r\n') },
+        extras,
+        answers,
+      );
       const readme = await fs.readFile(path.join(cwd, 'README.md'), 'utf8');
       expect(readme.startsWith(USER_README.replace(/\n/g, '\r\n'))).toBe(true);
       expect(readme).not.toMatch(/[^\r]\n/);
@@ -147,7 +208,7 @@ describe('keel new in a directory holding README.md and .gitignore', () => {
         await mediator().dispatch(
           addVerticalCommand({
             cwd,
-            verticals: ['walking-skeleton'],
+            verticals: [...reapplied, ...extras],
             answers: {},
             interactive: false,
             dryRun: false,

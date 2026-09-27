@@ -4,10 +4,12 @@
  * manager dial (asked once, recorded, then followed), the rendered
  * native files, the delegation to the provider's own install, the
  * re-runnable no-op, the loud-but-graceful absent-manager path, and
- * the guard rails (no project, no block, no covering choice).
+ * the guard rails (no project, no block — at a product root, its
+ * services' — no covering choice).
  */
 
 import { describe, expect, it } from 'vitest';
+import { projectScopeRoot } from '../../../src/domain/contract/manifest.js';
 import { toolchainInstallCommand } from '../../../src/domain/toolchain/contract/commands.js';
 import { ToolchainInstallHandler } from '../../../src/domain/toolchain/core/install.js';
 import { asdfProvider } from '../../../src/domain/toolchain/core/asdf.js';
@@ -131,6 +133,19 @@ describe('keel toolchain install', () => {
     const { deps } = await scenario({ initialised: false });
     const error = expectErr(await new ToolchainInstallHandler(deps).handle(command));
     expect(error.code).toBe('keel.not-initialised');
+    expect(error.message).toMatch(/ — run 'keel new --stack=<id>' first to create one$/);
+  });
+
+  it('points a directory inside a project at it, as told where the nearest one is', async () => {
+    // The walk is the engine's, which this context may not import: the
+    // composition root hands it in, and the refusal reads what it says.
+    const { deps } = await scenario({ initialised: false });
+    const told = { ...deps, nearby: () => Promise.resolve({ above: '../..', below: [] }) };
+    const error = expectErr(await new ToolchainInstallHandler(told).handle(command));
+    expect(error.code).toBe('keel.not-initialised');
+    expect(error.message).toMatch(
+      / — this directory is inside the keel project at \.\.\/\.\.\/; run 'keel toolchain install' there$/,
+    );
   });
 
   it("refuses when the manifest declares no toolchain block, naming 'keel add toolchain'", async () => {
@@ -138,6 +153,30 @@ describe('keel toolchain install', () => {
     const error = expectErr(await new ToolchainInstallHandler(deps).handle(command));
     expect(error.code).toBe('keel.toolchain-not-declared');
     expect(error.message).toContain('keel add toolchain');
+  });
+
+  it('refuses a product root, which declares none, naming its services rather than keel add toolchain', async () => {
+    // `keel add toolchain` is refused at a product root: a toolchain is
+    // a service's, so that is where the refusal sends the user.
+    const { deps, manifests } = await scenario({ block: null });
+    const root = projectScopeRoot(CWD);
+    const manifest = await manifests.read(root);
+    if (manifest === null) throw new Error('the scenario wrote no manifest');
+    for (const [paths, where] of [
+      [['backend', 'frontend'], 'backend/ or frontend/'],
+      [['api'], 'api/'],
+      [['a', 'b', 'c'], 'a/, b/ or c/'],
+    ] as const) {
+      await manifests.write(root, {
+        ...manifest,
+        services: paths.map((path) => ({ path, stack: 'go-http' })),
+      });
+      const error = expectErr(await new ToolchainInstallHandler(deps).handle(command));
+      expect(error.code).toBe('keel.toolchain-not-declared');
+      expect(error.message).toBe(
+        `this is a product root, which declares no toolchain: a toolchain belongs to a service — run 'keel toolchain install' in ${where}`,
+      );
+    }
   });
 
   it('refuses when nothing on the dial covers the needs whole — never a half-install', async () => {

@@ -291,7 +291,7 @@ function makeSpringPersistenceAdapter(language: 'java' | 'kotlin'): Adapter {
             target: `${testRoot}/GreetControllerTest.${kotlin ? 'kt' : 'java'}`,
             apply: eolAware(kotlin ? patchGreetControllerTestKotlin : patchGreetControllerTest),
           },
-          persistenceReadmePatch(layout, engine),
+          persistenceReadmePatch(layout, engine, ctx.manifest.tags),
         ],
         tagsAdd: [engine.tag],
       };

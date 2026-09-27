@@ -27,7 +27,7 @@ import type { DocsReport, InstallTarget, PresetAnswers, RefreshProposal } from '
 import type { QuestionChoice } from './composition.js';
 import type { InstalledModule, ServiceRef } from './manifest.js';
 import type { TreeChange } from './ports/tree.js';
-import type { Refusal } from './refusal.js';
+import type { GrowAction, Refusal } from './refusal.js';
 import type { Tag } from './tags.js';
 
 /* ------------------------------------------------------------------ *
@@ -490,7 +490,8 @@ export interface ReadinessNeeds {
 export interface ReadinessGap {
   /**
    * Entrypoints the scope lacks — `arch.*` tags the stack finder
-   * offers as a way in (`arch.server-http`). Fixed at `keel new`.
+   * offers as a way in (`arch.server-http`). No vertical adds one:
+   * `keel new` chooses them, and `keel add entrypoint` adds a back one.
    */
   readonly entrypoint: readonly Tag[];
   /**
@@ -523,6 +524,14 @@ export interface ReadinessGap {
    */
   readonly nearestStacks: readonly string[];
   /**
+   * Among {@link nearestStacks}, the stacks that come with the
+   * vertical — their preset installs it as one of its own — in the
+   * same order; absent when none does. Scaffolding one of those is
+   * how to have it: naming it as an extra there would be set aside,
+   * as already there.
+   */
+  readonly comesWith?: readonly string[];
+  /**
    * Ids of the verticals whose place is a repository root
    * (`Vertical.placement`), which this scope — a service of a
    * monorepo product — is not: the vertical itself, or the
@@ -543,6 +552,19 @@ export interface ReadinessGap {
    * never one a plan makes of its own accord.
    */
   readonly refresh?: RefreshGap;
+  /**
+   * The back entrypoint whose addition lets it install — `keel add
+   * entrypoint <word>` — and whether it comes with that entrypoint,
+   * read over the project as the command would leave it
+   * (`PlanScope.grown`). Present only where {@link entrypoint} is what
+   * stops it, alone or with {@link peer}, the scope is a project on
+   * disk that growth takes, and the project growing leaves takes it —
+   * or would once linked, where {@link peer} names a link too; absent
+   * everywhere else, and always before `keel new` writes
+   * anything, where an entrypoint gap still means choosing another
+   * preset.
+   */
+  readonly grow?: GrowAction;
 }
 
 /** What {@link ReadinessGap.refresh} names: what to re-render, and what installs with it. */
@@ -752,12 +774,13 @@ export interface InstalledVerticalDescriptor extends VerticalDescriptor {
  * - `ready` — `keel add <id>` installs it on its own;
  * - `needs` — `keel add <id>` installs it, and {@link requires} first;
  * - `unavailable` — `keel add <id>` refuses it, and {@link refusal} is
- *   what it says.
+ *   what it says; where that refusal carries `grow`, adding that
+ *   entrypoint first is what lets it install.
  *
  * The composition grid holds every card to `keel.preview` of its add:
  * `ready` previews Ok, `needs` previews Ok with its prerequisites in
  * the plan, and a card carrying a refusal previews as that refusal,
- * code and sentence.
+ * code, sentence and data — the action it names included.
  */
 export interface AvailableVerticalDescriptor extends VerticalDescriptor {
   readonly readiness: 'ready' | 'needs' | 'unavailable';
@@ -778,13 +801,15 @@ export interface AvailableVerticalDescriptor extends VerticalDescriptor {
 }
 
 /**
- * A vertical a directory has from the product it is part of rather
- * than from an install of its own. @see ProjectStatus.provided
+ * A vertical a directory has from the product it is part of — or, at a
+ * product root, that its services have — rather than from an install of
+ * its own. @see ProjectStatus.provided
  */
 export interface ProvidedVerticalDescriptor extends VerticalDescriptor {
   /**
    * What `keel add <id>` answers here, word for word: the note of an Ok
-   * that installs nothing, saying where the vertical comes from.
+   * that installs nothing, saying where the vertical is — the product
+   * root, or the services that have it, by directory.
    */
   readonly note: string;
 }
@@ -864,6 +889,43 @@ export interface RefusalDescriptor {
 }
 
 /**
+ * One back entrypoint of a project, as `keel add entrypoint` would
+ * answer it there. @see ProjectStatus.entrypoints
+ */
+export interface EntrypointStatus {
+  /** The word `keel add entrypoint` takes for it: `cli`, `http`. */
+  readonly word: string;
+  /** How the stack finder offers it: `HTTP server — a REST endpoint`. */
+  readonly label: string;
+  /** Whether the project has it already. */
+  readonly present: boolean;
+  /**
+   * The verticals `keel add entrypoint <word>` would install, by id, in
+   * the order it installs them: what the preset with both entrypoints
+   * has and the project lacks — a dev environment and observability
+   * where a CLI grows its server — after the prerequisites the planner
+   * adds for them. Absent where the entrypoint is {@link present}, and
+   * where the command would be refused for a reason {@link refusal}
+   * gives — not for what only the command and its preview read off the
+   * files.
+   */
+  readonly installs?: readonly string[];
+  /**
+   * Why `keel add entrypoint <word>` would be refused before it reads
+   * an answer — inside a monorepo product, where keel adds no
+   * entrypoint yet; growth's own refusal (a front end, no preset that
+   * is this project with it, bounded contexts wired into the existing
+   * entrypoints alone); or the planner's, of what growing installs —
+   * the refusal its front door gives. Absent where the command would
+   * run, and where the entrypoint is {@link present}. What the
+   * command reads off the files is not here: a bounded context holding
+   * a gateway its manifest record does not name is refused by the
+   * command and its preview alone.
+   */
+  readonly refusal?: RefusalDescriptor;
+}
+
+/**
  * The harness generation a project was written at, beside the one
  * this keel writes. @see ProjectStatus.harnessGeneration
  */
@@ -884,7 +946,12 @@ export interface HarnessGenerationStatus {
 export interface ProjectStatus {
   /** The scope root inspected, i.e. `<cwd>/.claude`. */
   readonly scopeRoot: string;
-  /** False when no manifest is there — only `keel new` applies. */
+  /**
+   * False when no manifest is there: no brownfield command applies, and
+   * `keel new` does unless the directory sits inside a keel project —
+   * refused there (`keel.inside-project`, `keel.inside-product`), which
+   * its preview carries.
+   */
   readonly initialised: boolean;
   readonly tags: readonly Tag[];
   /**
@@ -907,9 +974,13 @@ export interface ProjectStatus {
    * The verticals this directory has without having installed them:
    * a monorepo service's, from the product that holds it — what the
    * repository root installed (`vcs`), and what the product root builds
-   * for it (its image, which the root's `compose.yaml` builds). Neither
-   * `installed` nor `available`: nothing here re-renders one, and
-   * `keel add <id>` of one is an Ok that installs nothing and says
+   * for it (its image, which the root's `compose.yaml` builds); and a
+   * monorepo product root's, in its services — each vertical the root
+   * cannot carry that no service could take and those that could have
+   * it have (the harness, code style, the images the root builds): what `keel
+   * new --with` of it on the product sets aside as there already.
+   * Neither `installed` nor `available`: nothing here re-renders one,
+   * and `keel add <id>` of one is an Ok that installs nothing and says
    * {@link ProvidedVerticalDescriptor.note}. Empty anywhere else.
    */
   readonly provided: readonly ProvidedVerticalDescriptor[];
@@ -938,12 +1009,32 @@ export interface ProjectStatus {
    */
   readonly moduleRefusal?: RefusalDescriptor;
   /**
+   * Each back entrypoint, in the order the stack finder lists them —
+   * whether the project has it, and, where it does not, what `keel add
+   * entrypoint` would install, or why it would refuse to add it: the
+   * command's own reading (`domain/core/handlers/add-entrypoint.ts`
+   * `entrypointReading`), so a front end offers the entrypoint a
+   * project can grow and says why where it cannot. The
+   * harness-generation gate is left out, as {@link moduleRefusal}
+   * leaves it: {@link harnessGeneration} reports it once. Absent when
+   * the directory is not a keel project.
+   */
+  readonly entrypoints?: readonly EntrypointStatus[];
+  /**
    * The harness generation the manifest was stamped at, and the one
    * this keel writes. Where they differ, `keel add` refuses every
    * vertical but `agent-harness` — and `keel add module` — until the
    * harness is brought forward: one fact, reported once here rather
-   * than as the same refusal on every card. Absent when the directory
-   * is not a keel project.
+   * than as the same refusal on every card. At a monorepo product root
+   * (one with {@link services}) it refuses that one too, since its
+   * services have the harness, and nothing brings the root's forward —
+   * its harness is the product glue's own, which no `keel add` names —
+   * so the refusal of an add the root runs names the keel that
+   * scaffolded it, to pin; of one naming only what its services or the
+   * root have already, not re-rendered, who has it; and what the root
+   * cannot carry is refused as in any generation, before this — as is
+   * `keel add module`, which no product root takes. A front end reading
+   * this says as much. Absent when the directory is not a keel project.
    */
   readonly harnessGeneration?: HarnessGenerationStatus;
 }

@@ -51,6 +51,7 @@ export const tsHttpBootstrapAdapter: Adapter = {
       projectName: shell.projectName,
       shell,
       own,
+      tags: ctx.manifest.tags,
     });
   },
 };

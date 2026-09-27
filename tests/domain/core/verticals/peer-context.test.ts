@@ -28,6 +28,18 @@ import { FakeLogger } from '../../../../src/infrastructure/commons/fake-logger.j
 import { ejsTemplateSource } from '../../../../src/infrastructure/template/ejs-template-source.js';
 import { spawnProcessRunner } from '../../../../src/infrastructure/process/spawn-process-runner.js';
 import { installVertical } from '../../../../src/domain/core/install.js';
+import { resolveVertical } from '../../../../src/domain/core/resolver.js';
+import { makeCtx } from '../../../../src/domain/core/apply.js';
+import {
+  springPeerContextCliAdapter,
+  springPeerContextRestAdapter,
+} from '../../../../src/domain/core/adapters/spring-peer-context.js';
+import { FakeProcessRunner } from '../../../../src/infrastructure/process/fake.js';
+import type {
+  Adapter,
+  ContributionPatch,
+  Tag,
+} from '../../../../src/domain/contract/composition.js';
 import { walkingSkeletonVertical } from '../../../../src/domain/core/verticals/walking-skeleton.js';
 import {
   MODULITH_LAYOUT_TAG,
@@ -249,8 +261,10 @@ describe('without the flag, nothing changes', () => {
  * take whichever one an `if (arch.cli)` picked, wiring the CLI and
  * leaving the HTTP assembly knowing nothing of guestbook. That
  * project compiles, packages and starts; it simply does not do half
- * of what was asked for, which is the failure mode `jvmAssemblies`
- * exists to remove.
+ * of what was asked for. One wiring adapter per entrypoint, each
+ * selected by its predicate, is what removes it (roadmap R.3d): a
+ * project with both matches both, and one that grows the other
+ * entrypoint installs the one that newly matches.
  */
 describe('a composed cli + server-http project wires the peer into both assemblies', () => {
   const composed = async (framework: Combo['framework'], language: Combo['language']) => {
@@ -302,15 +316,179 @@ describe('a composed cli + server-http project wires the peer into both assembli
       it(`renders a wiring test into both assemblies for ${framework} ${language}`, async () => {
         const tree = await composed(framework, language);
         const ext = language === 'java' ? 'java' : 'kt';
+        const test = (pkg: string): string =>
+          read(
+            tree,
+            `application/${pkg}/src/test/${language}/com/example/application/${pkg}/GuestbookWiringTest.${ext}`,
+          );
 
-        for (const [assembly, pkg] of [
-          ['application/cli', 'cli'],
-          ['application/api', 'api'],
-        ]) {
-          const test = `${assembly}/src/test/${language}/com/example/application/${pkg}/GuestbookWiringTest.${ext}`;
-          expect(tree.read(test), `missing ${test}`).not.toBeNull();
-        }
+        expect(test('cli'), 'missing the CLI wiring test').not.toBe('');
+        // The same test in each, but for the package its assembly is in.
+        expect(test('cli')).toBe(
+          test('api').replace('com.example.application.api', 'com.example.application.cli'),
+        );
+      });
+
+      it(`resolves the shell and one wiring adapter per entrypoint for ${framework} ${language}`, () => {
+        const tags = [
+          `lang.${language}`,
+          'runtime.jvm',
+          'pkg.gradle',
+          `framework.${framework}`,
+          'arch.hexagonal',
+          MODULITH_LAYOUT_TAG,
+          PEER_CONTEXT_TAG,
+        ];
+        const shell = `walking-skeleton/${framework}-peer-context${language === 'kotlin' ? '-kotlin' : ''}`;
+        const peers = (entrypoints: readonly string[]): readonly string[] =>
+          resolveVertical(walkingSkeletonVertical, [...tags, ...entrypoints])
+            .map((adapter) => adapter.id)
+            .filter((id) => id.startsWith(shell));
+
+        expect(peers(['arch.cli', 'arch.server-http'])).toEqual([
+          shell,
+          `${shell}-cli`,
+          `${shell}-rest`,
+        ]);
+        expect(peers(['arch.cli'])).toEqual([shell, `${shell}-cli`]);
+        expect(peers(['arch.server-http'])).toEqual([shell, `${shell}-rest`]);
       });
     }
   }
+});
+
+/**
+ * A wiring adapter's patches are its own: a composition root drifted
+ * past its anchors is reported against the adapter that patches it —
+ * the one per entrypoint — and Spring's boot class is that
+ * entrypoint's, a static fact of the adapter rather than a guess from
+ * the assembly's package (roadmap R.3d).
+ */
+describe('the peer’s wiring adapter, on its own assembly', () => {
+  /** A peer modulith's tags, on one entrypoint; Spring Java on Gradle unless told. */
+  const tagsOf = (
+    entrypoint: Tag,
+    {
+      framework = 'spring',
+      language = 'java',
+      pkg = 'gradle',
+    }: Partial<Omit<Combo, 'arch'>> & {
+      readonly pkg?: 'gradle' | 'maven';
+    } = {},
+  ): readonly Tag[] => [
+    `lang.${language}`,
+    'runtime.jvm',
+    `pkg.${pkg}`,
+    `framework.${framework}`,
+    'arch.hexagonal',
+    entrypoint,
+    MODULITH_LAYOUT_TAG,
+    PEER_CONTEXT_TAG,
+  ];
+
+  /** The patches `adapter` contributes on a project with `tags`. */
+  const patchesOf = async (
+    adapter: Adapter,
+    tags: readonly Tag[],
+  ): Promise<readonly ContributionPatch[]> => {
+    const manifest = {
+      ...emptyManifestV2('2026-08-14T00:00:00Z', '0.5.0-alpha'),
+      tags: [...tags],
+      answers: BOOTSTRAP_ANSWERS,
+    };
+    const ctx = makeCtx(
+      adapter,
+      {},
+      {
+        manifest,
+        logger: new FakeLogger(),
+        cwd: os.tmpdir(),
+        templates: ejsTemplateSource,
+        processes: new FakeProcessRunner(),
+      },
+    );
+    return (await adapter.contribute(ctx)).patches ?? [];
+  };
+
+  it('widens the component scan on its entrypoint’s boot class, Main or Application', async () => {
+    const cli = await patchesOf(springPeerContextCliAdapter, tagsOf('arch.cli'));
+    const rest = await patchesOf(springPeerContextRestAdapter, tagsOf('arch.server-http'));
+
+    expect(cli.map((patch) => patch.target)).toEqual([
+      'application/cli/build.gradle.kts',
+      'application/cli/src/main/java/com/example/application/cli/MediatorConfig.java',
+      'application/cli/src/main/java/com/example/application/cli/Main.java',
+    ]);
+    expect(rest.map((patch) => patch.target)).toEqual([
+      'application/api/build.gradle.kts',
+      'application/api/src/main/java/com/example/application/api/MediatorConfig.java',
+      'application/api/src/main/java/com/example/application/api/Application.java',
+    ]);
+  });
+
+  it('names itself when the root it patches has drifted past its anchors', async () => {
+    const patches = await patchesOf(springPeerContextCliAdapter, tagsOf('arch.cli'));
+    const apply = (suffix: string): ((existing: string) => string) =>
+      patches.find((patch) => patch.target.endsWith(suffix))?.apply as (existing: string) => string;
+
+    expect(() => apply('build.gradle.kts')('dependencies {}\n')).toThrow(
+      'walking-skeleton/spring-peer-context-cli: could not find the platform:kernel dependency in application/cli/build.gradle.kts',
+    );
+    expect(() => apply('MediatorConfig.java')('class MediatorConfig {}\n')).toThrow(
+      'walking-skeleton/spring-peer-context-cli: could not find the imports to anchor on in MediatorConfig',
+    );
+    expect(() => apply('Main.java')('class Main {}\n')).toThrow(
+      'walking-skeleton/spring-peer-context-cli: could not find the @ComponentScan basePackages list in Main',
+    );
+  });
+
+  it('names itself on every framework, language, build system and entrypoint', async () => {
+    const named: string[] = [];
+    for (const framework of ['quarkus', 'spring', 'micronaut'] as const) {
+      for (const language of ['java', 'kotlin'] as const) {
+        for (const pkg of ['gradle', 'maven'] as const) {
+          for (const [entrypoint, arch] of [
+            ['arch.cli', 'cli'],
+            ['arch.server-http', 'rest'],
+          ] as const) {
+            const tags = tagsOf(entrypoint, { framework, language, pkg });
+            const id = `walking-skeleton/${framework}-peer-context${language === 'kotlin' ? '-kotlin' : ''}-${arch}`;
+            const adapter = resolveVertical(walkingSkeletonVertical, tags).find((a) => a.id === id);
+            expect(adapter, id).toBeDefined();
+            // Every file it patches, drifted past recognition: each
+            // patch refuses, and says which adapter it is.
+            for (const patch of await patchesOf(adapter as Adapter, tags)) {
+              expect(() => patch.apply(''), `${id} on ${patch.target}`).toThrow(`${id}: `);
+              named.push(id);
+            }
+          }
+        }
+      }
+    }
+    // A build file and a composition root on each of the 24, and
+    // Spring's boot class (8) and Micronaut Java's `@Import` (4) besides.
+    expect(named).toHaveLength(60);
+  });
+
+  it('names itself when Micronaut Kotlin’s handler list was rewritten by hand', async () => {
+    const combo: Combo = { framework: 'micronaut', language: 'kotlin', arch: 'cli' };
+    const root = read(await scaffold(combo, false), assemblySource(combo, 'MediatorFactory'));
+    const tags = tagsOf('arch.cli', combo);
+    const [patch] = (
+      await patchesOf(
+        resolveVertical(walkingSkeletonVertical, tags).find(
+          (a) => a.id === 'walking-skeleton/micronaut-peer-context-kotlin-cli',
+        ) as Adapter,
+        tags,
+      )
+    ).filter((p) => p.target.endsWith('MediatorFactory.kt'));
+
+    expect(() =>
+      patch?.apply(
+        root.replace('RegistryMediator(listOf(GreetHandler()))', 'RegistryMediator(handlers)'),
+      ),
+    ).toThrow(
+      'walking-skeleton/micronaut-peer-context-kotlin-cli: could not find the explicit handler list in MediatorFactory',
+    );
+  });
 });

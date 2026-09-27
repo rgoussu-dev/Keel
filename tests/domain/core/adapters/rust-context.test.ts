@@ -32,13 +32,13 @@ afterEach(async () => {
   await fs.remove(cwd);
 });
 
-async function scaffold(withPeerContext = false): Promise<void> {
+async function scaffold(withPeerContext = false, stack = 'rust-cli'): Promise<void> {
   const mediator = installMediator({ runDeferred: discardDeferred() });
   expectOk(
     await mediator.dispatch(
       newProjectCommand({
         cwd,
-        stack: 'rust-cli',
+        stack,
         answers: {},
         interactive: false,
         dryRun: false,
@@ -49,9 +49,10 @@ async function scaffold(withPeerContext = false): Promise<void> {
   );
 }
 
-async function addModule(module: string, consumes?: string): Promise<void> {
+/** `keel add module <module>`, consuming `consumes` where given: the adapters it ran, by id. */
+async function addModule(module: string, consumes?: string): Promise<readonly string[]> {
   const mediator = installMediator({ runDeferred: discardDeferred() });
-  expectOk(
+  const report = expectOk(
     await mediator.dispatch(
       addModuleCommand({
         cwd,
@@ -63,12 +64,48 @@ async function addModule(module: string, consumes?: string): Promise<void> {
       }),
     ),
   );
+  return (report.resolvedAdapters ?? []).map((adapter) => adapter.id);
 }
 
 const read = (rel: string): Promise<string> => fs.readFile(path.join(cwd, rel), 'utf8');
 const exists = (rel: string): Promise<boolean> => fs.pathExists(path.join(cwd, rel));
 
 describe('the Rust added context', () => {
+  /**
+   * Which assemblies a context is wired into is read off the
+   * predicates, one wiring adapter per entrypoint beside the shell —
+   * so a project that grows an entrypoint installs the one that newly
+   * matches, and the wiring already there is never rendered again
+   * (roadmap R.3b).
+   */
+  it('is wired into each assembly by an adapter of its own, the same module in each', async () => {
+    await scaffold(false, 'rust-cli-http');
+    expect(await addModule('ordering', 'greeting')).toEqual([
+      'bounded-context/rust-context',
+      'bounded-context/rust-context-cli',
+      'bounded-context/rust-context-http',
+    ]);
+
+    expect(await read('application/http/src/ordering.rs')).toBe(
+      await read('application/cli/src/ordering.rs'),
+    );
+    for (const unit of ['cli', 'http']) {
+      expect(await read(`application/${unit}/src/main.rs`)).toMatch(/^mod ordering;$/m);
+      expect(await read(`application/${unit}/Cargo.toml`)).toMatch(
+        /^ordering-infra-greeting-gateway = \{ path/m,
+      );
+    }
+
+    await fs.emptyDir(cwd);
+    await scaffold();
+    expect(await addModule('ordering', 'greeting')).toEqual([
+      'bounded-context/rust-context',
+      'bounded-context/rust-context-cli',
+    ]);
+    expect(await exists('application/cli/src/ordering.rs')).toBe(true);
+    expect(await exists('application/http')).toBe(false);
+  });
+
   it('emits a seam of its own, which the peer context has none of', async () => {
     await scaffold(true);
     await addModule('ordering');

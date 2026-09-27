@@ -259,6 +259,25 @@ added context also emits a `<Name>WiringTest` in the assembly, which
 dispatches its command through the real Mediator out of the real
 container.
 
+**Growing an entrypoint wires them all.** A context's wiring is the
+same in each assembly but for its package line, written by an adapter
+of its own per entrypoint beside the one that writes the context's
+modules and registers them in `settings.gradle.kts` or the root
+`pom.xml`: the `<Name>Wiring` class and its test, the context's modules
+in that assembly's `build.gradle.kts` or `pom.xml`, and, where its
+container keeps a list, the context's entry in that assembly's — on
+Spring the `@ComponentScan` of its own boot class, `Main` in the CLI's
+and `Application` in the REST one. The peer context is split the same
+way. So [`keel add entrypoint http`](../cli.md#keel-add-entrypoint) on
+a `quarkus-cli` modulith writes the peer's `GuestbookWiringTest` and
+its `Welcome` binding in `application/api/`, where it has one, and
+each added context's `<Name>Wiring`, in the order the contexts were
+added — the tree `quarkus-cli-rest` given the same history has, down
+to the order of the new assembly's dependencies, the last added first
+— and never reads the `application/cli/` files already there. On
+Spring and Micronaut, the lists the new assembly's container reads
+take the contexts in that order too, the last added last.
+
 ### The other stacks
 
 Every other stack family carries the same dial —

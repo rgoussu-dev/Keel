@@ -51,6 +51,16 @@ export function pluginOrigin(name: string): string {
 export const REGISTRY_ERROR_CODE = 'keel.invalid-piece';
 
 /**
+ * Ids no vertical may take: the first words `keel add` reads as
+ * another command — `keel add module <name>` adds a bounded context,
+ * `keel add entrypoint <cli|http>` an entrypoint — so a vertical of
+ * either id could never be added with `keel add <id>`, though
+ * `keel new --with` could still name it. Neither names a capability,
+ * so a plugin renames rather than half-works.
+ */
+export const RESERVED_VERTICAL_IDS: readonly string[] = ['module', 'entrypoint'];
+
+/**
  * One contributor of pieces: keel itself, or a plugin.
  *
  * `origin` is the whole reason this is a record rather than two
@@ -166,6 +176,12 @@ function validateStack(origin: string, stack: Stack): void {
  */
 function validateVertical(origin: string, vertical: Vertical): void {
   if (vertical.id.length === 0) throw refuse(origin, 'registers a vertical with no id');
+  if (RESERVED_VERTICAL_IDS.includes(vertical.id)) {
+    throw refuse(
+      origin,
+      `registers vertical '${vertical.id}', a word 'keel add' reads as a command of its own ('keel add ${vertical.id} …') — a vertical of that id could never be added with 'keel add ${vertical.id}'; rename it`,
+    );
+  }
   validateConflicts(origin, `vertical '${vertical.id}'`, vertical);
   for (const adapter of vertical.adapters) {
     if (adapter.id === ENGINE_CONTRIBUTOR_ID) {

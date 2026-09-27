@@ -12,13 +12,14 @@
  * **The directory decides which flow the rail is.** One page serves
  * both phases: an empty directory is a new project, and the preset
  * steps narrow to one; a keel project has settled every one of those
- * answers, so they collapse into one read-only step, **Project**, what
- * it already is. Options follows either way, and holds the same "Also
- * scaffold" group — a new project's extras, or what goes on top of a
- * keel project, its installed verticals ticked and locked — then the
- * questions and the review. The commands stay two: the review's
- * Generate posts `keel new`'s target on the one flow and `keel add`'s
- * on the other.
+ * answers, so they collapse into one step, **Project**, what it already
+ * is — read-only, but for the back entrypoint it can grow. Options
+ * follows either way, and holds the same "Also scaffold" group — a new
+ * project's extras, or what goes on top of a keel project, its
+ * installed verticals ticked and locked — then the questions and the
+ * review. The commands stay two: the review's Generate posts
+ * `keel new`'s target on the one flow and `keel add`'s on the
+ * other.
  *
  * Pure, and separate from any element, so the rail is testable
  * without a DOM — the same split `finder.js` and `tree.js` live
@@ -83,12 +84,12 @@ function brownfieldSteps() {
     {
       id: PROJECT,
       label: 'Project',
-      doc: 'What this directory already is, read back from its manifest: the choices keel new made, settled now. Nothing here is a control — what can still go on top is under Options.',
+      doc: 'What this directory already is, read back from its manifest: the choices keel new made, settled now — but for the entrypoint it lacks, which its Adapters line offers where the project can grow one. What can still go on top is under Options.',
     },
     {
       id: OPTIONS,
       label: 'Options',
-      doc: 'What to add on top of what the project has — tick several, and what one needs first is ticked with it; what it has is ticked and locked, each with a Re-render of its own — or a new bounded context. What it cannot carry is listed too, collapsed, each with the reason.',
+      doc: 'What to add on top of what the project has — tick several, and what one needs first is ticked with it; what it has is ticked and locked, each with a Re-render of its own — or a new bounded context, or the entrypoint it lacks. What only that entrypoint lets in is listed under it, and what the project cannot carry is listed too, collapsed, each with the reason.',
     },
   ];
 }

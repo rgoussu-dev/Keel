@@ -13,14 +13,14 @@
  * grid's goldens record, so a verdict that moves is a document that
  * moves, in the same commit, or the guard goes red.
  *
- * **Scenario.** The three grid goldens
- * (`tests/domain/core/composition-grid/*.golden.json`) for every
- * verdict; `keel.dials` for what each preset, product root and service
- * comes with (`included`), on default dials; the registry for the
- * order a preset installs its verticals in. Stacks, verticals, layouts
- * and services are read from those, never listed here, so a preset or
- * a vertical registered tomorrow shows up in both documents on the
- * next regeneration.
+ * **Scenario.** The brownfield and composite grid goldens
+ * (`tests/domain/core/composition-grid/`) for every verdict;
+ * `keel.dials` for what each preset, product root and service comes
+ * with (`included`), on default dials; the registry for the order a
+ * preset installs its verticals in. Stacks, verticals, layouts and
+ * services are read from those, never listed here, so a preset or a
+ * vertical registered tomorrow shows up in both documents on the next
+ * regeneration.
  *
  * **Factory.** `installMediator` — the queries read no disk.
  *
@@ -195,13 +195,13 @@ export async function gridFacts(
       const root = verdicts(composite, `${stack.id}/${layout}`);
       layouts.push({
         layout,
-        // What the root itself comes with is the product preset's own
-        // verticals: `keel.dials` reads a vertical every service has as
-        // coming with the product too, which `keel add` at the root —
-        // no service's — still sends to them.
+        // What the root comes with is what `keel.dials` reads as coming
+        // with the product: its own verticals, and what the services
+        // that could have it have — where `keel add` at the root is an
+        // Ok that adds nothing (the composite grid holds the two equal).
         root: Object.values(root).every((verdict) => verdict === NOT_A_PROJECT)
           ? null
-          : { verdicts: root, included: (preset?.verticals ?? []).map((vertical) => vertical.id) },
+          : { verdicts: root, included: includedIn(options.verticals) },
         services: Object.fromEntries(
           services.map((service) => [
             service.path,
@@ -270,7 +270,7 @@ const GLYPHS: readonly { readonly glyph: string; readonly means: string }[] = [
   {
     glyph: '●',
     means:
-      'comes with it: `keel new` installs it, or, in a monorepo service, the product root gives it',
+      'comes with it: `keel new` installs it — in a monorepo service, the product root gives it; at a product root, its services have it',
   },
   { glyph: '➕', means: '`keel add` installs it, with anything it needs first' },
   { glyph: '⛔', means: `refused: nothing keel has installs it there (\`${UNCOVERED_CODE}\`)` },

@@ -18,7 +18,14 @@ install|check` engine. It meets the rest of keel only at
   (`domain/contract/toolchain.ts`) and the shared ports
   (`domain/contract/ports/`). If it needs a new fact about the
   project, that fact enters through the block schema — a contract
-  change — not through a reach into keel's composition state.
+  change — not through a reach into keel's composition state. Where
+  there is no project to read, where the nearest one is — the engine's
+  walk up — is handed in by the composition root as a function
+  (`ToolchainDeps.nearby`), never imported, and worded by the
+  contract's `notInitialisedSentence` — the sentence `keel add` is
+  refused with, but pointing inside a product root at its services,
+  since a toolchain is a service's; at the root itself, which declares
+  none, the no-block refusal names them too.
 - **Orchestrator, never installer.** A provider record renders the
   manager's native config and names the manager's own idempotent
   invocations. No downloads, no checksums, no platform matrices, no

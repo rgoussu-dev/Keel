@@ -188,6 +188,20 @@ added context's core may itself hold a gateway to a third context — so
 its seam comes from that context's own `wire_service()` in the same
 assembly.
 
+**Growing an entrypoint wires them all.** A context's wiring is the
+same module in each assembly crate, written by an adapter of its own
+per entrypoint beside the one that writes the context's crates: the
+module, its `mod` line in that crate's `main.rs`, and the context's
+crates in that crate's `Cargo.toml`. So
+[`keel add entrypoint http`](../cli.md#keel-add-entrypoint) on a
+`rust-cli` modulith writes the peer context's
+`application/http/src/guestbook.rs`, where it has one, and each added
+context's `application/http/src/<name>.rs`, in the order the contexts
+were added — the tree `rust-cli-http` given the same history has, down
+to the order of the new crate's `[dependencies]`, where each context's
+lines sit above OpenTelemetry's and the peer's below them — and never
+reads the `application/cli/` files already there.
+
 ### Verticals under the modulith
 
 Every vertical Rust offers works under both layouts.

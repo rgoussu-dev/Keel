@@ -149,30 +149,18 @@ export interface JvmAssemblyPaths {
 }
 
 /**
- * Which assemblies this project has, from the stack's arch tags — the
- * JVM sibling of `tsAssemblies` and of Go's and Rust's
- * `assembliesOf`.
- *
- * The adapters that wire a bounded context into "the assembly"
- * (`jvm-peer-context`, `jvm-context`) iterate over this rather than
- * asking whether `arch.cli` is present and taking the CLI runtime if
- * it is. That question has a wrong answer on a tag set carrying both
- * entrypoints: it wires the CLI assembly and leaves the HTTP one
- * knowing nothing of the context, which compiles, packages, starts,
- * and serves a project missing half of what was asked for.
+ * The assembly of the entrypoint `arch` — `cli` or `rest`, as
+ * `JvmArch` spells it. The adapters that wire a bounded context into
+ * an assembly (`jvm-peer-context`'s and `jvm-context`'s wiring
+ * adapters, one per entrypoint) each name theirs through this rather
+ * than spelling `application/api`; which assemblies a project has is
+ * read off their predicates, never off the tags inside `contribute()`
+ * (roadmap R.3d).
  */
-export function jvmAssemblies(
-  tags: readonly Tag[],
-  layout: JvmLayoutPaths,
-): readonly JvmAssemblyPaths[] {
-  const assemblies: JvmAssemblyPaths[] = [];
-  if (tags.includes('arch.cli')) {
-    assemblies.push({ dir: layout.cliRuntime, pkg: layout.cliRuntimePkg });
-  }
-  if (tags.includes('arch.server-http')) {
-    assemblies.push({ dir: layout.restRuntime, pkg: layout.restRuntimePkg });
-  }
-  return assemblies;
+export function jvmAssembly(layout: JvmLayoutPaths, arch: 'cli' | 'rest'): JvmAssemblyPaths {
+  return arch === 'cli'
+    ? { dir: layout.cliRuntime, pkg: layout.cliRuntimePkg }
+    : { dir: layout.restRuntime, pkg: layout.restRuntimePkg };
 }
 
 /**

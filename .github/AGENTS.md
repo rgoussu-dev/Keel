@@ -81,7 +81,7 @@ mapping.
 
 ## The report-only workflows
 
-Three workflows run outside the PR gate on purpose. None of them may
+Four workflows run outside the PR gate on purpose. None of them may
 become a gate without the threshold that would make a red run
 actionable.
 
@@ -100,6 +100,24 @@ actionable.
   stable; a red run is the drift report, deliberately never a PR gate.
   The registry ↔ template rule it serves lives in
   [`assets/`](../assets/AGENTS.md).
+- **`composition-sweep.yml`** runs the opt-in suites under
+  `tests/sweep/` (`KEEL_RUN_SWEEP=1`) weekly, and on dispatch for the
+  presets its `stacks` input names (`KEEL_SWEEP_STACKS`): every extras
+  set, every pair of extras arriving in one run and in two, and every
+  choice of every question the whole menu, no extra or one extra asks,
+  on every dial setting of every preset — what the composition grid in
+  `verify` reads on the opening dials only. Node alone, no toolchain:
+  every dispatch goes through the mediator with a fake process runner.
+  It runs for most of an hour (57 minutes measured on four vCPUs), so
+  it is never a gate; a red run is the report, one failing test per
+  preset, each finding with the command line that reproduces it.
+  `tests/ci-workflow.test.ts` holds it to a schedule and a dispatch,
+  opted in, to running the whole directory, to sweeping every preset
+  unless a dispatch names some, and to a step and job with no `if:` and
+  no `continue-on-error` — a lane that stopped opting in, swept one
+  suite or one preset, was skipped on its schedule or could not fail
+  would pass green. What it sweeps and how to read it:
+  `docs/development.md` → The composition sweep.
 - **`harness-evals.yml`** runs the agent-harness evals (`evals/`),
   report-only and never a PR gate — the `mutation.yml` posture, and then
   some: a task campaign spawns fifteen real agent sessions, each ending

@@ -1,6 +1,6 @@
 /**
  * What a keel project is, read back off its manifest — the page's
- * read-only Project step, in words rather than tags.
+ * Project step, in words rather than tags.
  *
  * The claim worth guarding is that the reading runs the drill-down
  * backwards and lands where `keel new` started: every preset the

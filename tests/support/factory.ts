@@ -18,6 +18,7 @@ import { CatalogHandler } from '../../src/domain/core/handlers/catalog.js';
 import { DialsHandler } from '../../src/domain/core/handlers/dials.js';
 import { PreviewHandler } from '../../src/domain/core/handlers/preview.js';
 import { ProjectStatusHandler } from '../../src/domain/core/handlers/project-status.js';
+import { AddEntrypointHandler } from '../../src/domain/core/handlers/add-entrypoint.js';
 import { AddModuleHandler } from '../../src/domain/core/handlers/add-module.js';
 import { AddVerticalHandler } from '../../src/domain/core/handlers/add-vertical.js';
 import { DocsCheckHandler } from '../../src/domain/core/handlers/docs-check.js';
@@ -28,6 +29,7 @@ import { ToolchainInstallHandler } from '../../src/domain/toolchain/core/install
 import type { InstallDeps } from '../../src/domain/core/handlers/deps.js';
 import { runActions, type RunActionsInputs } from '../../src/domain/core/actions.js';
 import { shippedRegistry } from '../../src/domain/core/registry.js';
+import { nearbyProjects } from '../../src/domain/core/scope.js';
 import { FakeClock } from '../../src/infrastructure/commons/fake-clock.js';
 import { FakeLogger } from '../../src/infrastructure/commons/fake-logger.js';
 import { fsManifestStore } from '../../src/infrastructure/manifest/fs-manifest-store.js';
@@ -53,15 +55,19 @@ export function installMediator(overrides: Partial<InstallDeps> = {}): Mediator 
     keelVersion: '0.4.0-alpha',
     ...overrides,
   };
+  // As the composition root wires it: the provisioning context is
+  // handed the engine's walk rather than importing it.
+  const toolchain = { ...deps, nearby: (dir: string) => nearbyProjects(deps, dir) };
   return new RegistryMediator([
     new NewProjectHandler(deps),
     new AddVerticalHandler(deps),
     new AddModuleHandler(deps),
+    new AddEntrypointHandler(deps),
     new DocsSyncHandler(deps),
     new DocsCheckHandler(deps),
     new LinkPeerHandler(deps),
-    new ToolchainInstallHandler(deps),
-    new ToolchainCheckHandler(deps),
+    new ToolchainInstallHandler(toolchain),
+    new ToolchainCheckHandler(toolchain),
     new CatalogHandler(deps),
     new DialsHandler(deps),
     new PreviewHandler(deps),

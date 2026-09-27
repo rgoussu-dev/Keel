@@ -1,6 +1,7 @@
 /**
  * The Spring added-context adapters — `bounded-context/spring-context`
- * and its Kotlin twin.
+ * and its Kotlin twin, each a shell and a wiring adapter per entrypoint
+ * (`…-cli`, `…-rest`).
  *
  * One patch, and it is the one that fails silently if it is missed:
  * the new context's package joins the boot class's explicit
@@ -25,17 +26,19 @@
  * [`jvm-context.ts`](./jvm-context.ts) for why.
  */
 
-import type { JvmLanguage } from './jvm-bootstrap.js';
+import type { JvmArch, JvmLanguage } from './jvm-bootstrap.js';
+import type { JvmContextAdapters } from './jvm-peer-context.js';
 import {
   fenceClose,
   fenceOpen,
-  jvmContextAdapter,
+  jvmContextAdapters,
   rewriteList,
   FENCE_ON_TAIL,
   type JvmContextBinding,
 } from './jvm-context.js';
 import { SPRING_CLI_BOOTSTRAP_ID } from './spring-cli-bootstrap.js';
 import { SPRING_CLI_KOTLIN_BOOTSTRAP_ID } from './spring-cli-kotlin-bootstrap.js';
+import { BOOT_CLASS } from './spring-peer-context.js';
 import { SPRING_REST_BOOTSTRAP_ID } from './spring-rest-bootstrap.js';
 import { SPRING_REST_KOTLIN_BOOTSTRAP_ID } from './spring-rest-kotlin-bootstrap.js';
 import type { Adapter, ContributionPatch } from '../../contract/composition.js';
@@ -45,14 +48,6 @@ export const SPRING_CONTEXT_KOTLIN_ID = 'bounded-context/spring-context-kotlin';
 
 /** Spring's composition root. */
 const ROOT_CLASS = 'MediatorConfig';
-
-/**
- * The Spring class carrying `@SpringBootApplication` — `Application`
- * for the REST assembly, `Main` for the CLI one, which also
- * implements `CommandLineRunner`.
- */
-const bootClass = (binding: JvmContextBinding): string =>
-  binding.assemblyPkg.endsWith('cli') ? 'Main' : 'Application';
 
 /** Why the list is explicit; carried inside the fence. */
 export const SCAN_NOTE: readonly string[] = [
@@ -90,12 +85,13 @@ function scanRegion(language: JvmLanguage): RegExp {
   );
 }
 
-/** Widens the boot class's explicit component scan to the new context. */
-function componentScanPatch(
-  id: string,
-  language: JvmLanguage,
-  binding: JvmContextBinding,
-): ContributionPatch {
+/**
+ * Widens the boot class's explicit component scan to the new context,
+ * in the assembly of the wiring adapter the binding is for — whose
+ * boot class is a static fact of it ({@link BOOT_CLASS}).
+ */
+function componentScanPatch(language: JvmLanguage, binding: JvmContextBinding): ContributionPatch {
+  const bootClass = BOOT_CLASS[binding.arch];
   const [open, close] = BRACKETS[language];
   const indent = INDENT[language];
   const entry = `"${binding.names.contextPkg}"`;
@@ -112,12 +108,12 @@ function componentScanPatch(
       fenceClose(indent),
     ].join('\n');
   return {
-    target: binding.sourceFile(bootClass(binding)),
+    target: binding.sourceFile(bootClass),
     apply: (existing) => {
       const widened = rewriteList(existing, scanRegion(language), entry, render);
       if (widened === null) {
         throw new Error(
-          `${id}: could not find the @ComponentScan basePackages list in ${bootClass(binding)} — add ${entry} manually or ${binding.names.Module}Handler is never discovered`,
+          `${binding.adapterId}: could not find the @ComponentScan basePackages list in ${bootClass} — add ${entry} manually or ${binding.names.Module}Handler is never discovered`,
         );
       }
       return widened;
@@ -128,26 +124,41 @@ function componentScanPatch(
 const springContext = (
   id: string,
   language: JvmLanguage,
-  bootstrapIds: readonly string[],
-): Adapter =>
-  jvmContextAdapter({
+  bootstrapIds: Readonly<Record<JvmArch, string>>,
+): JvmContextAdapters =>
+  jvmContextAdapters({
     id,
     framework: 'spring',
     language,
     bootstrapIds,
     rootClass: ROOT_CLASS,
-    bind: (binding) => [componentScanPatch(id, language, binding)],
+    bind: (binding) => [componentScanPatch(language, binding)],
   });
 
-/** Spring Boot + Java. */
-export const springContextAdapter: Adapter = springContext(SPRING_CONTEXT_ID, 'java', [
-  SPRING_REST_BOOTSTRAP_ID,
-  SPRING_CLI_BOOTSTRAP_ID,
-]);
+const springJava = springContext(SPRING_CONTEXT_ID, 'java', {
+  cli: SPRING_CLI_BOOTSTRAP_ID,
+  rest: SPRING_REST_BOOTSTRAP_ID,
+});
 
-/** Spring Boot + Kotlin. */
-export const springContextKotlinAdapter: Adapter = springContext(
-  SPRING_CONTEXT_KOTLIN_ID,
-  'kotlin',
-  [SPRING_REST_KOTLIN_BOOTSTRAP_ID, SPRING_CLI_KOTLIN_BOOTSTRAP_ID],
-);
+const springKotlin = springContext(SPRING_CONTEXT_KOTLIN_ID, 'kotlin', {
+  cli: SPRING_CLI_KOTLIN_BOOTSTRAP_ID,
+  rest: SPRING_REST_KOTLIN_BOOTSTRAP_ID,
+});
+
+/** Spring Boot + Java: the shell. */
+export const springContextAdapter: Adapter = springJava.shell;
+
+/** Spring Boot + Java: the wiring into the CLI's assembly, `application/cli`. */
+export const springContextCliAdapter: Adapter = springJava.wiring.cli;
+
+/** Spring Boot + Java: the wiring into the REST assembly, `application/api`. */
+export const springContextRestAdapter: Adapter = springJava.wiring.rest;
+
+/** Spring Boot + Kotlin: the shell. */
+export const springContextKotlinAdapter: Adapter = springKotlin.shell;
+
+/** Spring Boot + Kotlin: the wiring into the CLI's assembly, `application/cli`. */
+export const springContextKotlinCliAdapter: Adapter = springKotlin.wiring.cli;
+
+/** Spring Boot + Kotlin: the wiring into the REST assembly, `application/api`. */
+export const springContextKotlinRestAdapter: Adapter = springKotlin.wiring.rest;

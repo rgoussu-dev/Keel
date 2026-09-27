@@ -7,9 +7,16 @@
  * asserted **against the pin registry itself**, so a feature can
  * never become a second place a toolchain version is stated
  * (`tests/toolchain-pins.test.ts` guards the same rule across all
- * three surfaces at once). The resolution block proves every
- * non-composite stack's tag set covers the vertical, so no stack can
- * silently lose its dev container.
+ * three surfaces at once). The order-independence block proves the
+ * upgrade a later dev environment makes, ranked by the tags: on an
+ * HTTP project, for every family and on the tags a CLI project grows
+ * to, it writes the bytes the template renders attached, in the
+ * file's own line endings and around what the user wrote; elsewhere,
+ * the shape an extra dev environment has always written; and a
+ * definition customized away from keel's image refused as a file in
+ * the way, before anything is written. The resolution block proves
+ * every non-composite stack's tag set covers the vertical, so no
+ * stack can silently lose its dev container.
  */
 
 import path from 'node:path';
@@ -17,6 +24,7 @@ import os from 'node:os';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { rejectingPrompt } from '../../../../src/infrastructure/prompt/fake.js';
+import { FakeProcessRunner } from '../../../../src/infrastructure/process/fake.js';
 import { FakeLogger } from '../../../../src/infrastructure/commons/fake-logger.js';
 import { ejsTemplateSource } from '../../../../src/infrastructure/template/ejs-template-source.js';
 import { spawnProcessRunner } from '../../../../src/infrastructure/process/spawn-process-runner.js';
@@ -24,11 +32,15 @@ import { installVertical } from '../../../../src/domain/core/install.js';
 import { devContainerVertical } from '../../../../src/domain/core/verticals/dev-container.js';
 import { devEnvVertical } from '../../../../src/domain/core/verticals/dev-env.js';
 import { attachDevContainerToDevEnv } from '../../../../src/domain/core/adapters/dev-container.js';
+import { DEV_ENV_COMPOSE_ID } from '../../../../src/domain/core/adapters/dev-env-compose.js';
 import { shippedRegistry } from '../../../../src/domain/core/registry.js';
 import { resolveVertical } from '../../../../src/domain/core/resolver.js';
 import { STACKS } from '../../../../src/domain/core/stacks.js';
 import { emptyManifestV2, type ManifestV2 } from '../../../../src/domain/contract/manifest.js';
+import { addVerticalCommand, newProjectCommand } from '../../../../src/domain/contract/commands.js';
+import { PathConflictError } from '../../../../src/domain/contract/refusal.js';
 import { FsTree } from '../../../../src/infrastructure/tree/fs-tree.js';
+import { expectErr, expectOk, installMediator } from '../../../support/factory.js';
 import { pinValue } from '../../../support/version-pins.js';
 
 let cwds: string[] = [];
@@ -61,14 +73,111 @@ async function install(manifest: ManifestV2): Promise<{ tree: FsTree; manifest: 
   return { tree, manifest: result.manifest };
 }
 
+/** Installs the dev environment over `installed`, as `keel add dev-env` does. */
+async function installDevEnv(installed: { tree: FsTree; manifest: ManifestV2 }): Promise<FsTree> {
+  await installVertical({
+    vertical: devEnvVertical,
+    manifest: installed.manifest,
+    tree: installed.tree,
+    mode: 'non-interactive',
+    prompt: rejectingPrompt,
+    logger: new FakeLogger(),
+    cwd: '/unused',
+    templates: ejsTemplateSource,
+    processes: spawnProcessRunner,
+    now: () => '2026-08-18T13:00:00Z',
+  });
+  return installed.tree;
+}
+
+/** One family's HTTP project, as its manifest reads before the dev container installs. */
+interface HttpProject {
+  readonly family: string;
+  readonly tags: readonly string[];
+  readonly answers: ManifestV2['answers'];
+}
+
+/**
+ * An HTTP project of every family, and of each build system the
+ * family's features read; and one carrying the CLI as well, the tags a
+ * CLI project grows to.
+ */
+const HTTP_PROJECTS: readonly HttpProject[] = [
+  {
+    family: 'JVM, Gradle',
+    tags: ['lang.java', 'runtime.jvm', 'framework.quarkus', 'arch.server-http', 'pkg.gradle'],
+    answers: {
+      'walking-skeleton/quarkus-rest-bootstrap': { projectName: 'greeter', basePackage: 'x.y' },
+    },
+  },
+  {
+    family: 'JVM, Maven',
+    tags: ['lang.kotlin', 'runtime.jvm', 'framework.spring', 'arch.server-http', 'pkg.maven'],
+    answers: {
+      'walking-skeleton/spring-rest-kotlin-bootstrap': { projectName: 'api', basePackage: 'x.y' },
+    },
+  },
+  {
+    family: 'Go',
+    tags: ['lang.go', 'pkg.go-modules', 'arch.hexagonal', 'arch.server-http'],
+    answers: { 'walking-skeleton/go-bootstrap': { projectName: 'shipper', modulePath: 'x/y' } },
+  },
+  {
+    family: 'Rust',
+    tags: ['lang.rust', 'pkg.cargo', 'arch.server-http'],
+    answers: { 'walking-skeleton/rust-bootstrap': { projectName: 'tool' } },
+  },
+  {
+    family: 'TypeScript, pnpm',
+    tags: ['lang.typescript', 'runtime.node', 'arch.server-http', 'pkg.pnpm'],
+    answers: { 'walking-skeleton/ts-http-bootstrap': { projectName: 'api' } },
+  },
+  {
+    family: 'TypeScript, npm',
+    tags: ['lang.typescript', 'runtime.node', 'arch.server-http', 'pkg.npm'],
+    answers: { 'walking-skeleton/ts-http-bootstrap': { projectName: 'api' } },
+  },
+  {
+    family: 'Go, with a CLI as well',
+    tags: ['lang.go', 'pkg.go-modules', 'arch.hexagonal', 'arch.cli', 'arch.server-http'],
+    answers: { 'walking-skeleton/go-cli-bootstrap': { projectName: 'shipper', modulePath: 'x/y' } },
+  },
+];
+
+/** `project`'s manifest before the dev container, `dev-env` recorded or not. */
+function manifestOf(project: HttpProject, devEnv: boolean): ManifestV2 {
+  return {
+    ...emptyManifestV2('2026-08-18T00:00:00Z', '0.0.0-test'),
+    tags: [...project.tags],
+    answers: project.answers,
+    verticals: devEnv ? [{ id: 'dev-env', installedAt: '2026-08-18T00:00:00Z' }] : [],
+  };
+}
+
+function devcontainerOf(tree: FsTree): string {
+  return tree.read('.devcontainer/devcontainer.json')?.toString() ?? '';
+}
+
 /** Parses the rendered devcontainer.json, tolerating its comments. */
 function parseDevcontainer(tree: FsTree): Record<string, unknown> {
-  const raw = tree.read('.devcontainer/devcontainer.json')?.toString() ?? '';
-  const withoutComments = raw
-    .split('\n')
-    .filter((line) => !line.trimStart().startsWith('//'))
-    .join('\n');
-  return JSON.parse(withoutComments) as Record<string, unknown>;
+  return parseJsonc(devcontainerOf(tree)) as Record<string, unknown>;
+}
+
+/** Parses JSONC: every comment and trailing comma dropped, none read inside a string. */
+function parseJsonc(text: string): unknown {
+  const drop = (from: string, noise: RegExp): string =>
+    from.replace(noise, (_, string?: string) => string ?? '');
+  const comment = /("(?:[^"\\]|\\.)*")|\/\/[^\n]*|\/\*[\s\S]*?\*\//g;
+  const trailingComma = /("(?:[^"\\]|\\.)*")|,(?=\s*[}\]])/g;
+  return JSON.parse(drop(drop(text, comment), trailingComma));
+}
+
+/** The docker feature's key, as `features` holds it once attached. */
+const DOCKER_FEATURE = 'ghcr.io/devcontainers/features/docker-outside-of-docker:1';
+
+/** The features `upgraded` holds, read as JSONC. */
+function featuresOf(upgraded: string): readonly string[] {
+  return Object.keys((parseJsonc(upgraded) as { features: object }).features);
 }
 
 describe('dev-container vertical', () => {
@@ -184,18 +293,7 @@ describe('dev-env installed after dev-container (order independence)', () => {
     });
     expect(parseDevcontainer(first.tree).image).toBeDefined();
 
-    await installVertical({
-      vertical: devEnvVertical,
-      manifest: first.manifest,
-      tree: first.tree,
-      mode: 'non-interactive',
-      prompt: rejectingPrompt,
-      logger: new FakeLogger(),
-      cwd: '/unused',
-      templates: ejsTemplateSource,
-      processes: spawnProcessRunner,
-      now: () => '2026-08-18T13:00:00Z',
-    });
+    await installDevEnv(first);
 
     const parsed = parseDevcontainer(first.tree);
     expect(parsed.image).toBeUndefined();
@@ -216,17 +314,420 @@ describe('dev-env installed after dev-container (order independence)', () => {
     expect(readme).toContain('### Dev environment');
   });
 
-  it('leaves an already-attached definition untouched', () => {
-    const attached = '{\n  "dockerComposeFile": ["../dev/compose.yaml", "compose.yaml"]\n}\n';
-    expect(attachDevContainerToDevEnv(attached, 'shipper')).toBe(attached);
+  it.each(HTTP_PROJECTS.map((project) => [project.family, project] as const))(
+    'on an HTTP project, writes the bytes the template renders attached (%s)',
+    async (_, project) => {
+      const upgraded = devcontainerOf(
+        await installDevEnv(await install(manifestOf(project, false))),
+      );
+      const rendered = devcontainerOf((await install(manifestOf(project, true))).tree);
+      expect(upgraded).toBe(rendered);
+    },
+  );
+
+  it('on an HTTP project, writes them in a CRLF definition in its own line endings', async () => {
+    const [project] = HTTP_PROJECTS;
+    const standalone = await install(manifestOf(project!, false));
+    const crlf = (text: string): string => text.replace(/\n/g, '\r\n');
+    standalone.tree.write('.devcontainer/devcontainer.json', crlf(devcontainerOf(standalone.tree)));
+    const upgraded = devcontainerOf(await installDevEnv(standalone));
+    expect(upgraded).toBe(crlf(devcontainerOf((await install(manifestOf(project!, true))).tree)));
   });
 
-  it('refuses to rewrite a definition with a customized image', () => {
+  it('on an HTTP project, keeps what the user wrote into the definition', () => {
+    const edited = [
+      '{',
+      '  // Ours.',
+      '  "name": "shipper-dev",',
+      `  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",`,
+      '  "features": {',
+      '    "ghcr.io/devcontainers/features/go:1": {"version":"1.26"},',
+      '    "ghcr.io/devcontainers/features/github-cli:1": {',
+      '      "version": "latest"',
+      '    }',
+      '    // More to come.',
+      '  },',
+      '  "customizations": {"vscode": {"extensions": ["golang.go"]}},',
+      '  "remoteUser": "vscode"',
+      '}',
+      '',
+    ].join('\n');
+    const upgraded = attachDevContainerToDevEnv(
+      edited,
+      'shipper',
+      HTTP_PROJECTS[2]!.tags,
+      DEV_ENV_COMPOSE_ID,
+    );
+    const lines = upgraded.split('\n');
+    expect(lines.slice(0, 3)).toEqual(['{', '  // Ours.', '  //']);
+    expect(lines[lines.indexOf('  "name": "shipper-dev",') - 1]).toMatch(/not restarted\.$/);
+    expect(lines[lines.indexOf('  "name": "shipper-dev",') + 1]).toContain('"dockerComposeFile"');
+    expect(upgraded).toContain(
+      [
+        '    "ghcr.io/devcontainers/features/github-cli:1": {',
+        '      "version": "latest"',
+        '    },',
+        '    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}',
+        '    // More to come.',
+        '  },',
+        '  "customizations": {"vscode": {"extensions": ["golang.go"]}},',
+      ].join('\n'),
+    );
+    expect(upgraded).not.toContain('"image"');
+    expect(
+      attachDevContainerToDevEnv(upgraded, 'shipper', HTTP_PROJECTS[2]!.tags, DEV_ENV_COMPOSE_ID),
+    ).toBe(upgraded);
+  });
+
+  it('on an HTTP project, gives a features object with no entry the docker feature below its brace, every line kept', () => {
+    const empty = [
+      '{',
+      '  "name": "shipper",',
+      `  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",`,
+      '  "features": {',
+      '',
+      '    // None yet.',
+      '  },',
+      '  "remoteUser": "vscode"',
+      '}',
+      '',
+    ].join('\n');
+    const upgraded = attachDevContainerToDevEnv(
+      empty,
+      'shipper',
+      HTTP_PROJECTS[2]!.tags,
+      DEV_ENV_COMPOSE_ID,
+    );
+    expect(upgraded).toContain(
+      [
+        '  "features": {',
+        '    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}',
+        '',
+        '    // None yet.',
+        '  },',
+      ].join('\n'),
+    );
+    expect(featuresOf(upgraded)).toEqual([DOCKER_FEATURE]);
+  });
+
+  it('on an HTTP project, puts the comma the last feature takes ahead of a comment trailing it', () => {
+    const commented = [
+      '{',
+      '  "name": "shipper",',
+      `  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",`,
+      '  "features": {',
+      '    "ghcr.io/devcontainers/features/go:1": {"version": "1.26"} // pinned, for now',
+      '    /* More',
+      '       to come. */',
+      '  },',
+      '  "remoteUser": "vscode"',
+      '}',
+      '',
+    ].join('\n');
+    const upgraded = attachDevContainerToDevEnv(
+      commented,
+      'shipper',
+      HTTP_PROJECTS[2]!.tags,
+      DEV_ENV_COMPOSE_ID,
+    );
+    expect(upgraded).toContain(
+      [
+        '    "ghcr.io/devcontainers/features/go:1": {"version": "1.26"}, // pinned, for now',
+        '    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}',
+        '    /* More',
+        '       to come. */',
+        '  },',
+      ].join('\n'),
+    );
+    expect(parseJsonc(upgraded)).toMatchObject({
+      features: { 'ghcr.io/devcontainers/features/docker-outside-of-docker:1': {} },
+    });
+  });
+
+  it('on an HTTP project, follows a last feature that already carries its trailing comma', () => {
+    const trailing = [
+      '{',
+      '  "name": "shipper",',
+      `  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",`,
+      '  "features": {',
+      '    "ghcr.io/devcontainers/features/go:1": {},',
+      '  },',
+      '  "remoteUser": "vscode"',
+      '}',
+      '',
+    ].join('\n');
+    const upgraded = attachDevContainerToDevEnv(
+      trailing,
+      'shipper',
+      HTTP_PROJECTS[2]!.tags,
+      DEV_ENV_COMPOSE_ID,
+    );
+    expect(upgraded).toContain(
+      [
+        '    "ghcr.io/devcontainers/features/go:1": {},',
+        '    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},',
+        '  },',
+      ].join('\n'),
+    );
+    expect(upgraded).not.toContain(',,');
+  });
+
+  it.each([
+    ['without', ''],
+    ['with', ','],
+  ])(
+    'on an HTTP project, puts the docker feature past a block comment the last feature opens, %s its trailing comma',
+    (_, comma) => {
+      const commented = [
+        '{',
+        '  "name": "shipper",',
+        `  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",`,
+        '  "features": {',
+        `    "ghcr.io/devcontainers/features/go:1": {}${comma} /* pinned`,
+        '       until 1.27 lands */',
+        '  },',
+        '  "remoteUser": "vscode"',
+        '}',
+        '',
+      ].join('\n');
+      const upgraded = attachDevContainerToDevEnv(
+        commented,
+        'shipper',
+        HTTP_PROJECTS[2]!.tags,
+        DEV_ENV_COMPOSE_ID,
+      );
+      expect(upgraded).toContain(
+        [
+          '    "ghcr.io/devcontainers/features/go:1": {}, /* pinned',
+          '       until 1.27 lands */',
+          `    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}${comma}`,
+          '  },',
+        ].join('\n'),
+      );
+      expect(featuresOf(upgraded)).toEqual(['ghcr.io/devcontainers/features/go:1', DOCKER_FEATURE]);
+    },
+  );
+
+  it.each([
+    [
+      "on its last entry's line, first",
+      ['    "ghcr.io/devcontainers/features/go:1": {} },'],
+      [
+        '    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},',
+        '    "ghcr.io/devcontainers/features/go:1": {} },',
+      ],
+    ],
+    [
+      'where a comment its last entry opens ends, first',
+      ['    "ghcr.io/devcontainers/features/go:1": {} /* pinned', '  */ },'],
+      [
+        '    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},',
+        '    "ghcr.io/devcontainers/features/go:1": {} /* pinned',
+        '  */ },',
+      ],
+    ],
+    [
+      "on a line of its own at its entries' indent, last",
+      ['    "ghcr.io/devcontainers/features/go:1": {}', '    },'],
+      [
+        '    "ghcr.io/devcontainers/features/go:1": {},',
+        '    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}',
+        '    },',
+      ],
+    ],
+  ])(
+    'on an HTTP project, lists the docker feature in a features object closing %s, and in no object after it',
+    (_, entries, listed) => {
+      const customizations = [
+        '  "customizations": {',
+        '    "vscode": {',
+        '      "extensions": ["golang.go"]',
+        '    }',
+        '  },',
+      ];
+      const closed = [
+        '{',
+        '  "name": "shipper",',
+        `  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",`,
+        '  "features": {',
+        ...entries,
+        ...customizations,
+        '  "remoteUser": "vscode"',
+        '}',
+        '',
+      ].join('\n');
+      const upgraded = attachDevContainerToDevEnv(
+        closed,
+        'shipper',
+        HTTP_PROJECTS[2]!.tags,
+        DEV_ENV_COMPOSE_ID,
+      );
+      expect(upgraded).toContain(['  "features": {', ...listed, ...customizations].join('\n'));
+      expect(featuresOf(upgraded)).toContain(DOCKER_FEATURE);
+    },
+  );
+
+  it.each([
+    ['an HTTP', HTTP_PROJECTS[2]!.tags],
+    ['a CLI', ['lang.go', 'pkg.go-modules', 'arch.hexagonal', 'arch.cli']],
+  ])('on %s project, keeps a docker feature the user listed once, where it was', (_, tags) => {
+    const features = [
+      '  "features": {',
+      '    "ghcr.io/devcontainers/features/go:1": {},',
+      '    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {"moby": false},',
+      '    "ghcr.io/devcontainers/features/github-cli:1": {}',
+      '  },',
+    ];
+    const listed = [
+      '{',
+      '  "name": "shipper",',
+      `  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",`,
+      ...features,
+      '  "remoteUser": "vscode"',
+      '}',
+      '',
+    ].join('\n');
+    const upgraded = attachDevContainerToDevEnv(listed, 'shipper', tags, DEV_ENV_COMPOSE_ID);
+    expect(upgraded).toContain(features.join('\n'));
+    expect(upgraded.split(DOCKER_FEATURE)).toHaveLength(2);
+  });
+
+  it('on an HTTP project, puts the note above the Compose fields once "name" is no longer the line above the image', () => {
+    const moved = [
+      '{',
+      `  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",`,
+      '  "name": "shipper",',
+      '  "features": {',
+      '    "ghcr.io/devcontainers/features/go:1": {}',
+      '  },',
+      '  "remoteUser": "vscode"',
+      '}',
+      '',
+    ].join('\n');
+    const lines = attachDevContainerToDevEnv(
+      moved,
+      'shipper',
+      HTTP_PROJECTS[2]!.tags,
+      DEV_ENV_COMPOSE_ID,
+    ).split('\n');
+    const fields = lines.findIndex((line) => line.startsWith('  "dockerComposeFile"'));
+    expect(lines[0]).toBe('{');
+    expect(lines[fields - 1]).toMatch(/not restarted\.$/);
+    expect(lines[lines.indexOf('  "name": "shipper",') - 1]).toBe('  "overrideCommand": true,');
+  });
+
+  it.each([
+    [
+      'a features object the user commented out above it',
+      ['  /* Was:', '  "features": {', '  },', '  */', '  "features": {', '  },'],
+      [DOCKER_FEATURE],
+    ],
+    [
+      'a brace in a comment above its entry',
+      [
+        '  "features": {',
+        '    /* Next:',
+        '  }',
+        '    */',
+        '    "ghcr.io/devcontainers/features/go:1": {}',
+        '  },',
+      ],
+      ['ghcr.io/devcontainers/features/go:1', DOCKER_FEATURE],
+    ],
+  ])(
+    'on an HTTP project, reads the features object as code alone: %s is none of it',
+    (_, features, listed) => {
+      const edited = [
+        '{',
+        '  "name": "shipper",',
+        `  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",`,
+        ...features,
+        '  "remoteUser": "vscode"',
+        '}',
+        '',
+      ].join('\n');
+      expect(
+        featuresOf(
+          attachDevContainerToDevEnv(edited, 'shipper', HTTP_PROJECTS[2]!.tags, DEV_ENV_COMPOSE_ID),
+        ),
+      ).toEqual(listed);
+    },
+  );
+
+  it('elsewhere, keeps the shape an extra dev environment has always written', async () => {
+    const standalone = await install({
+      ...emptyManifestV2('2026-08-18T00:00:00Z', '0.0.0-test'),
+      tags: ['lang.go', 'pkg.go-modules', 'arch.hexagonal', 'arch.cli'],
+      answers: { 'walking-skeleton/go-bootstrap': { projectName: 'shipper', modulePath: 'x/y' } },
+    });
+    const lines = devcontainerOf(await installDevEnv(standalone)).split('\n');
+    const name = lines.indexOf('  "name": "shipper",');
+    expect(lines.slice(name + 1, name + 3)).toEqual([
+      '  //',
+      '  // Compose-based on purpose: the workspace is one extra service',
+    ]);
+    const features = lines.indexOf('  "features": {');
+    expect(lines.slice(features + 1, features + 3)).toEqual([
+      '    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},',
+      `    "ghcr.io/devcontainers/features/go:1": {"version":"${pinValue('go-toolchain')}"}`,
+    ]);
+  });
+
+  it('leaves an already-attached definition untouched', () => {
+    const attached = '{\n  "dockerComposeFile": ["../dev/compose.yaml", "compose.yaml"]\n}\n';
+    expect(attachDevContainerToDevEnv(attached, 'shipper', [], DEV_ENV_COMPOSE_ID)).toBe(attached);
+  });
+
+  it('refuses to rewrite a definition with a customized image, as a file in the way', () => {
     const custom =
       '{\n  "name": "shipper",\n  "image": "my-registry/my-base:1",\n  "features": {\n  }\n}\n';
-    expect(() => attachDevContainerToDevEnv(custom, 'shipper')).toThrow(
-      /attach it to the dev environment manually/,
+    const refused = (() => {
+      try {
+        attachDevContainerToDevEnv(custom, 'shipper', [], DEV_ENV_COMPOSE_ID);
+      } catch (thrown) {
+        return thrown;
+      }
+      return null;
+    })();
+    expect(refused).toBeInstanceOf(PathConflictError);
+    const error = refused as PathConflictError;
+    expect(error.code).toBe('keel.path-conflict');
+    expect(error.refusal).toEqual({
+      kind: 'path-conflict',
+      path: '.devcontainer/devcontainer.json',
+      adapterId: DEV_ENV_COMPOSE_ID,
+      manual: 'attach it to the dev environment',
+    });
+    // Never the image line to put back: the attach would replace it,
+    // and leave the user's own beside the compose fields.
+    expect(error.message).toBe(
+      "'.devcontainer/devcontainer.json' has changed since keel scaffolded it, and keel does not rewrite what you changed there — attach it to the dev environment yourself, then re-run",
     );
+  });
+
+  it('refuses `keel add dev-env` over it before a file moves, on the Err rail', async () => {
+    const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-dev-container-drift-'));
+    cwds.push(cwd);
+    const mediator = installMediator({
+      processes: new FakeProcessRunner(),
+      runDeferred: async () => {},
+    });
+    const run = { cwd, answers: {}, interactive: false, dryRun: false };
+    expectOk(await mediator.dispatch(newProjectCommand({ ...run, stack: 'go-cli' })));
+    const definition = path.join(cwd, '.devcontainer/devcontainer.json');
+    const custom = (await fs.readFile(definition, 'utf8')).replace(
+      /"image": "[^"]*"/,
+      '"image": "my-registry/my-base:1"',
+    );
+    await fs.writeFile(definition, custom);
+
+    const error = expectErr(
+      await mediator.dispatch(addVerticalCommand({ ...run, verticals: ['dev-env'] })),
+    );
+    expect(error.code).toBe('keel.path-conflict');
+    expect(error.message).toMatch(/^'\.devcontainer\/devcontainer\.json' has changed since /);
+    expect(await fs.readFile(definition, 'utf8')).toBe(custom);
+    expect(await fs.pathExists(path.join(cwd, 'dev/compose.yaml'))).toBe(false);
   });
 });
 

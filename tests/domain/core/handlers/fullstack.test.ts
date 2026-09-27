@@ -83,7 +83,7 @@ describe('peerRef', () => {
 
 describe('fullstack composite install (monorepo)', () => {
   it.each([false, true])(
-    'refuses a family harness at the product root even with family tags (%s)',
+    'installs no family harness at the product root even with family tags (%s)',
     async (familyTags) => {
       const { ran, runDeferred } = recordActions();
       const mediator = installMediator({ runDeferred });
@@ -93,9 +93,9 @@ describe('fullstack composite install (monorepo)', () => {
       await fsManifestStore.write(projectScopeRoot(cwd), before);
       const actionsBefore = [...ran];
       // The product root has a document of its own (`fullstack/product-harness`);
-      // what the refusal must not do is replace it with a service's binding spec.
+      // what the add must not do is replace it with a service's binding spec.
       const rootDocBefore = read('AGENTS.md');
-      const error = expectErr(
+      const report = expectOk(
         await mediator.dispatch(
           addVerticalCommand({
             cwd,
@@ -109,11 +109,11 @@ describe('fullstack composite install (monorepo)', () => {
       // Not a special case any more: the product glue declares the rule
       // (`fullstack/one-harness`), so the planner reads a family kit as
       // not for the root even where the root's tags match a family —
-      // and the root sends it to its services, which have it.
-      expect(error.code).toBe('keel.wrong-scope');
-      expect(error.message).toBe(
-        'Agent harness belongs to a service, not to the product root — backend/ and frontend/ have it already',
-      );
+      // and the root's services have it, so it is there already.
+      expect(report.changes).toEqual([]);
+      expect(report.notes).toEqual([
+        'Agent harness is already there: backend/ and frontend/ have it',
+      ]);
       expect(read('AGENTS.md')).toBe(rootDocBefore);
       expect(rootDocBefore).toContain('Work inside a service');
       expect(rootDocBefore).not.toContain('Engineering conventions');
@@ -204,20 +204,15 @@ describe('fullstack composite install (monorepo)', () => {
       });
     expectOk(await mediator.dispatch(persistence(path.join(cwd, 'backend'))));
 
-    // Its preset would take it; its manifest says it has it now.
-    const error = expectErr(await mediator.dispatch(persistence(cwd)));
-    expect(error.message).toBe(
-      'Persistence belongs to a service, not to the product root — backend/ has it already',
-    );
-    expect((error as RefusalError).refusal).toMatchObject({
-      services: [
-        { path: 'backend', readiness: 'included' },
-        { path: 'frontend', readiness: 'unavailable' },
-      ],
-    });
+    // Its preset would take it; its manifest says it has it now, and
+    // the other service cannot: it is there already.
+    const there = expectOk(await mediator.dispatch(persistence(cwd)));
+    expect(there.changes).toEqual([]);
+    expect(there.notes).toEqual(['Persistence is already there: backend/ has it']);
 
     // A service manifest keel cannot read words nothing wrong here —
-    // the root still refuses, reading that service from its preset.
+    // the root reads that service from its preset, which would take
+    // it, so it refuses, sending it there.
     await fs.writeFile(
       path.join(projectScopeRoot(path.join(cwd, 'backend')), MANIFEST_FILENAME),
       '{ broken',

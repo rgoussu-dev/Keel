@@ -26,7 +26,7 @@ import {
   type JvmBuildSystem,
   type JvmRestFramework,
 } from './container-image.js';
-import { jvmLayout, type JvmLayoutPaths } from './jvm-module-layout.js';
+import { SKELETON_MODULE, jvmLayout, type JvmLayoutPaths } from './jvm-module-layout.js';
 
 export const JVM_CLAUDE_KIT_ID = 'agent-harness/jvm-claude-kit';
 
@@ -120,13 +120,17 @@ function jvmLayoutRows(
       '`platform/kernel/` — `Command`, `Handler`, `Mediator`, `RegistryMediator`, `@DomainHandler`; depends on nothing.',
       '`modules/<ctx>/domain/contract/` — `<Ctx>Command`, results, errors and driven ports (`<Peer>Client`); `modules/<ctx>/domain/core/` — `<Ctx>Handler`.',
       '`modules/<ctx>/user-side/service/` — `<Ctx>Service` + `<Ctx>ServiceAdapter`, the peer seam: the only module a sibling context may depend on.',
+      // The driving adapters are the skeleton's alone: the peer context
+      // and every context `keel add module` adds get none.
       ...(rest
         ? [
-            '`modules/<ctx>/user-side/api/{contract,adapters}/` — REST DTOs and resources the REST assembly mounts.',
+            `\`modules/${SKELETON_MODULE}/user-side/api/{contract,adapters}/\` — the skeleton’s REST DTOs and resources, which the REST assembly mounts; no other context has any until you write them.`,
           ]
         : []),
       ...(cli
-        ? ['`modules/<ctx>/user-side/cli/` — the picocli commands the CLI assembly mounts.']
+        ? [
+            `\`modules/${SKELETON_MODULE}/user-side/cli/\` — the skeleton’s picocli commands, which the CLI assembly mounts; no other context has any until you write them.`,
+          ]
         : []),
       '`modules/<ctx>/infra/<peer>-gateway/` — `<Peer>Gateway` implements `<ctx>`’s `<Peer>Client` port over `<peer>`’s service seam; other driven adapters sit beside it (`infra/clock/fake`).',
       ...(rest

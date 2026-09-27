@@ -5,6 +5,7 @@
  * process-level failure transport (stderr + exit code 1). No logic.
  */
 
+import os from 'node:os';
 import path from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -14,11 +15,13 @@ import { CatalogHandler } from '../../../domain/core/handlers/catalog.js';
 import { DialsHandler } from '../../../domain/core/handlers/dials.js';
 import { PreviewHandler } from '../../../domain/core/handlers/preview.js';
 import { ProjectStatusHandler } from '../../../domain/core/handlers/project-status.js';
+import { AddEntrypointHandler } from '../../../domain/core/handlers/add-entrypoint.js';
 import { AddModuleHandler } from '../../../domain/core/handlers/add-module.js';
 import { AddVerticalHandler } from '../../../domain/core/handlers/add-vertical.js';
 import { DocsCheckHandler } from '../../../domain/core/handlers/docs-check.js';
 import { DocsSyncHandler } from '../../../domain/core/handlers/docs-sync.js';
 import { LinkPeerHandler } from '../../../domain/core/handlers/link-peer.js';
+import { nearbyProjects } from '../../../domain/core/scope.js';
 import { ToolchainCheckHandler } from '../../../domain/toolchain/core/check.js';
 import { ToolchainInstallHandler } from '../../../domain/toolchain/core/install.js';
 import {
@@ -99,16 +102,21 @@ async function run(argv: string[]): Promise<void> {
     processes: spawnProcessRunner,
     registry,
     keelVersion,
+    home: os.homedir(),
   };
+  // The provisioning context may not import the engine's walk up to
+  // the project a directory sits in: it is handed it here.
+  const toolchain = { ...deps, nearby: (dir: string) => nearbyProjects(deps, dir) };
   const mediator = new RegistryMediator([
     new NewProjectHandler(deps),
     new AddVerticalHandler(deps),
     new AddModuleHandler(deps),
+    new AddEntrypointHandler(deps),
     new DocsSyncHandler(deps),
     new DocsCheckHandler(deps),
     new LinkPeerHandler(deps),
-    new ToolchainInstallHandler(deps),
-    new ToolchainCheckHandler(deps),
+    new ToolchainInstallHandler(toolchain),
+    new ToolchainCheckHandler(toolchain),
     new CatalogHandler(deps),
     new DialsHandler(deps),
     new PreviewHandler(deps),

@@ -60,6 +60,7 @@ import {
   unusedAnswers,
   type AnswerHistory,
 } from '../supplied-answers.js';
+import { AddEntrypointHandler } from './add-entrypoint.js';
 import { AddModuleHandler } from './add-module.js';
 import { AddVerticalHandler } from './add-vertical.js';
 import type { InstallDeps } from './deps.js';
@@ -147,6 +148,8 @@ function run(command: InstallCommand, deps: InstallDeps): Promise<Result<Install
       return new AddVerticalHandler(deps).handle(command);
     case 'keel.add-module':
       return new AddModuleHandler(deps).handle(command);
+    case 'keel.add-entrypoint':
+      return new AddEntrypointHandler(deps).handle(command);
   }
 }
 

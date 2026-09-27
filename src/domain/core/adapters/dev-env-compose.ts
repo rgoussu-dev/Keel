@@ -28,9 +28,11 @@
  * `dev-container.ts`, which owns that knowledge.
  */
 
+import { placeReadmeSection } from '../rank.js';
 import { anyProjectName, eolAware } from '../util.js';
 import {
   attachDevContainerToDevEnv,
+  DEV_CONTAINER_TARGET,
   attachReadmeSection,
   devContainerInstalled,
   renderDevContainerOverlay,
@@ -91,7 +93,7 @@ export const devEnvComposeAdapter: Adapter = {
           target: 'README.md',
           apply: eolAware((existing) => {
             if (existing.includes(README_MARKER)) return existing;
-            return `${existing.trimEnd()}\n${readmeSection()}`;
+            return placeReadmeSection(existing, readmeSection(), ctx.manifest.tags);
           }),
         },
       ],
@@ -108,8 +110,15 @@ export const devEnvComposeAdapter: Adapter = {
       patches: [
         ...(base.patches ?? []),
         {
-          target: '.devcontainer/devcontainer.json',
-          apply: eolAware((existing) => attachDevContainerToDevEnv(existing, projectName)),
+          target: DEV_CONTAINER_TARGET,
+          apply: eolAware((existing) =>
+            attachDevContainerToDevEnv(
+              existing,
+              projectName,
+              ctx.manifest.tags,
+              DEV_ENV_COMPOSE_ID,
+            ),
+          ),
         },
         {
           target: overlay.path,

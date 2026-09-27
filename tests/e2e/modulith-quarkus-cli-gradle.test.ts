@@ -7,14 +7,13 @@
  * one that opens them.
  *
  * The CLI assembly is not the REST one with a different main class.
- * It is `application/cli` rather than `application/api`, and the
- * peer-context adapter picks between them at scaffold time by reading
- * the `arch.cli` tag (`assembly = cli ? layout.cliRuntime :
- * layout.restRuntime`). Every patch that family applies is aimed at
- * whatever that resolution returned — the `include(…)` lines, the
- * assembly's peer dependencies, the composition-root binding, and the
- * directory `GuestbookWiringTest` renders into. The REST cells prove
- * one branch of that conditional; nothing proved the other.
+ * It is `application/cli` rather than `application/api`, and the peer
+ * context is wired into it by a wiring adapter of its own, the one the
+ * `arch.cli` tag selects (roadmap R.3d). Every patch that adapter
+ * applies is aimed at `application/cli` — the assembly's peer
+ * dependencies, the composition-root binding, and the directory
+ * `GuestbookWiringTest` renders into. The REST cells prove the REST
+ * assembly's adapter; nothing proved this one.
  *
  * Coverage here is as strong as a REST cell's, which was worth
  * checking rather than assuming: the wiring test lands in the CLI

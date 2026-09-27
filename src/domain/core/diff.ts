@@ -1,9 +1,11 @@
 /**
- * Line-based unified diff — how reapply shows what a re-render would
- * change in the working tree. Deliberately dependency-free: the input
- * is two rendered texts, the output is unified-diff hunks (without the
- * `---`/`+++` file header, which the caller renders alongside the
- * path).
+ * Line-based unified diff — how a re-render (`keel add --reapply` and
+ * `--refresh`, and the agent harness under `keel add entrypoint`) shows
+ * what it would change in the working tree: `workingTreeDiffs` reads
+ * each modified file's old side from it. Deliberately
+ * dependency-free: the input is two rendered texts, the output is
+ * unified-diff hunks (without the `---`/`+++` file header, which the
+ * caller renders alongside the path).
  *
  * The line alignment is a longest-common-subsequence over trimmed
  * texts (the common prefix and suffix are stripped first, which is the
@@ -12,6 +14,9 @@
  * whole-middle replacement hunk — still a correct diff, just not a
  * minimal one.
  */
+
+import type { FileDiff } from '../contract/commands.js';
+import type { Tree, TreeFactory } from '../contract/ports/tree.js';
 
 /** Context lines shown around each change, as in `diff -u`. */
 const CONTEXT = 3;
@@ -25,6 +30,38 @@ const LCS_CELL_BUDGET = 4_000_000;
  * through the line machinery instead of special-cased around it.
  */
 const NO_EOL_MARKER = '\\ No newline at end of file';
+
+/**
+ * Unified diffs for every `modify` the staged tree carries, in its path
+ * order — what a run that re-renders reports: the old side is read from
+ * the still-uncommitted working tree, through a pristine Tree `trees`
+ * opens over the same `cwd`. A binary file is said to differ, not
+ * diffed.
+ */
+export function workingTreeDiffs(
+  trees: TreeFactory,
+  cwd: string,
+  staged: Tree,
+): readonly FileDiff[] {
+  const pristine = trees(cwd);
+  const diffs: FileDiff[] = [];
+  for (const change of staged.changes()) {
+    if (change.kind !== 'modify') continue;
+    const before = pristine.read(change.path);
+    const after = staged.read(change.path);
+    if (before === null || after === null) continue;
+    const diff =
+      looksBinary(before) || looksBinary(after)
+        ? '(binary content differs)'
+        : unifiedDiff(before.toString('utf8'), after.toString('utf8'));
+    diffs.push({ path: change.path, diff });
+  }
+  return diffs;
+}
+
+function looksBinary(content: Buffer): boolean {
+  return content.includes(0);
+}
 
 /**
  * Renders the unified-diff hunks turning `oldText` into `newText`.

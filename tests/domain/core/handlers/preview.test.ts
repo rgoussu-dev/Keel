@@ -589,7 +589,11 @@ describe('keel.preview — a choice is offered where it is taken', () => {
     // must be refused by both as outside the choices, never deeper in
     // the install. The preview holds a posted answer to the list at
     // the prompt, the install holds a `--set` to it where the answer
-    // reaches its adapter: two doors, one list.
+    // reaches its adapter: two doors, one list. The weekly sweep
+    // (`tests/sweep/choices.test.ts`) posts every offered choice of
+    // every question the whole menu, no extra or one extra asks, on
+    // every dial setting; this is the slice `verify` keeps, and the
+    // half — a hidden choice refused — it does not.
     const mediator = installMediator();
     // Defaults are left out: the preview posting no answers resolves
     // to them, and it must be Ok for the stack to be swept at all.

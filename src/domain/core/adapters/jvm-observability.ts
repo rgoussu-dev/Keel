@@ -35,6 +35,7 @@
 
 import { jvmBuildSystem } from './jvm-build-system.js';
 import { jvmLayout, type JvmLayoutPaths } from './jvm-module-layout.js';
+import { placeReadmeSection } from '../rank.js';
 import { eolAware, packageToPath } from '../util.js';
 import type { JvmLanguage } from './jvm-bootstrap.js';
 import type { Adapter, ContributionPatch, ManifestV2 } from '../../contract/composition.js';
@@ -375,7 +376,7 @@ export function jvmObservabilityAdapter(spec: JvmObservabilitySpec): Adapter {
             target: 'README.md',
             apply: eolAware((existing) => {
               if (existing.includes(README_MARKER)) return existing;
-              return `${existing.trimEnd()}\n${readmeSection(wiring, layout)}`;
+              return placeReadmeSection(existing, readmeSection(wiring, layout), ctx.manifest.tags);
             }),
           },
         ],

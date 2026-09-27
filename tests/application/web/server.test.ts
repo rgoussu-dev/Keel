@@ -23,6 +23,7 @@ import type { Action } from '../../../src/domain/kernel/action.js';
 import type { Mediator } from '../../../src/domain/kernel/mediator.js';
 import type { Result } from '../../../src/domain/kernel/result.js';
 import { installMediator } from '../../support/factory.js';
+import { errorFrom, failureOf } from '../../../assets/web/src/response.js';
 
 /**
  * The install case commits for real, and its deferred actions would
@@ -198,6 +199,30 @@ describe('the keel ui server', () => {
         },
       },
     });
+  });
+
+  it('refuses a new project inside one, as the refusal the page shows where the plan would be', async () => {
+    expect((await post('/api/install', { cwd, target, answers: {} })).status).toBe(200);
+    // A directory the user made, and one keel wrote: the Directory
+    // step reads no project of its own in either, so the page offers a
+    // new one, and its preview is where the page learns it cannot — as
+    // a refusal naming the project, not the project's own `CLAUDE.md`
+    // in the way.
+    for (const dir of ['tools', 'domain']) {
+      const where = path.join(cwd, dir);
+      await fs.ensureDir(where);
+      const status = await get(`/api/project?path=${encodeURIComponent(where)}`);
+      expect(((await status.json()) as { initialised: boolean }).initialised).toBe(false);
+      const response = await post('/api/preview', { cwd: where, target, answers: {} });
+      expect(response.status).toBe(422);
+      const error = errorFrom(response.status, await response.text());
+      expect(error).toEqual({
+        code: 'keel.inside-project',
+        message:
+          'this directory is inside the keel project at ../; scaffolding a project inside another is not supported — scaffold it elsewhere and move it here',
+      });
+      expect(failureOf(error).kind).toBe('refusal');
+    }
   });
 
   it('holds an install body’s answers to the plan and to their choices, as refusals', async () => {

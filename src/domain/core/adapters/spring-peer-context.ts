@@ -1,6 +1,7 @@
 /**
  * The Spring peer-context adapters — `walking-skeleton/spring-peer-context`
- * and its Kotlin twin.
+ * and its Kotlin twin, each a shell and a wiring adapter per entrypoint
+ * (`…-cli`, `…-rest`).
  *
  * Spring needs **two** edits, and the second is the one that fails
  * silently if it is forgotten:
@@ -29,12 +30,13 @@
 import {
   appendToClassBody,
   freshServiceDoc,
-  jvmPeerContextAdapter,
+  jvmPeerContextAdapters,
   peerNames,
   PEER_PORT,
   STALE_SERVICE_DOC,
   type PeerBinding,
 } from './jvm-peer-context.js';
+import type { JvmArch } from './jvm-bootstrap.js';
 import { PEER_MODULE, SKELETON_MODULE } from './module-layout.js';
 import { SPRING_CLI_BOOTSTRAP_ID } from './spring-cli-bootstrap.js';
 import { SPRING_CLI_KOTLIN_BOOTSTRAP_ID } from './spring-cli-kotlin-bootstrap.js';
@@ -46,12 +48,13 @@ export const SPRING_PEER_CONTEXT_ID = 'walking-skeleton/spring-peer-context';
 export const SPRING_PEER_CONTEXT_KOTLIN_ID = 'walking-skeleton/spring-peer-context-kotlin';
 
 /**
- * The Spring class carrying `@SpringBootApplication` — `Application`
- * for the REST assembly, `Main` for the CLI one, which also
- * implements `CommandLineRunner`.
+ * The Spring class carrying `@SpringBootApplication` in each
+ * entrypoint's assembly — `Application` for the REST one, `Main` for
+ * the CLI one, which also implements `CommandLineRunner`. A static
+ * fact of each wiring adapter, which names its entrypoint, and of
+ * `spring-context.ts`' too.
  */
-const bootClass = (binding: PeerBinding): string =>
-  binding.assemblyPkg.endsWith('cli') ? 'Main' : 'Application';
+export const BOOT_CLASS: Readonly<Record<JvmArch, string>> = { cli: 'Main', rest: 'Application' };
 
 const SCAN_NOTE = [
   '        // Every bounded context is named here, one by one. Nothing',
@@ -93,12 +96,9 @@ const KOTLIN_BEAN_DOC = `    /**
      */`;
 
 /** Widens the boot class's explicit component scan to the peer context. */
-function componentScanPatch(
-  adapterId: string,
-  binding: PeerBinding,
-  language: 'java' | 'kotlin',
-): ContributionPatch {
-  const { basePackage, assemblyPkg } = binding;
+function componentScanPatch(binding: PeerBinding, language: 'java' | 'kotlin'): ContributionPatch {
+  const { adapterId, basePackage, assemblyPkg } = binding;
+  const bootClass = BOOT_CLASS[binding.arch];
   const contexts = [SKELETON_MODULE, PEER_MODULE].map((m) => `${basePackage}.${m}`);
   const anchor =
     language === 'java'
@@ -121,12 +121,12 @@ function componentScanPatch(
           '    ],',
         ].join('\n');
   return {
-    target: binding.sourceFile(bootClass(binding)),
+    target: binding.sourceFile(bootClass),
     apply: (existing) => {
       if (existing.includes(`${basePackage}.${PEER_MODULE}"`)) return existing;
       if (!existing.includes(anchor)) {
         throw new Error(
-          `${adapterId}: could not find the @ComponentScan basePackages list in ${bootClass(binding)} — add "${basePackage}.${PEER_MODULE}" manually or SignHandler is never discovered`,
+          `${adapterId}: could not find the @ComponentScan basePackages list in ${bootClass} — add "${basePackage}.${PEER_MODULE}" manually or SignHandler is never discovered`,
         );
       }
       return existing.replace(anchor, widened);
@@ -151,7 +151,7 @@ function javaBinding(binding: PeerBinding): readonly ContributionPatch[] {
         if (existing.includes('GreetingWelcome')) return existing;
         if (!existing.includes(anchorImport) || !existing.includes(providerAnchor)) {
           throw new Error(
-            `${SPRING_PEER_CONTEXT_ID}: could not find the imports to anchor on in MediatorConfig`,
+            `${binding.adapterId}: could not find the imports to anchor on in MediatorConfig`,
           );
         }
         const withImports = existing
@@ -167,7 +167,7 @@ function javaBinding(binding: PeerBinding): readonly ContributionPatch[] {
         return appendToClassBody(withDoc, bean);
       },
     },
-    componentScanPatch(SPRING_PEER_CONTEXT_ID, binding, 'java'),
+    componentScanPatch(binding, 'java'),
   ];
 }
 
@@ -187,7 +187,7 @@ function kotlinBinding(binding: PeerBinding): readonly ContributionPatch[] {
         if (existing.includes('GreetingWelcome')) return existing;
         if (!existing.includes(anchorImport) || !existing.includes(providerAnchor)) {
           throw new Error(
-            `${SPRING_PEER_CONTEXT_KOTLIN_ID}: could not find the imports to anchor on in MediatorConfig`,
+            `${binding.adapterId}: could not find the imports to anchor on in MediatorConfig`,
           );
         }
         const withImports = existing
@@ -203,24 +203,40 @@ function kotlinBinding(binding: PeerBinding): readonly ContributionPatch[] {
         return appendToClassBody(withDoc, bean);
       },
     },
-    componentScanPatch(SPRING_PEER_CONTEXT_KOTLIN_ID, binding, 'kotlin'),
+    componentScanPatch(binding, 'kotlin'),
   ];
 }
 
-/** Spring Boot + Java. */
-export const springPeerContextAdapter: Adapter = jvmPeerContextAdapter({
+const springPeerContext = jvmPeerContextAdapters({
   id: SPRING_PEER_CONTEXT_ID,
   framework: 'spring',
   language: 'java',
-  bootstrapIds: [SPRING_REST_BOOTSTRAP_ID, SPRING_CLI_BOOTSTRAP_ID],
+  bootstrapIds: { cli: SPRING_CLI_BOOTSTRAP_ID, rest: SPRING_REST_BOOTSTRAP_ID },
   bind: javaBinding,
 });
 
-/** Spring Boot + Kotlin. */
-export const springPeerContextKotlinAdapter: Adapter = jvmPeerContextAdapter({
+const springPeerContextKotlin = jvmPeerContextAdapters({
   id: SPRING_PEER_CONTEXT_KOTLIN_ID,
   framework: 'spring',
   language: 'kotlin',
-  bootstrapIds: [SPRING_REST_KOTLIN_BOOTSTRAP_ID, SPRING_CLI_KOTLIN_BOOTSTRAP_ID],
+  bootstrapIds: { cli: SPRING_CLI_KOTLIN_BOOTSTRAP_ID, rest: SPRING_REST_KOTLIN_BOOTSTRAP_ID },
   bind: kotlinBinding,
 });
+
+/** Spring Boot + Java: the shell. */
+export const springPeerContextAdapter: Adapter = springPeerContext.shell;
+
+/** Spring Boot + Java: the wiring into the CLI's assembly, `application/cli`. */
+export const springPeerContextCliAdapter: Adapter = springPeerContext.wiring.cli;
+
+/** Spring Boot + Java: the wiring into the REST assembly, `application/api`. */
+export const springPeerContextRestAdapter: Adapter = springPeerContext.wiring.rest;
+
+/** Spring Boot + Kotlin: the shell. */
+export const springPeerContextKotlinAdapter: Adapter = springPeerContextKotlin.shell;
+
+/** Spring Boot + Kotlin: the wiring into the CLI's assembly, `application/cli`. */
+export const springPeerContextKotlinCliAdapter: Adapter = springPeerContextKotlin.wiring.cli;
+
+/** Spring Boot + Kotlin: the wiring into the REST assembly, `application/api`. */
+export const springPeerContextKotlinRestAdapter: Adapter = springPeerContextKotlin.wiring.rest;

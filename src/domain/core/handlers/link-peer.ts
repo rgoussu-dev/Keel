@@ -18,6 +18,8 @@ import type { Handler } from '../../kernel/handler.js';
 import { DomainError, err, ok, type Result } from '../../kernel/result.js';
 import type { LinkPeerCommand, LinkReport } from '../../contract/commands.js';
 import { projectScopeRoot, type ManifestV2, type PeerLink } from '../../contract/manifest.js';
+import { NOT_INITIALISED_CODE, notInitialisedSentence } from '../../contract/nearby.js';
+import { nearbyProjects } from '../scope.js';
 import type { InstallDeps } from './deps.js';
 
 /** Executes {@link LinkPeerCommand}s. */
@@ -37,10 +39,17 @@ export class LinkPeerHandler implements Handler<LinkPeerCommand> {
 
     const own = await this.deps.manifests.read(projectScopeRoot(here));
     if (!own) {
+      // Inside a project, that project is the one to link from — not a
+      // `keel new`, which is refused there.
       return err(
         new DomainError(
-          `no project initialised at ${projectScopeRoot(here)} — run 'keel new --stack=<id>' first`,
-          'keel.not-initialised',
+          notInitialisedSentence(
+            projectScopeRoot(here),
+            await nearbyProjects(this.deps, here),
+            'keel link',
+            'keel new --stack=<id>',
+          ),
+          NOT_INITIALISED_CODE,
         ),
       );
     }

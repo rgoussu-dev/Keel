@@ -264,11 +264,11 @@ async function expectOneModuleList(cell: JvmComboCell, cwd: string): Promise<voi
  * REST assembly's jar boots and answers the whole `/greet` wire
  * contract.
  *
- * `withPeerContext` rides along under `modulith`, for the same reason
- * the single-entrypoint modulith cells carry it: the peer-context
- * adapter resolves its target assembly by reading the `arch.cli` tag,
- * and a combo tag set is the only input where that read is a genuine
- * choice between two assemblies that both exist.
+ * `withPeerContext` rides along under `modulith`, as it does on the
+ * single-entrypoint modulith cells: the peer context is wired into
+ * each assembly by an adapter of its own, selected by that
+ * entrypoint's tag, and a combo tag set is the only input where both
+ * match, so both assemblies are wired, each by its own adapter.
  */
 export async function runJvmComboE2E(
   cell: JvmComboCell,

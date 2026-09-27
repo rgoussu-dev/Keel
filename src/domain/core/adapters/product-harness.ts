@@ -31,8 +31,9 @@
  * not find it there will reasonably conclude the root was forgotten.
  *
  * The adapter adds {@link AGENT_HARNESS_TAG} rather than relying on
- * the `agent-harness` vertical, which refuses to install at a product
- * root (`keel add agent-harness` names the service to run it in).
+ * the `agent-harness` vertical, which does not install at a product
+ * root (`keel add agent-harness` there answers that the services have
+ * it).
  * The tag is what opens the engine's final harness pass, and hence
  * the index projection, for this scope.
  *

@@ -10,7 +10,8 @@ keel add observability
 
 **HTTP services only** — on a CLI project the install is refused,
 naming the HTTP server entrypoint the project lacks (there is no probe
-surface to cover).
+surface to cover); `keel add entrypoint http` adds the server, and
+observability with it, where the project can grow one.
 
 ## The four dimensions
 

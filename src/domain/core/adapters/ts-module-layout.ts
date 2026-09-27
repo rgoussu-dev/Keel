@@ -238,35 +238,21 @@ export interface TsAssemblyPaths {
   readonly pkg: string;
 }
 
+/** A TypeScript deployment unit: the CLI's assembly, or the HTTP server's. */
+export type TsUnit = 'cli' | 'rest';
+
 /**
- * Which assemblies this project has, from the stack's arch tags — the
- * TypeScript sibling of the Rust and Go `assembliesOf`. The adapters
- * that wire a bounded context into "the assembly" (`ts-peer-context`,
- * `ts-context`) iterate over this rather than naming `application/rest`,
- * so the same wiring lands in a CLI, an HTTP service, or both.
+ * The assembly of the deployment unit `unit`. The adapters that wire a
+ * bounded context into an assembly (`ts-peer-context`'s and
+ * `ts-context`'s wiring adapters, one per entrypoint) each name theirs
+ * through this rather than spelling `application/rest`; which
+ * assemblies a project has is read off their predicates, never off the
+ * tags inside `contribute()`.
  */
-export function tsAssemblies(
-  tags: readonly Tag[],
-  layout: TsLayoutPaths,
-): readonly TsAssemblyPaths[] {
-  const assemblies: TsAssemblyPaths[] = [];
-  if (tags.includes('arch.cli')) {
-    assemblies.push({
-      root: layout.cliRoot,
-      src: layout.cliSrc,
-      tests: layout.cliTests,
-      pkg: layout.cliPkg,
-    });
-  }
-  if (tags.includes('arch.server-http')) {
-    assemblies.push({
-      root: layout.restRoot,
-      src: layout.restSrc,
-      tests: layout.restTests,
-      pkg: layout.restPkg,
-    });
-  }
-  return assemblies;
+export function tsAssembly(layout: TsLayoutPaths, unit: TsUnit): TsAssemblyPaths {
+  return unit === 'cli'
+    ? { root: layout.cliRoot, src: layout.cliSrc, tests: layout.cliTests, pkg: layout.cliPkg }
+    : { root: layout.restRoot, src: layout.restSrc, tests: layout.restTests, pkg: layout.restPkg };
 }
 
 /**
@@ -411,6 +397,22 @@ export function tsLayout(tags: readonly Tag[], scope: string): TsLayoutPaths {
   };
 }
 
+/** Where an added bounded context's package lives, and what it is called. */
+export interface TsContextPaths {
+  /** Package directory, e.g. `modules/orders`. */
+  readonly root: string;
+  /** The package's published name, e.g. `@scope/orders`. */
+  readonly pkg: string;
+  /** Its peer seam's entry point, e.g. `@scope/orders/service`. */
+  readonly seamPkg: string;
+  readonly index: string;
+  readonly contractSrc: string;
+  readonly coreInternal: string;
+  /** The gateway to the context it consumes; null where it consumes none. */
+  readonly gatewaySrc: string | null;
+  readonly tests: string;
+}
+
 /**
  * The package of any bounded context added by `keel add module`.
  *
@@ -419,26 +421,17 @@ export function tsLayout(tags: readonly Tag[], scope: string): TsLayoutPaths {
  * per context, as `tsLayout` rules — so an added context costs one
  * manifest and one `exports` map, against Rust's four crates.
  *
- * `seam` is the entry the peer set has no counterpart for: the
+ * `seamPkg` is the entry the peer set has no counterpart for: the
  * `--with-peer-context` context publishes no `./service`, an added one
  * always does, so `keel add module <other> --consumes <name>` has an
- * entry point to import. `gateway` is null without `consumes` — a
+ * entry point to import. `gatewaySrc` is null without `consumes` — a
  * context that reaches nobody declares no edge.
  */
 export function tsContextPackage(
   layout: TsLayoutPaths,
   context: string,
   consumes: string | null,
-): {
-  readonly root: string;
-  readonly pkg: string;
-  readonly seamPkg: string;
-  readonly index: string;
-  readonly contractSrc: string;
-  readonly coreInternal: string;
-  readonly gatewaySrc: string | null;
-  readonly tests: string;
-} | null {
+): TsContextPaths | null {
   if (layout.layout === 'basic') return null;
   const root = `modules/${context}`;
   return {
@@ -482,6 +475,14 @@ export const TS_SKELETON_SEAM_METHOD = 'greet';
  * one instance to justify it.
  */
 export const TS_SKELETON_HANDLER_FACTORY = 'createGreetHandler';
+
+/**
+ * What an assembly's `main.ts` lacks, as a `PathConflictError` names
+ * it, when it builds no mediator keel can add a handler to — the
+ * array persistence adds to under either layout, and `keel add
+ * module` under the modulith.
+ */
+export const TS_MEDIATOR_ANCHOR = "'createRegistryMediator([…])' call holding only handlers";
 
 /**
  * The seam entry point of an existing context — what a gateway

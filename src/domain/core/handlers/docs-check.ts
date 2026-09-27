@@ -15,6 +15,7 @@ import { DomainError, err, ok, type Result } from '../../kernel/result.js';
 import type { DocsReport } from '../../contract/commands.js';
 import type { DocsCheckQuery } from '../../contract/queries.js';
 import { projectScopeRoot } from '../../contract/manifest.js';
+import { NOT_INITIALISED_CODE } from '../../contract/nearby.js';
 import { docsIndexDrift } from '../docs-index.js';
 import { projectDocs } from '../docs-projection.js';
 import { harnessGenerationRefusal } from '../harness-generation.js';
@@ -36,7 +37,7 @@ export class DocsCheckHandler implements Handler<DocsCheckQuery> {
       return err(
         new DomainError(
           `no project initialised at ${scopeRoot} — 'keel docs check' judges the index of a keel project`,
-          'keel.not-initialised',
+          NOT_INITIALISED_CODE,
         ),
       );
     }

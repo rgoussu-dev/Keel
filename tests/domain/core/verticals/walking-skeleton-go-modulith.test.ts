@@ -484,6 +484,43 @@ describe('the Go peer context', () => {
   });
 
   /**
+   * Which assemblies the context is wired into is read off the
+   * predicates, one wiring adapter per entrypoint beside the shell —
+   * so a project that grows an entrypoint installs the one that newly
+   * matches, and the wiring already there is never rendered again
+   * (roadmap R.3a).
+   */
+  it('wires each assembly by an adapter of its own, which requires that entrypoint', async () => {
+    const ids = (arch: readonly string[]) =>
+      resolveVertical(walkingSkeletonVertical, [...peerTags(arch[0] ?? ''), ...arch.slice(1)])
+        .map((adapter) => adapter.id)
+        .filter((id) => id.includes('peer-context'));
+    expect(ids(['arch.cli'])).toEqual([
+      'walking-skeleton/go-peer-context',
+      'walking-skeleton/go-peer-context-cli',
+    ]);
+    expect(ids(['arch.server-http'])).toEqual([
+      'walking-skeleton/go-peer-context',
+      'walking-skeleton/go-peer-context-http',
+    ]);
+    expect(ids(['arch.cli', 'arch.server-http'])).toEqual([
+      'walking-skeleton/go-peer-context',
+      'walking-skeleton/go-peer-context-cli',
+      'walking-skeleton/go-peer-context-http',
+    ]);
+
+    const cli = await install([walkingSkeletonVertical], peerTags('arch.cli'));
+    expect(cli.read('cmd/http/guestbook.go')).toBeNull();
+    const both = await install(
+      [walkingSkeletonVertical],
+      tags('arch.cli', 'arch.server-http', MODULITH_LAYOUT_TAG, PEER_CONTEXT_TAG),
+    );
+    // One file, in two assembly packages.
+    expect(read(both, 'cmd/http/guestbook.go')).toBe(read(cli, 'cmd/cli/guestbook.go'));
+    expect(read(both, 'cmd/cli/guestbook.go')).toBe(read(cli, 'cmd/cli/guestbook.go'));
+  });
+
+  /**
    * The assembly may name both contexts — it is the one place that
    * legitimately knows the whole graph — but the wiring is written
    * against the seam, so that copying it into a gateway does not

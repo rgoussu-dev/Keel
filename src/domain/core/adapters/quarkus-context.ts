@@ -1,6 +1,7 @@
 /**
  * The Quarkus added-context adapters —
- * `bounded-context/quarkus-context` and its Kotlin twin.
+ * `bounded-context/quarkus-context` and its Kotlin twin, each a shell
+ * and a wiring adapter per entrypoint (`…-cli`, `…-rest`).
  *
  * Quarkus is the framework that needs **no list widened**. ArC
  * discovers `@DomainHandler` because the kernel declares it a CDI
@@ -16,7 +17,7 @@
  * context and not another producer method on the shared root.
  */
 
-import { jvmContextAdapter } from './jvm-context.js';
+import { jvmContextAdapters } from './jvm-context.js';
 import { QUARKUS_CLI_BOOTSTRAP_ID } from './quarkus-cli-bootstrap.js';
 import { QUARKUS_CLI_KOTLIN_BOOTSTRAP_ID } from './quarkus-cli-kotlin-bootstrap.js';
 import { QUARKUS_REST_BOOTSTRAP_ID } from './quarkus-rest-bootstrap.js';
@@ -32,24 +33,40 @@ const BEAN_ARCHIVE_TREE = 'quarkus';
 /** Quarkus' composition root. */
 const ROOT_CLASS = 'MediatorProducer';
 
-/** Quarkus + Java. */
-export const quarkusContextAdapter: Adapter = jvmContextAdapter({
+const quarkusContext = jvmContextAdapters({
   id: QUARKUS_CONTEXT_ID,
   framework: 'quarkus',
   language: 'java',
-  bootstrapIds: [QUARKUS_REST_BOOTSTRAP_ID, QUARKUS_CLI_BOOTSTRAP_ID],
+  bootstrapIds: { cli: QUARKUS_CLI_BOOTSTRAP_ID, rest: QUARKUS_REST_BOOTSTRAP_ID },
   rootClass: ROOT_CLASS,
   frameworkTemplates: [BEAN_ARCHIVE_TREE],
   bind: () => [],
 });
 
-/** Quarkus + Kotlin. */
-export const quarkusContextKotlinAdapter: Adapter = jvmContextAdapter({
+const quarkusContextKotlin = jvmContextAdapters({
   id: QUARKUS_CONTEXT_KOTLIN_ID,
   framework: 'quarkus',
   language: 'kotlin',
-  bootstrapIds: [QUARKUS_REST_KOTLIN_BOOTSTRAP_ID, QUARKUS_CLI_KOTLIN_BOOTSTRAP_ID],
+  bootstrapIds: { cli: QUARKUS_CLI_KOTLIN_BOOTSTRAP_ID, rest: QUARKUS_REST_KOTLIN_BOOTSTRAP_ID },
   rootClass: ROOT_CLASS,
   frameworkTemplates: [BEAN_ARCHIVE_TREE],
   bind: () => [],
 });
+
+/** Quarkus + Java: the shell. */
+export const quarkusContextAdapter: Adapter = quarkusContext.shell;
+
+/** Quarkus + Java: the wiring into the CLI's assembly, `application/cli`. */
+export const quarkusContextCliAdapter: Adapter = quarkusContext.wiring.cli;
+
+/** Quarkus + Java: the wiring into the REST assembly, `application/api`. */
+export const quarkusContextRestAdapter: Adapter = quarkusContext.wiring.rest;
+
+/** Quarkus + Kotlin: the shell. */
+export const quarkusContextKotlinAdapter: Adapter = quarkusContextKotlin.shell;
+
+/** Quarkus + Kotlin: the wiring into the CLI's assembly, `application/cli`. */
+export const quarkusContextKotlinCliAdapter: Adapter = quarkusContextKotlin.wiring.cli;
+
+/** Quarkus + Kotlin: the wiring into the REST assembly, `application/api`. */
+export const quarkusContextKotlinRestAdapter: Adapter = quarkusContextKotlin.wiring.rest;

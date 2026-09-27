@@ -4,7 +4,7 @@ import base from './vitest.config';
 /**
  * The vitest config Stryker runs mutants against.
  *
- * Same config as `pnpm test`, minus three suites — all excluded by
+ * Same config as `pnpm test`, minus six suites — all excluded by
  * construction, not by environment:
  *
  *   - `tests/e2e/`. Those suites decide for themselves whether to
@@ -32,6 +32,12 @@ import base from './vitest.config';
  *     only the grid reaches would be scored Ignored rather than
  *     NoCoverage, hiding the very holes the score exists to show.
  *     Its verdicts are pinned by its own golden in `verify`.
+ *   - `tests/domain/core/shared-files.golden.test.ts`, for the same
+ *     reason: it runs every install in a `beforeAll`, and its tests
+ *     only compare the hashes recorded there. It holds those hashes
+ *     in `verify`. So do `growth.golden.test.ts` and
+ *     `growth-render.test.ts` beside it, whose scaffolds and readings
+ *     all run in theirs; `growth.test.ts` holds `growthOf` itself.
  *
  * The second exclusion would be right even if the dry run survived
  * it. A text sweep sees the mutant *in the source* rather than in the
@@ -49,6 +55,9 @@ export default mergeConfig(
         'tests/e2e/**',
         'tests/version-pins.test.ts',
         'tests/domain/core/composition-grid/**',
+        'tests/domain/core/shared-files.golden.test.ts',
+        'tests/domain/core/growth.golden.test.ts',
+        'tests/domain/core/growth-render.test.ts',
       ],
     },
   }),

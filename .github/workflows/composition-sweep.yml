@@ -1,0 +1,68 @@
+# The weekly composition sweep (roadmap Q3.4), report-only.
+#
+# The composition grid in `verify` holds keel's composition surface on
+# each preset's opening dials: each extra alone, and the whole menu.
+# This lane asks the same engine what is too large for a gate, on every
+# dial setting of every preset: every set of offered extras (the full
+# powerset), named backwards and, for up to three, in every order;
+# every pair of extras, and each alone, arriving in one run and in
+# two, installed for real; and every choice of every question — each
+# previewed and installed as a dry run. The opt-in suites under
+# `tests/sweep/` (`KEEL_RUN_SWEEP=1`) are the lane; a red run *is* the
+# report — each failing test is a preset, and its message names every
+# finding with the command line that reproduces it.
+#
+# Deliberately a schedule, never a PR gate: it runs for most of an
+# hour (some 179,000 dispatches, 57 minutes measured on four vCPUs),
+# and what it finds (an undeclared read, an order-dependent adapter, a
+# choice offered where it throws) is a follow-up step to plan, not a
+# build to fix in place. Nothing it needs is on the network or on the
+# PATH beyond Node: every dispatch goes through the mediator with a
+# fake process runner.
+
+name: composition-sweep
+
+on:
+  schedule:
+    # Monday 04:41 UTC — a Monday slot off the hour, distinct from
+    # mutation (03:17), harness-evals (05:23) and currency (06:00).
+    - cron: '41 4 * * 1'
+  workflow_dispatch:
+    inputs:
+      stacks:
+        description: Presets to sweep, comma-separated (blank sweeps every one)
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: composition-sweep-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    name: sweep (${{ inputs.stacks || 'every preset' }})
+    runs-on: ubuntu-latest
+    # A full run was 57 minutes on four vCPUs; the products' extras are
+    # most of it, and they grow as a power of the menu, so the budget is
+    # about three times that rather than a tight fit.
+    timeout-minutes: 180
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup toolchain (node, pnpm)
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        with:
+          install_args: node pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Sweep every extras set, every pair's arrival order and every choice
+        env:
+          KEEL_RUN_SWEEP: '1'
+          KEEL_SWEEP_STACKS: ${{ inputs.stacks }}
+        run: pnpm vitest run tests/sweep
