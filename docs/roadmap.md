@@ -8721,7 +8721,7 @@ keeps `paths-machinery.test.ts`, whose cells run in its tests, in
 under a second. No existing golden or known file moved. No CHANGELOG
 entry: nothing a user sees moves.
 
-#### S.1b — I9 on every install target, and I11 where it holds (S)
+#### S.1b — I9 on every install target, and I11 where it holds (S) ✅
 
 `support/composition-grid.ts`' `holdParity` is generic over the install
 target already, and I9 is hard. These cells are held to it:
@@ -8762,6 +8762,192 @@ brownfield's new time.
   which is U's;
 - the cells I11 cannot hold before S.7: module histories, and a dev
   environment taken as an extra.
+
+**Landed as tests alone**, in one commit with no `src/` change, and no
+existing verdict moved. `support/composition-grid.ts` gains I11 in
+`INVARIANTS` and in `HARD`, and three helpers:
+
+- `nameableOf`: the recorded verticals `keel.catalog` lists, in
+  recorded order. What it leaves out is derived, never listed. It
+  drops nothing on the 80 projects whose whole re-render is held. At
+  each of the six monorepo product roots, composite throws unless it
+  drops `fullstack` and nothing else, so the filter is seen dropping
+  the row it is for. `bounded-context`, the other, is recorded only by
+  a module history, which S.7 brings.
+- `holdFixedPoint`: the whole re-render as one dry run
+  (`installCommandFor` of `add-vertical` with `reapply`), read back
+  through `Grid.staged`, so bytes are compared rather than the report.
+  I11 is recorded where it is not Ok, where it stages anything, or
+  where its report's `resolvedAdapters` holds no adapter of a vertical
+  it names.
+- `holdRerenders`: `reapply:`, `refresh:` and `fixed:` on one project,
+  shared by both axes. Each `reapply:` and `refresh:` pair is held to
+  I11 as well, under its own key: its install is Ok, and its
+  `resolvedAdapters` hold an adapter of the vertical the key names.
+  That is the reading `holdFixedPoint` makes of the whole re-render,
+  one private helper (`reachesAll`) shared by both.
+
+`holdParity` also takes its two cells by name (`ParityCells`), so a
+card's preview keeps its `add:` key and its install goes under
+`install:`. Called with one id, as greenfield and growth call it, it
+names the install `<id>!install` as before, and both axes pass against
+their goldens untouched. It now returns the install's outcome, which
+`holdRerenders` reads, and its other callers ignore.
+
+The goldens gained keys and nothing else:
+
+- **`brownfield.golden.json`**, from 503 verdicts to 1,711. It gained
+  1,208:
+  - 392 `install:` cells beside the 392 `add:` previews: 319 `ok` and 73
+    `keel.uncoverable-vertical`, each its preview's verdict. These are
+    the 319 and 73 the research measured;
+  - 176 `reapply:` pairs (352 verdicts), all `ok`: five verticals on
+    each of the ten CLI and front-end presets, and seven on each of the
+    other eighteen, which add `dev-env` and `observability`;
+  - 176 `refresh:` pairs (352), all `ok`. Each is beside `keel add ci`,
+    the first `ready` card on all 28 presets;
+  - 56 `fixed:` cells, all `ok`, each staging nothing: 28 on the
+    opening scaffolds, and 28 `fixed:<stack>/modulith` on the modulith
+    scaffolds, held before any context is added;
+  - 28 `module:` pairs (56), all `ok`. All 28 presets offer the
+    modulith on their opening dials, and every modulith scaffold takes
+    a context.
+- **`composite.golden.json`**, from 672 verdicts to 1,656. It gained
+  984, in the 24 services (six products, two services each, under both
+  layouts):
+  - 336 `install:` cells: 276 `ok`, 36 `keel.wrong-scope` (`ci`,
+    `distribution` and `iac` in each monorepo service) and 24
+    `keel.uncoverable-vertical` (`observability` and `persistence` in
+    each front end);
+  - 156 `reapply:` pairs and 156 `refresh:` pairs, 312 verdicts each,
+    all `ok`. The first `ready` card is `ci` in a polyrepo service,
+    `persistence` in a monorepo back end and `dev-env` in a monorepo
+    front end;
+  - 24 `fixed:` cells, all `ok`.
+- **Nothing else moved.** A script compared every key of HEAD's two
+  goldens with the new ones: none lost, none changed, and no `add:` key
+  gained. The greenfield and growth goldens are untouched and hold.
+  The four known files are as they were: brownfield's `{"I5": {}}`,
+  and `{}` for the others. `generated-docs.test.ts` passes unchanged.
+
+I9 and I11 hold on every cell, so neither adds a known key.
+
+**The proof** that each new family catches what it is for, each tried
+in a scratch edit under `src/` and undone. A dry run is told apart from
+a preview by `interactive`, which the preview sets:
+
+- **I9 on `add:`.** A non-interactive dry run of `keel add ci`, without
+  `--refresh`, wrote one extra file. I9 failed on exactly 40 cells:
+  `add:<stack>+ci` on all 28 presets, and in the 12 polyrepo services.
+  The monorepo services refuse `ci` as `keel.wrong-scope` on both
+  sides. Nothing else failed.
+- **I9 on `reapply:` and `refresh:`.** The same extra file, written by
+  any non-interactive dry run that re-renders exactly one vertical. I9
+  failed on exactly 352 brownfield cells (176 `reapply:` and 176
+  `refresh:`) and 312 composite ones (156 and 156), and nothing else.
+- **I9 on `module:`.** The same extra file, written by a non-interactive
+  dry run of `keel add module`. I9 failed on exactly the 28 `module:`
+  cells, and nothing else.
+- **I11 on bytes.** `code-style/editor-baseline` added a line to its
+  `.editorconfig` region whenever `dev-container` was already recorded.
+  That render is not its own fixed point, since a scaffold records the
+  dev container after code style. I11 failed on all 56 `fixed:` cells
+  of brownfield and in all 24 services. I9 held, since the preview and
+  the install both staged the line. The extra file written by a dry
+  run re-rendering more than one vertical fails the same 80 cells, and
+  only them.
+- **I11 on what re-renders.** A `--reapply` naming more than one
+  vertical re-rendered only `vcs` and `agent-harness`, and skipped the
+  rest. What is skipped stages nothing, so the bytes alone let it
+  through: without the `resolvedAdapters` reading, both axes passed,
+  18 tests of 18. With it, I11 failed on the same 80 cells, and only
+  them.
+- **I11 on the pairs.** Without the reading on each pair, three edits
+  passed both axes, 18 tests of 18, every pair reading `ok` with
+  parity intact. With it, each failed I11 alone:
+  - `--refresh` made a no-op, dropped from the re-render and from the
+    admitted set, in the preview and the install alike: exactly the
+    176 brownfield `refresh:` cells and the 156 composite ones;
+  - a `--reapply` naming one vertical cut short to the empty plan:
+    exactly the 176 `reapply:` cells and the 156. I9 held even where
+    `walking-skeleton` stages files re-rendered alone, since both sides
+    then staged nothing;
+  - in the test, not under `src/`, the bodies stripped of `reapply`
+    and of `refresh`, so each pair ran a plain add: all 352 brownfield
+    pairs and all 312 composite ones.
+
+**Times**, under `CI=true` on four cores, as vitest reports a file's
+tests: the sweep's `beforeAll` and the assertions. Each axis was timed
+six times, three of them paired with HEAD's copy of it, at a load
+average of 2 to 3:
+
+- brownfield alone takes about 13 s (12.3 to 13.9), up from about
+  3.7 s (3.4 to 3.9);
+- composite alone takes about 11.3 s (10.9 to 12.9), up from about
+  6 s (5.4 to 6.4).
+
+In two runs of `CI=true pnpm test`, brownfield took 19.8 and 16.9 s,
+and composite 13.1 and 15.5 s. Greenfield took 35.7 and 34.3 s, and
+growth 113.9 and 107.9 s. The suite took 260 and 256 s, with 194 files
+and 3,162 tests passing each time. Both axes stay well below growth.
+
+Beyond the text above:
+
+- **The keys.** The cells are keyed `<family>:<scope>…`, with the
+  scope as `add:` spells it: the preset, or
+  `<product>/<layout>/<service>`. A card's install is
+  `install:<scope>+<v>`. A re-render is
+  `reapply:<scope>+<v>` or `refresh:<scope>+<card>~<v>`, and the
+  module add is `module:<stack>`, each with its install under the same
+  key plus `!install`. The whole re-render is one cell, `fixed:<scope>`,
+  a family the text above does not name, and `fixed:<stack>/modulith`
+  on the modulith scaffold. An I9 disagreement is recorded under the
+  preview's cell, `add:` included, as it always was.
+- **The modulith scaffold is a setting, not a cell.** Each preset is
+  settled again with `moduleLayout: 'modulith'` (`settle`), and
+  `keel.dials` settles every other dial as the opening dials have it,
+  on all 28. The scaffold is dispatched through `Grid.read`, which
+  fails the sweep if it is refused and records no verdict, so the
+  golden gains only the cells measured. The add is
+  `keel add module orders`, with no `--consumes`.
+- **The modulith scaffold is held to I11 too.** _The measure_ lands I11
+  on "brownfield's scaffolds", and this one has no module history when
+  it is held, so it is one of the 300 dial settings measured as fixed
+  points. Held here, the modulith layout's whole re-render is guarded
+  now, rather than from S.7, when growth's twins bring it.
+- **I11 reads what re-renders, not only what it stages.** The text
+  above has the whole re-render stage nothing. A re-render that skips
+  a vertical stages nothing too, so the cell also requires the
+  report's `resolvedAdapters` to hold an adapter of every vertical it
+  names. It held on all 80 cells today.
+- **I11 reads each pair too.** _The measure_ brings a vertical
+  re-rendered alone under I11 at S.7, and then for what it stages.
+  Held to I9 alone, a `reapply:` or `refresh:` pair whose body or
+  engine re-rendered nothing still reads `ok`, and measures only what
+  the `add:` and `install:` cells measure. So each pair is also
+  recorded under I11, on its own key, where its install is refused or
+  resolves no adapter of the vertical it names, and `INVARIANTS`' I11
+  says so. It held on all 352 brownfield pairs and 312 composite ones
+  today. It adds no dispatch: in paired runs at a load average of 3
+  to 4.5, brownfield took 14.2 and 15.9 s with it and 13.5 and 15.1 s
+  without, and composite 11.5 s twice with it and 12.7 and 13.8 s
+  without.
+- **Composite takes the `refresh:` cells too**, as the step text says,
+  although _The measure_ names brownfield alone for them.
+- **One copy of `runIn`.** The real run the axes scaffold with moves
+  into `support/composition-grid.ts`. Growth imports it in place of
+  its own copy, and composite in place of an inline one. Nothing else
+  in growth moves.
+- **The cost is higher than the estimate.** _The measure_ put S.1b at
+  some 900 dispatches. It is 1,208 in brownfield, plus 28 real
+  scaffolds, and 984 in composite.
+- **What a re-render stages.** I9 compares bytes, not emptiness, so a
+  `reapply:` cell that stages files still agrees. A scratch dispatch
+  of every such re-render, not kept, found one vertical that stages
+  anything re-rendered alone: `walking-skeleton`, on the 19 presets
+  _The finding that shaped it_ counts, and in all 24 services. Every
+  other vertical re-rendered alone stages nothing there. Every
+  `module:` and `refresh:` pair stages at least one file on both sides.
 
 ### S.2 — The reading: one composition, planned against the manifest (M)
 

@@ -2,7 +2,9 @@
  * The composition grid's brownfield axis: every single-service stack
  * scaffolded once, then `keel add` previewed for every vertical in the
  * catalog — on the pristine scaffold, and again where the user already
- * keeps a file the add would write.
+ * keeps a file the add would write — and the other install targets a
+ * project on disk takes (`keel add entrypoint` is growth's), each
+ * previewed as it installs.
  *
  * What it holds, each against `keel.preview`:
  *
@@ -25,12 +27,30 @@
  *     and so does the add, that is the whole answer; wherever either
  *     side refuses, the greenfield twin is previewed again here, into
  *     an empty directory, for its sentence.
+ *   - **Every install target previews as it installs** (I9), on the
+ *     scaffold: the same bytes, or the same refusal — each vertical's
+ *     add (`add:<stack>+<v>`, beside the dry-run install
+ *     `install:<stack>+<v>`), `keel add v --reapply` of each installed
+ *     vertical (`reapply:`), `--refresh v` of each beside the add of
+ *     the first `ready` card (`refresh:<stack>+<card>~<v>`), and, on a
+ *     modulith scaffold of the preset where `keel.dials` offers one,
+ *     `keel add module orders` (`module:<stack>`).
+ *   - **The recorded composition is a fixed point** (I11): the
+ *     scaffold's whole re-render — one `--reapply` naming every
+ *     recorded vertical `keel add` can name — re-renders each and
+ *     stages nothing (`fixed:<stack>`), and so does the modulith
+ *     scaffold's, before any context is added to it
+ *     (`fixed:<stack>/modulith`); and each `reapply:` and `refresh:`
+ *     pair above installs Ok, re-rendering the vertical it names.
  *
  * Holds I6 over every refusal on the way.
  */
 
 import { describe } from 'vitest';
-import { installCommandFor } from '../../../../src/domain/contract/commands.js';
+import {
+  installCommandFor,
+  type AddVerticalTarget,
+} from '../../../../src/domain/contract/commands.js';
 import {
   catalogQuery,
   previewQuery,
@@ -42,9 +62,15 @@ import {
   eachStack,
   goldenOf,
   holdCard,
+  holdFixedPoint,
+  holdParity,
+  holdRerenders,
+  nameableOf,
+  runIn,
   seed,
   settle,
   sweepGrid,
+  type Grid,
 } from '../../../support/composition-grid.js';
 
 const greenfield = goldenOf('greenfield', import.meta.url);
@@ -53,7 +79,7 @@ describe('composition grid: brownfield', () => {
   sweepGrid({
     name: 'brownfield',
     here: import.meta.url,
-    holds: ['I1', 'I4', 'I5', 'I6'],
+    holds: ['I1', 'I4', 'I5', 'I6', 'I9', 'I11'],
     sweep: async (grid) => {
       const catalog = await grid.read(catalogQuery());
       const verticals = catalog.verticals.map((vertical) => vertical.id);
@@ -63,18 +89,17 @@ describe('composition grid: brownfield', () => {
       await eachStack(single, async ({ id: stack }) => {
         const cwd = await grid.scratch();
         const { target } = await settle(grid, stack);
-        const run = { cwd, answers: {}, interactive: false, dryRun: false };
-        const scaffold = await grid.cell(`new:${stack}`, installCommandFor(target, run));
+        const scaffold = await grid.cell(`new:${stack}`, installCommandFor(target, runIn(cwd)));
         if (scaffold.verdict !== OK) return;
 
         const status = await grid.read(projectStatusQuery({ cwd }));
         for (const vertical of verticals) {
           const cell = `add:${stack}+${vertical}`;
-          const add = previewQuery({
-            cwd,
-            target: { kind: 'add-vertical', verticals: [vertical] },
-            answers: {},
-          });
+          const adding: AddVerticalTarget = { kind: 'add-vertical', verticals: [vertical] };
+          const install = `install:${stack}+${vertical}`;
+          await holdParity(grid, { preview: cell, install }, adding, {}, cwd);
+          const add = previewQuery({ cwd, target: adding, answers: {} });
+          // Answered from the record: holdParity swept it.
           const outcome = await grid.cell(cell, add);
           await holdCard(grid, cell, status, vertical, cwd, outcome);
           const twin = greenfield[`new:${stack}+${vertical}`];
@@ -100,7 +125,30 @@ describe('composition grid: brownfield', () => {
             await unseed();
           }
         }
+        await holdRerenders(grid, stack, status, verticals, cwd);
+        await holdModulith(grid, stack, verticals);
       });
     },
   });
 });
+
+/**
+ * Holds a modulith scaffold of `stack` — its opening dials with the
+ * modulith layout set, as `keel.dials` settles them — where those dials
+ * offer the modulith: to I11, as the cell `fixed:<stack>/modulith`,
+ * whose whole re-render names what `keel add` can name of it
+ * ({@link nameableOf} over `catalog`); and, where its status says the
+ * command takes a context, `keel add module orders` to I9, as the cell
+ * `module:<stack>`. The scaffold is the cells' setting, not a cell: it
+ * adds no verdict.
+ */
+async function holdModulith(grid: Grid, stack: string, catalog: readonly string[]): Promise<void> {
+  const { target } = await settle(grid, stack, { moduleLayout: 'modulith' });
+  if (target.moduleLayout !== 'modulith') return;
+  const cwd = await grid.scratch();
+  await grid.read(installCommandFor(target, runIn(cwd)));
+  const status = await grid.read(projectStatusQuery({ cwd }));
+  await holdFixedPoint(grid, `fixed:${stack}/modulith`, nameableOf(status, catalog), cwd);
+  if (!status.canAddModule) return;
+  await holdParity(grid, `module:${stack}`, { kind: 'add-module', module: 'orders' }, {}, cwd);
+}

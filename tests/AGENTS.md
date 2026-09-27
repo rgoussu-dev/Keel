@@ -72,8 +72,8 @@ it guards:
 `domain/core/composition-grid/` sweeps keel's whole composition surface
 through the real mediator, over `support/composition-grid.ts`: the
 measure behind roadmap epic Q, whose invariants (I1–I9) it
-holds, and epic R's I10. Four suites, split so vitest runs them in
-parallel:
+holds, epic R's I10, and epic S's I11. Four suites, split so vitest
+runs them in parallel:
 
 - `greenfield` — every stack × every vertical as its one extra, held
   against the `keel.dials` menu (I2 offered ⇒ Ok, I3 accepted ⇒
@@ -102,7 +102,28 @@ parallel:
   same outcome as greenfield: Ok on both sides, or refused under the
   same code in the same sentence), plus a user `Dockerfile`
   or `.github/workflows/ci.yml` seeded wherever the add would create
-  it.
+  it. On the same scaffold every install target is held to I9, previewed
+  and installed as a dry run: each vertical's add (`add:<stack>+<v>`,
+  beside its install, `install:<stack>+<v>`), and, in `holdRerenders`,
+  `keel add v --reapply` of each installed vertical (`reapply:`) and
+  `--refresh v` of each beside the add of the first `ready` card
+  (`refresh:<stack>+<card>~<v>`), each pair held to I11 as well, its
+  install Ok and resolving an adapter of the vertical its key names —
+  parity alone holds as well for a body, or an engine, that re-renders
+  nothing. The scaffold is held to I11 too
+  (`fixed:<stack>`, `holdFixedPoint`, which `holdRerenders` calls
+  last): its whole re-render, one `--reapply` naming every recorded
+  vertical `keel add` can name (`nameableOf`: the recorded ids
+  `keel.catalog` lists), comes back Ok, resolves an adapter of every
+  vertical it names, so a re-render that skips one cannot pass, and
+  stages nothing. And each preset whose opening dials offer the
+  modulith is scaffolded again on them with that layout, as
+  `keel.dials` settles it — a setting, not a cell — where the whole
+  re-render is held to I11 before any context is added
+  (`fixed:<stack>/modulith`) and `keel add module orders` to I9
+  (`module:<stack>`). None of these keys starts with `add:`, which is
+  the prefix the docs' matrix reads (`support/generated-docs.ts`), so
+  none reaches it.
 - `composite` — every product under every repository layout its install
   offers: first each service's own extras menu (`keel.dials`'
   `services[].verticals`), every vertical of it named for that service
@@ -118,7 +139,13 @@ parallel:
   hard: I5 is not, and would give this axis an allowance) — and every
   service cell to I7: never refused for a file in the way, and Ok or
   `keel.wrong-scope` under the monorepo layout wherever its polyrepo
-  twin, a repository of its own, is Ok.
+  twin, a repository of its own, is Ok. Each service is also held to
+  I9 and I11 as brownfield's scaffold is (`install:`, `reapply:`,
+  `refresh:` and `fixed:`, under `<product>/<layout>/<service>`). A
+  product root is not: its glue, `fullstack`, is a row no `keel add`
+  names, and the root is roadmap epic U's. There the sweep only throws
+  unless `nameableOf` leaves out the glue and nothing else, the one
+  place it drops a row.
 - `growth` — every single-entrypoint backend preset the stack finder
   lists, on every dial setting `keel.dials` offers it (build system,
   module layout, the peer context, each again with the agent harness
@@ -168,7 +195,9 @@ the record can only shrink. Beside each suite:
   when a monorepo service came to read what its product gives it and
   what only a repository root may carry, I9 since Q2.1, when the
   preview came to read the answers it is sent as the install does,
-  and I10 hard from the day it landed, with R.2b's command. Every
+  I10 hard from the day it landed, with R.2b's command, and I11 hard
+  from the day it landed too, with S.1b, on the projects whose recorded
+  composition was a fixed point already. Every
   known file is empty now but brownfield's I5 key; growth's holds only
   hard invariants, and is `{}` because `sweepGrid` reads each axis's
   known file whatever it holds.
@@ -188,7 +217,11 @@ alone (480 real scaffolds — 320 cells and 160 twins, one per setting
 and history, which both directions share — 384 real `keel add module`
 runs, 320 real adds and 960 dry-run dispatches for I9; the JVM's are
 the heaviest), greenfield ~23 s, of which I8's orderings are about
-3.5 s and I9's bodies — some 260 whole-menu dispatches — about 14 s.
+3.5 s and I9's bodies — some 260 whole-menu dispatches — about 14 s,
+brownfield about 13 s alone and 17 to 20 s in the full suite (1,711
+cells, 1,208 of them S.1b's I9 and I11 cells, and 28 real modulith
+scaffolds beside the 28 opening ones), and composite about 11 s alone
+and 13 to 15 s in the full suite (1,656 cells, 984 of them S.1b's).
 
 **The weekly sweep beside it.** The grid's preview axes read each
 preset's opening dials only, each extra alone and the whole menu, and

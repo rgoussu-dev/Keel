@@ -292,8 +292,12 @@ whichever of the three is missing.
   services under both repository layouts, grows every
   single-entrypoint backend preset with `keel add entrypoint` on every
   dial setting and holds it to its twin, and holds the invariants of
-  roadmap epics Q and R over them: a golden of every verdict, and a
-  known-violations file that can only shrink. How to read and
+  roadmap epics Q, R and S over them: a golden of every verdict, and a
+  known-violations file that can only shrink. On brownfield's
+  scaffolds and in composite's services it holds each `keel add`,
+  `--reapply` and `--refresh` (and, on a modulith scaffold,
+  `keel add module`) to its dry-run install (I9), and the recorded
+  composition to a fixed point (I11). How to read and
   regenerate it is in [`tests/AGENTS.md`](../tests/AGENTS.md). What it
   leaves out to stay fast — every dial setting but a preset's opening
   one where it previews, every extras set, every pair's arrival order,

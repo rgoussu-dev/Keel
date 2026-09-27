@@ -50,7 +50,6 @@ import {
   installCommandFor,
   type AddEntrypointTarget,
   type AddModuleTarget,
-  type InstallRun,
   type NewProjectTarget,
 } from '../../../../src/domain/contract/commands.js';
 import {
@@ -67,6 +66,7 @@ import {
   answerBodies,
   eachStack,
   holdParity,
+  runIn,
   sweepGrid,
   type Grid,
 } from '../../../support/composition-grid.js';
@@ -283,8 +283,4 @@ function sameSnapshot(a: Snapshot, b: Snapshot): boolean {
   return (
     sorted(a.files) === sorted(b.files) && JSON.stringify(a.actions) === JSON.stringify(b.actions)
   );
-}
-
-function runIn(cwd: string): InstallRun {
-  return { cwd, answers: {}, interactive: false, dryRun: false };
 }
