@@ -55,6 +55,7 @@ import { fsManifestStore } from '../../../../src/infrastructure/manifest/fs-mani
 import { FakeProcessRunner } from '../../../../src/infrastructure/process/fake.js';
 import { FakePrompt } from '../../../../src/infrastructure/prompt/fake.js';
 import { expectErr, expectOk, installMediator } from '../../../support/factory.js';
+import { unsplitPeerRegistry } from '../../../support/unsplit-peer.js';
 
 let root: string;
 let cwd: string;
@@ -882,6 +883,116 @@ describe('keel add entrypoint on a modulith with bounded contexts', () => {
     expect(await digests(cwd)).toEqual(await digests(twin));
   });
 
+  /**
+   * The JVM's wiring adds each context's modules to the new assembly's
+   * build file right after the kernel on Gradle, as here (after the
+   * skeleton's seam on Maven, below), the last added first, and its
+   * handler to the lists the container reads, the last added last —
+   * Micronaut Kotlin's hand-wired mediator here, its parameters and its
+   * `listOf(…)` together. The peer's wiring rewrites the mediator the
+   * bootstrap rendered, so it is wired beside the new bootstrap, and the
+   * contexts after it, in recorded order (roadmap R.3d). The history is
+   * `orders`, `billing`, then `shipping`: no sort by name, either way,
+   * and no reversal gives that order.
+   */
+  it('wires a Micronaut Kotlin peer and each added context into the new assembly’s mediator and build in the order the twin with that history has', async () => {
+    const dials = { moduleLayout: 'modulith', withPeerContext: true } as const;
+    await scaffold('micronaut-cli-kotlin', dials);
+    await addModule('orders', 'greeting');
+    await addModule('billing', 'orders');
+    await addModule('shipping', 'billing');
+    const twin = path.join(root, 'twin');
+    await fs.ensureDir(twin);
+    await scaffold('micronaut-cli-rest-kotlin', dials, twin);
+    await addModule('orders', 'greeting', twin);
+    await addModule('billing', 'orders', twin);
+    await addModule('shipping', 'billing', twin);
+
+    const report = expectOk(await grow('http'));
+
+    expect((report.resolvedAdapters ?? []).map((adapter) => adapter.id)).toEqual(
+      expect.arrayContaining([
+        'walking-skeleton/micronaut-peer-context-kotlin-rest',
+        'bounded-context/micronaut-context-kotlin-rest',
+      ]),
+    );
+    const api = 'application/api/src/main/kotlin/com/example/application/api';
+    for (const wiring of ['OrdersWiring', 'BillingWiring', 'ShippingWiring']) {
+      expect(report.changes).toContainEqual({ kind: 'create', path: `${api}/${wiring}.kt` });
+    }
+    const factory = await fs.readFile(path.join(cwd, `${api}/MediatorFactory.kt`), 'utf8');
+    expect(factory).toContain(
+      [
+        'fun mediator(',
+        '        welcome: Welcome,',
+        '        orders: OrdersHandler,',
+        '        billing: BillingHandler,',
+        '        shipping: ShippingHandler,',
+        '    ): Mediator =',
+        '        RegistryMediator(',
+        '            listOf(',
+        '                GreetHandler(),',
+        '                SignHandler(welcome),',
+        '                orders,',
+        '                billing,',
+        '                shipping,',
+        '            ),',
+        '        )',
+      ].join('\n'),
+    );
+    const build = await fs.readFile(path.join(cwd, 'application/api/build.gradle.kts'), 'utf8');
+    const cores = build
+      .split('\n')
+      .map((line) => /project\(":modules:(\w+):domain:core"\)/.exec(line)?.[1])
+      .filter((context) => context !== undefined);
+    expect(cores).toEqual(['shipping', 'billing', 'orders', 'guestbook', 'greeting']);
+    expect(await digests(cwd)).toEqual(await digests(twin));
+  });
+
+  /**
+   * Spring's wiring widens the fenced component scan of the new
+   * assembly's own boot class — `Main` for the CLI — and, on Maven,
+   * declares each context in that assembly's pom right after the
+   * skeleton's seam, which a fresh assembly pom carries (roadmap R.3d).
+   */
+  it('wires a Spring peer and each added context into a new CLI assembly on Maven, as the twin with that history has them', async () => {
+    const dials = {
+      buildSystem: 'maven',
+      moduleLayout: 'modulith',
+      withPeerContext: true,
+    } as const;
+    await scaffold('spring-rest', dials);
+    await addModule('orders', 'greeting');
+    await addModule('billing', 'orders');
+    const twin = path.join(root, 'twin');
+    await fs.ensureDir(twin);
+    await scaffold('spring-cli-rest', dials, twin);
+    await addModule('orders', 'greeting', twin);
+    await addModule('billing', 'orders', twin);
+
+    const report = expectOk(await grow('cli'));
+
+    expect((report.resolvedAdapters ?? []).map((adapter) => adapter.id)).toEqual(
+      expect.arrayContaining([
+        'walking-skeleton/spring-peer-context-cli',
+        'bounded-context/spring-context-cli',
+      ]),
+    );
+    const main = await fs.readFile(
+      path.join(cwd, 'application/cli/src/main/java/com/example/application/cli/Main.java'),
+      'utf8',
+    );
+    expect(
+      [...main.matchAll(/^\s+"com\.example\.([\w.]+)",?$/gm)].map((match) => match[1]),
+    ).toEqual(['application.cli', 'greeting', 'guestbook', 'orders', 'billing']);
+    const pom = await fs.readFile(path.join(cwd, 'application/cli/pom.xml'), 'utf8');
+    const seams = [...pom.matchAll(/<artifactId>(\w+)-user-side-service<\/artifactId>/g)].map(
+      (match) => match[1],
+    );
+    expect(seams).toEqual(['greeting', 'billing', 'orders']);
+    expect(await digests(cwd)).toEqual(await digests(twin));
+  });
+
   it('never reads the wiring of the entrypoints there: an edited one stays', async () => {
     await scaffold('go-http', { moduleLayout: 'modulith' });
     await addModule('billing');
@@ -1149,6 +1260,7 @@ describe('keel add entrypoint, refused', () => {
   });
 
   it('below a project growth refuses, saying why; above projects one of which grows, pointing there', async () => {
+    registry = unsplitPeerRegistry();
     await scaffold('quarkus-cli', { moduleLayout: 'modulith', withPeerContext: true });
     const notes = path.join(cwd, 'notes');
     await fs.ensureDir(notes);
@@ -1306,6 +1418,9 @@ describe('keel add entrypoint, refused', () => {
   });
 
   it('while a bounded context is wired into the entrypoints there alone, naming it and no tag', async () => {
+    // A peer context that picks its assemblies inside `contribute()`,
+    // as Quarkus' did before R.3d: no shipped family is one any more.
+    registry = unsplitPeerRegistry();
     await scaffold('quarkus-cli', { moduleLayout: 'modulith', withPeerContext: true });
     const manifest = await manifestBytes();
 

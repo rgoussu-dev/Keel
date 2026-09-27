@@ -38,6 +38,7 @@ import {
   stampsHarnessGeneration,
 } from '../../../assets/web/src/project.js';
 import { expectErr, expectOk, installMediator } from '../../support/factory.js';
+import { unsplitPeerRegistry } from '../../support/unsplit-peer.js';
 
 let cwd: string;
 let mediator: Mediator;
@@ -252,6 +253,12 @@ describe('projectSummary', () => {
   });
 
   it('offers on the Adapters line only the entrypoint the command would add', async () => {
+    // A peer context that picks its assemblies inside `contribute()`,
+    // as Quarkus' did before R.3d: growth refuses it.
+    mediator = installMediator({
+      runDeferred: () => Promise.resolve(),
+      registry: unsplitPeerRegistry(),
+    });
     await scaffold('quarkus-cli', { moduleLayout: 'modulith', withPeerContext: true });
     const reported = await status();
     const refused = expectErr(

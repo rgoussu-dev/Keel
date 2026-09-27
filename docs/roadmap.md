@@ -28,9 +28,12 @@ section lists and landed one commit per step. Its Phase 3 — the open
 ends found once it had merged — landed one step each, the last of them
 the weekly composition sweep its measure had planned. Its successors —
 **R**, **S**, **T** and **U** — are named there. **R** (entrypoints can
-grow) is planned in its own section below, sliced into steps that land
-one commit each; **S**, **T** and **U** wait on decisions of their own
-and are not yet sliced into issues or ordered against the backlog.
+grow) has landed too, one commit per step, R.1a to R.3d, as its own
+section below records: every single-entrypoint backend preset grows
+the other entrypoint into its twin, byte for byte, on every dial
+setting, with its bounded contexts. **S**, **T** and **U** wait on
+decisions of their own and are not yet sliced into issues or ordered
+against the backlog.
 
 [#67]: https://github.com/rgoussu-dev/keel/issues/67
 [#68]: https://github.com/rgoussu-dev/keel/issues/68
@@ -2186,9 +2189,10 @@ init` and a resolved toolchain, not a zip. A remote service would
 below, one commit per step, every decision taken as recommended
 (_Decisions on record_); Phase 3 held the open ends found once it had
 merged (#169), one step each, and landed too. **R**, **S**, **T** and
-**U** remain: named at the end of this section, not part of Q. Anchored
-on [#117] ("one declaration, read twice"), which it extends from the
-stack drill-down to every vertical, in both phases.
+**U** were named at the end of this section, not part of Q; **R** has
+landed since, in its own section, and **S**, **T** and **U** remain.
+Anchored on [#117] ("one declaration, read twice"), which it extends
+from the stack drill-down to every vertical, in both phases.
 
 [#117]: https://github.com/rgoussu-dev/keel/issues/117
 
@@ -4364,8 +4368,8 @@ Each taken as the audit recommended; the step that carries it is named.
   keeps J's one-e2e-per-cell rule by proof), after rank-anchored
   upserts for shared files. Turns "needs an HTTP server entrypoint"
   from a sentence into an action. An experiment grew seven families
-  this way with a user-edited `Main` intact. Planned in its own
-  section, _R — Entrypoints can grow_, below.
+  this way with a user-edited `Main` intact. Landed; its own section,
+  _R — Entrypoints can grow_, below, records it.
 - **S — One converge operation (additive).** A desired state planned
   against disk; `new` and `add` become aliases; removal refused,
   citing L's missing merge base.
@@ -4395,16 +4399,17 @@ Each taken as the audit recommended; the step that carries it is named.
 
 ---
 
-## R — Entrypoints can grow
+## R — Entrypoints can grow ✅
 
 **Proposed 2026-09-25 from five research passes over `adab93a`**
-(Q's merge). None of the passes edited the repository. Q's Phase 3
-(Q3.1 to Q3.5) landed after the research. It moves nothing R stands
-on, and two of the weekly sweep's findings fold into R.1a and R.2a
-(_The measure_, below). Q's _Successors_ named this epic, and **S**
-follows it. R adds a command,
-not a cell: every tree it writes is a tree `keel new` already writes,
-and I10 below is the proof.
+(Q's merge), **and landed**: R.1a to R.3d below, one commit per step,
+every decision taken as recommended (_Decisions on record_). None of
+the passes edited the repository. Q's Phase 3 (Q3.1 to Q3.5) landed
+after the research. It moves nothing R stands on, and two of the
+weekly sweep's findings fold into R.1a and R.2a (_The measure_,
+below). Q's _Successors_ named this epic, and **S** follows it. R adds
+a command, not a cell: every tree it writes is a tree `keel new`
+already writes, and I10 below is the proof.
 
 **Goal.** A project's entrypoints are no longer fixed at `keel new`.
 `keel add entrypoint http` on a CLI project, or `keel add entrypoint
@@ -4667,7 +4672,9 @@ named.
   with 128 `ok` cells and 64 refused ones, and R.3 turns the refused
   cells to `ok`. R.3a adds a module-history axis, each modulith cell
   again after two `keel add module` runs: 128 more cells, Go's 8 `ok`
-  with it, which the other R.3 steps turn to `ok` too.
+  with it, which the other R.3 steps turn to `ok` too. Done with R.3d:
+  all 192 cells and all 128 histories grow, every verdict of the axis
+  `ok`.
 - **The weekly sweep (Q3.4), which R reads as it lands.** Its
   `arrival` suite already shows this epic's first problem from the
   other side (Q3.4's finding 4): a README section lands in arrival
@@ -4680,7 +4687,7 @@ named.
   shows the two findings gone, and each step's Landed paragraph says
   so.
 
-### R.1 — shared files, each entry in its place
+### R.1 — shared files, each entry in its place ✅
 
 #### R.1a — Rank-anchored README sections, pinned first by a byte golden (M) ✅
 
@@ -5331,7 +5338,7 @@ Not done here: the drift `Error` in `attachDevContainerToDevEnv`,
 which stays a plain throw until R.2b makes it a `path-conflict`
 refusal.
 
-### R.2 — the command
+### R.2 — the command ✅
 
 #### R.2a — The growth reading, with no caller yet (M) ✅
 
@@ -6539,7 +6546,7 @@ built with Maven, distribution is refused for Gradle, which its native
 release needs, while growing a server, then its container image,
 would let the container release in.
 
-### R.3 — moduliths grow too
+### R.3 — moduliths grow too ✅
 
 One step per family. Each is its own green commit and its own pull
 request's worth of change: it lifts growth's refusal for its family
@@ -7375,7 +7382,7 @@ and an e2e suite of a grown TypeScript modulith with a history. There
 is none for `ts-cli-http` with one, so growth leaves those cells as
 covered as `keel new` does, and the proof on disk stands in.
 
-#### R.3d — JVM: Quarkus, Spring and Micronaut, in Java and Kotlin (L)
+#### R.3d — JVM: Quarkus, Spring and Micronaut, in Java and Kotlin (L) ✅
 
 **The split.** `jvmContextAdapter` and `jvmPeerContextAdapter` each
 yield a shell plus `-cli` and `-rest` wiring adapters, taking the
@@ -7408,6 +7415,347 @@ R.1a golden, and I10.
 - the comment in `combo-modulith-quarkus-cli-rest-gradle.test.ts`
   about `arch.cli`;
 - the harness's claim that every context has `user-side/api`.
+
+**Landed as the split alone**, on R.3a's machinery, and the goldens
+moved only where the JVM's contexts now grow. The one greenfield byte
+it moves is the stale harness line the text asks it to fix.
+
+- **The added context.** `jvm-context.ts`'s factory, now
+  `jvmContextAdapters`, yields three adapters per framework and
+  language. The shell, `bounded-context/<framework>-context` (and its
+  `-kotlin` twin), writes the context's contract, core and seam
+  modules and, under `--consumes`, its gateway, and registers them in
+  `settings.gradle.kts` or the root `pom.xml`. `…-cli` and `…-rest`
+  each require the marker and their entrypoint's tag. Each writes that
+  assembly's `<Name>Wiring` class and its test, gives the assembly its
+  dependencies on the context (`assemblyDepsPatch`), corrects the
+  composition root's note where the context consumes the skeleton
+  (`seamDocPatch`) and applies the framework's `bind`, after the shell
+  and that entrypoint's bootstrap. What all three read is worked out
+  once (`contextOf`).
+- **The peer.** `jvmPeerContextAdapters` splits the peer the same way.
+  The shell keeps guestbook's three modules and their registration,
+  and `walking-skeleton/<framework>-peer-context-cli` and `-rest` (and
+  the `-kotlin` twins') each write `GuestbookWiringTest`, the peer's
+  two dependencies and the `Welcome` binding in their assembly
+  (`peerOf`). The 12 context adapters are 36.
+- **The framework hooks**, each handed one assembly as before:
+  - Quarkus binds nothing for a context, and its peer binding is as it
+    was.
+  - Spring's boot class is a static fact of each wiring adapter:
+    `BOOT_CLASS` (`spring-peer-context.ts`, which `spring-context.ts`
+    reads too) maps the binding's entrypoint to `Main` or
+    `Application`. Both used to read `assemblyPkg.endsWith('cli')`.
+  - Micronaut's `importPackagesPatch` (Java) and `mediatorListPatch`
+    (Kotlin) are the wiring adapters' `bind`, reading the lists through
+    Q3.5's `widenImportPackages` and `widenKotlinMediator`, unchanged.
+  - Maven anchors each assembly's new dependencies on the
+    `greeting-user-side-service` one a fresh assembly pom carries, as
+    both adapters already did.
+- `jvmAssemblies` is gone. `jvmAssembly(layout, arch)` names one
+  assembly's paths, each wiring adapter its own, and `jvm-bootstrap.ts`
+  exports `ARCH_TAG`, the tag each requires. The 24 wiring adapters are
+  registered beside their shells in `walking-skeleton` and
+  `bounded-context`. Nothing else changed: `growthOf` finds them and
+  lifts the JVM's refusal with no edit (DR6), and R.3a's replay wires
+  the JVM's added contexts as it wires the other families'.
+
+The goldens moved where R.3 says a family's step moves them, on the
+JVM's cells alone; nothing else moved:
+
+- `growth.golden.json`: 144 cells went from
+  `keel.contexts-need-rewiring` to growing. They are the JVM's 48 plain
+  peer cells (the twelve single-entrypoint presets, on Gradle and
+  Maven, harness on and off), newly matching the peer's wiring adapter
+  beside the bootstrap, and its 96 history cells, with the peer and
+  without, each recording `modules`: `orders` and `shipping`, each
+  wired by `bounded-context/<framework>-context-rest` (or `-cli`, and
+  the `-kotlin` twins'). The only cells left refused are
+  `web-components`' 40, as a front end.
+- The grid's `growth.golden.json`: 432 verdicts moved to `ok`, the 144
+  grows and their 288 default I9 bodies. 144 were added, all `ok`: the
+  I9 bodies answering the monitoring stack on the 72 cells that grow
+  HTTP, which a refused cell never reached. That makes 1,280 verdicts,
+  every one `ok`. I10 now grows all 192 plain cells and all 128
+  histories.
+- `shared-files.golden.json` changed no entry it had. It gained 966,
+  on the 240 JVM modulith cells and 78 basic CLI ones: each assembly's
+  build file, composition root and boot class, recorded on HEAD's code
+  (below). The root `settings.gradle.kts` and `pom.xml` the shells
+  register in, which it records on every JVM cell of their build
+  system, the 84 peer cells and 72 history cells among them, passed
+  byte-identical.
+- The greenfield, brownfield, composite and planner-readiness goldens
+  and the docs matrix regenerate byte-identical. The known files are as
+  they were: brownfield's `{"I5": {}}`, and `{}` for the others.
+
+**The proof.**
+
+- **I10.** It holds the JVM's 48 peer cells and 96 history cells to
+  their twins byte for byte, manifest and queued actions included, the
+  wrapper and `spotlessApply` among them. The twin's order, which
+  growth already runs in, is now in the JVM's bytes too. Each context's
+  wiring adds its modules to the new assembly's build file right after
+  the kernel on Gradle, and after the skeleton's
+  `greeting-user-side-service` on Maven, so the last added comes first
+  there either way. It adds its entry to the lists the container reads
+  at their end, so the last added comes last. The peer's wiring, on
+  Spring and Micronaut, rewrites the one-line forms of those lists the
+  new bootstrap rendered, and `walking-skeleton` installs it beside
+  that bootstrap, first. With the replay reversed, I10 failed on
+  exactly 120 cells: every JVM history (96), Rust's 8 and
+  TypeScript's 16. Go's still passed.
+- **The render guard** passes, with the JVM's peer and context adapters
+  rendering the same both ways. No adapter renders otherwise but the
+  family kits.
+- **No greenfield byte moved with the split.** HEAD's code and this
+  step's each scaffolded all eighteen JVM presets on Gradle and Maven,
+  on both layouts, with and without the peer context and the agent
+  harness, and each modulith again after the history: 360 settings and
+  28,740 files, byte-identical, manifests and the 1,440 queued actions
+  included. They did the same with the whole extras menu `keel.dials`
+  offers, on each build system, layout, peer and history setting: 180
+  settings and 21,360 files, byte-identical, with 720 queued actions.
+  The harness fix (below) then moved one line of the root `AGENTS.md`
+  (two on the CLI + REST presets), and that file's hashes in the
+  manifest, on the 144 modulith settings with the harness.
+- **The e2e suites.** All sixty-three the text names pass here, 65
+  tests: the twenty-four `add-module-*`, the twelve JVM
+  `combo-modulith-*` and the twenty-seven JVM `modulith-*` suites —
+  the twenty-four named for a framework, on both build systems, and
+  the three Quarkus REST ones, `modulith-baseline`,
+  `modulith-persistence` and `modulith-persistence-mariadb`, on
+  Gradle. Neither the peer nor `keel add module` reaches those three,
+  and with no Docker daemon here the two persistence suites compiled
+  their database-bound tests without running them, as they do on any
+  machine without one. They ran with JDK 25 and the host Gradle 9.7.0
+  (below), each suite's fresh dependency home backed by the local one
+  read-only — Gradle's `GRADLE_RO_DEP_CACHE` over a copy of its cache,
+  Maven's `maven.repo.local.tail` through `MAVEN_OPTS` — since
+  fetching it all from Maven Central meets its 429s
+  (`tests/e2e/AGENTS.md` now says how). Fifteen Gradle suites first
+  failed resolving dependencies on those 429s, before compiling
+  anything, and passed when run again — thirteen after the on-disk
+  growths below had fetched what they lacked, and the two persistence
+  ones, whose dependencies nothing else fetches, a minute later. The
+  twelve combo suites scaffold with the peer context, so every JVM
+  peer modulith grown with no history now has a suite by proof, its
+  twin's. CI runs the whole grid on push.
+- **On disk**, with the real deferred actions, JDK 25 and the host
+  Gradle taken from the 9.7.0 wrapper distribution (the image's 8.14.3
+  cannot start on JDK 25, `.github/AGENTS.md`):
+  - `quarkus-cli` on Gradle, on the modulith with the peer context and
+    the history, grew HTTP. `./gradlew build` passed, its 33 tests
+    among them `application/api`'s `GuestbookWiringTest`,
+    `OrdersWiringTest` and `ShippingWiringTest`, each dispatching
+    through the real container. The CLI jar greeted. The REST jar
+    answered `/greet` with 200 and a correlation id, a blank name with
+    a 400 problem, and both health probes with 200.
+  - `micronaut-rest-kotlin` with the same history grew the CLI. The
+    build passed its 33 tests, the new assembly's three wiring tests
+    among them, through the hand-wired mediator the wiring extended,
+    and the CLI jar greeted.
+  - `spring-rest` with the same history grew the CLI. The build passed
+    its 33 tests, the new assembly's three wiring tests through
+    `Main`'s widened scan, and the CLI jar greeted.
+  - `quarkus-rest-kotlin` with the same history grew the CLI, with 33
+    tests passing, and the CLI jar greeted.
+  - `spring-cli` on Maven with the same history grew HTTP. Its
+    `./mvnw verify` passed 33 tests, the new assembly's three wiring
+    tests through `Application`'s widened scan among them. The CLI jar
+    greeted, and the REST jar answered `/greet` with 200 and a
+    correlation id, a blank name with a 400 problem, and both health
+    probes with 200.
+  - In each, nothing of the existing assembly changed but the
+    formatting of what `keel add module` had written: both contexts'
+    modules, and their `<Name>Wiring` and its test. The growth's queued
+    `spotlessApply` formats the whole project (R.2b), and
+    `keel add module` queues no formatter, so the twin keeps those
+    files as rendered. I10 compares staged trees and cannot see it; the
+    Backlog now has it, _A JVM context lands formatted_.
+
+**The tests.**
+
+- `jvm-context.test.ts` goes from 19 to 23 cases, its composed
+  project's one becoming five under a `describe` of their own. The
+  context is wired into each assembly by an adapter of its own, the
+  same class in each but for its package line, and on a `quarkus-cli`
+  project into the CLI's alone. On `spring-cli-rest`, each wiring
+  adapter widens its own assembly's boot class, `Main` in the CLI's
+  and `Application` in the REST one. On `micronaut-cli-rest` and
+  `quarkus-cli-rest` on Maven, each assembly pom declares the context
+  right after the skeleton's seam, not at a `</dependencies>` (on
+  Quarkus the first closes `<dependencyManagement>`): with the context
+  put before the first `</dependencies>` or the last, both cases fail.
+  On all six bindings, both build systems and both entrypoints, every
+  patch of each wiring adapter but the seam note's refuses a file
+  drifted past its anchors naming that adapter, a plain throw's prefix
+  or a `PathConflictError`'s `adapterId`: 40 refusals. The Micronaut
+  Kotlin `taken` refusal names
+  `bounded-context/micronaut-context-kotlin-rest`.
+- `peer-context.test.ts` goes from 29 to 39. For each framework and
+  language, the peer resolves its shell and one wiring adapter per
+  entrypoint, and the two wiring tests are the same but for the
+  package. Spring's wiring adapters patch their own boot class, `Main`
+  or `Application`, and their three drift errors name
+  `walking-skeleton/spring-peer-context-cli`. On every framework,
+  language, build system and entrypoint, each of the 60 patches the
+  peer's wiring adapters contribute refuses a drifted file naming its
+  adapter, and Micronaut Kotlin's refuses a hand-rewritten handler
+  list naming `walking-skeleton/micronaut-peer-context-kotlin-cli`.
+- `claude-kit.test.ts` (the agent harness's family kits) goes from 15
+  to 16. The Spring REST modulith's runbook names the skeleton's REST
+  row and no CLI one, a Micronaut CLI modulith's the CLI row alone, and
+  its CLI + REST twin's both, in that order, with no
+  `modules/<ctx>/user-side/api` or `cli` left. The old negative
+  assertion there, no `modules/<ctx>/user-side/cli/`, held on every
+  JVM stack once the rows named `greeting`, and now reads
+  `modules/greeting/user-side/cli/`.
+- `shared-files.golden.test.ts` records each JVM modulith assembly's
+  build file, composition root and boot class (below).
+- `add-entrypoint.test.ts` goes from 44 to 46. A Micronaut Kotlin peer
+  modulith with a history of `orders`, then `billing` consuming it,
+  then `shipping` consuming `billing`, is grown and equal to its twin
+  byte for byte. The new mediator takes `welcome`, `orders`, `billing`
+  and `shipping` in turn and lists their handlers in that order, and
+  the new assembly's build lists `shipping`'s modules above
+  `billing`'s, above `orders'`, above guestbook's. A Spring peer
+  modulith on Maven, with `orders` then `billing`, grows the CLI equal
+  to its twin, `Main`'s scan listing both after guestbook in recorded
+  order and its pom `billing`'s seam above `orders'`. No sort by name,
+  either way, and no reversal gives those orders: both cases fail with
+  the replay sorted by name, and with it reversed.
+- The refusal's own cases move onto a fixture (below): the handler's
+  two, the status's, the hint's and the page's two, in
+  `additions.test.ts` and `project.test.ts`.
+
+**The cost.** Measured alone, the growth axis takes about 77 s, against
+46 s for HEAD's code on the same machine. 144 more cells grow for real,
+held to 72 more twins, so it scaffolds 480 projects (it was 408) and
+runs 384 `keel add module`s (288), each a JVM project heavier than the
+others. The whole grid takes about 80 s wall (it was about 52 s),
+and the full CI-mode run about 185 s, against 182 s for HEAD's code on
+the same machine, with 3,158 tests passing where HEAD's passes 3,141:
+the growth axis runs beside the rest.
+
+`docs/cli.md` (`keel add entrypoint`, and the hint and pointer
+sections), `docs/composition.md` (Growing an entrypoint, which now
+says where the order shows in the JVM's bytes), `docs/plugins.md`,
+`docs/stacks/jvm.md`, `docs/ui.md`, `docs/development.md` (what the
+R.1a golden records), the README, `tests/AGENTS.md`,
+`tests/e2e/AGENTS.md` (and how to run the JVM suites locally),
+`src/domain/core/AGENTS.md`, `src/domain/contract/AGENTS.md` (its
+example of a project growth refuses), `bounded-context.ts`,
+`micronaut-root.ts`, the JVM layout's and `GrowthPlan.adapters`' docs
+say what changed. R.2b's CHANGELOG entry under _Added_ now says what
+the JVM's moduliths do, with I10's new counts, and R.2c's under
+_Changed_ names the refusal a plugin family still gets in place of its
+"for now".
+
+Beyond the text above:
+
+- **The factories are plural.** `jvmContextAdapter` and
+  `jvmPeerContextAdapter` returned an adapter; `jvmContextAdapters`
+  and `jvmPeerContextAdapters` return `{ shell, wiring: { cli, rest } }`
+  (`JvmContextAdapters`), and each framework file exports its six. The
+  wiring ids end in `-rest`, as the text says, where Go's, Rust's and
+  TypeScript's end in `-http`: the JVM calls its HTTP entrypoint REST
+  everywhere else (`quarkus-rest`, `JvmArch`).
+- **The errors name the wiring adapter.** The peer bindings' plain
+  throws, both factories' dependency throws, the context's Spring throw
+  and its Micronaut `PathConflictError`s named the one adapter that
+  patched the file, whose id is the shell's now. Each now names the
+  wiring adapter that patches it, through the binding's new
+  `adapterId`. A refusal's sentence names no adapter, so no sentence
+  moved. `peer-context.test.ts` holds every peer wiring adapter's
+  throws to that, and `jvm-context.test.ts` every context wiring
+  adapter's, on each framework, language, build system and entrypoint
+  (above); `jvm-context.test.ts` and `persistence-peer-context.test.ts`
+  hold the `taken` refusal's data, and `refusals.test.ts`' example of
+  it now names `bounded-context/micronaut-context-kotlin-rest`.
+- **The guard on a tag set with no entrypoint went with
+  `jvmAssemblies`**, as TypeScript's did with `tsAssemblies`. On such a
+  tag set no wiring adapter matches.
+- **The shells' `after`.** Both shells keep both bootstraps, since
+  either may be the one present, and each seeds the root build files
+  the shell registers in. Each wiring adapter runs after its shell and
+  its entrypoint's bootstrap, which on Quarkus and Micronaut moves the
+  peer's wiring after the port fake; on Spring the port fake, first by
+  id, already ran before the peer. Neither writes a file the other
+  does. The shell keeps the old adapter's id and `after`, so it takes
+  that adapter's place, and `settings.gradle.kts` and `pom.xml` list
+  guestbook's and the clock fake's modules in the order they did
+  before: guestbook's first on Quarkus and Micronaut, the clock fake's
+  on Spring (above).
+- **The three stale docs, and their copies.** `bounded-context.ts`
+  named a `modules.consumes` tag: the gateway is a branch on the inputs
+  `keel add module --consumes` seeds, and the header says so. The
+  combo-modulith comment was in all twelve JVM `combo-modulith-*`
+  suites, not one, and all twelve now say each assembly is wired by an
+  adapter of its own, and so do `tests/support/jvm-combo-e2e.ts`, which
+  they call, and `modulith-quarkus-cli-gradle.test.ts`, which quoted
+  the old `cli ? layout.cliRuntime : layout.restRuntime` and counted
+  the shell's `include(…)` lines among the assembly's patches. The
+  harness claim was the runbook's layout map on a JVM modulith,
+  listing `modules/<ctx>/user-side/api/{contract,adapters}/` as what
+  the REST assembly mounts, or `modules/<ctx>/user-side/cli/` as what
+  the CLI one does (both, on a CLI + REST modulith), as if every
+  context had them. Only the skeleton's does, and the peer and every
+  context `keel add module` adds have none, so the map names
+  `modules/greeting/…` and says no other context has any until you
+  write them. That is a greenfield byte R.3 moves, knowingly: one line
+  of a JVM modulith's root `AGENTS.md` (two on a CLI + REST one), and
+  its hashes in the manifest. _Deliberately kept_ below says so, and a
+  CHANGELOG entry under _Fixed_ does too; `claude-kit.test.ts` holds
+  the rows (above). `tests/support/jvm-add-module-e2e.ts` named
+  `jvmContextAdapter`, and now names the split.
+- **The refusal needs a fixture now.** The tests that held
+  `keel.contexts-need-rewiring`'s words on a real preset scaffolded a
+  `quarkus-cli` peer modulith, which now grows. They scaffold it
+  through `tests/support/unsplit-peer.ts` instead: the shipped registry
+  with Quarkus' peer folded back into the one adapter it was, which
+  picks its assemblies inside `contribute()`. That is what a plugin's
+  family that does not split its wiring looks like, and every sentence
+  and hint they hold is as it was. `agent-harness-grown.test.ts` put a
+  skill on every `bounded-context` adapter, and a skill is one
+  adapter's whole file, so it now puts it on the shells alone.
+- **The refusal's sentence is kept.** `contextsNeedRewiringSentence`
+  still reads "… cannot be added here yet: … and keel does not yet
+  wire this stack's contexts into a new one", as R.3a worded it,
+  though no keel preset reaches it now. What does, a modulith of a
+  plugin's family whose context adapter picks its assemblies as it
+  renders, is what it is still true of: keel, running that family's
+  adapters, wires none of its contexts into a new entrypoint, and the
+  family lifts it by splitting them, as `docs/plugins.md` says.
+  Rewording it would move the words `add-entrypoint.test.ts` holds,
+  and the hint and the page carry, for a case no keel preset reaches.
+- **The R.1a golden records the JVM's assembly files.** Of its six
+  root files, the split reaches only the two the shells register in,
+  `settings.gradle.kts` and `pom.xml`, which passed byte-identical
+  (above). The wiring goes where the bootstrap and the peer's and each
+  context's wiring adapters all write: each assembly's build file and
+  composition root, and Spring's boot class. It now records each
+  assembly's build file, composition root and boot class, `Main` or
+  `Application`, on every JVM modulith cell, and the basic CLI
+  assembly's build file, at the same path. The entries were generated
+  on HEAD's code, in a copy of its tree, and this step's code writes
+  them byte-identical. Before, only `add-entrypoint.test.ts`' two new
+  cases held any of those bytes, the contexts' order on two presets,
+  and the peer's two dependency lines could be reversed in every JVM
+  assembly with the whole suite passing, since I10 compares a grown
+  project with a twin the same adapters write. The golden now fails on
+  156 entries with that, and on 48 with each context's modules put
+  above the kernel on Gradle.
+- **The weekly sweep was not run.** Growth is no axis of it, and the
+  step names no finding.
+
+Not done here: an e2e suite of a grown JVM modulith with a history.
+None of the combo suites adds one, so growth leaves those cells as
+covered as `keel new` does, and the proof on disk stands in. And a JVM
+context formatted as it lands, now a Backlog entry. With this step
+every back-end family keel ships grows with its contexts, and epic R has
+landed; growth's refusal of a context now stands only for a plugin's
+family that does not split its context wiring.
 
 ### Decisions on record
 
@@ -7513,8 +7861,11 @@ agent-harness --reapply`.
   `growth-render.test.ts` holds that reading to the renders both ways.
   R.3a narrowed it to the adapters growing runs: the installed
   verticals' for the peer, the replayed `bounded-context`'s for an
-  added context. R.3b lifted Rust's refusal, and R.3c TypeScript's,
-  with no edit to it, as (a) intended.
+  added context. R.3b lifted Rust's refusal, R.3c TypeScript's and
+  R.3d the JVM's, the last, with no edit to it, as (a) intended. No
+  family keel ships is refused any more; the reading stands for a
+  plugin's family whose context adapter picks its assemblies as it
+  renders.
 
 - **DR7 — The word.** `keel add entrypoint cli|http`, with the word
   carried by `ENTRYPOINTS`. `server-http` is also accepted, since the
@@ -7558,9 +7909,12 @@ agent-harness --reapply`.
   drill-down's reading, and R adds no tag; `ENTRYPOINTS` gains a word.
 - **One e2e suite per cell.** R keeps it by proof (I10).
 - **D12 still governs every refresh R does not name.**
-- **R.1 and R.3 move no greenfield byte of a keel preset.** A plugin
-  preset's README now takes keel's section order (R.1a), and its root
-  scripts and its dev container keel's order too (R.1b).
+- **R.1 and R.3 move no greenfield byte of a keel preset** but one,
+  knowingly: the stale harness line R.3d was asked to fix, one line of
+  a JVM modulith's root `AGENTS.md` (two on a CLI + REST one) and its
+  hashes in the manifest. A plugin preset's README now takes keel's
+  section order (R.1a), and its root scripts and its dev container
+  keel's order too (R.1b).
 
 ---
 
@@ -7636,6 +7990,20 @@ rather than remembered-in-a-file.
   beside `add-module-ts`, which builds on npm alone
   (`tests/e2e/AGENTS.md`). Growth changes nothing here: a grown pnpm
   modulith with such a history fails as its twin does.
+- **A JVM context lands formatted** — found in R.3d, and not yet filed
+  as an issue. `keel add module` on a JVM modulith queues no
+  formatter, as `keel new` does, so the context it adds — its modules
+  and each assembly's `<Name>Wiring` and test — stays as the templates
+  render it, which is not `spotlessApply`'s output (the formatter
+  drops the blank lines between import groups and after a class's
+  opening brace). It builds, and the Claude pre-commit hook formats it
+  at the next commit, as does any `spotlessApply`. Growing an
+  entrypoint queues one, so on disk a grown project has those files
+  formatted where its twin, given the same history, has them as
+  rendered; I10 compares staged trees and cannot see it. It wants
+  `keel add module` to replay the family's formatter for its actions,
+  as growth does (DR5), or the templates to be the formatter's fixed
+  points.
 - ~~**Per-service build systems in composite stacks**~~
   ([#73](https://github.com/rgoussu-dev/keel/issues/73)) — **shipped**:
   composites ask the build-system question per service (pin with

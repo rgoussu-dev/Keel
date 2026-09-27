@@ -8,7 +8,11 @@ import {
   addVerticalCommand,
   newProjectCommand,
 } from '../../../../src/domain/contract/commands.js';
-import type { Contribution, Vertical } from '../../../../src/domain/contract/composition.js';
+import type {
+  Adapter,
+  Contribution,
+  Vertical,
+} from '../../../../src/domain/contract/composition.js';
 import { projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
 import type { Registry } from '../../../../src/domain/contract/ports/registry.js';
 import { markdownRegion, regionPatch } from '../../../../src/domain/contract/region.js';
@@ -98,43 +102,52 @@ function retrofitRegistry(): Registry {
           },
     ),
   };
+  // Harness elements on each context's shell alone: a skill is one
+  // adapter's whole file, and a context's wiring adapters — one per
+  // entrypoint the project has — write its assembly wiring beside it.
+  const wiring = (adapter: Adapter): boolean =>
+    (adapter.predicate.requires ?? []).some((tag) => tag.startsWith('arch.'));
   const contextsWithSkills: Vertical = {
     ...boundedContextVertical,
     skills: moduleNames.map((name) => `inspect-${name}`),
-    adapters: boundedContextVertical.adapters.map((adapter) => ({
-      ...adapter,
-      contribute: async (ctx): Promise<Contribution> => {
-        const contribution = await adapter.contribute(ctx);
-        const { name, consumes } = addedContext(ctx.manifest, adapter.id);
-        return {
-          ...contribution,
-          skills: [
-            {
-              name: `inspect-${name}`,
-              description: `Inspect the ${name} context.`,
-              body: `Read modules/${name}/domain/core. Package: ${ctx.manifest.answers['walking-skeleton/quarkus-rest-bootstrap']?.basePackage}. Consumes: ${consumes ?? 'none'}.`,
+    adapters: boundedContextVertical.adapters.map((adapter) =>
+      wiring(adapter)
+        ? adapter
+        : {
+            ...adapter,
+            contribute: async (ctx): Promise<Contribution> => {
+              const contribution = await adapter.contribute(ctx);
+              const { name, consumes } = addedContext(ctx.manifest, adapter.id);
+              return {
+                ...contribution,
+                skills: [
+                  {
+                    name: `inspect-${name}`,
+                    description: `Inspect the ${name} context.`,
+                    body: `Read modules/${name}/domain/core. Package: ${ctx.manifest.answers['walking-skeleton/quarkus-rest-bootstrap']?.basePackage}. Consumes: ${consumes ?? 'none'}.`,
+                  },
+                ],
+                harnessPatches: [
+                  regionPatch({
+                    target: teamNotes,
+                    region: markdownRegion(`module-${name}`),
+                    body: `Context: ${name}`,
+                    seed: '',
+                  }),
+                ],
+                actions: [
+                  {
+                    id: `fixture/context-${name}`,
+                    description: `Never replay domain action for ${name}`,
+                    run: async () => {
+                      throw new Error('A harness retrofit ran a domain action');
+                    },
+                  },
+                ],
+              };
             },
-          ],
-          harnessPatches: [
-            regionPatch({
-              target: teamNotes,
-              region: markdownRegion(`module-${name}`),
-              body: `Context: ${name}`,
-              seed: '',
-            }),
-          ],
-          actions: [
-            {
-              id: `fixture/context-${name}`,
-              description: `Never replay domain action for ${name}`,
-              run: async () => {
-                throw new Error('A harness retrofit ran a domain action');
-              },
-            },
-          ],
-        };
-      },
-    })),
+          },
+    ),
   };
   return {
     stacks: () => shippedRegistry.stacks(),

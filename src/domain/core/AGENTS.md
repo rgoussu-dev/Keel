@@ -203,7 +203,11 @@ otherwise after it must be one growth re-renders or one whose context
 it refuses. A family lifts it by splitting its context adapters into a
 shell and one wiring adapter per entrypoint, each writing only its
 assembly's files — Go's since R.3a, Rust's since R.3b, TypeScript's
-since R.3c. `handlers/add-entrypoint.ts` runs that reading and nothing
+since R.3c, the JVM's since R.3d, so every back-end family keel
+ships; the refusal stands for a plugin's family whose context adapter
+still picks its assemblies as it renders (`tests/support/unsplit-peer.ts`
+makes one of Quarkus' peer for the suites that hold its words).
+`handlers/add-entrypoint.ts` runs that reading and nothing
 else: it installs only the adapters that newly match
 (`installVerticals`' `only`), wires each added context into the new
 assembly by a run of `bounded-context` of its own
@@ -211,17 +215,20 @@ assembly by a run of `bounded-context` of its own
 lists, as `keel add module` ran it — on Rust, where each wiring
 prepends to the new crate's `Cargo.toml` as observability does, and on
 TypeScript, where each splices its handler into the new `main.ts`'s
-mediator array, that order is in the bytes; TypeScript's peer wiring
-must run first, since it rewrites the mediator line the bootstrap
-rendered, and it does, installed beside the bootstrap by
-`walking-skeleton`), replays the twin's other verticals for their
-deferred actions alone (`actionsOnly`), and records what is new where
-the twin records it — so the grid can hold the grown project to the
-twin byte for byte, manifest included (I10), with and without a module
-history. What a manifest cannot say it reads off the files: a context
-recorded consuming none that holds the gateway its vertical writes for
-a consumer (a `--consumes` from before #164 recorded it) is refused,
-the gateway found where `install.ts`' `contributedPaths` says the
+mediator array, and on the JVM, where each adds its modules after the
+kernel (on Maven, after the skeleton's seam) in the new assembly's
+build file and its entry to the lists its container reads, that order
+is in the bytes; TypeScript's and the JVM's peer wiring must run
+first, since it rewrites the one-line form the bootstrap rendered, and
+it does, installed beside the bootstrap by `walking-skeleton`),
+replays the twin's other verticals for their deferred actions alone
+(`actionsOnly`), and records what is new where the twin records it —
+so the grid can hold the grown project to the twin byte for byte,
+manifest included (I10), with and without a module history. What a
+manifest cannot say it reads off the files: a context recorded
+consuming none that holds the gateway its vertical writes for a
+consumer (a `--consumes` from before #164 recorded it) is refused, the
+gateway found where `install.ts`' `contributedPaths` says the
 vertical's own render puts it — no family's layout in the handler.
 The command's pointer from below a project reads it too; the status
 and a refusal's action read no files, so they offer the entrypoint

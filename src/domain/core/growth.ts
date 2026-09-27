@@ -156,10 +156,10 @@ export interface GrowthPlan {
    * The adapters the grown tags newly match, per installed vertical,
    * in the order the manifest records them — on every shipped preset
    * the other entrypoint's bootstrap, and beside it, on a modulith
-   * whose peer context is wired per entrypoint (Go's, Rust's,
-   * TypeScript's), the peer's wiring adapter; an extra's may newly
-   * match too, as the native CLI's release does on a native Quarkus
-   * image.
+   * with the peer context, the peer's wiring adapter, since every
+   * shipped back-end family wires it per entrypoint; an extra's may
+   * newly match too, as the native CLI's release does on a native
+   * Quarkus image.
    */
   readonly adapters: readonly GrowthAdapters[];
   /**

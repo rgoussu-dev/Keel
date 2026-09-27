@@ -24,7 +24,24 @@ import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { RunActionsInputs } from '../../../../src/domain/core/actions.js';
 import { addModuleCommand, newProjectCommand } from '../../../../src/domain/contract/commands.js';
+import type {
+  Adapter,
+  ContributionPatch,
+  Tag,
+} from '../../../../src/domain/contract/composition.js';
+import { emptyManifestV2 } from '../../../../src/domain/contract/manifest.js';
 import { PathConflictError } from '../../../../src/domain/contract/refusal.js';
+import {
+  ADD_MODULE_INPUT_ID,
+  CONTEXT_TAG,
+} from '../../../../src/domain/core/adapters/added-context.js';
+import { MODULITH_LAYOUT_TAG } from '../../../../src/domain/core/adapters/module-layout.js';
+import { makeCtx } from '../../../../src/domain/core/apply.js';
+import { resolveVertical } from '../../../../src/domain/core/resolver.js';
+import { boundedContextVertical } from '../../../../src/domain/core/verticals/bounded-context.js';
+import { FakeLogger } from '../../../../src/infrastructure/commons/fake-logger.js';
+import { FakeProcessRunner } from '../../../../src/infrastructure/process/fake.js';
+import { ejsTemplateSource } from '../../../../src/infrastructure/template/ejs-template-source.js';
 import { expectErr, expectOk, installMediator } from '../../../support/factory.js';
 
 const discardDeferred = (): ((inputs: RunActionsInputs) => Promise<void>) => {
@@ -65,9 +82,10 @@ async function scaffold(options: ScaffoldOptions = {}): Promise<void> {
   );
 }
 
-async function addModule(module: string, consumes?: string): Promise<void> {
+/** `keel add module <module>`, consuming `consumes` where given: the adapters it ran, by id. */
+async function addModule(module: string, consumes?: string): Promise<readonly string[]> {
   const mediator = installMediator({ runDeferred: discardDeferred() });
-  expectOk(
+  const report = expectOk(
     await mediator.dispatch(
       addModuleCommand({
         cwd,
@@ -79,6 +97,7 @@ async function addModule(module: string, consumes?: string): Promise<void> {
       }),
     ),
   );
+  return (report.resolvedAdapters ?? []).map((adapter) => adapter.id);
 }
 
 const read = (rel: string): Promise<string> => fs.readFile(path.join(cwd, rel), 'utf8');
@@ -300,7 +319,8 @@ describe('the JVM added context', () => {
     it('refuses a Kotlin context named for a port the mediator already takes', async () => {
       // The peer context injects its `Welcome` port as `welcome`; a
       // context of that name would be a second `welcome` parameter,
-      // which does not compile.
+      // which does not compile. The refusal names the wiring adapter
+      // that patches the REST assembly's root, not the context's shell.
       await scaffold({ stack: 'micronaut-rest-kotlin', withPeerContext: true });
       const root = 'application/api/src/main/kotlin/com/example/application/api/MediatorFactory.kt';
       const before = await read(root);
@@ -320,7 +340,7 @@ describe('the JVM added context', () => {
       expect((refused as PathConflictError).refusal).toEqual({
         kind: 'path-conflict',
         path: root,
-        adapterId: 'bounded-context/micronaut-context-kotlin',
+        adapterId: 'bounded-context/micronaut-context-kotlin-rest',
         taken: 'welcome',
       });
       expect(await read(root)).toBe(before);
@@ -358,26 +378,184 @@ function dependencyArtifacts(pom: string): readonly string[] {
  * with `tags.includes('arch.cli') ? cli : rest`, which on these
  * stacks wired the CLI and left the HTTP assembly with no binding for
  * the new context's handler — a project that builds and runs and is
- * half-wired. Asserted on Quarkus alone: the loop is in
- * `jvm-context.ts`, shared by all six bindings, and what each binding
- * writes into an assembly is already covered above.
+ * half-wired. Which assemblies a context is wired into is now read off
+ * the predicates: a shell, and one wiring adapter per entrypoint the
+ * project has, so a project that grows an entrypoint installs the one
+ * that newly matches and the wiring already there is never rendered
+ * again (roadmap R.3d). Asserted on one stack per framework, and what
+ * each wiring adapter refuses on all six bindings: the split is in
+ * `jvm-context.ts`, shared by them all, and what each binding writes
+ * into an assembly is covered above.
  */
-describe('the JVM added context on a composed cli + server-http project', () => {
-  it('wires the new context into both assemblies', async () => {
+describe('the JVM added context, wired per entrypoint', () => {
+  it('is wired into each assembly by an adapter of its own, the same class in each', async () => {
     await scaffold({ stack: 'quarkus-cli-rest' });
-    await addModule('billing');
+    expect(await addModule('billing', 'greeting')).toEqual([
+      'bounded-context/quarkus-context',
+      'bounded-context/quarkus-context-cli',
+      'bounded-context/quarkus-context-rest',
+    ]);
 
     for (const assembly of ['application/cli', 'application/api']) {
       expect(await read(`${assembly}/build.gradle.kts`), assembly).toContain(
         'modules:billing:domain:core',
       );
     }
-    for (const [assembly, pkg] of [
-      ['application/cli', 'cli'],
-      ['application/api', 'api'],
-    ]) {
-      const wiring = `${assembly}/src/main/java/com/example/application/${pkg}/BillingWiring.java`;
-      expect(await exists(wiring), wiring).toBe(true);
+    // Byte-identical but for the package each assembly's class is in.
+    const wiring = (pkg: string): Promise<string> =>
+      read(`application/${pkg}/src/main/java/com/example/application/${pkg}/BillingWiring.java`);
+    expect(await wiring('cli')).toBe(
+      (await wiring('api')).replace(
+        'package com.example.application.api;',
+        'package com.example.application.cli;',
+      ),
+    );
+
+    await fs.emptyDir(cwd);
+    await scaffold({ stack: 'quarkus-cli' });
+    expect(await addModule('billing', 'greeting')).toEqual([
+      'bounded-context/quarkus-context',
+      'bounded-context/quarkus-context-cli',
+    ]);
+    expect(
+      await exists('application/cli/src/main/java/com/example/application/cli/BillingWiring.java'),
+    ).toBe(true);
+    expect(await exists('application/api')).toBe(false);
+  });
+
+  it('widens the boot class of each assembly, Main in the CLI’s and Application in the REST one', async () => {
+    await scaffold({ stack: 'spring-cli-rest' });
+    expect(await addModule('billing')).toEqual([
+      'bounded-context/spring-context',
+      'bounded-context/spring-context-cli',
+      'bounded-context/spring-context-rest',
+    ]);
+
+    for (const [pkg, boot] of [
+      ['cli', 'Main'],
+      ['api', 'Application'],
+    ] as const) {
+      expect(
+        await read(`application/${pkg}/src/main/java/com/example/application/${pkg}/${boot}.java`),
+        boot,
+      ).toContain('"com.example.billing"');
     }
   });
+
+  it.each(['micronaut-cli-rest', 'quarkus-cli-rest'])(
+    'declares the context right after the skeleton’s seam in each Maven assembly, on %s',
+    async (stack) => {
+      await scaffold({ stack, buildSystem: 'maven' });
+      await addModule('billing', 'greeting');
+
+      for (const assembly of ['application/cli', 'application/api']) {
+        // The anchor a fresh assembly pom carries, never `</dependencies>`,
+        // whose first match on Quarkus closes `<dependencyManagement>`.
+        const deps = dependencyArtifacts(await read(`${assembly}/pom.xml`));
+        const seam = deps.indexOf('greeting-user-side-service');
+        expect(deps.slice(seam, seam + 5), assembly).toEqual([
+          'greeting-user-side-service',
+          'billing-domain-contract',
+          'billing-domain-core',
+          'billing-user-side-service',
+          'billing-infra-greeting-gateway',
+        ]);
+      }
+    },
+  );
+
+  it('names the wiring adapter in what each of its patches refuses, on every binding', async () => {
+    const named: string[] = [];
+    for (const framework of ['quarkus', 'spring', 'micronaut'] as const) {
+      for (const language of ['java', 'kotlin'] as const) {
+        for (const pkg of ['gradle', 'maven'] as const) {
+          for (const [entrypoint, arch] of [
+            ['arch.cli', 'cli'],
+            ['arch.server-http', 'rest'],
+          ] as const) {
+            const tags: readonly Tag[] = [
+              `lang.${language}`,
+              'runtime.jvm',
+              `pkg.${pkg}`,
+              `framework.${framework}`,
+              'arch.hexagonal',
+              entrypoint,
+              MODULITH_LAYOUT_TAG,
+              CONTEXT_TAG,
+            ];
+            const id = `bounded-context/${framework}-context${language === 'kotlin' ? '-kotlin' : ''}-${arch}`;
+            const adapter = resolveVertical(boundedContextVertical, tags).find((a) => a.id === id);
+            expect(adapter, id).toBeDefined();
+            const patches = await patchesOf(adapter as Adapter, tags);
+            // Every file it patches, drifted past recognition. The seam
+            // note's correction, after the dependencies, is the one that
+            // lets it be, since an absent note is one already corrected;
+            // every other patch refuses, naming this adapter, not the shell.
+            const refusers = patches.map((patch) => refuserOf(() => patch.apply('')));
+            expect(refusers, id).toEqual(patches.map((_, index) => (index === 1 ? null : id)));
+            named.push(...refusers.filter((refuser) => refuser !== null));
+          }
+        }
+      }
+    }
+    // The dependencies on each of the 24, and Spring's boot class (8)
+    // and Micronaut's `@Import` or handler list (8) besides.
+    expect(named).toHaveLength(40);
+  });
 });
+
+/** Every JVM bootstrap answers the same two questions, identically. */
+const BOOTSTRAP_ANSWERS = Object.fromEntries(
+  ['quarkus', 'spring', 'micronaut'].flatMap((framework) =>
+    ['cli', 'rest'].flatMap((arch) =>
+      ['', '-kotlin'].map((lang) => [
+        `walking-skeleton/${framework}-${arch}${lang}-bootstrap`,
+        { basePackage: 'com.example', projectName: 'demo' },
+      ]),
+    ),
+  ),
+);
+
+/**
+ * The patches a wiring adapter contributes for `billing`, consuming
+ * the skeleton, on a project with `tags`: what `keel add module
+ * billing --consumes greeting` seeds before it resolves.
+ */
+async function patchesOf(
+  adapter: Adapter,
+  tags: readonly Tag[],
+): Promise<readonly ContributionPatch[]> {
+  const ctx = makeCtx(
+    adapter,
+    {},
+    {
+      manifest: {
+        ...emptyManifestV2('2026-08-14T00:00:00Z', '0.5.0-alpha'),
+        tags: [...tags],
+        answers: {
+          ...BOOTSTRAP_ANSWERS,
+          [ADD_MODULE_INPUT_ID]: { name: 'billing', consumes: 'greeting' },
+        },
+      },
+      logger: new FakeLogger(),
+      cwd: os.tmpdir(),
+      templates: ejsTemplateSource,
+      processes: new FakeProcessRunner(),
+    },
+  );
+  return (await adapter.contribute(ctx)).patches ?? [];
+}
+
+/**
+ * The adapter a patch's refusal names — a refusal's data, or a plain
+ * throw's prefix — or null where the patch applies.
+ */
+function refuserOf(apply: () => string): string | null {
+  try {
+    apply();
+    return null;
+  } catch (error) {
+    if (error instanceof PathConflictError) return error.adapterId;
+    return (error as Error).message.split(': ')[0] ?? '';
+  }
+}

@@ -1065,8 +1065,9 @@ the operator's machine would report it as a harness finding.
   adds or moves cells of `tests/domain/core/shared-files.golden.json`,
   the byte golden of the files several adapters write into
   (`README.md`, the build files, `devcontainer.json`, a Rust modulith
-  assembly's `main.rs`, a TypeScript assembly's `main.ts`), as does
-  any template or pin change that reaches one of those files — a
+  assembly's `main.rs`, a TypeScript assembly's `main.ts`, a JVM
+  modulith assembly's composition root and boot class), as does any
+  template or pin change that reaches one of those files — a
   bounded context's registration in them included, which its
   module-history cells pin. That golden
   reads no other, so regenerate it on its own —

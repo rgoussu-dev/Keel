@@ -8,7 +8,7 @@
  * dependencies landed under `dependencyManagement` rather than on the
  * compile classpath — and both were found by the REST assembly's pom.
  * `assemblyDepsPatch` anchors on the `greeting-user-side-service`
- * dependency of whichever assembly the layout resolved, so the CLI
+ * dependency of its wiring adapter's own assembly, so the CLI
  * assembly's pom is a second anchor site that had never been patched
  * for real.
  *

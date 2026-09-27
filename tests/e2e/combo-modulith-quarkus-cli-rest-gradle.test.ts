@@ -20,11 +20,14 @@
  * compiled by a real build before this file existed.
  *
  * `--with-peer-context` rides along, as it does on every
- * single-entrypoint modulith cell. It earns more here than there:
- * the peer-context adapter picks its target assembly by reading the
- * `arch.cli` tag, and a combo tag set is the only input where both
- * candidate assemblies exist, so the read is a real choice rather
- * than the only option.
+ * single-entrypoint modulith cell. It earns more here than there: the
+ * peer context is wired into each assembly by an adapter of its own,
+ * selected by that entrypoint's tag, and a combo tag set is the only
+ * input where both match — so both assemblies are wired, each by its
+ * own adapter, rather than whichever one a single adapter picked.
+ * It is also the tree `keel add entrypoint` must leave on a
+ * single-entrypoint modulith with the peer, so this cell covers those
+ * grown projects by proof (roadmap R.3d).
  *
  * The cell scaffolds, builds once — both assemblies are modules of
  * the same reactor — then runs the CLI jar for its greeting and boots

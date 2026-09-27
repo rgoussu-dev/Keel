@@ -24,11 +24,12 @@
  *
  * **No dimensions.** Like `gateway`, selection is purely by tag:
  * `modules.context` picks the context's adapters for the project's
- * language — its shell and, on a family that splits them (Go's,
- * Rust's and TypeScript's), one wiring adapter per entrypoint the
- * project has —
- * `modules.consumes` adds the gateway. With neither tag the vertical
- * installs nothing, which is what makes the coverage probe in
+ * language — its shell and, on every back-end family, one wiring
+ * adapter per entrypoint the project has. The gateway is no tag's: a
+ * context consuming another gets one because the inputs `keel add
+ * module --consumes` seeds say so (`addedContext`), a branch inside
+ * the shell rather than an adapter of its own. Without the tag the
+ * vertical installs nothing, which is what makes the coverage probe in
  * `context-support.ts` meaningful — an uncovered *dimension* would
  * hard-fail in the resolver, and a context contributes none, so the
  * front door has to ask the adapter set instead.
@@ -51,15 +52,33 @@ import {
 } from '../adapters/go-context.js';
 import {
   micronautContextAdapter,
+  micronautContextCliAdapter,
   micronautContextKotlinAdapter,
+  micronautContextKotlinCliAdapter,
+  micronautContextKotlinRestAdapter,
+  micronautContextRestAdapter,
 } from '../adapters/micronaut-context.js';
-import { quarkusContextAdapter, quarkusContextKotlinAdapter } from '../adapters/quarkus-context.js';
+import {
+  quarkusContextAdapter,
+  quarkusContextCliAdapter,
+  quarkusContextKotlinAdapter,
+  quarkusContextKotlinCliAdapter,
+  quarkusContextKotlinRestAdapter,
+  quarkusContextRestAdapter,
+} from '../adapters/quarkus-context.js';
 import {
   rustContextAdapter,
   rustContextCliAdapter,
   rustContextHttpAdapter,
 } from '../adapters/rust-context.js';
-import { springContextAdapter, springContextKotlinAdapter } from '../adapters/spring-context.js';
+import {
+  springContextAdapter,
+  springContextCliAdapter,
+  springContextKotlinAdapter,
+  springContextKotlinCliAdapter,
+  springContextKotlinRestAdapter,
+  springContextRestAdapter,
+} from '../adapters/spring-context.js';
 import {
   tsContextAdapter,
   tsContextCliAdapter,
@@ -85,11 +104,23 @@ export const boundedContextVertical: Vertical = {
     tsContextHttpAdapter,
     wcContextAdapter,
     quarkusContextAdapter,
+    quarkusContextCliAdapter,
+    quarkusContextRestAdapter,
     quarkusContextKotlinAdapter,
+    quarkusContextKotlinCliAdapter,
+    quarkusContextKotlinRestAdapter,
     springContextAdapter,
+    springContextCliAdapter,
+    springContextRestAdapter,
     springContextKotlinAdapter,
+    springContextKotlinCliAdapter,
+    springContextKotlinRestAdapter,
     micronautContextAdapter,
+    micronautContextCliAdapter,
+    micronautContextRestAdapter,
     micronautContextKotlinAdapter,
+    micronautContextKotlinCliAdapter,
+    micronautContextKotlinRestAdapter,
   ],
   conflicts: [CONTEXT_NEEDS_MODULITH],
 };

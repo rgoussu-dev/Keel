@@ -1,6 +1,8 @@
 /**
  * The Micronaut added-context adapters —
- * `bounded-context/micronaut-context` and its Kotlin twin.
+ * `bounded-context/micronaut-context` and its Kotlin twin, each a
+ * shell and a wiring adapter per entrypoint (`…-cli`, `…-rest`). The
+ * list edits below are the wiring adapters', each in its own assembly.
  *
  * The two languages diverge here more than under any other framework,
  * because their composition roots already do — and in both cases the
@@ -40,8 +42,9 @@
  * that.
  */
 
-import type { JvmLanguage } from './jvm-bootstrap.js';
-import { jvmContextAdapter, type JvmContextBinding } from './jvm-context.js';
+import type { JvmArch, JvmLanguage } from './jvm-bootstrap.js';
+import { jvmContextAdapters, type JvmContextBinding } from './jvm-context.js';
+import type { JvmContextAdapters } from './jvm-peer-context.js';
 import { MICRONAUT_CLI_BOOTSTRAP_ID } from './micronaut-cli-bootstrap.js';
 import { MICRONAUT_CLI_KOTLIN_BOOTSTRAP_ID } from './micronaut-cli-kotlin-bootstrap.js';
 import { MICRONAUT_REST_BOOTSTRAP_ID } from './micronaut-rest-bootstrap.js';
@@ -70,7 +73,7 @@ function importPackagesPatch(binding: JvmContextBinding): ContributionPatch {
     apply: (existing) => {
       const widened = widenImportPackages(existing, `"${binding.names.corePkg}"`);
       if (widened === null) {
-        throw new PathConflictError(target, MICRONAUT_CONTEXT_ID, IMPORT_ANCHOR);
+        throw new PathConflictError(target, binding.adapterId, IMPORT_ANCHOR);
       }
       return widened;
     },
@@ -113,10 +116,10 @@ function mediatorListPatch(binding: JvmContextBinding): ContributionPatch {
         [binding.added.name],
       );
       if (widened === null) {
-        throw new PathConflictError(target, MICRONAUT_CONTEXT_KOTLIN_ID, MEDIATOR_ANCHOR);
+        throw new PathConflictError(target, binding.adapterId, MEDIATOR_ANCHOR);
       }
       if (typeof widened !== 'string') {
-        throw new PathConflictError(target, MICRONAUT_CONTEXT_KOTLIN_ID, undefined, widened.taken);
+        throw new PathConflictError(target, binding.adapterId, undefined, widened.taken);
       }
       return widened;
     },
@@ -126,10 +129,10 @@ function mediatorListPatch(binding: JvmContextBinding): ContributionPatch {
 const micronautContext = (
   id: string,
   language: JvmLanguage,
-  bootstrapIds: readonly string[],
+  bootstrapIds: Readonly<Record<JvmArch, string>>,
   bind: (binding: JvmContextBinding) => readonly ContributionPatch[],
-): Adapter =>
-  jvmContextAdapter({
+): JvmContextAdapters =>
+  jvmContextAdapters({
     id,
     framework: 'micronaut',
     language,
@@ -138,18 +141,34 @@ const micronautContext = (
     bind,
   });
 
-/** Micronaut + Java. */
-export const micronautContextAdapter: Adapter = micronautContext(
+const micronautJava = micronautContext(
   MICRONAUT_CONTEXT_ID,
   'java',
-  [MICRONAUT_REST_BOOTSTRAP_ID, MICRONAUT_CLI_BOOTSTRAP_ID],
+  { cli: MICRONAUT_CLI_BOOTSTRAP_ID, rest: MICRONAUT_REST_BOOTSTRAP_ID },
   (binding) => [importPackagesPatch(binding)],
 );
 
-/** Micronaut + Kotlin. */
-export const micronautContextKotlinAdapter: Adapter = micronautContext(
+const micronautKotlin = micronautContext(
   MICRONAUT_CONTEXT_KOTLIN_ID,
   'kotlin',
-  [MICRONAUT_REST_KOTLIN_BOOTSTRAP_ID, MICRONAUT_CLI_KOTLIN_BOOTSTRAP_ID],
+  { cli: MICRONAUT_CLI_KOTLIN_BOOTSTRAP_ID, rest: MICRONAUT_REST_KOTLIN_BOOTSTRAP_ID },
   (binding) => [mediatorListPatch(binding)],
 );
+
+/** Micronaut + Java: the shell. */
+export const micronautContextAdapter: Adapter = micronautJava.shell;
+
+/** Micronaut + Java: the wiring into the CLI's assembly, `application/cli`. */
+export const micronautContextCliAdapter: Adapter = micronautJava.wiring.cli;
+
+/** Micronaut + Java: the wiring into the REST assembly, `application/api`. */
+export const micronautContextRestAdapter: Adapter = micronautJava.wiring.rest;
+
+/** Micronaut + Kotlin: the shell. */
+export const micronautContextKotlinAdapter: Adapter = micronautKotlin.shell;
+
+/** Micronaut + Kotlin: the wiring into the CLI's assembly, `application/cli`. */
+export const micronautContextKotlinCliAdapter: Adapter = micronautKotlin.wiring.cli;
+
+/** Micronaut + Kotlin: the wiring into the REST assembly, `application/api`. */
+export const micronautContextKotlinRestAdapter: Adapter = micronautKotlin.wiring.rest;

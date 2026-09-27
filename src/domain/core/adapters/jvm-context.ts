@@ -5,12 +5,18 @@
  * `--consumes <other>` adds to it.
  *
  * [`jvm-peer-context.ts`](./jvm-peer-context.ts) is the model and the
- * shape is the same: one shared adapter factory plus a per-(framework,
+ * shape is the same: one shared factory plus a per-(framework,
  * language) `bind` hook, six bindings in
  * `quarkus-context.ts`, `spring-context.ts` and
- * `micronaut-context.ts`. What differs is everything the peer context
- * could take for granted because it is emitted exactly once, into a
- * project whose composition root it is the first thing to touch.
+ * `micronaut-context.ts`, and the same split — a shell writing the
+ * context's modules and registering them with the root build, and a
+ * wiring adapter per entrypoint (`…-cli`, `…-rest`) writing that
+ * assembly's wiring class, its dependencies and the binding, so that
+ * `keel add entrypoint` wires every context into the new assembly by
+ * installing the one that newly matches (roadmap R.3d). What differs
+ * is everything the peer context could take for granted because it is
+ * emitted exactly once, into a project whose composition root it is
+ * the first thing to touch.
  *
  * **Four modules where the peer has three.** The
  * `--with-peer-context` context is a pure consumer — contract face,
@@ -55,28 +61,30 @@
  * they can parse again — see {@link rewriteList}.
  *
  * Covers no dimension, deliberately: the family is additive and
- * selected purely by the `modules.context` tag.
+ * selected purely by the `modules.context` tag — and, for each wiring
+ * adapter, its entrypoint's.
  */
 
 import { addedContext, CONTEXT_TAG, type AddedContext } from './added-context.js';
 import { jvmBuildSystem } from './jvm-build-system.js';
-import { freshServiceDoc, STALE_SERVICE_DOC } from './jvm-peer-context.js';
-import type { JvmLanguage } from './jvm-bootstrap.js';
+import { freshServiceDoc, STALE_SERVICE_DOC, type JvmContextAdapters } from './jvm-peer-context.js';
+import { ARCH_TAG, type JvmArch, type JvmLanguage } from './jvm-bootstrap.js';
 import {
   MODULITH_LAYOUT_TAG,
   SKELETON_MODULE,
   gradleProject,
-  jvmAssemblies,
+  jvmAssembly,
   jvmContextModules,
   jvmLayout,
   jvmSeamModule,
   mavenArtifact,
   type JvmContextModules,
+  type JvmLayoutPaths,
 } from './jvm-module-layout.js';
 import { eolOf, packageToPath, withEol } from '../util.js';
 import { IDENTITY_BOOTSTRAPS } from './identity-bootstraps.js';
 import { bootstrapAnswers } from './project-identity.js';
-import type { Adapter, ContributionPatch } from '../../contract/composition.js';
+import type { Adapter, ContributionPatch, ManifestV2 } from '../../contract/composition.js';
 
 const TEMPLATE_ROOT = 'composition/bounded-context/jvm-context/templates';
 
@@ -124,6 +132,10 @@ export function jvmContextNames(basePackage: string, added: AddedContext): JvmCo
  * computes a path itself.
  */
 export interface JvmContextBinding {
+  /** The wiring adapter the binding's patches belong to, which a refusal or drift error names. */
+  readonly adapterId: string;
+  /** The entrypoint whose assembly this is — a static fact of that wiring adapter. */
+  readonly arch: JvmArch;
   /** The project's root package, e.g. `com.example`. */
   readonly basePackage: string;
   /** The context being added. */
@@ -140,17 +152,21 @@ export interface JvmContextBinding {
 
 /** Declaration of one JVM added-context combination. */
 export interface JvmContextSpec {
-  /** Full adapter id, e.g. `bounded-context/spring-context`. */
+  /**
+   * The shell's adapter id, e.g. `bounded-context/spring-context`;
+   * each wiring adapter's is this with its entrypoint after it,
+   * `…-cli` or `…-rest`.
+   */
   readonly id: string;
   /** Framework tag suffix: `quarkus`, `spring`, `micronaut`. */
   readonly framework: string;
   readonly language: JvmLanguage;
   /**
-   * The bootstraps this context layers onto — the CLI and REST
-   * bootstrap of the same framework and language. One of them holds
-   * the `basePackage` / `projectName` answers.
+   * The bootstrap of each entrypoint of the same framework and
+   * language. One of them holds the `basePackage` / `projectName`
+   * answers; each wiring adapter is ordered after its own.
    */
-  readonly bootstrapIds: readonly string[];
+  readonly bootstrapIds: Readonly<Record<JvmArch, string>>;
   /**
    * The framework's composition-root class — `MediatorProducer`,
    * `MediatorConfig`, `MediatorFactory`. Nothing is *appended* to it
@@ -166,76 +182,45 @@ export interface JvmContextSpec {
    */
   readonly frameworkTemplates?: readonly string[];
   /**
-   * Patches telling this framework's container about the new context.
-   * The bindings each context needs are emitted as a wiring *class*
-   * from the template tree; what is left here is whatever the
-   * framework keeps in a list somewhere else.
+   * Patches telling this framework's container about the new context,
+   * in one assembly. The bindings each context needs are emitted as a
+   * wiring *class* from the template tree; what is left here is
+   * whatever the framework keeps in a list somewhere else.
    */
   readonly bind: (binding: JvmContextBinding) => readonly ContributionPatch[];
 }
 
 /**
- * Builds the added-context adapter for one JVM (framework, language)
- * combination. Every entrypoint shape is served by the one adapter:
- * the assemblies it patches are resolved from the `arch.*` tags,
- * exactly as the layout resolver does everywhere else — so a project
- * composing `arch.cli` and `arch.server-http` gets the new context
- * wired into *both*, not into whichever one an if/else picked.
+ * Builds the added-context adapters for one JVM (framework, language)
+ * combination: the shell, which writes the context's modules and
+ * registers them with the root build, and a wiring adapter for each
+ * entrypoint, which requires that entrypoint's tag and wires the
+ * context into its assembly alone — so a project composing `arch.cli`
+ * and `arch.server-http` gets the new context wired into *both*, not
+ * into whichever one an if/else picked, and a project that grows the
+ * other entrypoint gets it wired into the new assembly by the one
+ * wiring adapter that newly matches (roadmap R.3d).
  */
-export function jvmContextAdapter(spec: JvmContextSpec): Adapter {
-  return {
+export function jvmContextAdapters(spec: JvmContextSpec): JvmContextAdapters {
+  const requires = [
+    'runtime.jvm',
+    `lang.${spec.language}`,
+    `framework.${spec.framework}`,
+    MODULITH_LAYOUT_TAG,
+    CONTEXT_TAG,
+  ];
+  const language = SOURCE_ROOT[spec.language];
+  const shell: Adapter = {
     id: spec.id,
     vertical: 'bounded-context',
     covers: [],
-    predicate: {
-      requires: [
-        'runtime.jvm',
-        `lang.${spec.language}`,
-        `framework.${spec.framework}`,
-        MODULITH_LAYOUT_TAG,
-        CONTEXT_TAG,
-      ],
-    },
+    predicate: { requires },
     // Ordering hints rather than requirements: under `keel add module`
     // the bootstraps have long since run, and listing them keeps the
-    // adapter honest about what it patches into.
-    after: [...spec.bootstrapIds],
+    // shell honest about the root build files it patches into.
+    after: [spec.bootstrapIds.rest, spec.bootstrapIds.cli],
     async contribute(ctx) {
-      const added = addedContext(ctx.manifest, spec.id);
-      const bootstrap = bootstrapAnswers(ctx.manifest, IDENTITY_BOOTSTRAPS);
-      const basePackage = bootstrap?.basePackage;
-      const projectName = bootstrap?.projectName;
-      if (!basePackage || !projectName) {
-        throw new Error(
-          `${spec.id}: requires a walking-skeleton bootstrap (one of ${spec.bootstrapIds.join(', ')}) to have run first; basePackage/projectName not in manifest`,
-        );
-      }
-
-      const names = jvmContextNames(basePackage, added);
-      const buildSystem = jvmBuildSystem(ctx.manifest.tags);
-      const layout = jvmLayout(ctx.manifest.tags);
-      const assemblies = jvmAssemblies(ctx.manifest.tags, layout);
-      if (assemblies.length === 0) {
-        throw new Error(`${spec.id}: no assembly in this tag set to wire the added context into`);
-      }
-      const modules = jvmContextModules(added.name, added.consumes);
-      const language = SOURCE_ROOT[spec.language];
-
-      const vars = {
-        basePackage,
-        projectName,
-        pkgPath: packageToPath(basePackage),
-        module: added.name,
-        Module: names.Module,
-        consumes: added.consumes ?? '',
-        Consumes: added.consumes === null ? '' : pascal(added.consumes),
-        // ejs has no truthiness helper of its own worth trusting
-        // across versions, and `consumes` is '' rather than absent so
-        // the path token substitutes cleanly. A separate flag keeps
-        // the templates reading `if (hasConsumes)`.
-        hasConsumes: added.consumes === null ? '' : '1',
-      };
-
+      const { added, buildSystem, modules, vars } = contextOf(ctx.manifest, spec, spec.id);
       const trees = [
         `${TEMPLATE_ROOT}/${language}`,
         ...(spec.frameworkTemplates ?? []).map((t) => `${TEMPLATE_ROOT}/${t}`),
@@ -247,44 +232,114 @@ export function jvmContextAdapter(spec: JvmContextSpec): Adapter {
               `${TEMPLATE_ROOT}/build/${buildSystem}-consumes`,
             ]),
       ];
-      // The wiring class and its test land in the assembly, whose
-      // directory and package are both layout decisions — so they
-      // render under each resolved assembly rather than at a path of
-      // their own.
-      const wiring = `${TEMPLATE_ROOT}/wiring/${spec.framework}/${language}`;
-      const assemblyVars = (a: { dir: string; pkg: string }): Record<string, string> => ({
-        ...vars,
-        assemblyPkg: a.pkg,
-        assemblyPkgPath: a.pkg.replace(/\./g, '/'),
-      });
-      const rendered = await Promise.all([
-        ...trees.map((t) => ctx.templates.render(t, '', vars)),
-        ...assemblies.map((a) => ctx.templates.render(wiring, a.dir, assemblyVars(a))),
-      ]);
-
-      const bindings: readonly JvmContextBinding[] = assemblies.map((a) => ({
-        basePackage,
-        added,
-        names,
-        assembly: a.dir,
-        assemblyPkg: a.pkg,
-        sourceFile: (className) =>
-          `${a.dir}/src/main/${language}/${packageToPath(basePackage)}/${a.pkg.replace(/\./g, '/')}/${className}.${EXTENSION[spec.language]}`,
-      }));
-
+      const rendered = await Promise.all(trees.map((t) => ctx.templates.render(t, '', vars)));
       return {
         files: rendered.flat(),
         patches: [
           buildSystem === 'maven'
             ? mavenModulesPatch(spec.id, modules)
             : gradleIncludesPatch(modules),
-          ...bindings.flatMap((binding) => [
-            assemblyDepsPatch(spec.id, buildSystem, basePackage, binding.assembly, added, modules),
-            ...(added.consumes === SKELETON_MODULE ? [seamDocPatch(spec, binding)] : []),
-            ...spec.bind(binding),
-          ]),
         ],
       };
+    },
+  };
+  const wiring = (arch: JvmArch): Adapter => {
+    const id = `${spec.id}-${arch}`;
+    return {
+      id,
+      vertical: 'bounded-context',
+      covers: [],
+      predicate: { requires: [...requires, ARCH_TAG[arch]] },
+      after: [spec.id, spec.bootstrapIds[arch]],
+      async contribute(ctx) {
+        const { added, basePackage, buildSystem, layout, modules, names, vars } = contextOf(
+          ctx.manifest,
+          spec,
+          id,
+        );
+        const assembly = jvmAssembly(layout, arch);
+        // The wiring class and its test land in the assembly, whose
+        // directory and package are both layout decisions — so they
+        // render under it rather than at a path of their own.
+        const files = await ctx.templates.render(
+          `${TEMPLATE_ROOT}/wiring/${spec.framework}/${language}`,
+          assembly.dir,
+          { ...vars, assemblyPkg: assembly.pkg, assemblyPkgPath: assembly.pkg.replace(/\./g, '/') },
+        );
+        const binding: JvmContextBinding = {
+          adapterId: id,
+          arch,
+          basePackage,
+          added,
+          names,
+          assembly: assembly.dir,
+          assemblyPkg: assembly.pkg,
+          sourceFile: (className) =>
+            `${assembly.dir}/src/main/${language}/${packageToPath(basePackage)}/${assembly.pkg.replace(/\./g, '/')}/${className}.${EXTENSION[spec.language]}`,
+        };
+        return {
+          files,
+          patches: [
+            assemblyDepsPatch(id, buildSystem, basePackage, binding.assembly, added, modules),
+            ...(added.consumes === SKELETON_MODULE ? [seamDocPatch(spec, binding)] : []),
+            ...spec.bind(binding),
+          ],
+        };
+      },
+    };
+  };
+  return { shell, wiring: { cli: wiring('cli'), rest: wiring('rest') } };
+}
+
+/**
+ * The context an add-module run emits, and what its adapters read:
+ * the project's identity, its build system and layout, the context's
+ * modules and names, and the template variables — the same values for
+ * the shell and for each assembly's wiring.
+ */
+function contextOf(
+  manifest: ManifestV2,
+  spec: JvmContextSpec,
+  requesterId: string,
+): {
+  readonly added: AddedContext;
+  readonly basePackage: string;
+  readonly buildSystem: 'gradle' | 'maven';
+  readonly layout: JvmLayoutPaths;
+  readonly modules: JvmContextModules;
+  readonly names: JvmContextNames;
+  readonly vars: Readonly<Record<string, string>>;
+} {
+  const added = addedContext(manifest, requesterId);
+  const bootstrap = bootstrapAnswers(manifest, IDENTITY_BOOTSTRAPS);
+  const basePackage = bootstrap?.basePackage;
+  const projectName = bootstrap?.projectName;
+  if (!basePackage || !projectName) {
+    throw new Error(
+      `${requesterId}: requires a walking-skeleton bootstrap (one of ${spec.bootstrapIds.rest}, ${spec.bootstrapIds.cli}) to have run first; basePackage/projectName not in manifest`,
+    );
+  }
+  const names = jvmContextNames(basePackage, added);
+  return {
+    added,
+    basePackage,
+    buildSystem: jvmBuildSystem(manifest.tags),
+    layout: jvmLayout(manifest.tags),
+    modules: jvmContextModules(added.name, added.consumes),
+    names,
+    vars: {
+      basePackage,
+      projectName,
+      pkgPath: packageToPath(basePackage),
+      module: added.name,
+      Module: names.Module,
+      consumes: added.consumes ?? '',
+      Consumes: added.consumes === null ? '' : pascal(added.consumes),
+      // ejs has no truthiness helper of its own worth trusting across
+      // versions, and `consumes` is '' rather than absent so the path
+      // token substitutes cleanly. A separate flag keeps the templates
+      // reading `if (hasConsumes)`.
+      hasConsumes: added.consumes === null ? '' : '1',
     },
   };
 }

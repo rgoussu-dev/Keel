@@ -37,7 +37,11 @@ import { goPortFakeAdapter } from '../adapters/go-port-fake.js';
 import { gradleWrapperAdapter } from '../adapters/gradle-wrapper.js';
 import {
   micronautPeerContextAdapter,
+  micronautPeerContextCliAdapter,
   micronautPeerContextKotlinAdapter,
+  micronautPeerContextKotlinCliAdapter,
+  micronautPeerContextKotlinRestAdapter,
+  micronautPeerContextRestAdapter,
 } from '../adapters/micronaut-peer-context.js';
 import { mavenWrapperAdapter } from '../adapters/maven-wrapper.js';
 import { micronautCliBootstrapAdapter } from '../adapters/micronaut-cli-bootstrap.js';
@@ -47,7 +51,11 @@ import { micronautRestKotlinBootstrapAdapter } from '../adapters/micronaut-rest-
 import { npmInstallAdapter } from '../adapters/npm-install.js';
 import {
   quarkusPeerContextAdapter,
+  quarkusPeerContextCliAdapter,
   quarkusPeerContextKotlinAdapter,
+  quarkusPeerContextKotlinCliAdapter,
+  quarkusPeerContextKotlinRestAdapter,
+  quarkusPeerContextRestAdapter,
 } from '../adapters/quarkus-peer-context.js';
 import { pnpmInstallAdapter } from '../adapters/pnpm-install.js';
 import { quarkusCliBootstrapAdapter } from '../adapters/quarkus-cli-bootstrap.js';
@@ -65,7 +73,11 @@ import { tsHttpBootstrapAdapter } from '../adapters/ts-http-bootstrap.js';
 import { tsPortFakeAdapter } from '../adapters/ts-port-fake.js';
 import {
   springPeerContextAdapter,
+  springPeerContextCliAdapter,
   springPeerContextKotlinAdapter,
+  springPeerContextKotlinCliAdapter,
+  springPeerContextKotlinRestAdapter,
+  springPeerContextRestAdapter,
 } from '../adapters/spring-peer-context.js';
 import {
   rustPeerContextAdapter,
@@ -105,14 +117,26 @@ export const walkingSkeletonVertical: Vertical = {
     samplePortFakeAdapter,
     samplePortFakeKotlinAdapter,
     quarkusPeerContextAdapter,
+    quarkusPeerContextCliAdapter,
+    quarkusPeerContextRestAdapter,
     quarkusPeerContextKotlinAdapter,
+    quarkusPeerContextKotlinCliAdapter,
+    quarkusPeerContextKotlinRestAdapter,
     springPeerContextAdapter,
+    springPeerContextCliAdapter,
+    springPeerContextRestAdapter,
     springPeerContextKotlinAdapter,
+    springPeerContextKotlinCliAdapter,
+    springPeerContextKotlinRestAdapter,
     micronautPeerContextAdapter,
+    micronautPeerContextCliAdapter,
+    micronautPeerContextRestAdapter,
     rustPeerContextAdapter,
     rustPeerContextCliAdapter,
     rustPeerContextHttpAdapter,
     micronautPeerContextKotlinAdapter,
+    micronautPeerContextKotlinCliAdapter,
+    micronautPeerContextKotlinRestAdapter,
     gradleWrapperAdapter,
     mavenWrapperAdapter,
     goBootstrapAdapter,

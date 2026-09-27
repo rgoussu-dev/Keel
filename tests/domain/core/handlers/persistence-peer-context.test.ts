@@ -391,13 +391,15 @@ describe('persistence beside a context keel add module added', () => {
   it('refuses a context named for a port persistence injects, in either order', async () => {
     // `clock` is a legal context name, and the name the hand-wired
     // Kotlin mediator takes persistence's Clock under: a second
-    // parameter of that name would not compile.
-    const expectTaken = (error: Error): void => {
+    // parameter of that name would not compile. Each refusal names the
+    // adapter that patches the root: persistence's, or the context's
+    // wiring into the REST assembly.
+    const expectTaken = (error: Error, adapterId: string): void => {
       expect(error).toBeInstanceOf(PathConflictError);
       expect((error as PathConflictError).refusal).toEqual({
         kind: 'path-conflict',
         path: KOTLIN_ROOT,
-        adapterId: expect.stringMatching(/-kotlin$/),
+        adapterId,
         taken: 'clock',
       });
       expect(error.message).toContain(`'${KOTLIN_ROOT}' already has a 'clock'`);
@@ -406,14 +408,17 @@ describe('persistence beside a context keel add module added', () => {
     await addModule('clock');
     const moduleFirst = await read(KOTLIN_ROOT);
 
-    expectTaken(expectErr(await addPersistence()));
+    expectTaken(expectErr(await addPersistence()), 'persistence/micronaut-persistence-kotlin');
     expect(await read(KOTLIN_ROOT)).toBe(moduleFirst);
 
     await fs.emptyDir(cwd);
     await scaffold('micronaut-rest-kotlin', { persistence: true });
     const persistenceFirst = await read(KOTLIN_ROOT);
 
-    expectTaken(expectErr(await dispatchAddModule('clock')));
+    expectTaken(
+      expectErr(await dispatchAddModule('clock')),
+      'bounded-context/micronaut-context-kotlin-rest',
+    );
     expect(await read(KOTLIN_ROOT)).toBe(persistenceFirst);
     expect(await fs.pathExists(path.join(cwd, 'modules/clock'))).toBe(false);
   });

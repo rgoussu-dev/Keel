@@ -113,7 +113,12 @@ composition grid's growth axis (I10) holds the grown tree, manifest and
 queued actions to `keel new` of the combo on the same dials, byte for
 byte. So a combo cell's suite covers the cells that grow into it, and
 a combo with no suite leaves its grown cells as uncovered as its own.
-Adding one is a combo cell like any other, not a growth suite.
+Adding one is a combo cell like any other, not a growth suite. Every
+modulith combo suite scaffolds with the peer context, so the fourteen
+of them — the JVM's twelve and TypeScript's two — cover the peer
+moduliths that grow into them, since roadmap R.3d lifted the last
+family's refusal. None adds a `keel add module` history, so a grown
+modulith with one has no suite by proof.
 
 ## The add-module grid — a job per cell, on the JVM only
 
@@ -270,3 +275,21 @@ entirely. It is not an argument against the 24-cell split: those cells
 scaffold different stacks, so they would share little even co-located,
 and the attribution is worth more when the axis under test is which
 framework/language/typology broke.
+
+**Running the JVM suites on a workstation: back each fresh home with
+yours, read-only.** Every file still resolves into a home of its own,
+so a local batch fetches everything from Maven Central again, and meets
+its rate limit: in roadmap R.3d fifteen Gradle suites failed on HTTP
+429s while resolving, before compiling anything, and passed when run
+again. Point Gradle at a _copy_ of your `~/.gradle/caches/modules-2`
+(Gradle reads a read-only cache only as a copy, without the `*.lock`
+and `gc.properties` files) with `GRADLE_RO_DEP_CACHE=<the directory
+holding it>`, and Maven at your repository with
+`MAVEN_OPTS=-Dmaven.repo.local.tail=$HOME/.m2/repository` (a chained
+local repository, Maven 3.9 and later). Both are read-only fallbacks:
+what a suite resolves still lands in its own home. The host `gradle`
+generating the wrapper must be 9.7.0 under JDK 25, since Gradle 8.x
+cannot start on JDK 25 — the coupling in
+[`.github/`](../../.github/AGENTS.md); where the image's is older, the
+9.7.0 distribution under `~/.gradle/wrapper/dists/` serves, put first
+on `PATH`.

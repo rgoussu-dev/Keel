@@ -5,9 +5,9 @@
  * Kotlin and the CLI assembly at once. The peer binding patches a
  * Kotlin composition root in `application/cli`, which means both
  * halves of `sourceFile()` — the language's source root
- * (`src/main/kotlin`) and the assembly the layout resolved from the
- * `arch.cli` tag — have to be right at the same time for the patch to
- * land on a file that exists.
+ * (`src/main/kotlin`) and the assembly of the wiring adapter the
+ * `arch.cli` tag selects (roadmap R.3d) — have to be right at the same
+ * time for the patch to land on a file that exists.
  *
  * One of the 24 cells of the modulith grid (12 stacks × 2 build
  * systems), each of which gets a file of its own — see

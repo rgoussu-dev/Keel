@@ -47,5 +47,6 @@ DomainError`, which carries one beside its code and sentence. It
   sentence gives the reason rather than pointing — `keel add module`
   inside a project on the flat layout, `keel add entrypoint` inside a
   monorepo product, whose services refuse it too, or inside a project
-  growth refuses (a JVM modulith with a peer context, say) or its files
-  do (a context holding a gateway its manifest record does not name).
+  growth refuses (a plugin family's modulith whose peer context picks
+  its assemblies as it renders, say) or its files do (a context holding
+  a gateway its manifest record does not name).

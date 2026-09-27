@@ -56,6 +56,7 @@ import type { RunActionsInputs } from '../../../../src/domain/core/actions.js';
 import { pluginOrigin, registryOf, shippedSource } from '../../../../src/domain/core/registry.js';
 import type { Mediator } from '../../../../src/domain/kernel/mediator.js';
 import { expectErr, expectOk, installMediator } from '../../../support/factory.js';
+import { unsplitPeerRegistry } from '../../../support/unsplit-peer.js';
 
 const discardDeferred = (): ((inputs: RunActionsInputs) => Promise<void>) => {
   return (): Promise<void> => Promise.resolve();
@@ -523,6 +524,9 @@ describe('the entrypoints', () => {
   });
 
   it('says why where growth is refused, and offers it on no card', async () => {
+    // A peer context that picks its assemblies inside `contribute()`,
+    // as Quarkus' did before R.3d: no shipped family is one any more.
+    mediator = installMediator({ runDeferred: discardDeferred(), registry: unsplitPeerRegistry() });
     await scaffoldAs('quarkus-cli', { moduleLayout: 'modulith', withPeerContext: true });
     const reported = await status();
     const refused = expectErr(await grow('http'));

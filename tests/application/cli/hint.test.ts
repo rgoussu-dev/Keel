@@ -21,10 +21,12 @@ import {
 } from '../../../src/application/cli/contract/hint.js';
 import { buildProgram } from '../../../src/application/cli/contract/program.js';
 import { addModuleCommand, newProjectCommand } from '../../../src/domain/contract/commands.js';
+import type { Registry } from '../../../src/domain/contract/ports/registry.js';
 import type { Refusal } from '../../../src/domain/contract/refusal.js';
 import { FakeLogger } from '../../../src/infrastructure/commons/fake-logger.js';
 import { FakeProcessRunner } from '../../../src/infrastructure/process/fake.js';
 import { expectOk, installMediator } from '../../support/factory.js';
+import { unsplitPeerRegistry } from '../../support/unsplit-peer.js';
 
 const persistenceOnCli: Refusal = {
   kind: 'unavailable',
@@ -457,11 +459,12 @@ describe('growNote', () => {
 });
 
 describe('a refusal at the command line', () => {
-  const program = (cwd: string) => {
+  const program = (cwd: string, registry?: Registry) => {
     const mediator = installMediator({
       logger: new FakeLogger(),
       processes: new FakeProcessRunner(),
       runDeferred: async () => {},
+      ...(registry === undefined ? {} : { registry }),
     });
     return {
       mediator,
@@ -521,10 +524,12 @@ describe('a refusal at the command line', () => {
   it('names the stack that carries both where the project cannot grow the entrypoint', async () => {
     const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-cli-hint-'));
     try {
-      const { mediator, run } = program(cwd);
-      // The peer context is wired into the CLI alone, and keel does not
-      // yet wire a JVM context into a new entrypoint: growth refuses, so
-      // the refusal carries no action and the hint offers none.
+      // The peer context is wired into the CLI alone, by an adapter
+      // that picks its assemblies inside `contribute()` — as Quarkus'
+      // did before R.3d — so no adapter wires it into a new entrypoint:
+      // growth refuses, the refusal carries no action and the hint
+      // offers none.
+      const { mediator, run } = program(cwd, unsplitPeerRegistry());
       expectOk(
         await mediator.dispatch(
           newProjectCommand({

@@ -448,7 +448,7 @@ const TABLE: readonly {
     refusal: {
       kind: 'path-conflict',
       path: 'MediatorFactory.kt',
-      adapterId: 'bounded-context/micronaut-context-kotlin',
+      adapterId: 'bounded-context/micronaut-context-kotlin-rest',
       taken: 'clock',
     },
     sentence:

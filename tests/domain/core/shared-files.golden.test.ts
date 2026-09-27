@@ -7,11 +7,13 @@
  * chosen to reproduce the order a scaffold already has; this golden
  * landed first, on the appending code, and R.1 leaves every cell of it
  * byte-identical. Beside them, each Rust modulith assembly's
- * `Cargo.toml` and `src/main.rs`, and each TypeScript assembly's
- * `package.json` and `src/main.ts`, which the bootstrap, observability,
- * and the peer's and each context's wiring all write into: R.3b and
- * R.3c moved that wiring into an adapter per entrypoint, and the bytes
- * it leaves were pinned on the code before each.
+ * `Cargo.toml` and `src/main.rs`, each TypeScript assembly's
+ * `package.json` and `src/main.ts`, and each JVM modulith assembly's
+ * build file, composition root and boot class, which the bootstrap and
+ * the peer's and each context's wiring all write into (observability
+ * too, on Rust and TypeScript): R.3b, R.3c and R.3d moved that wiring
+ * into an adapter per entrypoint, and the bytes it leaves were pinned
+ * on the code before each.
  *
  * **Scenario.** Cells are derived, never listed: the presets from
  * `keel.catalog`, every dial setting each offers from `keel.dials`
@@ -111,9 +113,14 @@ const SHARED_FILES = [
 ] as const;
 
 /**
- * The files of a Rust modulith's assemblies, and of a TypeScript
- * project's, that more than one adapter writes into, whose writers R.3
- * splits per entrypoint.
+ * The files of a Rust modulith's assemblies, of a TypeScript project's,
+ * and of a JVM modulith's, that more than one adapter writes into,
+ * whose writers R.3 splits per entrypoint. On the JVM those are each
+ * assembly's build file, its composition root and its boot class,
+ * `Main` or `Application` (Spring's carries the component scan), in
+ * either language, under the default base package; the basic layout's
+ * CLI assembly has its build file at the same path, and it is recorded
+ * there too.
  */
 const ASSEMBLY_FILES = [
   'application/cli/Cargo.toml',
@@ -124,7 +131,20 @@ const ASSEMBLY_FILES = [
   'application/cli/src/main.ts',
   'application/rest/package.json',
   'application/rest/src/main.ts',
-] as const;
+  ...(['api', 'cli'] as const).flatMap((unit) => [
+    `application/${unit}/build.gradle.kts`,
+    `application/${unit}/pom.xml`,
+    ...[
+      'MediatorProducer',
+      'MediatorConfig',
+      'MediatorFactory',
+      unit === 'cli' ? 'Main' : 'Application',
+    ].flatMap((root) => [
+      `application/${unit}/src/main/java/com/example/application/${unit}/${root}.java`,
+      `application/${unit}/src/main/kotlin/com/example/application/${unit}/${root}.kt`,
+    ]),
+  ]),
+];
 
 /** The extra swept alone, and added to a scaffold. */
 const DEV_ENV = 'dev-env';

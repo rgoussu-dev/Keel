@@ -5,8 +5,10 @@
  * grow together.
  *
  * Three adapters add to them. The peer context rewrites each once,
- * from the shape the bootstrap rendered, and always runs first, inside
- * `keel new`. `keel add module` adds one context per run, and
+ * from the shape the bootstrap rendered, and always runs first, beside
+ * that bootstrap — under `keel new`, and under `keel add entrypoint`
+ * where it brings the assembly. `keel add module` adds one context per
+ * run, each again into an assembly an entrypoint brings later, and
  * persistence the greeting log's package, or its two handlers and the
  * ports they take; those two arrive in either order, so both read the
  * list as it is — parse, add, re-emit in a form they can parse again

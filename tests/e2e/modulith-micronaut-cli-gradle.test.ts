@@ -7,8 +7,9 @@
  * recurse into subpackages: a bounded context missing from that list
  * contributes no bean definition, the mediator is short a handler,
  * and the application starts perfectly. The peer binding's job is to
- * widen that list in whichever assembly the layout resolved, and this
- * is the first cell where that assembly is `application/cli`.
+ * widen that list in its wiring adapter's own assembly, and this is
+ * the first cell where that assembly is `application/cli` — the
+ * adapter the `arch.cli` tag selects (roadmap R.3d).
  *
  * One of the 24 cells of the modulith grid (12 stacks × 2 build
  * systems), each of which gets a file of its own — see

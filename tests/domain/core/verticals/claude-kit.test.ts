@@ -132,10 +132,49 @@ describe('claude-kit on the JVM family', () => {
     );
     expect(agents).toContain('`modules/<ctx>/infra/<peer>-gateway/` — `<Peer>Gateway`');
     expect(agents).toContain('`migrations/sql/V<n>__<name>.sql`');
-    expect(agents).not.toContain('`modules/<ctx>/user-side/cli/`');
+    // The driving adapters are the skeleton's alone, and this entrypoint's.
+    expect(agents).toContain(
+      '`modules/greeting/user-side/api/{contract,adapters}/` — the skeleton’s REST DTOs and resources, which the REST assembly mounts; no other context has any until you write them.',
+    );
+    expect(agents).not.toContain('modules/greeting/user-side/cli/');
+    expect(agents).not.toContain('modules/<ctx>/user-side/api');
     expect(read(tree, '.claude/hooks/pre-commit-format.sh')).toContain(
       './mvnw --batch-mode verify',
     );
+  });
+
+  it('names the skeleton’s driving adapters alone on a modulith (Micronaut CLI, then CLI + REST)', async () => {
+    const tags = [
+      'lang.java',
+      'runtime.jvm',
+      'framework.micronaut',
+      'arch.hexagonal',
+      'arch.cli',
+      'pkg.gradle',
+      'layout.modulith',
+    ];
+    const answers = { projectName: 'tool', basePackage: 'x.y' };
+    const cliRow =
+      '`modules/greeting/user-side/cli/` — the skeleton’s picocli commands, which the CLI assembly mounts; no other context has any until you write them.';
+    const restRow =
+      '`modules/greeting/user-side/api/{contract,adapters}/` — the skeleton’s REST DTOs and resources, which the REST assembly mounts; no other context has any until you write them.';
+
+    const cli = read(
+      await install(tags, { 'walking-skeleton/micronaut-cli-bootstrap': answers }),
+      'AGENTS.md',
+    );
+    expect(cli).toContain(cliRow);
+    expect(cli).not.toContain('modules/greeting/user-side/api');
+
+    const both = read(
+      await install([...tags, 'arch.server-http'], {
+        'walking-skeleton/micronaut-cli-bootstrap': answers,
+        'walking-skeleton/micronaut-rest-bootstrap': answers,
+      }),
+      'AGENTS.md',
+    );
+    expect(both).toContain(`${restRow}\n- ${cliRow}`);
+    expect(both).not.toMatch(/modules\/<ctx>\/user-side\/(api|cli)/);
   });
 
   it('gives a combo stack a command and a check for both entrypoints (Quarkus CLI + REST, Maven)', async () => {

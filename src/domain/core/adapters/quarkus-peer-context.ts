@@ -1,6 +1,7 @@
 /**
  * The Quarkus peer-context adapters — `walking-skeleton/quarkus-peer-context`
- * and its Kotlin twin.
+ * and its Kotlin twin, each a shell and a wiring adapter per entrypoint
+ * (`…-cli`, `…-rest`).
  *
  * Quarkus binds guestbook's `Welcome` port with a CDI `@Produces`
  * method on the assembly's existing `MediatorProducer`, and marks
@@ -16,7 +17,7 @@
 import {
   appendToClassBody,
   freshServiceDoc,
-  jvmPeerContextAdapter,
+  jvmPeerContextAdapters,
   peerNames,
   PEER_PORT,
   STALE_SERVICE_DOC,
@@ -83,7 +84,7 @@ function javaBinding(binding: PeerBinding): readonly ContributionPatch[] {
         if (existing.includes('GreetingWelcome')) return existing;
         if (!existing.includes(anchorImport)) {
           throw new Error(
-            `${QUARKUS_PEER_CONTEXT_ID}: could not find the GreetingServiceAdapter import in the composition root`,
+            `${binding.adapterId}: could not find the GreetingServiceAdapter import in the composition root`,
           );
         }
         const withImports = existing.replace(anchorImport, imports);
@@ -112,7 +113,7 @@ function kotlinBinding(binding: PeerBinding): readonly ContributionPatch[] {
         if (existing.includes('GreetingWelcome')) return existing;
         if (!existing.includes(anchorImport)) {
           throw new Error(
-            `${QUARKUS_PEER_CONTEXT_KOTLIN_ID}: could not find the GreetingServiceAdapter import in the composition root`,
+            `${binding.adapterId}: could not find the GreetingServiceAdapter import in the composition root`,
           );
         }
         const withImports = existing.replace(anchorImport, imports);
@@ -126,22 +127,38 @@ function kotlinBinding(binding: PeerBinding): readonly ContributionPatch[] {
   ];
 }
 
-/** Quarkus + Java. */
-export const quarkusPeerContextAdapter: Adapter = jvmPeerContextAdapter({
+const quarkusPeerContext = jvmPeerContextAdapters({
   id: QUARKUS_PEER_CONTEXT_ID,
   framework: 'quarkus',
   language: 'java',
-  bootstrapIds: [QUARKUS_REST_BOOTSTRAP_ID, QUARKUS_CLI_BOOTSTRAP_ID],
+  bootstrapIds: { cli: QUARKUS_CLI_BOOTSTRAP_ID, rest: QUARKUS_REST_BOOTSTRAP_ID },
   frameworkTemplates: [BEAN_ARCHIVE_TREE],
   bind: javaBinding,
 });
 
-/** Quarkus + Kotlin. */
-export const quarkusPeerContextKotlinAdapter: Adapter = jvmPeerContextAdapter({
+const quarkusPeerContextKotlin = jvmPeerContextAdapters({
   id: QUARKUS_PEER_CONTEXT_KOTLIN_ID,
   framework: 'quarkus',
   language: 'kotlin',
-  bootstrapIds: [QUARKUS_REST_KOTLIN_BOOTSTRAP_ID, QUARKUS_CLI_KOTLIN_BOOTSTRAP_ID],
+  bootstrapIds: { cli: QUARKUS_CLI_KOTLIN_BOOTSTRAP_ID, rest: QUARKUS_REST_KOTLIN_BOOTSTRAP_ID },
   frameworkTemplates: [BEAN_ARCHIVE_TREE],
   bind: kotlinBinding,
 });
+
+/** Quarkus + Java: the shell. */
+export const quarkusPeerContextAdapter: Adapter = quarkusPeerContext.shell;
+
+/** Quarkus + Java: the wiring into the CLI's assembly, `application/cli`. */
+export const quarkusPeerContextCliAdapter: Adapter = quarkusPeerContext.wiring.cli;
+
+/** Quarkus + Java: the wiring into the REST assembly, `application/api`. */
+export const quarkusPeerContextRestAdapter: Adapter = quarkusPeerContext.wiring.rest;
+
+/** Quarkus + Kotlin: the shell. */
+export const quarkusPeerContextKotlinAdapter: Adapter = quarkusPeerContextKotlin.shell;
+
+/** Quarkus + Kotlin: the wiring into the CLI's assembly, `application/cli`. */
+export const quarkusPeerContextKotlinCliAdapter: Adapter = quarkusPeerContextKotlin.wiring.cli;
+
+/** Quarkus + Kotlin: the wiring into the REST assembly, `application/api`. */
+export const quarkusPeerContextKotlinRestAdapter: Adapter = quarkusPeerContextKotlin.wiring.rest;

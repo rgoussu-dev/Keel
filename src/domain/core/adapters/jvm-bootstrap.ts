@@ -46,7 +46,7 @@ import { jvmModuleLayout } from './jvm-module-layout.js';
 import { jvmModulithRootPatches } from './jvm-shared-root-modulith.js';
 import { jvmSharedRootPatches, type JvmFramework } from './jvm-shared-root.js';
 import { packageToPath, validateBasePackage, validateProjectName } from '../util.js';
-import type { Adapter, ContributionFile, Question } from '../../contract/composition.js';
+import type { Adapter, ContributionFile, Question, Tag } from '../../contract/composition.js';
 
 /** Languages the JVM bootstraps scaffold. */
 export type JvmLanguage = 'java' | 'kotlin';
@@ -71,7 +71,11 @@ export interface JvmBootstrapSpec {
   readonly templateDir: string;
 }
 
-const ARCH_TAG: Readonly<Record<JvmArch, string>> = {
+/**
+ * The tag each entrypoint shape is selected by — its bootstrap's, and
+ * each context's wiring adapter's for that entrypoint's assembly.
+ */
+export const ARCH_TAG: Readonly<Record<JvmArch, Tag>> = {
   cli: 'arch.cli',
   rest: 'arch.server-http',
 };

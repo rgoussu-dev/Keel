@@ -48,6 +48,23 @@
  * `quarkus-peer-context.ts`, `spring-peer-context.ts` and
  * `micronaut-peer-context.ts`.
  *
+ * **A shell, and one wiring adapter per entrypoint.** The shell writes
+ * the guestbook modules and registers them with the root build, none
+ * of which an entrypoint shapes; `<id>-cli` and `<id>-rest` each write
+ * one assembly's `GuestbookWiringTest`, give that assembly its
+ * dependencies on the peer and apply the framework's binding to it,
+ * and require that entrypoint's tag. A project carrying both matches
+ * both, so which assemblies the context is wired into is read off the
+ * predicates, never off the tags inside `contribute()`, and
+ * `keel add entrypoint` wires it into the new assembly by installing
+ * the one that newly matches (roadmap R.3d). The bindings anchor on
+ * what the bootstrap rendered — Spring's one-line `basePackages`,
+ * Micronaut's single `packages = …` and its one-line mediator — which
+ * a context `keel add module` adds rewrites into a list, so the peer
+ * is wired first: `walking-skeleton` installs its wiring adapter beside
+ * the bootstrap that wrote those lines, under `keel new` and
+ * `keel add entrypoint` alike.
+ *
  * Two rules every binding obeys, both learned from a container that
  * did not:
  *
@@ -69,20 +86,21 @@
  */
 
 import { jvmBuildSystem } from './jvm-build-system.js';
-import type { JvmLanguage } from './jvm-bootstrap.js';
+import { ARCH_TAG, type JvmArch, type JvmLanguage } from './jvm-bootstrap.js';
 import {
   MODULITH_LAYOUT_TAG,
   PEER_CONTEXT_TAG,
   PEER_MODULE,
   SKELETON_MODULE,
   gradleProject,
-  jvmAssemblies,
+  jvmAssembly,
   jvmLayout,
+  type JvmLayoutPaths,
 } from './jvm-module-layout.js';
 import { eolOf, packageToPath, withEol } from '../util.js';
 import { IDENTITY_BOOTSTRAPS } from './identity-bootstraps.js';
 import { bootstrapAnswers } from './project-identity.js';
-import type { Adapter, ContributionPatch } from '../../contract/composition.js';
+import type { Adapter, ContributionPatch, ManifestV2 } from '../../contract/composition.js';
 
 const SOURCE_TEMPLATE_ROOT = 'composition/walking-skeleton/jvm-peer-context';
 
@@ -104,6 +122,10 @@ const peerModules = (): readonly string[] => [
  * the bootstrap's answers — no binding computes a path itself.
  */
 export interface PeerBinding {
+  /** The wiring adapter the binding's patches belong to, which a drift error names. */
+  readonly adapterId: string;
+  /** The entrypoint whose assembly this is — a static fact of that wiring adapter. */
+  readonly arch: JvmArch;
   /** The project's root package, e.g. `com.example`. */
   readonly basePackage: string;
   /** The assembly's module directory, e.g. `application/api`. */
@@ -122,115 +144,158 @@ export interface PeerBinding {
 
 /** Declaration of one JVM peer-context combination. */
 export interface JvmPeerContextSpec {
-  /** Full adapter id, e.g. `walking-skeleton/spring-peer-context`. */
+  /**
+   * The shell's adapter id, e.g. `walking-skeleton/spring-peer-context`;
+   * each wiring adapter's is this with its entrypoint after it,
+   * `…-cli` or `…-rest`.
+   */
   readonly id: string;
   /** Framework tag suffix: `quarkus`, `spring`, `micronaut`. */
   readonly framework: string;
   readonly language: JvmLanguage;
   /**
-   * The bootstraps this peer context layers onto — the CLI and REST
-   * bootstrap of the same framework and language. One of them holds
-   * the `basePackage` / `projectName` answers.
+   * The bootstrap of each entrypoint of the same framework and
+   * language: the shell runs after both, since either may be the one
+   * present and holds the `basePackage` / `projectName` answers, and
+   * each wiring adapter after its own, whose assembly it lands in.
    */
-  readonly bootstrapIds: readonly string[];
+  readonly bootstrapIds: Readonly<Record<JvmArch, string>>;
   /**
    * Template subtrees under `jvm-peer-context/` rendered on top of the
    * language sources — Quarkus' bean-archive marker is the only one
    * so far.
    */
   readonly frameworkTemplates?: readonly string[];
-  /** Patches binding guestbook's `Welcome` port at the composition root. */
+  /** Patches binding guestbook's `Welcome` port at one assembly's composition root. */
   readonly bind: (binding: PeerBinding) => readonly ContributionPatch[];
+}
+
+/**
+ * One JVM context's adapters: the shell, which writes the context's
+ * own modules and registers them with the root build, and one wiring
+ * adapter per entrypoint, which wires the context into that
+ * entrypoint's assembly alone. `jvm-context.ts` builds the same three
+ * for a context `keel add module` adds.
+ */
+export interface JvmContextAdapters {
+  /** The context's modules and their registration, e.g. `walking-skeleton/spring-peer-context`. */
+  readonly shell: Adapter;
+  /** Each entrypoint's wiring adapter, e.g. `walking-skeleton/spring-peer-context-rest`. */
+  readonly wiring: Readonly<Record<JvmArch, Adapter>>;
 }
 
 const SOURCE_ROOT: Readonly<Record<JvmLanguage, string>> = { java: 'java', kotlin: 'kotlin' };
 const EXTENSION: Readonly<Record<JvmLanguage, string>> = { java: 'java', kotlin: 'kt' };
 
 /**
- * Builds the peer-context adapter for one JVM (framework, language)
- * combination. Every entrypoint shape is served by the one adapter:
- * the assemblies it patches are resolved from the `arch.*` tags,
- * exactly as the layout resolver does everywhere else — so a stack
- * composing `arch.cli` and `arch.server-http` gets the peer wired
- * into *both*, not into whichever one an if/else happened to pick.
+ * Builds the peer-context adapters for one JVM (framework, language)
+ * combination: the shell, and a wiring adapter for each entrypoint
+ * requiring that entrypoint's tag — so a stack composing `arch.cli`
+ * and `arch.server-http` gets the peer wired into *both* assemblies,
+ * each by an adapter of its own, not into whichever one an if/else
+ * happened to pick.
  */
-export function jvmPeerContextAdapter(spec: JvmPeerContextSpec): Adapter {
-  return {
+export function jvmPeerContextAdapters(spec: JvmPeerContextSpec): JvmContextAdapters {
+  const requires = [
+    'runtime.jvm',
+    `lang.${spec.language}`,
+    `framework.${spec.framework}`,
+    MODULITH_LAYOUT_TAG,
+    PEER_CONTEXT_TAG,
+  ];
+  const shell: Adapter = {
     id: spec.id,
     vertical: 'walking-skeleton',
     covers: [],
-    predicate: {
-      requires: [
-        'runtime.jvm',
-        `lang.${spec.language}`,
-        `framework.${spec.framework}`,
-        MODULITH_LAYOUT_TAG,
-        PEER_CONTEXT_TAG,
-      ],
-    },
-    after: [...spec.bootstrapIds],
+    predicate: { requires },
+    after: [spec.bootstrapIds.rest, spec.bootstrapIds.cli],
     async contribute(ctx) {
-      const bootstrap = bootstrapAnswers(ctx.manifest, IDENTITY_BOOTSTRAPS);
-      const basePackage = bootstrap?.basePackage;
-      const projectName = bootstrap?.projectName;
-      if (!basePackage || !projectName) {
-        throw new Error(
-          `${spec.id}: requires a walking-skeleton bootstrap (one of ${spec.bootstrapIds.join(', ')}) to have run first; basePackage/projectName not in manifest`,
-        );
-      }
-      const vars = { basePackage, projectName, pkgPath: packageToPath(basePackage) };
-      const buildSystem = jvmBuildSystem(ctx.manifest.tags);
-      const layout = jvmLayout(ctx.manifest.tags);
-      const assemblies = jvmAssemblies(ctx.manifest.tags, layout);
-      if (assemblies.length === 0) {
-        throw new Error(`${spec.id}: no assembly in this tag set to wire the peer context into`);
-      }
-
+      const { vars, buildSystem } = peerOf(ctx.manifest, spec, spec.id);
       const trees = [
         `${SOURCE_TEMPLATE_ROOT}/${SOURCE_ROOT[spec.language]}`,
         ...(spec.frameworkTemplates ?? []).map((t) => `${SOURCE_TEMPLATE_ROOT}/${t}`),
         `${SOURCE_TEMPLATE_ROOT}/build/${buildSystem}`,
       ];
-      // The wiring test lands in the assembly, whose directory and
-      // package are both layout decisions — so it renders under each
-      // resolved assembly rather than at a path of its own.
-      const wiring = `${SOURCE_TEMPLATE_ROOT}/wiring/${spec.framework}/${spec.language}`;
-      const rendered = await Promise.all([
-        ...trees.map((t) => ctx.templates.render(t, '', vars)),
-        ...assemblies.map((a) =>
-          ctx.templates.render(wiring, a.dir, {
-            ...vars,
-            assemblyPkg: a.pkg,
-            assemblyPkgPath: a.pkg.replace(/\./g, '/'),
-          }),
-        ),
-      ]);
-
-      const bindings: readonly PeerBinding[] = assemblies.map((a) => ({
-        basePackage,
-        assembly: a.dir,
-        assemblyPkg: a.pkg,
-        sourceFile: (className) =>
-          `${a.dir}/src/main/${SOURCE_ROOT[spec.language]}/${packageToPath(basePackage)}/${a.pkg.replace(/\./g, '/')}/${className}.${EXTENSION[spec.language]}`,
-      }));
-
+      const rendered = await Promise.all(trees.map((t) => ctx.templates.render(t, '', vars)));
       return {
         files: rendered.flat(),
-        patches: [
-          buildSystem === 'maven' ? mavenModulesPatch(spec.id) : gradleIncludesPatch(),
-          ...bindings.flatMap((binding) => [
-            assemblyDepsPatch(
-              spec.id,
-              buildSystem,
-              basePackage,
-              binding.assembly,
-              layout.mavenArtifact,
-            ),
-            ...spec.bind(binding),
-          ]),
-        ],
+        patches: [buildSystem === 'maven' ? mavenModulesPatch(spec.id) : gradleIncludesPatch()],
       };
     },
+  };
+  const wiring = (arch: JvmArch): Adapter => {
+    const id = `${spec.id}-${arch}`;
+    return {
+      id,
+      vertical: 'walking-skeleton',
+      covers: [],
+      predicate: { requires: [...requires, ARCH_TAG[arch]] },
+      after: [spec.id, spec.bootstrapIds[arch]],
+      async contribute(ctx) {
+        const { vars, buildSystem, layout } = peerOf(ctx.manifest, spec, id);
+        const { basePackage } = vars;
+        const assembly = jvmAssembly(layout, arch);
+        // The wiring test lands in the assembly, whose directory and
+        // package are both layout decisions — so it renders under the
+        // assembly rather than at a path of its own.
+        const files = await ctx.templates.render(
+          `${SOURCE_TEMPLATE_ROOT}/wiring/${spec.framework}/${spec.language}`,
+          assembly.dir,
+          { ...vars, assemblyPkg: assembly.pkg, assemblyPkgPath: assembly.pkg.replace(/\./g, '/') },
+        );
+        const binding: PeerBinding = {
+          adapterId: id,
+          arch,
+          basePackage,
+          assembly: assembly.dir,
+          assemblyPkg: assembly.pkg,
+          sourceFile: (className) =>
+            `${assembly.dir}/src/main/${SOURCE_ROOT[spec.language]}/${packageToPath(basePackage)}/${assembly.pkg.replace(/\./g, '/')}/${className}.${EXTENSION[spec.language]}`,
+        };
+        return {
+          files,
+          patches: [
+            assemblyDepsPatch(id, buildSystem, basePackage, assembly.dir, layout.mavenArtifact),
+            ...spec.bind(binding),
+          ],
+        };
+      },
+    };
+  };
+  return { shell, wiring: { cli: wiring('cli'), rest: wiring('rest') } };
+}
+
+/**
+ * What the shell and each wiring adapter read: the project's identity
+ * as the template variables, its build system and its layout — the
+ * same values for the context's modules and for each assembly's
+ * wiring.
+ */
+function peerOf(
+  manifest: ManifestV2,
+  spec: JvmPeerContextSpec,
+  requesterId: string,
+): {
+  readonly vars: {
+    readonly basePackage: string;
+    readonly projectName: string;
+    readonly pkgPath: string;
+  };
+  readonly buildSystem: 'gradle' | 'maven';
+  readonly layout: JvmLayoutPaths;
+} {
+  const bootstrap = bootstrapAnswers(manifest, IDENTITY_BOOTSTRAPS);
+  const basePackage = bootstrap?.basePackage;
+  const projectName = bootstrap?.projectName;
+  if (!basePackage || !projectName) {
+    throw new Error(
+      `${requesterId}: requires a walking-skeleton bootstrap (one of ${spec.bootstrapIds.rest}, ${spec.bootstrapIds.cli}) to have run first; basePackage/projectName not in manifest`,
+    );
+  }
+  return {
+    vars: { basePackage, projectName, pkgPath: packageToPath(basePackage) },
+    buildSystem: jvmBuildSystem(manifest.tags),
+    layout: jvmLayout(manifest.tags),
   };
 }
 

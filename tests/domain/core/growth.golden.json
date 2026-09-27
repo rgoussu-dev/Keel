@@ -218,17 +218,20 @@
     "rerender": ["agent-harness"]
   },
   "keel new --stack micronaut-cli --build-system gradle --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "micronaut-cli-rest",
+    "adapters": ["walking-skeleton/micronaut-rest-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-rest"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack micronaut-cli --build-system gradle --module-layout modulith --no-agent-harness && keel add entrypoint http": {
     "twin": "micronaut-cli-rest",
@@ -237,69 +240,76 @@
     "rerender": []
   },
   "keel new --stack micronaut-cli --build-system gradle --module-layout modulith --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "micronaut-cli-rest",
+    "adapters": ["walking-skeleton/micronaut-rest-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-rest"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack micronaut-cli --build-system gradle --module-layout modulith --with-peer-context && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "micronaut-cli-rest",
+    "adapters": [
+      "walking-skeleton/micronaut-rest-bootstrap",
+      "walking-skeleton/micronaut-peer-context-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack micronaut-cli --build-system gradle --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "micronaut-cli-rest",
+    "adapters": [
+      "walking-skeleton/micronaut-rest-bootstrap",
+      "walking-skeleton/micronaut-peer-context-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-rest"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack micronaut-cli --build-system gradle --module-layout modulith --with-peer-context --no-agent-harness && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "micronaut-cli-rest",
+    "adapters": [
+      "walking-skeleton/micronaut-rest-bootstrap",
+      "walking-skeleton/micronaut-peer-context-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "rerender": []
   },
   "keel new --stack micronaut-cli --build-system gradle --module-layout modulith --with-peer-context --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "micronaut-cli-rest",
+    "adapters": [
+      "walking-skeleton/micronaut-rest-bootstrap",
+      "walking-skeleton/micronaut-peer-context-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-rest"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack micronaut-cli --build-system maven --module-layout basic && keel add entrypoint http": {
     "twin": "micronaut-cli-rest",
@@ -320,17 +330,20 @@
     "rerender": ["agent-harness"]
   },
   "keel new --stack micronaut-cli --build-system maven --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "micronaut-cli-rest",
+    "adapters": ["walking-skeleton/micronaut-rest-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-rest"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack micronaut-cli --build-system maven --module-layout modulith --no-agent-harness && keel add entrypoint http": {
     "twin": "micronaut-cli-rest",
@@ -339,69 +352,76 @@
     "rerender": []
   },
   "keel new --stack micronaut-cli --build-system maven --module-layout modulith --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "micronaut-cli-rest",
+    "adapters": ["walking-skeleton/micronaut-rest-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-rest"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack micronaut-cli --build-system maven --module-layout modulith --with-peer-context && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "micronaut-cli-rest",
+    "adapters": [
+      "walking-skeleton/micronaut-rest-bootstrap",
+      "walking-skeleton/micronaut-peer-context-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack micronaut-cli --build-system maven --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "micronaut-cli-rest",
+    "adapters": [
+      "walking-skeleton/micronaut-rest-bootstrap",
+      "walking-skeleton/micronaut-peer-context-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-rest"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack micronaut-cli --build-system maven --module-layout modulith --with-peer-context --no-agent-harness && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "micronaut-cli-rest",
+    "adapters": [
+      "walking-skeleton/micronaut-rest-bootstrap",
+      "walking-skeleton/micronaut-peer-context-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "rerender": []
   },
   "keel new --stack micronaut-cli --build-system maven --module-layout modulith --with-peer-context --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "micronaut-cli-rest",
+    "adapters": [
+      "walking-skeleton/micronaut-rest-bootstrap",
+      "walking-skeleton/micronaut-peer-context-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-rest"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack micronaut-cli-kotlin --build-system gradle --module-layout basic && keel add entrypoint http": {
     "twin": "micronaut-cli-rest-kotlin",
@@ -422,17 +442,20 @@
     "rerender": ["agent-harness"]
   },
   "keel new --stack micronaut-cli-kotlin --build-system gradle --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "micronaut-cli-rest-kotlin",
+    "adapters": ["walking-skeleton/micronaut-rest-kotlin-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-kotlin-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-kotlin-rest"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack micronaut-cli-kotlin --build-system gradle --module-layout modulith --no-agent-harness && keel add entrypoint http": {
     "twin": "micronaut-cli-rest-kotlin",
@@ -441,69 +464,76 @@
     "rerender": []
   },
   "keel new --stack micronaut-cli-kotlin --build-system gradle --module-layout modulith --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "micronaut-cli-rest-kotlin",
+    "adapters": ["walking-skeleton/micronaut-rest-kotlin-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-kotlin-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-kotlin-rest"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack micronaut-cli-kotlin --build-system gradle --module-layout modulith --with-peer-context && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "micronaut-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/micronaut-rest-kotlin-bootstrap",
+      "walking-skeleton/micronaut-peer-context-kotlin-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack micronaut-cli-kotlin --build-system gradle --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "micronaut-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/micronaut-rest-kotlin-bootstrap",
+      "walking-skeleton/micronaut-peer-context-kotlin-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-kotlin-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-kotlin-rest"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack micronaut-cli-kotlin --build-system gradle --module-layout modulith --with-peer-context --no-agent-harness && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "micronaut-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/micronaut-rest-kotlin-bootstrap",
+      "walking-skeleton/micronaut-peer-context-kotlin-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "rerender": []
   },
   "keel new --stack micronaut-cli-kotlin --build-system gradle --module-layout modulith --with-peer-context --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "micronaut-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/micronaut-rest-kotlin-bootstrap",
+      "walking-skeleton/micronaut-peer-context-kotlin-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-kotlin-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-kotlin-rest"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack micronaut-cli-kotlin --build-system maven --module-layout basic && keel add entrypoint http": {
     "twin": "micronaut-cli-rest-kotlin",
@@ -524,17 +554,20 @@
     "rerender": ["agent-harness"]
   },
   "keel new --stack micronaut-cli-kotlin --build-system maven --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "micronaut-cli-rest-kotlin",
+    "adapters": ["walking-skeleton/micronaut-rest-kotlin-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-kotlin-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-kotlin-rest"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack micronaut-cli-kotlin --build-system maven --module-layout modulith --no-agent-harness && keel add entrypoint http": {
     "twin": "micronaut-cli-rest-kotlin",
@@ -543,69 +576,76 @@
     "rerender": []
   },
   "keel new --stack micronaut-cli-kotlin --build-system maven --module-layout modulith --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "micronaut-cli-rest-kotlin",
+    "adapters": ["walking-skeleton/micronaut-rest-kotlin-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-kotlin-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-kotlin-rest"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack micronaut-cli-kotlin --build-system maven --module-layout modulith --with-peer-context && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "micronaut-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/micronaut-rest-kotlin-bootstrap",
+      "walking-skeleton/micronaut-peer-context-kotlin-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack micronaut-cli-kotlin --build-system maven --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "micronaut-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/micronaut-rest-kotlin-bootstrap",
+      "walking-skeleton/micronaut-peer-context-kotlin-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-kotlin-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-kotlin-rest"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack micronaut-cli-kotlin --build-system maven --module-layout modulith --with-peer-context --no-agent-harness && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "micronaut-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/micronaut-rest-kotlin-bootstrap",
+      "walking-skeleton/micronaut-peer-context-kotlin-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "rerender": []
   },
   "keel new --stack micronaut-cli-kotlin --build-system maven --module-layout modulith --with-peer-context --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "micronaut-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/micronaut-rest-kotlin-bootstrap",
+      "walking-skeleton/micronaut-peer-context-kotlin-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-kotlin-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-kotlin-rest"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack micronaut-rest --build-system gradle --module-layout basic && keel add entrypoint cli": {
     "twin": "micronaut-cli-rest",
@@ -626,17 +666,20 @@
     "rerender": ["agent-harness"]
   },
   "keel new --stack micronaut-rest --build-system gradle --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "micronaut-cli-rest",
+    "adapters": ["walking-skeleton/micronaut-cli-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-cli"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack micronaut-rest --build-system gradle --module-layout modulith --no-agent-harness && keel add entrypoint cli": {
     "twin": "micronaut-cli-rest",
@@ -645,69 +688,76 @@
     "rerender": []
   },
   "keel new --stack micronaut-rest --build-system gradle --module-layout modulith --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "micronaut-cli-rest",
+    "adapters": ["walking-skeleton/micronaut-cli-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-cli"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack micronaut-rest --build-system gradle --module-layout modulith --with-peer-context && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "micronaut-cli-rest",
+    "adapters": [
+      "walking-skeleton/micronaut-cli-bootstrap",
+      "walking-skeleton/micronaut-peer-context-cli"
+    ],
+    "verticals": [],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack micronaut-rest --build-system gradle --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "micronaut-cli-rest",
+    "adapters": [
+      "walking-skeleton/micronaut-cli-bootstrap",
+      "walking-skeleton/micronaut-peer-context-cli"
+    ],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-cli"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack micronaut-rest --build-system gradle --module-layout modulith --with-peer-context --no-agent-harness && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "micronaut-cli-rest",
+    "adapters": [
+      "walking-skeleton/micronaut-cli-bootstrap",
+      "walking-skeleton/micronaut-peer-context-cli"
+    ],
+    "verticals": [],
+    "rerender": []
   },
   "keel new --stack micronaut-rest --build-system gradle --module-layout modulith --with-peer-context --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "micronaut-cli-rest",
+    "adapters": [
+      "walking-skeleton/micronaut-cli-bootstrap",
+      "walking-skeleton/micronaut-peer-context-cli"
+    ],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-cli"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack micronaut-rest --build-system maven --module-layout basic && keel add entrypoint cli": {
     "twin": "micronaut-cli-rest",
@@ -728,17 +778,20 @@
     "rerender": ["agent-harness"]
   },
   "keel new --stack micronaut-rest --build-system maven --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "micronaut-cli-rest",
+    "adapters": ["walking-skeleton/micronaut-cli-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-cli"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack micronaut-rest --build-system maven --module-layout modulith --no-agent-harness && keel add entrypoint cli": {
     "twin": "micronaut-cli-rest",
@@ -747,69 +800,76 @@
     "rerender": []
   },
   "keel new --stack micronaut-rest --build-system maven --module-layout modulith --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "micronaut-cli-rest",
+    "adapters": ["walking-skeleton/micronaut-cli-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-cli"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack micronaut-rest --build-system maven --module-layout modulith --with-peer-context && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "micronaut-cli-rest",
+    "adapters": [
+      "walking-skeleton/micronaut-cli-bootstrap",
+      "walking-skeleton/micronaut-peer-context-cli"
+    ],
+    "verticals": [],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack micronaut-rest --build-system maven --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "micronaut-cli-rest",
+    "adapters": [
+      "walking-skeleton/micronaut-cli-bootstrap",
+      "walking-skeleton/micronaut-peer-context-cli"
+    ],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-cli"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack micronaut-rest --build-system maven --module-layout modulith --with-peer-context --no-agent-harness && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "micronaut-cli-rest",
+    "adapters": [
+      "walking-skeleton/micronaut-cli-bootstrap",
+      "walking-skeleton/micronaut-peer-context-cli"
+    ],
+    "verticals": [],
+    "rerender": []
   },
   "keel new --stack micronaut-rest --build-system maven --module-layout modulith --with-peer-context --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "micronaut-cli-rest",
+    "adapters": [
+      "walking-skeleton/micronaut-cli-bootstrap",
+      "walking-skeleton/micronaut-peer-context-cli"
+    ],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-cli"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack micronaut-rest-kotlin --build-system gradle --module-layout basic && keel add entrypoint cli": {
     "twin": "micronaut-cli-rest-kotlin",
@@ -830,17 +890,20 @@
     "rerender": ["agent-harness"]
   },
   "keel new --stack micronaut-rest-kotlin --build-system gradle --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "micronaut-cli-rest-kotlin",
+    "adapters": ["walking-skeleton/micronaut-cli-kotlin-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-kotlin-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-kotlin-cli"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack micronaut-rest-kotlin --build-system gradle --module-layout modulith --no-agent-harness && keel add entrypoint cli": {
     "twin": "micronaut-cli-rest-kotlin",
@@ -849,69 +912,76 @@
     "rerender": []
   },
   "keel new --stack micronaut-rest-kotlin --build-system gradle --module-layout modulith --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "micronaut-cli-rest-kotlin",
+    "adapters": ["walking-skeleton/micronaut-cli-kotlin-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-kotlin-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-kotlin-cli"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack micronaut-rest-kotlin --build-system gradle --module-layout modulith --with-peer-context && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "micronaut-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/micronaut-cli-kotlin-bootstrap",
+      "walking-skeleton/micronaut-peer-context-kotlin-cli"
+    ],
+    "verticals": [],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack micronaut-rest-kotlin --build-system gradle --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "micronaut-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/micronaut-cli-kotlin-bootstrap",
+      "walking-skeleton/micronaut-peer-context-kotlin-cli"
+    ],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-kotlin-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-kotlin-cli"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack micronaut-rest-kotlin --build-system gradle --module-layout modulith --with-peer-context --no-agent-harness && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "micronaut-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/micronaut-cli-kotlin-bootstrap",
+      "walking-skeleton/micronaut-peer-context-kotlin-cli"
+    ],
+    "verticals": [],
+    "rerender": []
   },
   "keel new --stack micronaut-rest-kotlin --build-system gradle --module-layout modulith --with-peer-context --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "micronaut-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/micronaut-cli-kotlin-bootstrap",
+      "walking-skeleton/micronaut-peer-context-kotlin-cli"
+    ],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-kotlin-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-kotlin-cli"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack micronaut-rest-kotlin --build-system maven --module-layout basic && keel add entrypoint cli": {
     "twin": "micronaut-cli-rest-kotlin",
@@ -932,17 +1002,20 @@
     "rerender": ["agent-harness"]
   },
   "keel new --stack micronaut-rest-kotlin --build-system maven --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "micronaut-cli-rest-kotlin",
+    "adapters": ["walking-skeleton/micronaut-cli-kotlin-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-kotlin-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-kotlin-cli"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack micronaut-rest-kotlin --build-system maven --module-layout modulith --no-agent-harness && keel add entrypoint cli": {
     "twin": "micronaut-cli-rest-kotlin",
@@ -951,69 +1024,76 @@
     "rerender": []
   },
   "keel new --stack micronaut-rest-kotlin --build-system maven --module-layout modulith --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "micronaut-cli-rest-kotlin",
+    "adapters": ["walking-skeleton/micronaut-cli-kotlin-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-kotlin-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-kotlin-cli"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack micronaut-rest-kotlin --build-system maven --module-layout modulith --with-peer-context && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "micronaut-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/micronaut-cli-kotlin-bootstrap",
+      "walking-skeleton/micronaut-peer-context-kotlin-cli"
+    ],
+    "verticals": [],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack micronaut-rest-kotlin --build-system maven --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "micronaut-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/micronaut-cli-kotlin-bootstrap",
+      "walking-skeleton/micronaut-peer-context-kotlin-cli"
+    ],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-kotlin-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-kotlin-cli"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack micronaut-rest-kotlin --build-system maven --module-layout modulith --with-peer-context --no-agent-harness && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "micronaut-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/micronaut-cli-kotlin-bootstrap",
+      "walking-skeleton/micronaut-peer-context-kotlin-cli"
+    ],
+    "verticals": [],
+    "rerender": []
   },
   "keel new --stack micronaut-rest-kotlin --build-system maven --module-layout modulith --with-peer-context --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "micronaut-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/micronaut-cli-kotlin-bootstrap",
+      "walking-skeleton/micronaut-peer-context-kotlin-cli"
+    ],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-kotlin-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/micronaut-context-kotlin-cli"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack quarkus-cli --build-system gradle --module-layout basic && keel add entrypoint http": {
     "twin": "quarkus-cli-rest",
@@ -1034,17 +1114,20 @@
     "rerender": ["agent-harness"]
   },
   "keel new --stack quarkus-cli --build-system gradle --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "quarkus-cli-rest",
+    "adapters": ["walking-skeleton/quarkus-rest-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-rest"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack quarkus-cli --build-system gradle --module-layout modulith --no-agent-harness && keel add entrypoint http": {
     "twin": "quarkus-cli-rest",
@@ -1053,69 +1136,76 @@
     "rerender": []
   },
   "keel new --stack quarkus-cli --build-system gradle --module-layout modulith --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "quarkus-cli-rest",
+    "adapters": ["walking-skeleton/quarkus-rest-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-rest"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack quarkus-cli --build-system gradle --module-layout modulith --with-peer-context && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "quarkus-cli-rest",
+    "adapters": [
+      "walking-skeleton/quarkus-rest-bootstrap",
+      "walking-skeleton/quarkus-peer-context-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack quarkus-cli --build-system gradle --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "quarkus-cli-rest",
+    "adapters": [
+      "walking-skeleton/quarkus-rest-bootstrap",
+      "walking-skeleton/quarkus-peer-context-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-rest"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack quarkus-cli --build-system gradle --module-layout modulith --with-peer-context --no-agent-harness && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "quarkus-cli-rest",
+    "adapters": [
+      "walking-skeleton/quarkus-rest-bootstrap",
+      "walking-skeleton/quarkus-peer-context-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "rerender": []
   },
   "keel new --stack quarkus-cli --build-system gradle --module-layout modulith --with-peer-context --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "quarkus-cli-rest",
+    "adapters": [
+      "walking-skeleton/quarkus-rest-bootstrap",
+      "walking-skeleton/quarkus-peer-context-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-rest"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack quarkus-cli --build-system maven --module-layout basic && keel add entrypoint http": {
     "twin": "quarkus-cli-rest",
@@ -1136,17 +1226,20 @@
     "rerender": ["agent-harness"]
   },
   "keel new --stack quarkus-cli --build-system maven --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "quarkus-cli-rest",
+    "adapters": ["walking-skeleton/quarkus-rest-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-rest"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack quarkus-cli --build-system maven --module-layout modulith --no-agent-harness && keel add entrypoint http": {
     "twin": "quarkus-cli-rest",
@@ -1155,69 +1248,76 @@
     "rerender": []
   },
   "keel new --stack quarkus-cli --build-system maven --module-layout modulith --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "quarkus-cli-rest",
+    "adapters": ["walking-skeleton/quarkus-rest-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-rest"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack quarkus-cli --build-system maven --module-layout modulith --with-peer-context && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "quarkus-cli-rest",
+    "adapters": [
+      "walking-skeleton/quarkus-rest-bootstrap",
+      "walking-skeleton/quarkus-peer-context-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack quarkus-cli --build-system maven --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "quarkus-cli-rest",
+    "adapters": [
+      "walking-skeleton/quarkus-rest-bootstrap",
+      "walking-skeleton/quarkus-peer-context-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-rest"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack quarkus-cli --build-system maven --module-layout modulith --with-peer-context --no-agent-harness && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "quarkus-cli-rest",
+    "adapters": [
+      "walking-skeleton/quarkus-rest-bootstrap",
+      "walking-skeleton/quarkus-peer-context-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "rerender": []
   },
   "keel new --stack quarkus-cli --build-system maven --module-layout modulith --with-peer-context --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "quarkus-cli-rest",
+    "adapters": [
+      "walking-skeleton/quarkus-rest-bootstrap",
+      "walking-skeleton/quarkus-peer-context-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-rest"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack quarkus-cli-kotlin --build-system gradle --module-layout basic && keel add entrypoint http": {
     "twin": "quarkus-cli-rest-kotlin",
@@ -1238,17 +1338,20 @@
     "rerender": ["agent-harness"]
   },
   "keel new --stack quarkus-cli-kotlin --build-system gradle --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "quarkus-cli-rest-kotlin",
+    "adapters": ["walking-skeleton/quarkus-rest-kotlin-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-kotlin-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-kotlin-rest"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack quarkus-cli-kotlin --build-system gradle --module-layout modulith --no-agent-harness && keel add entrypoint http": {
     "twin": "quarkus-cli-rest-kotlin",
@@ -1257,69 +1360,76 @@
     "rerender": []
   },
   "keel new --stack quarkus-cli-kotlin --build-system gradle --module-layout modulith --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "quarkus-cli-rest-kotlin",
+    "adapters": ["walking-skeleton/quarkus-rest-kotlin-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-kotlin-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-kotlin-rest"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack quarkus-cli-kotlin --build-system gradle --module-layout modulith --with-peer-context && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "quarkus-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/quarkus-rest-kotlin-bootstrap",
+      "walking-skeleton/quarkus-peer-context-kotlin-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack quarkus-cli-kotlin --build-system gradle --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "quarkus-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/quarkus-rest-kotlin-bootstrap",
+      "walking-skeleton/quarkus-peer-context-kotlin-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-kotlin-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-kotlin-rest"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack quarkus-cli-kotlin --build-system gradle --module-layout modulith --with-peer-context --no-agent-harness && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "quarkus-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/quarkus-rest-kotlin-bootstrap",
+      "walking-skeleton/quarkus-peer-context-kotlin-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "rerender": []
   },
   "keel new --stack quarkus-cli-kotlin --build-system gradle --module-layout modulith --with-peer-context --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "quarkus-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/quarkus-rest-kotlin-bootstrap",
+      "walking-skeleton/quarkus-peer-context-kotlin-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-kotlin-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-kotlin-rest"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack quarkus-cli-kotlin --build-system maven --module-layout basic && keel add entrypoint http": {
     "twin": "quarkus-cli-rest-kotlin",
@@ -1340,17 +1450,20 @@
     "rerender": ["agent-harness"]
   },
   "keel new --stack quarkus-cli-kotlin --build-system maven --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "quarkus-cli-rest-kotlin",
+    "adapters": ["walking-skeleton/quarkus-rest-kotlin-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-kotlin-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-kotlin-rest"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack quarkus-cli-kotlin --build-system maven --module-layout modulith --no-agent-harness && keel add entrypoint http": {
     "twin": "quarkus-cli-rest-kotlin",
@@ -1359,69 +1472,76 @@
     "rerender": []
   },
   "keel new --stack quarkus-cli-kotlin --build-system maven --module-layout modulith --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "quarkus-cli-rest-kotlin",
+    "adapters": ["walking-skeleton/quarkus-rest-kotlin-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-kotlin-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-kotlin-rest"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack quarkus-cli-kotlin --build-system maven --module-layout modulith --with-peer-context && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "quarkus-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/quarkus-rest-kotlin-bootstrap",
+      "walking-skeleton/quarkus-peer-context-kotlin-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack quarkus-cli-kotlin --build-system maven --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "quarkus-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/quarkus-rest-kotlin-bootstrap",
+      "walking-skeleton/quarkus-peer-context-kotlin-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-kotlin-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-kotlin-rest"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack quarkus-cli-kotlin --build-system maven --module-layout modulith --with-peer-context --no-agent-harness && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "quarkus-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/quarkus-rest-kotlin-bootstrap",
+      "walking-skeleton/quarkus-peer-context-kotlin-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "rerender": []
   },
   "keel new --stack quarkus-cli-kotlin --build-system maven --module-layout modulith --with-peer-context --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "quarkus-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/quarkus-rest-kotlin-bootstrap",
+      "walking-skeleton/quarkus-peer-context-kotlin-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-kotlin-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-kotlin-rest"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack quarkus-rest --build-system gradle --module-layout basic && keel add entrypoint cli": {
     "twin": "quarkus-cli-rest",
@@ -1442,17 +1562,20 @@
     "rerender": ["agent-harness"]
   },
   "keel new --stack quarkus-rest --build-system gradle --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "quarkus-cli-rest",
+    "adapters": ["walking-skeleton/quarkus-cli-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-cli"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack quarkus-rest --build-system gradle --module-layout modulith --no-agent-harness && keel add entrypoint cli": {
     "twin": "quarkus-cli-rest",
@@ -1461,69 +1584,76 @@
     "rerender": []
   },
   "keel new --stack quarkus-rest --build-system gradle --module-layout modulith --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "quarkus-cli-rest",
+    "adapters": ["walking-skeleton/quarkus-cli-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-cli"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack quarkus-rest --build-system gradle --module-layout modulith --with-peer-context && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "quarkus-cli-rest",
+    "adapters": [
+      "walking-skeleton/quarkus-cli-bootstrap",
+      "walking-skeleton/quarkus-peer-context-cli"
+    ],
+    "verticals": [],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack quarkus-rest --build-system gradle --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "quarkus-cli-rest",
+    "adapters": [
+      "walking-skeleton/quarkus-cli-bootstrap",
+      "walking-skeleton/quarkus-peer-context-cli"
+    ],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-cli"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack quarkus-rest --build-system gradle --module-layout modulith --with-peer-context --no-agent-harness && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "quarkus-cli-rest",
+    "adapters": [
+      "walking-skeleton/quarkus-cli-bootstrap",
+      "walking-skeleton/quarkus-peer-context-cli"
+    ],
+    "verticals": [],
+    "rerender": []
   },
   "keel new --stack quarkus-rest --build-system gradle --module-layout modulith --with-peer-context --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "quarkus-cli-rest",
+    "adapters": [
+      "walking-skeleton/quarkus-cli-bootstrap",
+      "walking-skeleton/quarkus-peer-context-cli"
+    ],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-cli"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack quarkus-rest --build-system maven --module-layout basic && keel add entrypoint cli": {
     "twin": "quarkus-cli-rest",
@@ -1544,17 +1674,20 @@
     "rerender": ["agent-harness"]
   },
   "keel new --stack quarkus-rest --build-system maven --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "quarkus-cli-rest",
+    "adapters": ["walking-skeleton/quarkus-cli-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-cli"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack quarkus-rest --build-system maven --module-layout modulith --no-agent-harness && keel add entrypoint cli": {
     "twin": "quarkus-cli-rest",
@@ -1563,69 +1696,76 @@
     "rerender": []
   },
   "keel new --stack quarkus-rest --build-system maven --module-layout modulith --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "quarkus-cli-rest",
+    "adapters": ["walking-skeleton/quarkus-cli-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-cli"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack quarkus-rest --build-system maven --module-layout modulith --with-peer-context && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "quarkus-cli-rest",
+    "adapters": [
+      "walking-skeleton/quarkus-cli-bootstrap",
+      "walking-skeleton/quarkus-peer-context-cli"
+    ],
+    "verticals": [],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack quarkus-rest --build-system maven --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "quarkus-cli-rest",
+    "adapters": [
+      "walking-skeleton/quarkus-cli-bootstrap",
+      "walking-skeleton/quarkus-peer-context-cli"
+    ],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-cli"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack quarkus-rest --build-system maven --module-layout modulith --with-peer-context --no-agent-harness && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "quarkus-cli-rest",
+    "adapters": [
+      "walking-skeleton/quarkus-cli-bootstrap",
+      "walking-skeleton/quarkus-peer-context-cli"
+    ],
+    "verticals": [],
+    "rerender": []
   },
   "keel new --stack quarkus-rest --build-system maven --module-layout modulith --with-peer-context --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "quarkus-cli-rest",
+    "adapters": [
+      "walking-skeleton/quarkus-cli-bootstrap",
+      "walking-skeleton/quarkus-peer-context-cli"
+    ],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-cli"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack quarkus-rest-kotlin --build-system gradle --module-layout basic && keel add entrypoint cli": {
     "twin": "quarkus-cli-rest-kotlin",
@@ -1646,17 +1786,20 @@
     "rerender": ["agent-harness"]
   },
   "keel new --stack quarkus-rest-kotlin --build-system gradle --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "quarkus-cli-rest-kotlin",
+    "adapters": ["walking-skeleton/quarkus-cli-kotlin-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-kotlin-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-kotlin-cli"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack quarkus-rest-kotlin --build-system gradle --module-layout modulith --no-agent-harness && keel add entrypoint cli": {
     "twin": "quarkus-cli-rest-kotlin",
@@ -1665,69 +1808,76 @@
     "rerender": []
   },
   "keel new --stack quarkus-rest-kotlin --build-system gradle --module-layout modulith --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "quarkus-cli-rest-kotlin",
+    "adapters": ["walking-skeleton/quarkus-cli-kotlin-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-kotlin-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-kotlin-cli"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack quarkus-rest-kotlin --build-system gradle --module-layout modulith --with-peer-context && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "quarkus-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/quarkus-cli-kotlin-bootstrap",
+      "walking-skeleton/quarkus-peer-context-kotlin-cli"
+    ],
+    "verticals": [],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack quarkus-rest-kotlin --build-system gradle --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "quarkus-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/quarkus-cli-kotlin-bootstrap",
+      "walking-skeleton/quarkus-peer-context-kotlin-cli"
+    ],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-kotlin-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-kotlin-cli"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack quarkus-rest-kotlin --build-system gradle --module-layout modulith --with-peer-context --no-agent-harness && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "quarkus-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/quarkus-cli-kotlin-bootstrap",
+      "walking-skeleton/quarkus-peer-context-kotlin-cli"
+    ],
+    "verticals": [],
+    "rerender": []
   },
   "keel new --stack quarkus-rest-kotlin --build-system gradle --module-layout modulith --with-peer-context --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "quarkus-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/quarkus-cli-kotlin-bootstrap",
+      "walking-skeleton/quarkus-peer-context-kotlin-cli"
+    ],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-kotlin-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-kotlin-cli"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack quarkus-rest-kotlin --build-system maven --module-layout basic && keel add entrypoint cli": {
     "twin": "quarkus-cli-rest-kotlin",
@@ -1748,17 +1898,20 @@
     "rerender": ["agent-harness"]
   },
   "keel new --stack quarkus-rest-kotlin --build-system maven --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "quarkus-cli-rest-kotlin",
+    "adapters": ["walking-skeleton/quarkus-cli-kotlin-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-kotlin-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-kotlin-cli"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack quarkus-rest-kotlin --build-system maven --module-layout modulith --no-agent-harness && keel add entrypoint cli": {
     "twin": "quarkus-cli-rest-kotlin",
@@ -1767,69 +1920,76 @@
     "rerender": []
   },
   "keel new --stack quarkus-rest-kotlin --build-system maven --module-layout modulith --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "quarkus-cli-rest-kotlin",
+    "adapters": ["walking-skeleton/quarkus-cli-kotlin-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-kotlin-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-kotlin-cli"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack quarkus-rest-kotlin --build-system maven --module-layout modulith --with-peer-context && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "quarkus-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/quarkus-cli-kotlin-bootstrap",
+      "walking-skeleton/quarkus-peer-context-kotlin-cli"
+    ],
+    "verticals": [],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack quarkus-rest-kotlin --build-system maven --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "quarkus-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/quarkus-cli-kotlin-bootstrap",
+      "walking-skeleton/quarkus-peer-context-kotlin-cli"
+    ],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-kotlin-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-kotlin-cli"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack quarkus-rest-kotlin --build-system maven --module-layout modulith --with-peer-context --no-agent-harness && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "quarkus-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/quarkus-cli-kotlin-bootstrap",
+      "walking-skeleton/quarkus-peer-context-kotlin-cli"
+    ],
+    "verticals": [],
+    "rerender": []
   },
   "keel new --stack quarkus-rest-kotlin --build-system maven --module-layout modulith --with-peer-context --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "quarkus-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/quarkus-cli-kotlin-bootstrap",
+      "walking-skeleton/quarkus-peer-context-kotlin-cli"
+    ],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-kotlin-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/quarkus-context-kotlin-cli"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack rust-cli --module-layout basic && keel add entrypoint http": {
     "twin": "rust-cli-http",
@@ -2050,17 +2210,20 @@
     "rerender": ["agent-harness"]
   },
   "keel new --stack spring-cli --build-system gradle --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "spring-cli-rest",
+    "adapters": ["walking-skeleton/spring-rest-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-rest"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack spring-cli --build-system gradle --module-layout modulith --no-agent-harness && keel add entrypoint http": {
     "twin": "spring-cli-rest",
@@ -2069,69 +2232,76 @@
     "rerender": []
   },
   "keel new --stack spring-cli --build-system gradle --module-layout modulith --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "spring-cli-rest",
+    "adapters": ["walking-skeleton/spring-rest-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-rest"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack spring-cli --build-system gradle --module-layout modulith --with-peer-context && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "spring-cli-rest",
+    "adapters": [
+      "walking-skeleton/spring-rest-bootstrap",
+      "walking-skeleton/spring-peer-context-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack spring-cli --build-system gradle --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "spring-cli-rest",
+    "adapters": [
+      "walking-skeleton/spring-rest-bootstrap",
+      "walking-skeleton/spring-peer-context-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-rest"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack spring-cli --build-system gradle --module-layout modulith --with-peer-context --no-agent-harness && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "spring-cli-rest",
+    "adapters": [
+      "walking-skeleton/spring-rest-bootstrap",
+      "walking-skeleton/spring-peer-context-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "rerender": []
   },
   "keel new --stack spring-cli --build-system gradle --module-layout modulith --with-peer-context --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "spring-cli-rest",
+    "adapters": [
+      "walking-skeleton/spring-rest-bootstrap",
+      "walking-skeleton/spring-peer-context-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-rest"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack spring-cli --build-system maven --module-layout basic && keel add entrypoint http": {
     "twin": "spring-cli-rest",
@@ -2152,17 +2322,20 @@
     "rerender": ["agent-harness"]
   },
   "keel new --stack spring-cli --build-system maven --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "spring-cli-rest",
+    "adapters": ["walking-skeleton/spring-rest-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-rest"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack spring-cli --build-system maven --module-layout modulith --no-agent-harness && keel add entrypoint http": {
     "twin": "spring-cli-rest",
@@ -2171,69 +2344,76 @@
     "rerender": []
   },
   "keel new --stack spring-cli --build-system maven --module-layout modulith --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "spring-cli-rest",
+    "adapters": ["walking-skeleton/spring-rest-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-rest"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack spring-cli --build-system maven --module-layout modulith --with-peer-context && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "spring-cli-rest",
+    "adapters": [
+      "walking-skeleton/spring-rest-bootstrap",
+      "walking-skeleton/spring-peer-context-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack spring-cli --build-system maven --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "spring-cli-rest",
+    "adapters": [
+      "walking-skeleton/spring-rest-bootstrap",
+      "walking-skeleton/spring-peer-context-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-rest"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack spring-cli --build-system maven --module-layout modulith --with-peer-context --no-agent-harness && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "spring-cli-rest",
+    "adapters": [
+      "walking-skeleton/spring-rest-bootstrap",
+      "walking-skeleton/spring-peer-context-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "rerender": []
   },
   "keel new --stack spring-cli --build-system maven --module-layout modulith --with-peer-context --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "spring-cli-rest",
+    "adapters": [
+      "walking-skeleton/spring-rest-bootstrap",
+      "walking-skeleton/spring-peer-context-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-rest"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack spring-cli-kotlin --build-system gradle --module-layout basic && keel add entrypoint http": {
     "twin": "spring-cli-rest-kotlin",
@@ -2254,17 +2434,20 @@
     "rerender": ["agent-harness"]
   },
   "keel new --stack spring-cli-kotlin --build-system gradle --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "spring-cli-rest-kotlin",
+    "adapters": ["walking-skeleton/spring-rest-kotlin-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-kotlin-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-kotlin-rest"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack spring-cli-kotlin --build-system gradle --module-layout modulith --no-agent-harness && keel add entrypoint http": {
     "twin": "spring-cli-rest-kotlin",
@@ -2273,69 +2456,76 @@
     "rerender": []
   },
   "keel new --stack spring-cli-kotlin --build-system gradle --module-layout modulith --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "spring-cli-rest-kotlin",
+    "adapters": ["walking-skeleton/spring-rest-kotlin-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-kotlin-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-kotlin-rest"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack spring-cli-kotlin --build-system gradle --module-layout modulith --with-peer-context && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "spring-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/spring-rest-kotlin-bootstrap",
+      "walking-skeleton/spring-peer-context-kotlin-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack spring-cli-kotlin --build-system gradle --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "spring-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/spring-rest-kotlin-bootstrap",
+      "walking-skeleton/spring-peer-context-kotlin-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-kotlin-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-kotlin-rest"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack spring-cli-kotlin --build-system gradle --module-layout modulith --with-peer-context --no-agent-harness && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "spring-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/spring-rest-kotlin-bootstrap",
+      "walking-skeleton/spring-peer-context-kotlin-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "rerender": []
   },
   "keel new --stack spring-cli-kotlin --build-system gradle --module-layout modulith --with-peer-context --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "spring-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/spring-rest-kotlin-bootstrap",
+      "walking-skeleton/spring-peer-context-kotlin-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-kotlin-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-kotlin-rest"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack spring-cli-kotlin --build-system maven --module-layout basic && keel add entrypoint http": {
     "twin": "spring-cli-rest-kotlin",
@@ -2356,17 +2546,20 @@
     "rerender": ["agent-harness"]
   },
   "keel new --stack spring-cli-kotlin --build-system maven --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "spring-cli-rest-kotlin",
+    "adapters": ["walking-skeleton/spring-rest-kotlin-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-kotlin-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-kotlin-rest"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack spring-cli-kotlin --build-system maven --module-layout modulith --no-agent-harness && keel add entrypoint http": {
     "twin": "spring-cli-rest-kotlin",
@@ -2375,69 +2568,76 @@
     "rerender": []
   },
   "keel new --stack spring-cli-kotlin --build-system maven --module-layout modulith --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "spring-cli-rest-kotlin",
+    "adapters": ["walking-skeleton/spring-rest-kotlin-bootstrap"],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-kotlin-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-kotlin-rest"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack spring-cli-kotlin --build-system maven --module-layout modulith --with-peer-context && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "spring-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/spring-rest-kotlin-bootstrap",
+      "walking-skeleton/spring-peer-context-kotlin-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack spring-cli-kotlin --build-system maven --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "spring-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/spring-rest-kotlin-bootstrap",
+      "walking-skeleton/spring-peer-context-kotlin-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-kotlin-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-kotlin-rest"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack spring-cli-kotlin --build-system maven --module-layout modulith --with-peer-context --no-agent-harness && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "spring-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/spring-rest-kotlin-bootstrap",
+      "walking-skeleton/spring-peer-context-kotlin-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "rerender": []
   },
   "keel new --stack spring-cli-kotlin --build-system maven --module-layout modulith --with-peer-context --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint http": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "spring-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/spring-rest-kotlin-bootstrap",
+      "walking-skeleton/spring-peer-context-kotlin-rest"
+    ],
+    "verticals": ["dev-env", "observability"],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-kotlin-rest"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-kotlin-rest"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack spring-rest --build-system gradle --module-layout basic && keel add entrypoint cli": {
     "twin": "spring-cli-rest",
@@ -2458,17 +2658,20 @@
     "rerender": ["agent-harness"]
   },
   "keel new --stack spring-rest --build-system gradle --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "spring-cli-rest",
+    "adapters": ["walking-skeleton/spring-cli-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-cli"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack spring-rest --build-system gradle --module-layout modulith --no-agent-harness && keel add entrypoint cli": {
     "twin": "spring-cli-rest",
@@ -2477,69 +2680,76 @@
     "rerender": []
   },
   "keel new --stack spring-rest --build-system gradle --module-layout modulith --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "spring-cli-rest",
+    "adapters": ["walking-skeleton/spring-cli-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-cli"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack spring-rest --build-system gradle --module-layout modulith --with-peer-context && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "spring-cli-rest",
+    "adapters": [
+      "walking-skeleton/spring-cli-bootstrap",
+      "walking-skeleton/spring-peer-context-cli"
+    ],
+    "verticals": [],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack spring-rest --build-system gradle --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "spring-cli-rest",
+    "adapters": [
+      "walking-skeleton/spring-cli-bootstrap",
+      "walking-skeleton/spring-peer-context-cli"
+    ],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-cli"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack spring-rest --build-system gradle --module-layout modulith --with-peer-context --no-agent-harness && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "spring-cli-rest",
+    "adapters": [
+      "walking-skeleton/spring-cli-bootstrap",
+      "walking-skeleton/spring-peer-context-cli"
+    ],
+    "verticals": [],
+    "rerender": []
   },
   "keel new --stack spring-rest --build-system gradle --module-layout modulith --with-peer-context --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "spring-cli-rest",
+    "adapters": [
+      "walking-skeleton/spring-cli-bootstrap",
+      "walking-skeleton/spring-peer-context-cli"
+    ],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-cli"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack spring-rest --build-system maven --module-layout basic && keel add entrypoint cli": {
     "twin": "spring-cli-rest",
@@ -2560,17 +2770,20 @@
     "rerender": ["agent-harness"]
   },
   "keel new --stack spring-rest --build-system maven --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "spring-cli-rest",
+    "adapters": ["walking-skeleton/spring-cli-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-cli"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack spring-rest --build-system maven --module-layout modulith --no-agent-harness && keel add entrypoint cli": {
     "twin": "spring-cli-rest",
@@ -2579,69 +2792,76 @@
     "rerender": []
   },
   "keel new --stack spring-rest --build-system maven --module-layout modulith --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "spring-cli-rest",
+    "adapters": ["walking-skeleton/spring-cli-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-cli"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack spring-rest --build-system maven --module-layout modulith --with-peer-context && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "spring-cli-rest",
+    "adapters": [
+      "walking-skeleton/spring-cli-bootstrap",
+      "walking-skeleton/spring-peer-context-cli"
+    ],
+    "verticals": [],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack spring-rest --build-system maven --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "spring-cli-rest",
+    "adapters": [
+      "walking-skeleton/spring-cli-bootstrap",
+      "walking-skeleton/spring-peer-context-cli"
+    ],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-cli"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack spring-rest --build-system maven --module-layout modulith --with-peer-context --no-agent-harness && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "spring-cli-rest",
+    "adapters": [
+      "walking-skeleton/spring-cli-bootstrap",
+      "walking-skeleton/spring-peer-context-cli"
+    ],
+    "verticals": [],
+    "rerender": []
   },
   "keel new --stack spring-rest --build-system maven --module-layout modulith --with-peer-context --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "spring-cli-rest",
+    "adapters": [
+      "walking-skeleton/spring-cli-bootstrap",
+      "walking-skeleton/spring-peer-context-cli"
+    ],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-cli"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack spring-rest-kotlin --build-system gradle --module-layout basic && keel add entrypoint cli": {
     "twin": "spring-cli-rest-kotlin",
@@ -2662,17 +2882,20 @@
     "rerender": ["agent-harness"]
   },
   "keel new --stack spring-rest-kotlin --build-system gradle --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "spring-cli-rest-kotlin",
+    "adapters": ["walking-skeleton/spring-cli-kotlin-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-kotlin-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-kotlin-cli"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack spring-rest-kotlin --build-system gradle --module-layout modulith --no-agent-harness && keel add entrypoint cli": {
     "twin": "spring-cli-rest-kotlin",
@@ -2681,69 +2904,76 @@
     "rerender": []
   },
   "keel new --stack spring-rest-kotlin --build-system gradle --module-layout modulith --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "spring-cli-rest-kotlin",
+    "adapters": ["walking-skeleton/spring-cli-kotlin-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-kotlin-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-kotlin-cli"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack spring-rest-kotlin --build-system gradle --module-layout modulith --with-peer-context && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "spring-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/spring-cli-kotlin-bootstrap",
+      "walking-skeleton/spring-peer-context-kotlin-cli"
+    ],
+    "verticals": [],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack spring-rest-kotlin --build-system gradle --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "spring-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/spring-cli-kotlin-bootstrap",
+      "walking-skeleton/spring-peer-context-kotlin-cli"
+    ],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-kotlin-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-kotlin-cli"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack spring-rest-kotlin --build-system gradle --module-layout modulith --with-peer-context --no-agent-harness && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "spring-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/spring-cli-kotlin-bootstrap",
+      "walking-skeleton/spring-peer-context-kotlin-cli"
+    ],
+    "verticals": [],
+    "rerender": []
   },
   "keel new --stack spring-rest-kotlin --build-system gradle --module-layout modulith --with-peer-context --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "spring-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/spring-cli-kotlin-bootstrap",
+      "walking-skeleton/spring-peer-context-kotlin-cli"
+    ],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-kotlin-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-kotlin-cli"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack spring-rest-kotlin --build-system maven --module-layout basic && keel add entrypoint cli": {
     "twin": "spring-cli-rest-kotlin",
@@ -2764,17 +2994,20 @@
     "rerender": ["agent-harness"]
   },
   "keel new --stack spring-rest-kotlin --build-system maven --module-layout modulith && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "spring-cli-rest-kotlin",
+    "adapters": ["walking-skeleton/spring-cli-kotlin-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-kotlin-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-kotlin-cli"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack spring-rest-kotlin --build-system maven --module-layout modulith --no-agent-harness && keel add entrypoint cli": {
     "twin": "spring-cli-rest-kotlin",
@@ -2783,69 +3016,76 @@
     "rerender": []
   },
   "keel new --stack spring-rest-kotlin --build-system maven --module-layout modulith --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
+    "twin": "spring-cli-rest-kotlin",
+    "adapters": ["walking-skeleton/spring-cli-kotlin-bootstrap"],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-kotlin-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-kotlin-cli"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack spring-rest-kotlin --build-system maven --module-layout modulith --with-peer-context && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "spring-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/spring-cli-kotlin-bootstrap",
+      "walking-skeleton/spring-peer-context-kotlin-cli"
+    ],
+    "verticals": [],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack spring-rest-kotlin --build-system maven --module-layout modulith --with-peer-context && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "spring-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/spring-cli-kotlin-bootstrap",
+      "walking-skeleton/spring-peer-context-kotlin-cli"
+    ],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-kotlin-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-kotlin-cli"]
       }
-    ]
+    ],
+    "rerender": ["agent-harness"]
   },
   "keel new --stack spring-rest-kotlin --build-system maven --module-layout modulith --with-peer-context --no-agent-harness && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      }
-    ]
+    "twin": "spring-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/spring-cli-kotlin-bootstrap",
+      "walking-skeleton/spring-peer-context-kotlin-cli"
+    ],
+    "verticals": [],
+    "rerender": []
   },
   "keel new --stack spring-rest-kotlin --build-system maven --module-layout modulith --with-peer-context --no-agent-harness && keel add module orders --consumes greeting && keel add module shipping --consumes orders && keel add entrypoint cli": {
-    "refused": "keel.contexts-need-rewiring",
-    "contexts": [
-      {
-        "name": "guestbook",
-        "marker": "modules.peer-context"
-      },
+    "twin": "spring-cli-rest-kotlin",
+    "adapters": [
+      "walking-skeleton/spring-cli-kotlin-bootstrap",
+      "walking-skeleton/spring-peer-context-kotlin-cli"
+    ],
+    "verticals": [],
+    "modules": [
       {
         "name": "orders",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-kotlin-cli"]
       },
       {
         "name": "shipping",
-        "marker": "modules.context"
+        "adapters": ["bounded-context/spring-context-kotlin-cli"]
       }
-    ]
+    ],
+    "rerender": []
   },
   "keel new --stack ts-cli --build-system npm --module-layout basic && keel add entrypoint http": {
     "twin": "ts-cli-http",

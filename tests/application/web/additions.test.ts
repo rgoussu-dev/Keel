@@ -47,6 +47,7 @@ import {
   toggleVertical,
 } from '../../../assets/web/src/target.js';
 import { expectErr, expectOk, installMediator } from '../../support/factory.js';
+import { unsplitPeerRegistry } from '../../support/unsplit-peer.js';
 
 let cwd: string;
 let mediator: Mediator;
@@ -225,6 +226,12 @@ describe('a keel project’s "Also scaffold" group', () => {
   });
 
   it('says, collapsed, what a CLI project that cannot grow the server cannot take', async () => {
+    // A peer context that picks its assemblies inside `contribute()`,
+    // as Quarkus' did before R.3d: growth refuses it.
+    mediator = installMediator({
+      runDeferred: () => Promise.resolve(),
+      registry: unsplitPeerRegistry(),
+    });
     expectOk(
       await mediator.dispatch(
         newProjectCommand({

@@ -6,9 +6,9 @@
  * assembly's component scan names each bounded context, so a context
  * missing from it is never scanned, `SignHandler` is never
  * discovered, and the application starts perfectly over less
- * behaviour. That list lives in the assembly the layout resolved, and
- * until this cell the only assembly it had ever been written into was
- * `application/api`.
+ * behaviour. That list lives in the boot class of the wiring adapter's
+ * own assembly, and until this cell the only assembly it had ever been
+ * written into was `application/api`.
  *
  * The CLI assembly also boots differently — a `CommandLineRunner`
  * around picocli rather than a servlet container — so "the container

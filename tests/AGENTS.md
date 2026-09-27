@@ -139,12 +139,12 @@ parallel:
   record of `growthOf`) reads for the cell (I10, over the actions the
   grid's deferred runner records, `Grid.queued`). The add also
   previews as it installs on the scaffold (I9, over no answers and
-  over the monitoring stack answered away from its default). Of the
-  192, 144 grow and 48 are refused as `keel.contexts-need-rewiring` —
-  every setting with the peer context on the JVM; of the 128 with a
-  history, Go's 8, Rust's 8 and TypeScript's 16 grow and 96 are
-  refused — until epic R's R.3 lifts them family by family (Go's with
-  R.3a, Rust's with R.3b, TypeScript's with R.3c, the JVM's last).
+  over the monitoring stack answered away from its default). All 192
+  grow, and all 128 with a history: epic R's R.3 lifted
+  `keel.contexts-need-rewiring` family by family (Go's with R.3a,
+  Rust's with R.3b, TypeScript's with R.3c, the JVM's with R.3d), so
+  the axis reads no refused cell on keel's presets now, though it
+  still reads the growth golden for any.
 
 Cells come from `keel.catalog`, `keel.dials` and `keel.project-status`,
 never from a hand list, so a new preset or vertical is swept without an
@@ -183,13 +183,12 @@ the record can only shrink. Beside each suite:
   composite goldens (`generated-docs.test.ts`, above), so a change that
   moves a verdict regenerates the docs last, after the grid.
 
-About 52 s wall on its own, growth and greenfield the longest: growth
-about 43 s alone (408 real scaffolds — 320 cells and 88 twins, one per
-setting and history, which both directions share — 288 real `keel add
-module` runs, 320 real adds and 816 dry-run dispatches for I9; the
-module histories are about 13 s of it), greenfield ~23 s, of which
-I8's orderings are about 3.5 s and I9's bodies — some 260 whole-menu
-dispatches — about 14 s.
+About 80 s wall on its own, growth the longest: growth about 77 s
+alone (480 real scaffolds — 320 cells and 160 twins, one per setting
+and history, which both directions share — 384 real `keel add module`
+runs, 320 real adds and 960 dry-run dispatches for I9; the JVM's are
+the heaviest), greenfield ~23 s, of which I8's orderings are about
+3.5 s and I9's bodies — some 260 whole-menu dispatches — about 14 s.
 
 **The weekly sweep beside it.** The grid's preview axes read each
 preset's opening dials only, each extra alone and the whole menu, and
@@ -302,13 +301,16 @@ dev container's attach on an HTTP project, which every preset
 installs with its dev environment
 (`domain/core/verticals/dev-container.test.ts`).
 On a Rust modulith it records each assembly's `Cargo.toml` and
-`src/main.rs` too, and on a TypeScript project each assembly's
-`package.json` and `src/main.ts`, which the bootstrap, observability
-and the peer's and each context's wiring write into: R.3b and R.3c
-split that wiring per entrypoint, and those entries were recorded on
-the code before each, so they hold R.3 as the root files hold R.1 —
-the order of the wiring's lines included, which I10 cannot see, since
-it compares a grown project with a twin the same adapters write.
+`src/main.rs` too, on a TypeScript project each assembly's
+`package.json` and `src/main.ts`, and on a JVM modulith each
+assembly's build file, composition root and boot class (and the basic
+CLI assembly's build file, at the same path), which the bootstrap and
+the peer's and each context's wiring write into, observability too on
+Rust and TypeScript: R.3b, R.3c and R.3d split that wiring per
+entrypoint, and those entries were recorded on the code before each,
+so they hold R.3 as the root files hold R.1 — the order of the
+wiring's lines included, which I10 cannot see, since it compares a
+grown project with a twin the same adapters write.
 Every cell is a dry run, read back through the Tree that staged it,
 except the ten scaffolds `keel add dev-env` runs on, and each module
 history's scaffold and first add, which are written for real so the
@@ -348,15 +350,19 @@ context, and after `keel add module`, every adapter that matches both
 without and with the missing entrypoint is rendered both ways, and one
 that renders otherwise must be one growth re-renders or one whose
 context it refuses — and each refusal and re-render must rest on such
-an adapter. Today those are exactly the family kits, and the
-peer-context and context adapters of the JVM families: Go's, Rust's
-and TypeScript's are split into a shell and one wiring adapter per
-entrypoint (R.3a, R.3b, R.3c). Both run their scaffolds in a
-`beforeAll`, so mutation testing leaves them out;
+an adapter. Today those are exactly the family kits: every back-end
+family's peer-context and context adapters are split into a shell and
+one wiring adapter per entrypoint (Go's with R.3a, Rust's with R.3b,
+TypeScript's with R.3c, the JVM's with R.3d), so none renders
+otherwise and growth refuses no context of keel's. Both run their
+scaffolds in a `beforeAll`, so mutation testing leaves them out;
 `domain/core/growth.test.ts` holds each rule of the reading on a
 fixture family, and the replay of `keel add module`'s contexts on
 keel's Go presets, since that command runs keel's own
-`bounded-context` alone.
+`bounded-context` alone. A test that holds what the refusal says on a
+real preset — at the command line, on a card, on the page — scaffolds
+through `support/unsplit-peer.ts`, the shipped registry with Quarkus'
+peer context folded back into the one adapter it was before R.3d.
 
 **A menu-versus-gate test uses preview or install as its oracle.** A
 test claiming that what a front end offers is what keel accepts — a dial

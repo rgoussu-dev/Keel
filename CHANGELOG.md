@@ -14,6 +14,18 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Fixed
 
+- **A JVM modulith's runbook no longer gives every context a REST or
+  CLI adapter.** The layout map in the root `AGENTS.md` of a Quarkus,
+  Spring or Micronaut modulith listed
+  `modules/<ctx>/user-side/api/{contract,adapters}/` as what the REST
+  assembly mounts, or `modules/<ctx>/user-side/cli/` as what the CLI
+  one does (both, on a CLI + REST modulith), as if every bounded
+  context had them; only the skeleton's does — the peer context and
+  each context `keel add module` adds have none. It now names
+  `modules/greeting/user-side/…`, the skeleton's, and says no other
+  context has any until you write them. `keel add agent-harness
+--reapply` renders it anew on a project already scaffolded.
+
 - **A dev container you customized is refused, not crashed on, when a
   dev environment arrives.** `keel add dev-env` on a project whose
   `.devcontainer/devcontainer.json` no longer carried the image keel
@@ -571,12 +583,12 @@ new` the terminal adds the way past it (move it aside, or start in
   gateway. It is offered only where the command would run and the grown
   project would take the vertical, or would once linked where a linked
   project is missing too: not in a monorepo product, not on a front end,
-  not where growing would leave it refused for another reason, and not,
-  for now, on a modulith whose contexts are wired into its one
-  entrypoint on the JVM families — where the hint still names the preset
+  not where growing would leave it refused for another reason — a
+  modulith of a plugin's family whose contexts are wired into its one
+  entrypoint as they render, say — where the hint still names the preset
   that carries both, without the old closing clause. `keel add --list`
-  lists such verticals under _After 'keel add entrypoint http':_,
-  each saying whether it comes with the entrypoint, rather than under
+  lists such verticals under _After 'keel add entrypoint http':_, each
+  saying whether it comes with the entrypoint, rather than under
   _Not for this project:_, where only what growing would not let in
   stays: distribution on a Quarkus CLI built with Maven, refused for its
   build system, or iac beside a distribution taken as an extra, which
@@ -1224,22 +1236,28 @@ entrypoint http` on a CLI project, or `keel add entrypoint cli` on an
   (`keel.unknown-entrypoint`), for a front end or a project
   no preset grows into (`keel.uncoverable-entrypoint`), where the
   entrypoint would break a plugin vertical's rule, as `keel new` of
-  the twin with that vertical is (`keel.incompatible`), and, for now,
-  on a modulith whose peer context or added modules are wired into its
-  entrypoints (`keel.contexts-need-rewiring`, naming them) — on the JVM
-  families. A Go, Rust or TypeScript modulith grows with its contexts:
-  the peer context and each context `keel add module` added are wired
-  into the new assembly — on Go `cmd/<unit>/<context>.go` and its
-  test, on Rust `application/<unit>/src/<context>.rs`, its `mod` line
-  and the context's crates in that crate's `Cargo.toml`, on TypeScript
+  the twin with that vertical is (`keel.incompatible`), and on a
+  modulith of a plugin's family whose peer context is wired into its
+  entrypoints by an adapter that picks them as it renders
+  (`keel.contexts-need-rewiring`, naming it). A modulith of every keel
+  back-end family grows with its contexts: the peer context and each
+  context `keel add module` added are wired into the new assembly — on
+  Go `cmd/<unit>/<context>.go` and its test, on Rust
+  `application/<unit>/src/<context>.rs`, its `mod` line and the
+  context's crates in that crate's `Cargo.toml`, on TypeScript
   `application/<cli|rest>/src/<context>.ts` (the peer's with its wiring
   test), the context on that assembly's `package.json` and its handler
-  on the mediator its `main.ts` builds — in the order they were added,
-  as the preset carrying both has them after the same
-  `keel add module` history, and the wiring already there is never
-  read. Where the project is linked to another that now gets an HTTP
-  server it never recorded, the report names the `keel link` that
-  records it.
+  on the mediator its `main.ts` builds, on the JVM the context's
+  `<Context>Wiring` class and its test (the peer's `GuestbookWiringTest`
+  and its `Welcome` binding), its modules in that assembly's
+  `build.gradle.kts` or `pom.xml`, and its entry on the lists the
+  container reads — the boot class's `@ComponentScan` on Spring,
+  `@Import` on Micronaut, the hand-wired mediator on Micronaut Kotlin
+  — in the order they were added, as the preset carrying both has them
+  after the same `keel add module` history, and the wiring already
+  there is never read. Where the project is linked to another that now
+  gets an HTTP server it never recorded, the report names the
+  `keel link` that records it.
   `keel ui`'s API takes it as the target
   `{ "kind": "add-entrypoint", "entrypoint": "http" }`, which it
   previews and installs as the CLI does, and the page offers it wherever
@@ -1248,9 +1266,8 @@ entrypoint http` on a CLI project, or `keel add entrypoint cli` on an
   _Changed_). The composition grid holds all 192 single-entrypoint
   backend cells to their twins, both ways, on every dial setting, and
   every modulith among them again after a `keel add module` history
-  (I10, hard): 144 grow, and the 48 with the peer context on the JVM
-  are refused; of the 128 with a history, Go's 8, Rust's 8 and
-  TypeScript's 16 grow. See `docs/cli.md` → `keel add entrypoint`.
+  (I10, hard): all 192 grow, and all 128 with a history. See
+  `docs/cli.md` → `keel add entrypoint`.
 
 - **A weekly composition sweep covers what the grid cannot afford to.**
   The composition grid in `verify` reads each preset on its opening

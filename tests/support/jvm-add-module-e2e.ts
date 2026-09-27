@@ -4,11 +4,12 @@
  * `keel add module` has the same 24-cell grid `keel new` has — 12
  * stacks × 2 build systems — because the emitter branches on all three
  * axes that grid is built from. Framework and language pick the
- * binding (six of them, over one `jvmContextAdapter`); **typology**
- * picks the assembly the wiring class is rendered into and the build
- * file the new dependencies are anchored in, and on Spring it also
- * moves `@ComponentScan` between `Main` and `Application`. A cell is
- * therefore a real intersection here, not a duplicate of its row.
+ * binding (six of them, over one `jvmContextAdapters`); **typology**
+ * picks the wiring adapter — the assembly the wiring class is rendered
+ * into and the build file the new dependencies are anchored in, and on
+ * Spring the boot class `@ComponentScan` is on, `Main` or
+ * `Application`. A cell is therefore a real intersection here, not a
+ * duplicate of its row.
  *
  * What varies across the 24 is the spec. What every one of them does
  * is this function, so the grid cannot drift into 24 slightly
