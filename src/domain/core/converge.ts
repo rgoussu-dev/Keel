@@ -7,10 +7,11 @@
  * add` with `--refresh` and `--reapply`, `keel add entrypoint` and
  * `keel add module` — is one operation run on a different request.
  * This is its reading, pure as `./planner.ts` and `./growth.ts` are:
- * nothing here runs, reads a file or is worded. Until each path is its
- * caller (S.3 to S.6), it is the reading each handler makes today, and
- * `tests/domain/core/converge.golden.test.ts` records it on every cell
- * of the paths golden.
+ * nothing here runs, reads a file or is worded; `./converge-run.ts`
+ * runs it. `keel add entrypoint` is its first caller (S.3); until each
+ * other path is (S.4 to S.6), it is the reading that path's handler
+ * makes today, and `tests/domain/core/converge.golden.test.ts` records
+ * it on every cell of the paths golden.
  *
  * **The composition needs no new record** (DS2). A manifest already
  * says what `keel new` was given ({@link compositionOf}): the preset the
@@ -356,7 +357,7 @@ export function convergeOf(
  * the first recorded one the twin lists after it — one the twin does
  * not list takes the place of the next incoming one it does — and
  * after any other. Nothing recorded moves. Growth's order, for its run
- * and for its record (`./handlers/add-entrypoint.ts`).
+ * and for its record (`./converge-run.ts`).
  */
 export function placed(
   recorded: readonly string[],

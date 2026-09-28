@@ -9205,7 +9205,7 @@ Beyond the text above:
   clause, which did not name this case before; no released refusal
   changed.
 
-### S.3 — The run, and `keel add entrypoint` its first caller (L)
+### S.3 — The run, and `keel add entrypoint` its first caller (L) ✅
 
 `src/domain/core/converge-run.ts` holds `converge(inputs)`, which runs
 a plan and commits nothing. `converge.ts` stays pure. The run is:
@@ -9252,6 +9252,185 @@ read the same plan.
 The keel ui browser suites are not run, since no preview changes.
 
 **Leaves out:** every other caller.
+
+**Landed as the run and its first caller**, in one commit, with no
+golden moved. `src/domain/core/converge-run.ts` (534 lines) holds
+`converge(inputs)`, which stages a plan `convergeOf` read and commits
+nothing, and `commitConverged`, the tail every caller is to call: the
+tree, then the manifest at the project scope, then the deferred
+actions. `handlers/add-entrypoint.ts` goes from 832 lines to 489. It
+reads its plan with `convergeOf(…, { kind: 'entrypoint' })` and hands
+it to `converge`; its own `planOf` and `RunStep` go, and
+`wireModules`, `twinOrder`, `rankOf`, `atRank` and `inPlace` move
+into the run as they were, and `proposalNote` too, taking the registry
+and the wording as arguments. What it keeps is the text's list, and
+`reachable`, the early answer check's reading, now over the plan's
+steps. `add-vertical.ts`, `add-module.ts` and
+`new-project.ts` are untouched, and `converge.ts` changes in two doc
+comments alone.
+
+- **Held byte for byte**, each suite against its committed JSON under
+  `CI=true`, and `git diff --exit-code` over every golden and known
+  file after: `growth.golden.json` (360 cells), `converge.golden.json`
+  (3,436), the four paths goldens (689, 1,326, 731 and 690), and the
+  shared-files, agent-harness and run-skill goldens. The grid's four
+  axes pass, growth's I10 on all 320 cells with its I9, and the known
+  files are as they were: brownfield's `{"I5": {}}`, `{}` for the
+  others.
+- **The handler's 46 cases pass unchanged**, as do `growth.test.ts`,
+  `install-verticals.test.ts`, `converge.test.ts`, the project-status
+  suite and the render guard (`growth-render.test.ts`, its 4 cases). A
+  47th pins the order of the handler's own notes around the run's
+  proposals, which no case held, since none had growth add a
+  prerequisite: on a plugin family whose twin lists an observability
+  without the base it needs, a project recording a reader of the
+  observability and linked to another says the base the planner added,
+  then the refresh proposed, then the relink.
+- **`tests/domain/core/converge-run.test.ts`**, 20 cases on a fixture
+  family, over an in-memory disk each shipped `FakeTree` opens seeded
+  from and commits back into, a project scaffolded by the run itself:
+  each posture (a step installed whole, `only` with and without
+  settling, settled alone, re-rendered with its diff, on a project
+  without the harness counting what it skipped); growth's own plan,
+  read by `convergeOf`, run at the twin's rank and again appended,
+  moving the rows, the answer keys and the entries and no file; the
+  harness realized in the twin's order and in the run's; the retrofit
+  with and without the recorded contexts, and a context's element,
+  which the twin ranks nothing of, realized and recorded after every
+  ranked one; a re-render's conflict read as `keel.reapply-conflict`,
+  and an install's rethrown; the caller's check seeing the staged
+  adapters and reads and winning before the harness pass, and, where
+  it holds, the retrofit's refusal naming the caller's command line;
+  the proposals between the caller's notes, worded by the caller's flag
+  alone, dry run or not; what a proposal reads, in run order; an
+  installed vertical whose adapters the run's tags change, read before
+  on the recorded tags and after on the run's, and none proposed that
+  ran; none for what reads a vertical the run re-renders; the commit's
+  order; and its deferred actions run for real, the runner handed no
+  dry run, and each action run through `runActions` where the caller
+  hands none.
+
+**The proof** that the suite catches what it is for, each tried in a
+scratch edit of `converge-run.ts` and undone byte for byte. Each failed
+exactly the cases named, and no other of the file:
+
+- the buffer left in run order under a twin placement: the case of the
+  twin's order;
+- the record appended under a twin placement, no `atRank`: the growth
+  case and the case of the run's order;
+- `proposeForLater` ignored, the wording read off the dry run: both
+  cases of the wording; and read with the dry run as it was,
+  `proposeForLater || !dryRun`: the case of this run's wording;
+- a conflict read as a refused re-render whatever re-rendered: the
+  rethrow;
+- the caller's check moved after the retrofit: the seam's case, where
+  the retrofit's refusal then won;
+- the manifest written before the tree's commit: the commit's case;
+- the recorded contexts replayed whatever the caller says: the
+  retrofit's case. Of the handler's 47 cases and
+  `agent-harness-grown.test.ts`' 6, run on the same edit, it failed
+  one: the one wiring each context by keel's own `bounded-context`
+  whatever a registry lists;
+- an adapter the twin ranks nothing of realized first: the case of the
+  context's element;
+- the commit's deferred actions handed a dry run, or skipped where the
+  caller hands no runner: the case of the deferred actions;
+- the proposals' tags before read off the manifest the run leaves, or
+  a vertical that ran proposed: the case of the adapters;
+- every step read as installed: the case of the re-render;
+- the installed verticals sorted: the case of run order.
+
+And in `handlers/add-entrypoint.ts`, its notes before and after the
+proposals swapped, or its admission notes dropped: the handler's 47th
+case, and no other of its 47 or of `agent-harness-grown.test.ts`' 6.
+
+**Times**, under `CI=true` on four cores. `converge-run.test.ts` takes
+62 to 82 ms alone in three runs (as vitest reports the file's tests).
+`add-entrypoint.test.ts` and growth's grid axis, run together, took
+8.7 s and 86.6 s at a load average of 2.7, against 8.5 s and 85.9 s
+for HEAD at a load average below 1; the handler's suite took 7.9 s
+beside `growth.test.ts`, `install-verticals.test.ts` and
+`converge.test.ts`. In one run of `CI=true pnpm test` the suite took
+280.8 s as vitest reports it (4 min 42 s wall), with 202 files and
+3,234 tests passing, one file and 21 tests more than HEAD's 201 and
+3,213, against 274.2 s (4 min 35 s wall) for HEAD, run on the same box
+just before it — HEAD's run starting at a load average of 1.3, this
+one at 3.5. Growth's axis took 113.0 s (HEAD's 104.8 s),
+`add-entrypoint.test.ts` 11.0 s (11.0 s), the render guard 10.8 s
+(8.9 s), the converge golden 53.2 s (50.6 s), the paths golden's four
+33.8, 42.8, 12.8 and 45.7 s (36.3, 45.0, 13.6 and 47.2 s; new, add,
+reapply, grow), and `converge-run.test.ts` 73 ms beside the rest.
+
+No template changed and no preview moves, so neither the `keel ui`
+browser suites nor any e2e suite was run. No CHANGELOG entry:
+`keel add entrypoint` is itself under `[Unreleased]`, and the one thing
+of it a user sees that moves, the order a proposal lists what it reads
+(below), moves on no shipped cell. `pnpm lint`, dependency-cruiser's
+`no-circular` among it (306 modules, 1,508 dependencies), and
+`pnpm typecheck` pass. `src/domain/core/AGENTS.md` names the run among the engine's
+modules, says what it does, and trims the handler's part of the
+drill-down note to what it keeps.
+
+Beyond the text above:
+
+- **The run takes its ports as fields of its inputs**
+  (`ConvergeDeps`), as `retrofitHarness` does, so a handler spreads
+  its deps into the call; `commitConverged(deps, run)` takes the four
+  the commit touches (`CommitDeps`). Neither imports
+  `handlers/deps.ts`, and the clock is read once, in the run.
+- **The twin the run ranks by is the target's preset**, with the
+  target's harness dial, not a field of the placement. `growthOf` finds
+  the twin by the `settingOf` reading `compositionOf` reads the
+  target's preset with, so the two agree wherever growth grows, and
+  `Placement` stays as S.2 recorded it (`rows/harness` in the converge
+  golden). A twin placement whose target reads back no registered
+  preset throws.
+- **The run reads the rest off the plan**: the re-rendered ids (its
+  `rerender` steps: growth's `rerender`, `keel add`'s `--refresh` and
+  `--reapply`), what ran (every step but a settled one), and whether
+  the harness runs (its `agent-harness` step ran: growth's
+  `rerender.length > 0`, `keel add`'s `ran.has('agent-harness')`).
+- **The proposals read the steps that install, in run order.**
+  Growth handed them the admitted set in the planner's order; the run
+  hands the same set in the twin's, the order they install in. A
+  proposal's `reads` lists the verticals it reads among them in that
+  order, which `RefreshProposal.reads` documents as install order, and
+  its note names them so. The two orders differ only where one recorded
+  vertical reads two verticals growth installs in an order other than
+  the planner's, which only a plugin's family can make: a reader of two
+  verticals its twin lists the other way round, grown, now names them in
+  the twin's order in `reads` and in the note, where HEAD named them in
+  the planner's. No shipped one does: distribution reads persistence
+  and observability, and no preset lists persistence. The run's order
+  is pinned in `converge-run.test.ts`: a deploy vertical declaring the
+  log before the metrics, the run installing the metrics first.
+- **Three things stay the caller's to say.** Whether the retrofit
+  replays the recorded contexts (`retrofit.contexts`): growth's run
+  replays none, as it did (`modules: []`), and `keel add`'s adoption
+  replays each, as it does, until S.5 reads them once. The notes
+  around the proposals (`notes.before`, `notes.after`): `keel add`
+  sets its notes of what was there before them, growth its admission
+  notes before and its relink note after. And the proposals' wording
+  (`proposeForLater`, `refreshProposalNote`'s `committed`, whatever the
+  dry run says): growth passes true, a later run's, as it always worded
+  them, dry run or not; `keel add` is to pass `!dryRun`, as it words
+  them today.
+- **The handler reads growth twice, and admits it twice.** `growthOf`
+  for its gates, its note, its subject and the files check; then
+  `convergeOf`, which reads `growthOf` and `admitGrowth` again, for the
+  plan, whose refusal is the planner's the handler returned before; and
+  `admitGrowth` once more for the admission notes, which the plan does
+  not carry. The times above show no cost that
+  stands out from the load.
+- **`entrypointReading` is unchanged.** It reads the plan's own pieces,
+  `admitGrowth` and `incomingOf`, as `convergeOf` does, and names the
+  verticals in `incomingOf`'s order, which the status reports;
+  `grownScope` is `growth.ts`' and unchanged.
+- **The goldens were held, not regenerated.** Each suite compares
+  every cell with its committed JSON and names each one that moved, as
+  `verify` runs it, rather than rewriting it under
+  `KEEL_UPDATE_GOLDEN=1`, and `git diff --exit-code` shows every golden
+  and known file as HEAD has it.
 
 ### S.4 — `keel add`, `--refresh` and `--reapply`, callers (M)
 

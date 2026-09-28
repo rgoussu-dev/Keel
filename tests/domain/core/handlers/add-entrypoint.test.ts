@@ -571,6 +571,42 @@ describe('keel add entrypoint', () => {
     }
   });
 
+  it('says first what the planner added for what the twin lacks, then the refreshes it proposes, then which linked projects to link again', async () => {
+    const reader = acmeVertical(
+      'acme-reader',
+      [acmeAdapter('acme-reader', 'main', ['lang.acme'], () => ({}))],
+      { reads: ['acme-obs'] },
+    );
+    // A twin that lists the observability but not the base it needs.
+    registry = registryOf([
+      {
+        origin: pluginOrigin('acme'),
+        verticals: [acmeSkeleton, acmeHarness, acmeNotes, acmeBase, acmeObservability, reader],
+        stacks: [
+          acmeStack('acme-cli', ['arch.cli'], [acmeSkeleton, acmeHarness, acmeNotes]),
+          acmeStack(
+            'acme-cli-http',
+            ['arch.cli', 'arch.server-http'],
+            [acmeSkeleton, acmeHarness, acmeNotes, acmeObservability],
+          ),
+        ],
+      },
+    ]);
+    await scaffold('acme-cli', { extraVerticals: ['acme-reader'] });
+    const sibling = path.join(root, 'front');
+    await fs.ensureDir(sibling);
+    await scaffold('acme-cli', {}, sibling);
+    expectOk(await mediator().dispatch(linkPeerCommand({ cwd, ref: '../front' })));
+
+    const report = expectOk(await grow('http', { dryRun: true }));
+
+    expect(report.notes).toEqual([
+      'added Acme base — needed by Acme obs',
+      "refresh proposed: Acme reader reads Acme obs, which it was rendered without — re-render it with 'keel add acme-reader --reapply'",
+      "the project linked at ../front still records what this one offered it before its HTTP server — 'keel link ../front' brings that record up to date",
+    ]);
+  });
+
   it('grows a plugin family into its twin byte for byte: what speaks of the entrypoints re-rendered, harness files recorded where the twin records them, what it lacks run before what the twin lists later', async () => {
     registry = acmeRegistry;
     await scaffold('acme-cli');
