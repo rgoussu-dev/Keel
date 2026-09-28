@@ -3,6 +3,7 @@ import type { ManifestV2, Vertical } from '../contract/composition.js';
 import type { Registry } from '../contract/ports/registry.js';
 import { DomainError } from '../kernel/result.js';
 import { addModuleInputs, CONTEXT_TAG } from './adapters/added-context.js';
+import { addedContextsOf } from './contexts.js';
 import { installVertical, type InstallVerticalInputs } from './install.js';
 import { missingHarnessContributorSentence } from './refusals.js';
 import { installedVertical } from './registry.js';
@@ -23,8 +24,12 @@ export type HarnessReplayScope = 'adopting' | 'complete';
 
 /**
  * Re-renders installed contributors non-interactively, collecting only
- * their declared harness elements. Each recorded context gets one
- * synthetic run; no domain file, action, tag or transient input persists.
+ * their declared harness elements. Each context `keel add module` added
+ * (`./contexts.ts` `addedContextsOf`) gets one synthetic run of keel's own
+ * `bounded-context` — the vertical that command runs, never one a
+ * registry lists — and the skeleton's and the peer's none, since they
+ * are `walking-skeleton`'s, replayed with it; no domain file, action,
+ * tag or transient input persists.
  */
 export async function retrofitHarness(
   inputs: Omit<InstallVerticalInputs, 'vertical'> & {
@@ -52,7 +57,7 @@ export async function retrofitHarness(
   };
   const scope = inputs.scope ?? 'adopting';
   for (const installed of inputs.manifest.verticals) {
-    if (installed.id === 'bounded-context') continue;
+    if (installed.id === boundedContextVertical.id) continue;
     if (installed.id === 'agent-harness' && scope === 'adopting') continue;
     const vertical = installedVertical(inputs.registry, installed.id);
     if (!vertical) {
@@ -66,15 +71,11 @@ export async function retrofitHarness(
     }
     await replay(vertical, inputs.manifest);
   }
-  const contexts = inputs.registry.vertical('bounded-context') ?? boundedContextVertical;
-  for (const module of inputs.manifest.modules) {
-    await replay(contexts, {
+  for (const context of addedContextsOf(inputs.manifest)) {
+    await replay(boundedContextVertical, {
       ...inputs.manifest,
       tags: [...new Set([...inputs.manifest.tags, CONTEXT_TAG])],
-      answers: {
-        ...inputs.manifest.answers,
-        ...addModuleInputs({ name: module.name, consumes: module.consumes ?? null }),
-      },
+      answers: { ...inputs.manifest.answers, ...addModuleInputs(context) },
     });
   }
 }

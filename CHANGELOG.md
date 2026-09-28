@@ -615,6 +615,27 @@ new` the terminal adds the way past it (move it aside, or start in
   is now refused when it loads (`keel.invalid-piece`), naming the
   plugin; rename the vertical.
 
+- **A plugin's own `bounded-context` is no longer replayed into the
+  agent harness.** `keel add module` runs keel's own `bounded-context`
+  vertical, whatever a plugin registers under that id, and
+  `keel add entrypoint` wires the contexts it added with that same
+  vertical. The harness replay behind `keel add agent-harness`,
+  `keel docs sync`, `keel docs check` and `keel add module`'s own
+  re-index of the root map read the plugin's instead, where one was
+  registered, and replayed it for every context the project records,
+  the skeleton's and the peer's included: `keel add agent-harness`
+  wrote a skill, hook or document section the plugin declared on it
+  for contexts it never scaffolded, and the root map gained index rows
+  for them — after `keel add module`, rows pointing at skills nothing
+  wrote. The replay now reads keel's own, once for each context
+  `keel add module` added and for no other. keel's own declares no
+  harness element, so no file of a project composed from keel's pieces
+  changes. `keel add module`'s re-index also reads the manifest
+  `keel docs sync` reads, without the context's transient
+  `modules.context` marker, so a vertical of yours whose adapters
+  require or exclude that tag is indexed there as a later sync indexes
+  it.
+
 - **A section keel adds to an existing README, an entry it adds to a
   build file's list, and what a later dev environment adds to the dev
   container land in keel's order.**

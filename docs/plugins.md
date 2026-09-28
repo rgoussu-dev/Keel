@@ -488,9 +488,14 @@ new entrypoint's newly matches. A context `keel add module` adds
 (`modules.context`) is keel's alone: that command runs keel's own
 `bounded-context`, whose adapters cover keel's families, so it refuses
 a project of yours, and growing replays that same vertical for each
-context it added. Where no adapter wires a context in, growth is
-refused as `keel.contexts-need-rewiring`, naming it. Where a project
-of your family can grow, a vertical of yours that only the missing
+context it added. So do `keel add agent-harness`,
+`keel docs sync|check` and `keel add module`'s own re-index of the
+root map when they replay each context's harness elements: a vertical
+of yours registered as `bounded-context` is never read there, so a
+skill, hook or document section it declares is neither written nor
+indexed. Where no adapter wires a context in, growth is refused as
+`keel.contexts-need-rewiring`, naming it. Where a project of your
+family can grow, a vertical of yours that only the missing
 entrypoint stops, and that the grown project takes — read with what
 growing installs and the tags those promote — is refused carrying
 `keel add entrypoint <word>` as its action, as keel's own are

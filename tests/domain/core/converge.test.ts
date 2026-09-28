@@ -562,7 +562,7 @@ describe('convergeOf', () => {
     const goCli = STACKS['go-cli']!;
     const modulith = scaffoldOf(goCli, { layout: MODULITH, modules: [SKELETON] });
 
-    it('wires one context by every adapter of keel’s bounded-context its tags match, and records the row last', () => {
+    it('wires one context by every adapter of keel’s bounded-context its tags match, as the one it adds, consuming what it names, and records the row last', () => {
       const plan = converged(
         convergeOf(shippedRegistry, modulith, {
           kind: 'module',
@@ -575,6 +575,7 @@ describe('convergeOf', () => {
         {
           name: 'orders',
           adapters: ['bounded-context/go-context', 'bounded-context/go-context-cli'],
+          adds: { consumes: 'greeting' },
         },
       ]);
       expect(plan.target).toMatchObject({
@@ -586,7 +587,7 @@ describe('convergeOf', () => {
       expect(plan.placement).toEqual({ rows: 'append', harness: 'run' });
     });
 
-    it('records the row once', () => {
+    it('records the row once, and wires the one it adds alone, consuming none where it names none', () => {
       const given = scaffoldOf(goCli, {
         layout: MODULITH,
         verticals: [...goCli.verticals.map(({ id }) => id), 'bounded-context'],
@@ -599,6 +600,9 @@ describe('convergeOf', () => {
         contexts: ['orders', 'shipping'],
         recorded: given.verticals.map(({ id }) => id),
       });
+      expect(plan.modules.map(({ name, adds }) => [name, adds])).toEqual([
+        ['shipping', { consumes: null }],
+      ]);
     });
   });
 

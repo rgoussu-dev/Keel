@@ -8,10 +8,10 @@
  * `keel add module` — is one operation run on a different request.
  * This is its reading, pure as `./planner.ts` and `./growth.ts` are:
  * nothing here runs, reads a file or is worded; `./converge-run.ts`
- * runs it. `keel add entrypoint` is its first caller (S.3), and `keel
- * add`, with `--refresh` and `--reapply`, its second (S.4); until
- * `keel add module` and `keel new` are (S.5 and S.6), it is the reading
- * their handlers make today, and
+ * runs it. `keel add entrypoint` is its first caller (S.3), `keel add`,
+ * with `--refresh` and `--reapply`, its second (S.4), and `keel add
+ * module` its third (S.5); until `keel new` is (S.6), it is the reading
+ * its handler makes today, and
  * `tests/domain/core/converge.golden.test.ts` records it on every cell
  * of the paths golden.
  *
@@ -57,7 +57,7 @@ import type { Registry } from '../contract/ports/registry.js';
 import type { Stack } from '../contract/stack.js';
 import { CONTEXT_TAG } from './adapters/added-context.js';
 import { PEER_CONTEXT_TAG } from './adapters/module-layout.js';
-import { contextsOf } from './contexts.js';
+import { addedContextsOf } from './contexts.js';
 import { presetScope, presetServicesOf, withoutHarness } from './dials.js';
 import {
   growthOf,
@@ -171,7 +171,7 @@ export interface Composition {
  * - `entrypoint` — `keel add entrypoint`: the entrypoint by its word or
  *   id, read by `growthOf`;
  * - `module` — `keel add module`: the context to add, and the one it
- *   consumes, which its adapters read from the inputs the caller seeds;
+ *   consumes, which its adapters read from the inputs the run seeds;
  * - `new` — `keel new`, run from a seed manifest (the preset's and the
  *   dials' tags, `projects`, `peers`, `services`, the scaffolded
  *   modules): the preset by id, the harness dial, the extras the user
@@ -239,6 +239,22 @@ export interface Placement {
 }
 
 /**
+ * A context the run wires, by a run of keel's own `bounded-context`
+ * installing {@link GrowthModule.adapters}: one `keel add module`
+ * added, which the manifest records with what it consumes and growth
+ * wires into a new assembly — or, with {@link adds}, the one `keel add
+ * module` adds, which the manifest records only once the run is over.
+ */
+export interface ConvergeModule extends GrowthModule {
+  /**
+   * Set on the context the run adds: the context it consumes, or null.
+   * It reads the answers the user supplied, in the command's mode, as
+   * a first install does; a recorded one replays as its add ran it.
+   */
+  readonly adds?: { readonly consumes: string | null };
+}
+
+/**
  * Why a request does not converge: growth's refusal of the entrypoint
  * (`growth`), or the planner's of the verticals it would install,
  * worded as both front doors word it (`plan`, `./plan-refusal.ts`).
@@ -256,11 +272,12 @@ export type ConvergePlan =
       /** One step per vertical, in run order. */
       readonly run: readonly ConvergeStep[];
       /**
-       * The contexts `keel add module` added that the run wires, each
-       * by a run of keel's own `bounded-context` with its adapters, in
-       * the order recorded, after every step.
+       * The contexts the run wires, each by a run of keel's own
+       * `bounded-context` with its adapters, after every step: those
+       * `keel add module` added, in the order recorded, or the one it
+       * adds.
        */
-      readonly modules: readonly GrowthModule[];
+      readonly modules: readonly ConvergeModule[];
       readonly placement: Placement;
     }
   | { readonly kind: 'refused'; readonly refusal: ConvergeRefusal };
@@ -347,7 +364,7 @@ export function convergeOf(
     case 'entrypoint':
       return entrypointOf(registry, manifest, request.word);
     case 'module':
-      return moduleOf(registry, manifest, request.name);
+      return moduleOf(registry, manifest, request);
     case 'new':
       return newOf(registry, manifest, request);
   }
@@ -602,9 +619,7 @@ function extrasInOrder(
 
 /** The contexts `keel add module` added to the project `manifest` records, by name. */
 function addedContexts(manifest: ManifestV2): readonly string[] {
-  return contextsOf(manifest)
-    .filter(({ marker }) => marker === CONTEXT_TAG)
-    .map(({ name }) => name);
+  return addedContextsOf(manifest).map(({ name }) => name);
 }
 
 /**
@@ -760,10 +775,14 @@ function entrypointOf(registry: Registry, manifest: ManifestV2, word: string): C
 /**
  * `keel add module`: one context, wired by keel's own `bounded-context`
  * — every adapter of it the project's tags match with the context's
- * marker, since none has run — its row recorded after every other the
- * first time.
+ * marker, since none has run — consuming the one the request names,
+ * its row recorded after every other the first time.
  */
-function moduleOf(registry: Registry, manifest: ManifestV2, name: string): ConvergePlan {
+function moduleOf(
+  registry: Registry,
+  manifest: ManifestV2,
+  request: Extract<ConvergeRequest, { kind: 'module' }>,
+): ConvergePlan {
   const adapters = matchingIds(
     boundedContextVertical,
     new Set([...effectiveTags(manifest), CONTEXT_TAG]),
@@ -772,9 +791,9 @@ function moduleOf(registry: Registry, manifest: ManifestV2, name: string): Conve
   const recorded = had.includes(BOUNDED_CONTEXT) ? had : [...had, BOUNDED_CONTEXT];
   return {
     kind: 'converges',
-    target: recording(registry, manifest, recorded, [...addedContexts(manifest), name]),
+    target: recording(registry, manifest, recorded, [...addedContexts(manifest), request.name]),
     run: [],
-    modules: [{ name, adapters }],
+    modules: [{ name: request.name, adapters, adds: { consumes: request.consumes } }],
     placement: APPENDED,
   };
 }

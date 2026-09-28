@@ -9683,7 +9683,7 @@ Beyond the text above:
   and still write the manifest's `updatedAt`, which the proof above
   shows two suites hold.
 
-### S.5 — `keel add module`, a caller, and one reading of the added contexts (M)
+### S.5 — `keel add module`, a caller, and one reading of the added contexts (M) ✅
 
 `add-module.ts` keeps what is its own:
 
@@ -9737,6 +9737,225 @@ No template changes, so no e2e suite runs.
 **Leaves out:** the plain `Error`s some adapters throw for an anchor
 they cannot find, and the formatter a JVM context lands without (the
 Backlog's). Both are the adapters', not the operation's.
+
+**Landed as the command's run on converge**, in one commit, with no
+golden moved. `handlers/add-module.ts` goes from 420 lines to 411. It
+reads its plan with `convergeOf(…, { kind: 'module', name, consumes })`
+and hands it to `converge`, then records the context after the others,
+re-indexes the root map and rehashes what that rewrote, as before, and
+commits through `commitConverged`. Its own `installVertical` call, its
+seeding and stripping of the add-module inputs and its copy of the
+commit tail go. The plan's contexts are `ConvergeModule`s
+(`converge.ts`): growth's `GrowthModule`, and, on the one
+`keel add module` adds, `adds`, with what it consumes. `wireModules`
+(`converge-run.ts`, 534 lines to 551) reads `adds`: that context
+consumes what the plan says and reads the answers supplied, in the
+caller's mode, where a recorded one replays as before; and it returns
+the answers each wiring read, so the caller's check sees them. The one
+reading of the added contexts is `contexts.ts`' new `addedContextsOf`
+(40 lines to 55): `contextsOf`'s `modules.context` contexts, each
+consuming what its record says. Growth (459 lines to 457), the
+reading's private `addedContexts` and the retrofit read it, where each
+filtered `contextsOf` for itself. `harness-retrofit.ts` replays keel's
+own `bounded-context` once for each, and nothing for the skeleton or
+the peer.
+
+- **Held byte for byte**, each suite against its committed JSON under
+  `CI=true`, and `git diff --exit-code` over every golden and known
+  file after:
+  - the four paths goldens (689, 1,326, 731 and 690 cells), among them
+    the 200 `keel add module` cells, and the 618 cells of the fourth
+    and 143 of the second that run after a module history;
+  - `converge.golden.json` (3,436), whose 200 module cells are run and
+    held against their reading, as S.2 landed them;
+  - `growth.golden.json` (360, 144 after a history);
+  - `shared-files.golden.json` (498, its 100 history cells among them);
+  - the agent-harness and run-skill goldens.
+
+  The grid's four axes pass: growth's I10 on all 320 cells, 128 of them
+  after a history, and brownfield's I9 on its 28 `keel add module
+orders` cells. The known files are as they were: brownfield's
+  `{"I5": {}}`, `{}` for the others. `add-entrypoint.test.ts`' 47
+  cases, `agent-harness.test.ts`' 18, `docs.test.ts`' 10, the
+  project-status, preview-answers, legacy-answers and harness-generation
+  suites, and the five context adapters' suites pass unchanged.
+
+- **What moved in the tests**, each the step's own:
+  - `converge.test.ts`: the module plan carries `adds`, consuming
+    `greeting`, and `null` where nothing is named.
+  - `converge-run.test.ts`: the retrofit's two cases went with the
+    family's own `bounded-context`, whose skill they wrote. One now
+    holds, and is named for, an absence: the retrofit writes that skill
+    under neither caller setting (`retrofit.contexts` true or false),
+    on a project recording the skeleton and one added context. The
+    other held an element no adapter of the twin ranks realized and
+    recorded last, and S.5 leaves no context element to hold it with.
+    A draft vertical stands in: its one adapter excludes a tag a later
+    vertical of the run promotes, so the run writes its skill, and the
+    twin, reading the tags the run leaves, ranks it nothing.
+  - `agent-harness-grown.test.ts`: adoption on a grown Quarkus
+    modulith, on a registry listing its own `bounded-context` with a
+    skill and a team-notes region on each context's shell, now writes
+    neither for any of the four contexts, the skeleton's `greeting`
+    included. The notes stay as the user wrote them, and persistence's
+    replayed skill is still written and recorded. A second case, on
+    the same registry, adds `ordering` to a harnessed modulith, then
+    checks and syncs the root map: no `inspect-` row after the add or
+    the sync, no drift, the notes as written, and no entry under
+    `.claude/skills/inspect-`. Run on HEAD's sources, the add wrote
+    rows for `/inspect-greeting` and `/inspect-ordering`, skills
+    nothing wrote. A third, the marker case, from the second review,
+    adds `orders` to `go-cli`'s modulith on a registry whose
+    `code-style` has one more adapter, requiring `modules.context` and
+    writing a skill: the root map has no row for it, and the check
+    reports no drift. With the re-index reading the marker, the add
+    wrote a `/marked` row.
+  - `add-module.test.ts` gains two cases on `go-cli`'s modulith, the
+    run past the gates. In the 11th, the adapters the report resolves
+    are the plan's, and the root map is among its changes; nothing is
+    noted or proposed. The row is recorded once and last, and each
+    context after the others, `orders` consuming `greeting` and
+    `shipping` none, at the pinned instant, with the tags and answer
+    keys as they were, and the root map's entries hashing what is on
+    disk. In the 12th, on a clock a second later each time it is read,
+    the context's `installedAt`, the row's and the manifest's
+    `updatedAt` are one instant.
+
+**The proof** that the suites catch what they are for, each tried in a
+scratch edit and undone byte for byte, run against the four suites
+above, `add-entrypoint.test.ts`, `agent-harness.test.ts`,
+`docs.test.ts`, `preview-answers.test.ts` and the five context
+adapters' suites (234 cases). Each failed exactly the cases named:
+
+- the retrofit reading a registry's `bounded-context` first, as HEAD
+  did: the retrofit's case, the adoption's, and the root map's on that
+  registry;
+- the context the run adds consuming what the record says, which is
+  nothing: 37 cases, across the five context suites and
+  `add-entrypoint.test.ts`;
+- the handler's report keeping the run's changes, from before the
+  re-index: the 11th case;
+- an element no adapter ranks realized first: the stand-in case;
+- the handler not rehashing what the re-index wrote: 11 cases, the
+  11th, four of `agent-harness.test.ts`' provenance cases (the root map
+  `keel add module` re-indexes, on quarkus-rest, go-http, rust-http and
+  ts-http) and six of `add-entrypoint.test.ts`' module-history cases,
+  and, run apart, `paths-grow.golden.test.ts`' comparison;
+- the run reading the clock afresh rather than the handler's instant:
+  the 12th case;
+- the re-index reading the manifest with the context marker, as HEAD
+  did: the marker case, and, outside the goldens, the grid and e2e,
+  no other of the 167 files' 2,919 cases.
+
+Five edits fail nothing, and cannot: the retrofit replaying no context
+at all; `converge` ignoring `retrofit.contexts`; the retrofit
+replaying every recorded module through keel's own `bounded-context`,
+the skeleton and the peer included, as HEAD did where no registry
+listed one; the added context's wiring without the supplied answers
+and the mode; and the run dropping the answers that wiring read. No
+adapter of keel's `bounded-context` declares a harness element or asks
+a question, so each writes what HEAD wrote. The first three are the
+retrofit's replay of the added contexts, which the text asks for and
+which writes nothing today; the last two, the command's mode. They are
+kept so that a context adapter that declares an element or asks a
+question is replayed, and answered, as a first install is. Deleting
+the replay and the setting instead, since no suite can hold them,
+would depart from the text's "`contextsOf` … serves … the harness
+retrofit", so it is left to the plan.
+
+**Times**, under `CI=true` on four cores, with another checkout's suite
+running beside both runs. In one run of `CI=true pnpm test` the suite
+took 350.0 s as vitest reports it (5 min 51 s wall), with 202 files
+and 3,235 tests passing, one test more than HEAD's 3,234. HEAD, run on
+the same box just before it, took 351.8 s (5 min 53 s wall). HEAD's run
+started at a load average of 2.0 and passed 9 during it; this one
+started at 5.2 and ended at 10.4. Beside the rest, with HEAD's in
+brackets:
+
+- growth's axis took 107.9 s (133.8 s);
+- the converge golden 68.8 s (66.5 s);
+- the paths golden's four 41.3, 56.1, 16.1 and 52.4 s (35.3, 44.7, 14.6
+  and 46.4 s; new, add, reapply, grow);
+- `shared-files.golden.test.ts` 48.8 s (40.7 s);
+- `add-module.test.ts` 1.75 s (1.53 s).
+
+Alone, in three runs, `add-module.test.ts` took 0.95 to 1.11 s,
+`agent-harness-grown.test.ts` 0.84 to 1.82 s, `converge-run.test.ts`
+94 to 215 ms and `converge.test.ts` 83 to 125 ms. No difference stands
+out from the load. Run again after the review's two new cases, the
+suite took 291.7 s (4 min 52 s wall), 202 files and 3,237 tests
+passing, from a load average of 4.4 to 4.7: growth's axis 106.4 s, the
+converge golden 56.0 s, the paths goldens 32.4, 43.5, 13.4 and 42.2 s,
+`shared-files.golden.test.ts` 38.1 s, `add-module.test.ts` 1.39 s and
+`agent-harness-grown.test.ts` 1.44 s. After the second review's marker
+case, it took 343.0 s (5 min 44 s wall), 202 files and 3,238 tests
+passing, from a load average of 6.0 to 4.8: growth's axis 123.0 s, the
+converge golden 70.6 s, the paths goldens 36.2, 49.1, 14.7 and 47.1 s,
+`shared-files.golden.test.ts` 42.2 s, `add-module.test.ts` 1.34 s and
+`agent-harness-grown.test.ts` 2.84 s.
+
+No template changed and no preview moves, so neither the `keel ui`
+browser suites nor any e2e suite was run. `pnpm lint`,
+dependency-cruiser's `no-circular` among it (306 modules, 1,509
+dependencies: one more, net — the handler's imports of `converge.ts`
+and `converge-run.ts` and the retrofit's of `contexts.ts`, less the
+handler's of `actions.ts` and the run's of `growth.ts`), and
+`pnpm typecheck` pass. The CHANGELOG entry is under _Changed_.
+`src/domain/core/AGENTS.md` names the command a caller and says what
+the retrofit reads, and that it writes nothing today.
+`docs/composition.md` (the harness adoption),
+`docs/verticals/agent-harness.md` (adopting it later) and
+`docs/plugins.md` (growing) say which `bounded-context` the replay
+reads.
+
+Beyond the text above:
+
+- **No flag for the proposals.** The run still reads them, over the
+  steps it installs and the tags it leaves. A module plan installs no
+  step, and keel's `bounded-context` declares no promotion, which
+  `installVertical` refuses an adapter to make undeclared. So the run
+  proposes nothing by construction, and the 11th case holds it.
+  `proposeForLater` is passed true, a later run's words, since the
+  command takes no `--refresh`.
+- **The context the run adds is marked on the plan**, by `adds`, rather
+  than handed to the run already recorded. The manifest records it
+  after the run, as before: the handler records it. The run's one
+  finalize projects the index over the manifest's modules, and HEAD's
+  install read them without the new one. `adds` is a field the converge
+  golden's module cells do not print, so the golden does not move.
+- **One instant for the run and the record.** The handler reads the
+  clock once and hands the run a clock that stays at that instant, so
+  the context's `installedAt` and the manifest's `updatedAt` are one
+  timestamp, as they were, and the 12th case holds it. The run reads
+  its clock once, as S.3 has it.
+- **The re-index reads the manifest the run leaves**, with the
+  add-module inputs and the context marker stripped. HEAD re-indexed
+  over the manifest still holding them. No vertical but
+  `bounded-context` reads either, so no byte moves on keel's registry,
+  and a plugin's vertical whose adapters require or exclude the marker
+  is now indexed there as `keel docs sync` indexes it. The CHANGELOG
+  entry says so, and the marker case holds it.
+- **The handler throws where the reading of one context refuses**,
+  which it never does: `moduleOf` has no refusal, and the handler's
+  gates are the command's refusals.
+- **`retrofit.contexts` stays the caller's.** Since the retrofit reads
+  keel's own `bounded-context`, whose adapters declare no harness
+  element, the setting moves no byte on any registry, and no suite can
+  tell its two values apart. It stays so that a context adapter that
+  declares one is replayed by an adoption, and not a second time by
+  growth, which wires the contexts itself.
+- **S.4's re-render of the adopted harness reads so too.** S.4, landed
+  beside this step, went on in `agent-harness-grown.test.ts`' adoption
+  case to re-render the harness it adopted, over the greeting
+  context's skill edited, and held the skill and each context's region
+  put back. Neither is written now, so the re-render edits the
+  persistence skill instead, which the retrofit replays as a recorded
+  vertical that did not run, and holds it put back byte for byte, no
+  `inspect-<context>` skill written, the team's notes left as the
+  user's prose, and the domain, the deferred actions and the modules as
+  they were, under `--reapply` and `--refresh agent-harness` alike. A
+  retrofit that replays no recorded context passes it, as S.4 says it
+  would where no context declares a harness element.
 
 ### S.6 — `keel new`, a caller from its seed manifest (L)
 

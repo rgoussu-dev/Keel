@@ -5,9 +5,11 @@
  * caller, and the growth grid holds that caller to its twin byte for
  * byte (I10); this holds each part of the run on a family small enough
  * to read: each posture, both placements, the harness realized in each
- * order, the retrofit with and without the recorded contexts, a
- * conflict read as a refused re-render naming what re-rendered in the
- * order the project records it, the caller's answer check, the
+ * order, an element the twin ranks nothing of, the retrofit with and
+ * without the recorded contexts — which never replays the family's
+ * `bounded-context` — a conflict read as a refused re-render naming
+ * what re-rendered in the order the project records it, the caller's
+ * answer check, the
  * refresh proposals — what they read, over what, in the caller's
  * words — and the commit, its deferred actions run for real.
  *
@@ -17,8 +19,9 @@
  * carrying the first three, and the CLI + HTTP one all four, the
  * observability before the notes — beside extras: metrics, a log whose
  * patch appends a line on every application, a deploy vertical that
- * reads both, a vertical writing a file the skeleton writes, and a
- * context vertical of the family's own, under the id `keel add module`
+ * reads both, a vertical writing a file the skeleton writes, a draft
+ * whose one adapter a later vertical's tag rules out, and a context
+ * vertical of the family's own, under the id `keel add module`
  * records. A project is scaffolded by the run itself onto an empty
  * manifest, and committed; each case varies the plan or the manifest
  * after it.
@@ -89,6 +92,8 @@ const GUIDE = '.claude/skills/acme-guide/SKILL.md';
 const NOTES = '.claude/skills/acme-notes/SKILL.md';
 const OBSERVE = '.claude/skills/acme-observe/SKILL.md';
 const ORDERS = '.claude/skills/acme-context-orders/SKILL.md';
+const DRAFT = '.claude/skills/acme-draft/SKILL.md';
+const FINAL: Tag = 'acme.final';
 
 function deferring(description: string) {
   return { id: description, description, run: () => Promise.resolve() };
@@ -225,8 +230,8 @@ const log = vertical('acme-log', [
 
 /**
  * The family's own context vertical, under the id `keel add module`
- * records: the harness retrofit replays each recorded context through
- * it, and its adapter writes a skill naming the context.
+ * records, its adapter writing a skill naming the context: the harness
+ * retrofit never replays it, as that command never runs it.
  */
 const context = vertical(
   'bounded-context',
@@ -242,6 +247,33 @@ const context = vertical(
     })),
   ],
   { skills: ['acme-context-orders'] },
+);
+
+/**
+ * Its one adapter excludes the tag `final` promotes: run before it, it
+ * writes its skill, and on the tags the run leaves it resolves nowhere,
+ * so the twin's order ranks it nothing.
+ */
+const draft = vertical(
+  'acme-draft',
+  [
+    adapter(
+      'acme-draft',
+      'main',
+      ['lang.acme'],
+      () => ({
+        skills: [{ name: 'acme-draft', description: 'Draft it.', body: 'Draft it first.' }],
+      }),
+      { covers: [], predicate: { requires: ['lang.acme'], excludes: [FINAL] } },
+    ),
+  ],
+  { dimensions: [], skills: ['acme-draft'] },
+);
+
+const final = vertical(
+  'acme-final',
+  [adapter('acme-final', 'main', ['lang.acme'], () => ({ tagsAdd: [FINAL] }))],
+  { promotes: [FINAL] },
 );
 
 /** Writes the file the CLI bootstrap writes. */
@@ -264,7 +296,7 @@ function preset(id: string, entrypoints: readonly Tag[], verticals: readonly Ver
 const family = registryOf([
   {
     origin: pluginOrigin('acme'),
-    verticals: [skeleton, harness, notes, obs, metrics, deploy, log, clash, context],
+    verticals: [skeleton, harness, notes, obs, metrics, deploy, log, clash, draft, final, context],
     stacks: [
       preset('acme-cli', ['arch.cli'], [skeleton, harness, notes]),
       preset('acme-cli-http', ['arch.cli', HTTP], [skeleton, harness, obs, notes]),
@@ -588,33 +620,46 @@ describe('converge: the harness, realized in the placement’s order', () => {
 });
 
 describe('converge: the harness retrofit', () => {
-  it('replays the contexts the project records where the caller says so, and none where its run wires them itself', async () => {
+  it('never replays the bounded-context a registry lists, whether the caller replays the contexts or not', async () => {
     const world = new World();
     const scaffolded = await world.scaffold([skeleton, harness, notes]);
-    const stored = { ...scaffolded, modules: [{ name: 'orders', installedAt: NOW, seam: true }] };
+    const stored: ManifestV2 = {
+      ...scaffolded,
+      verticals: [...scaffolded.verticals, { id: 'bounded-context', installedAt: NOW }],
+      modules: [
+        { name: 'greeting', installedAt: NOW, seam: true },
+        { name: 'orders', installedAt: NOW, seam: true },
+      ],
+    };
     const plan = planOf(stored, [rerender(harness)]);
 
-    const adopting = ok(await world.run(stored, plan, { retrofit: { contexts: true } }));
-    expect(changed(adopting.report)).toContain(`create ${ORDERS}`);
-    expect(targets(adopting.manifest)).toEqual([GUIDE, NOTES, ORDERS]);
-
-    const growing = ok(await world.run(stored, plan, { retrofit: { contexts: false } }));
-    expect(growing.tree.exists(ORDERS)).toBe(false);
-    expect(targets(growing.manifest)).toEqual([GUIDE, NOTES]);
+    // An absence check alone: keel's own `bounded-context`, which the
+    // setting replays or not, declares no harness element, so the two
+    // settings write the same.
+    for (const contexts of [true, false]) {
+      const run = ok(await world.run(stored, plan, { retrofit: { contexts } }));
+      expect(changed(run.report)).not.toContain(`create ${ORDERS}`);
+      expect(run.tree.exists(ORDERS)).toBe(false);
+      expect(targets(run.manifest)).toEqual([GUIDE, NOTES]);
+    }
   });
+});
 
-  it('realizes and records a context’s element, which the twin ranks nothing of, after every ranked one', async () => {
+describe('converge: an element the twin ranks nothing of', () => {
+  it('is realized and recorded after every ranked one: an adapter that ran and that the tags the run leaves resolve nowhere', async () => {
     const world = new World();
-    const scaffolded = await world.scaffold([skeleton, harness, notes]);
-    const stored = { ...scaffolded, modules: [{ name: 'orders', installedAt: NOW, seam: true }] };
+    const stored = await world.scaffold([skeleton, harness, notes]);
 
     const run = ok(
-      await world.run(stored, planOf(stored, [rerender(harness)], AT_TWIN), {
-        retrofit: { contexts: true },
-      }),
+      await world.run(
+        stored,
+        planOf(stored, [rerender(harness), install(draft), install(final)], AT_TWIN),
+        { retrofit: { contexts: false } },
+      ),
     );
 
-    expect(targets(run.manifest)).toEqual([GUIDE, NOTES, ORDERS]);
+    expect(changed(run.report)).toContain(`create ${DRAFT}`);
+    expect(targets(run.manifest)).toEqual([GUIDE, NOTES, DRAFT]);
   });
 });
 

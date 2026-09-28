@@ -772,12 +772,19 @@ as an edit until a run next writes that document.
 Brownfield `keel add agent-harness` re-renders recorded contributors
 non-interactively, including the recorded values of repeat questions,
 collecting only their harness declarations. Domain files
-and deferred actions are untouched. The transient `bounded-context`
-vertical is replayed once per manifest module with synthetic add-module
-inputs, which are never persisted. The module record retains its `consumes`
-peer so replay preserves the context's dependency; older records without
-that optional field replay without a consumer. An unavailable plugin contributor
-refuses the adoption before anything is committed.
+and deferred actions are untouched. keel's own `bounded-context` — the
+vertical `keel add module` runs, never one a plugin registers under
+that id — is replayed once per context that command added, with
+synthetic add-module inputs, which are never persisted; the skeleton's
+context and the peer's are `walking-skeleton`'s, replayed with it. The
+module record retains its `consumes` peer, which the replay seeds so a
+context's harness elements would read its dependency as its first
+install did; older records without that optional field replay without
+a consumer. keel's own context adapters declare no harness element, so
+today that replay writes nothing and nothing depends on the peer it
+seeds. `keel add module`'s re-index of the root map, `keel docs sync`
+and `keel docs check` replay the same way. An unavailable plugin
+contributor refuses the adoption before anything is committed.
 
 See the [per-contributor catalog](verticals/agent-harness.md#per-contributor-catalog)
 for ownership, currently shipped elements and planned seams.

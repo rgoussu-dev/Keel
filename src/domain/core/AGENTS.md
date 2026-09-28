@@ -273,17 +273,18 @@ command's own answer, what it would install or why it would refuse
 every path that installs or re-renders verticals is to call (roadmap
 S): pure as `planner.ts` and `growth.ts` are. Its reading
 (`compositionOf`, `referenceOrder`, `convergeOf`) is
-`keel add entrypoint`'s since S.3 and `keel add`'s — `--refresh` and
-`--reapply` with it — since S.4, run by `converge-run.ts` (below);
-S.5 and S.6 make the other paths its callers. `compositionOf` reads
+`keel add entrypoint`'s since S.3, `keel add`'s — `--refresh` and
+`--reapply` with it — since S.4, and `keel add module`'s since S.5, run
+by `converge-run.ts` (below); S.6 makes `keel new` its caller.
+`compositionOf` reads
 what a manifest already says `keel new` was given, with no field
 recorded for it (DS2): the preset the drill-down places it on, on the
 setting of its dials the tags record — `growth.ts`' `settingOf`, how
 growth reads a twin — the harness by whether it is recorded, the
 extras as what is recorded beyond the preset, and the contexts
-`keel add module` added (`contexts.ts`' `contextsOf`, the one reading
-of them, a leaf both modules import, since `converge.ts` imports
-`growth.ts` and never the reverse). A monorepo service is read by its
+`keel add module` added (`contexts.ts`' `addedContextsOf`, the one
+reading of them, a leaf both modules and the harness retrofit import,
+since `converge.ts` imports `growth.ts` and never the reverse). A monorepo service is read by its
 preset's repository-placed verticals it does not record; a product's
 service by the links `keel new` of the product made (`peers`, by path)
 and what the product gives it of its own accord (`given`,
@@ -314,8 +315,9 @@ pass over its steps, each in its posture, then each context it wires
 (`wireModules`); the caller's exact answer check (`check`), after the
 run and before the harness pass, where both install handlers ran it,
 so the same refusal wins; where the harness runs, the retrofit of what
-did not run — under the caller's command line, the recorded contexts
-replayed or none — and the restamp; one `finalizeHarness`, the buffer
+did not run — under the caller's command line, the contexts `keel add
+module` added replayed, by keel's own `bounded-context`, or none — and
+the restamp; one `finalizeHarness`, the buffer
 realized in the placement's order (the twin's for growth, where each
 adapter ranks by where it runs in the twin, whose preset is the
 target's); the record at the placement (`twinOrder`, `atRank`,
@@ -337,10 +339,32 @@ and the early answer check — and hands `convergeOf`'s `add` or
 recorded contexts replayed where the harness runs, adopted or
 re-rendered, and its admission and D4 notes before the proposals,
 worded as this run could take them up under `--dry-run`
-(`proposeForLater: !dryRun`). `keel add module` and `keel new` keep
-their own tails until S.5 and S.6 make them callers.
-`tests/domain/core/converge-run.test.ts` holds each part on a fixture
-family.
+(`proposeForLater: !dryRun`). `keel new` keeps its own tail until S.6
+makes it a caller. `tests/domain/core/converge-run.test.ts` holds each
+part on a fixture family.
+
+`keel add module` is the run's caller since S.5. `handlers/add-module.ts`
+keeps the name, the seven refusals (`moduleRefusal` among them),
+`--consumes` and the generation gate, and hands `convergeOf`'s reading
+of one context to the run. `wireModules`, the replay that wires a grown
+assembly's contexts, wires it too: every adapter of keel's
+`bounded-context` the tags match, and, as the context the run adds
+(`ConvergeModule.adds` — the manifest records it only after the run),
+consuming what the request names and reading the answers supplied, in
+the command's mode. One Tree, one ownership, one harness buffer,
+finalized once; the vertical's row appended the first time; no
+proposal, since a context installs no vertical and promotes no tag.
+The handler then records the context after the others, re-indexes the
+root map (the full projection, merged, over the manifest the run
+leaves), rehashes what that rewrote, and commits through
+`commitConverged`. `contexts.ts`' `addedContextsOf` is the one reading
+of the added contexts — growth's, the reading's and the harness
+retrofit's: `harness-retrofit.ts` replays each context `keel add
+module` added through keel's own `bounded-context`, never one a
+registry lists, and neither the skeleton nor the peer, whose harness
+elements are `walking-skeleton`'s. No adapter of keel's
+`bounded-context` declares a harness element, so today that replay
+writes nothing and no suite can see it run.
 
 **The stack presets are data.** `stack-presets.json`, because nothing in
 a `Stack` is code — `tags` and `projects` are strings and every other

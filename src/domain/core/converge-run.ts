@@ -2,21 +2,24 @@
  * The converge run (roadmap S.3): a {@link ConvergePlan} that
  * `./converge.ts` `convergeOf` read, staged onto a Tree — and nothing
  * committed. `./converge.ts` stays the pure reading; this is the one
- * run of it, the tail `keel add` and `keel add entrypoint` each wrote
- * out for themselves, and {@link commitConverged} the one commit after
- * it. `keel add entrypoint` is its first caller (S.3), and `keel add`
- * — `--refresh` and `--reapply` with it — its second (S.4); `keel add
- * module` and `keel new` become callers in S.5 and S.6.
+ * run of it, the tail `keel add`, `keel add entrypoint` and `keel add
+ * module` each wrote out for themselves, and {@link commitConverged}
+ * the one commit after it. `keel add entrypoint` is its first caller
+ * (S.3), `keel add` — `--refresh` and `--reapply` with it — its second
+ * (S.4), and `keel add module` its third (S.5); `keel new` becomes a
+ * caller in S.6.
  *
  * **The run.** One `installVerticals` pass over the plan's steps, each
  * in its posture — installed whole, installed in part (`only`),
  * re-rendered (`rerender`), or replayed for its deferred actions alone
  * (`actionsOnly`) — then each context the plan wires, by a run of
  * keel's own `bounded-context` of its own, in the order recorded
- * ({@link ConvergePlan}'s `modules`). Then the caller's exact answer
- * check (`check`): after the run, since only the staged run knows
- * which adapters resolved and which answers they read, and before the
- * harness pass, so its refusal wins over one the pass would make.
+ * ({@link ConvergePlan}'s `modules`), the one `keel add module` adds
+ * reading the answers supplied, in the caller's mode (S.5). Then the
+ * caller's exact answer check (`check`): after the run, since only the
+ * staged run knows which adapters resolved and which answers they
+ * read, and before the harness pass, so its refusal wins over one the
+ * pass would make.
  *
  * **The harness.** The run fills one buffer: what ran put its
  * declarations in it as it installed; where the harness itself ran,
@@ -63,10 +66,9 @@ import type { TreeFactory } from '../contract/ports/tree.js';
 import { runActions, type RunActionsInputs } from './actions.js';
 import { addModuleInputs, CONTEXT_TAG, withoutAddModuleInputs } from './adapters/added-context.js';
 import { ContributionConflictError, newOwnership, type HarnessContribution } from './apply.js';
-import { placed, type Composition, type ConvergePlan } from './converge.js';
+import { placed, type Composition, type ConvergeModule, type ConvergePlan } from './converge.js';
 import { withoutHarness } from './dials.js';
 import { workingTreeDiffs } from './diff.js';
-import type { GrowthModule } from './growth.js';
 import { retrofitHarness } from './harness-retrofit.js';
 import {
   finalizeHarness,
@@ -133,10 +135,11 @@ export interface ConvergeInputs extends ConvergeDeps {
    * The harness retrofit, where the harness runs: `line`, the
    * command line a refusal of a recorded vertical nothing registered
    * provides names to re-run (`./harness-retrofit.ts`; absent, `keel
-   * add agent-harness`), and whether it replays the contexts the
-   * project records, as an adoption of the harness does. Growth's run
-   * replays none: it wires the contexts `keel add module` added
-   * itself, and the skeleton and the peer are `walking-skeleton`'s.
+   * add agent-harness`), and whether it replays the contexts `keel add
+   * module` added, by keel's own `bounded-context`, as an adoption of
+   * the harness does. Growth's run replays none: it wires them itself.
+   * The skeleton and the peer are `walking-skeleton`'s, which the
+   * retrofit never replays as contexts.
    */
   readonly retrofit: { readonly line?: string; readonly contexts: boolean };
   /**
@@ -235,17 +238,22 @@ export async function converge(inputs: ConvergeInputs): Promise<Result<Converged
       now: () => now,
       apply: 'install',
     });
-    staged = await wireModules(run, plan.modules, {
-      ...ports,
-      vertical: boundedContextVertical,
-      tree,
-      owners,
-      harness,
-      mode: 'non-interactive',
-      cwd,
-      now: () => now,
-      apply: 'install',
-    });
+    staged = await wireModules(
+      run,
+      plan.modules,
+      {
+        ...ports,
+        vertical: boundedContextVertical,
+        tree,
+        owners,
+        harness,
+        mode: 'non-interactive',
+        cwd,
+        now: () => now,
+        apply: 'install',
+      },
+      { supplied: inputs.answers, mode: inputs.interactive ? 'interactive' : 'non-interactive' },
+    );
     const refusal = inputs.check?.(staged) ?? null;
     if (refusal !== null) return err(refusal);
     if (harnessRuns) {
@@ -355,45 +363,54 @@ export async function commitConverged(deps: CommitDeps, run: Converged): Promise
 }
 
 /**
- * `result`, the run so far, with each context `keel add module` added
- * wired in (`modules`, in the order the manifest records them: a
- * context's wiring calls the wiring of the one it consumes) as that
- * command ran it, now on the manifest the run left: its vertical,
- * `inputs.vertical`, with the context's marker and inputs seeded — what
- * it consumes read off the record — installing only the adapters
- * `modules` names, and the inputs stripped after. Onto the run's tree,
- * ownership and harness buffer, after every step, where one run's own
- * history adds them.
+ * `result`, the run so far, with each context of `modules` wired in, in
+ * their order — those `keel add module` added in the order the manifest
+ * records them, since a context's wiring calls the wiring of the one it
+ * consumes — as that command runs it, now on the manifest the run left:
+ * its vertical, `inputs.vertical`, with the context's marker and inputs
+ * seeded, installing only the adapters the plan names, and the inputs
+ * stripped after. A recorded context replays as its add ran it, what it
+ * consumes read off the record; the one the run adds
+ * ({@link ConvergeModule.adds}), which the manifest records only after
+ * the run, consumes what the plan says and reads `adding`'s supplied
+ * answers in its mode. Onto the run's tree, ownership and harness
+ * buffer, after every step, where one run's own history adds them.
  */
 async function wireModules(
   result: InstallVerticalResult,
-  modules: readonly GrowthModule[],
+  modules: readonly ConvergeModule[],
   inputs: Omit<InstallVerticalInputs, 'manifest' | 'only' | 'supplied'>,
+  adding: Required<Pick<InstallVerticalInputs, 'supplied' | 'mode'>>,
 ): Promise<InstallVerticalResult> {
   let manifest = result.manifest;
   const actions = [...result.applyResult.actions];
   const adapters = [...result.adapters];
+  const reads = [...result.reads];
   for (const module of modules) {
     const recorded = manifest.modules.find((each) => each.name === module.name);
-    const context = { name: module.name, consumes: recorded?.consumes ?? null };
+    const consumes =
+      module.adds === undefined ? (recorded?.consumes ?? null) : module.adds.consumes;
     const wired = await installVertical({
       ...inputs,
+      ...(module.adds === undefined ? {} : adding),
       manifest: {
         ...manifest,
         tags: [...manifest.tags, CONTEXT_TAG].sort(),
-        answers: { ...manifest.answers, ...addModuleInputs(context) },
+        answers: { ...manifest.answers, ...addModuleInputs({ name: module.name, consumes }) },
       },
       only: new Set(module.adapters),
     });
     manifest = withoutAddModuleInputs(wired.manifest);
     actions.push(...wired.applyResult.actions);
     adapters.push(...wired.adapters);
+    reads.push(...wired.reads);
   }
   return {
     ...result,
     manifest,
     applyResult: { ...result.applyResult, actions },
     adapters,
+    reads,
   };
 }
 

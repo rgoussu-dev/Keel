@@ -59,7 +59,7 @@ import { CONTEXT_TAG } from './adapters/added-context.js';
 import { emitsFor } from './adapters/context-support.js';
 import { PEER_CONTEXT_TAG } from './adapters/module-layout.js';
 import { assemblyRefusal, conflictsOf, wouldViolate } from './compatibility.js';
-import { contextsOf, type RecordedContext } from './contexts.js';
+import { addedContextsOf, contextsOf, type RecordedContext } from './contexts.js';
 import { harnessActivatedBy, peerContextOffered, piecesOf, withoutHarness } from './dials.js';
 import { acquirableIn, matchingIds, plan, tagsAfter, type PlanScope } from './planner.js';
 import type { UncoverableEntrypointReason } from './refusals.js';
@@ -268,9 +268,7 @@ export function growthOf(registry: Registry, manifest: ManifestV2, word: string)
   const wiring = matchingIds(boundedContextVertical, new Set([...after, CONTEXT_TAG])).filter(
     (id) => !wired.includes(id),
   );
-  const modules = contextsOf(manifest)
-    .filter(({ marker }) => marker === CONTEXT_TAG)
-    .map(({ name }) => ({ name, adapters: wiring }));
+  const modules = addedContextsOf(manifest).map(({ name }) => ({ name, adapters: wiring }));
   // The agent harness is a dial: a project scaffolded without it is
   // the twin scaffolded without it.
   const dialed = has.has(HARNESS) ? twin : withoutHarness(twin);
