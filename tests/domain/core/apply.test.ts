@@ -15,6 +15,7 @@ import {
 import {
   ContributionConflictError,
   ENGINE_REGIONS,
+  applyContribution,
   applyContributions,
   collectHarness,
   newOwnership,
@@ -845,6 +846,29 @@ describe('applyContributions', () => {
       expect(tree.changes()).toEqual([]);
     });
 
+    it('records the whole files it rewrites — changed, or put back — and none it skips as identical, or writes back for its mode alone', async () => {
+      await fs.writeFile(path.join(tmp, 'edited.txt'), 'edited by hand\n');
+      await fs.writeFile(path.join(tmp, 'same.txt'), 'pristine\n');
+      await fs.writeFile(path.join(tmp, 'run.sh'), '#!/bin/sh\n', { mode: 0o644 });
+      const rendered: Contribution = {
+        files: [
+          { path: './edited.txt', content: 'pristine\n' },
+          { path: 'same.txt', content: 'pristine\n' },
+          { path: 'gone.txt', content: 'pristine\n' },
+          { path: 'run.sh', content: '#!/bin/sh\n', mode: 0o755 },
+        ],
+      };
+      const owners = newOwnership();
+      applyContribution(adapter('a', rendered), rendered, new FsTree(tmp), 'reapply', owners);
+      expect([...owners.rewritten].sort()).toEqual(['edited.txt', 'gone.txt']);
+
+      // An install writes what is new, and rewrites nothing.
+      const fresh: Contribution = { files: [{ path: 'fresh.txt', content: 'new\n' }] };
+      const installing = newOwnership();
+      applyContribution(adapter('a', fresh), fresh, new FsTree(tmp), 'install', installing);
+      expect([...installing.rewritten]).toEqual([]);
+    });
+
     it('gives a byte-identical whole file its declared mode back on reapply', async () => {
       const tree = new FsTree(tmp);
       await fs.writeFile(path.join(tmp, 'run.sh'), '#!/bin/sh\n', { mode: 0o644 });
@@ -1167,6 +1191,30 @@ describe('applyContributions', () => {
       expect(error?.kind).toBe('region-collision');
       expect(error?.message).toContain("adapter 'a' declares region");
       expect(error?.message).toContain('twice');
+    });
+
+    it('lets a replay claim again, once, a region its adapter claimed earlier in the run, and never another contributor’s', () => {
+      const tree = new FsTree(tmp);
+      const owners = newOwnership();
+      const patch = regionPatch({ target: 'f', seed: '', region: step, body: 'x' });
+      const owner = adapter('a', { patches: [patch] });
+      applyContribution(owner, { patches: [patch] }, tree, 'install', owners);
+
+      applyContribution(owner, { patches: [patch] }, tree, 'reapply', owners, true);
+      expect(tree.read('f')?.toString()).toBe(`${step.begin}\nx\n${step.end}\n`);
+      // Not a replay, it declares the region twice.
+      expect(() => applyContribution(owner, { patches: [patch] }, tree, 'reapply', owners)).toThrow(
+        /declares region .* twice/,
+      );
+      // A replay claims it once: two of its patches declaring it still collide.
+      expect(() =>
+        applyContribution(owner, { patches: [patch, patch] }, tree, 'reapply', owners, true),
+      ).toThrow(/declares region .* twice/);
+      // Another adapter's replay of it is refused, naming its owner.
+      const other = adapter('b', { patches: [patch] });
+      expect(() =>
+        applyContribution(other, { patches: [patch] }, tree, 'reapply', owners, true),
+      ).toThrow(/adapter 'a' already owns/);
     });
 
     it('attributes the engine’s own regions to the engine: an adapter claiming one is refused naming it', async () => {

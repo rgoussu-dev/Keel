@@ -134,7 +134,9 @@ export type AnswersByAdapter = Readonly<Record<string, Readonly<Record<string, s
  * `reapply` is the day-2 contract for re-rendering an installed
  * vertical: whole-file writes **overwrite** their target (skipped when
  * the content is byte-identical, so the staged changes are an honest
- * diff), while a patch against an existing file may change it only
+ * diff, and each one written recorded in {@link Ownership.rewritten},
+ * what the run replays the other verticals' patches onto), while a
+ * patch against an existing file may change it only
  * when its transform is its own fixed point — applying it again to
  * the result changes nothing — which is what a patch that owns a
  * region (a sentinel-delimited section, a guarded insert) looks
@@ -247,6 +249,15 @@ export interface Ownership {
    * region declared twice like any adapter's.
    */
   readonly engineSlots: Set<string>;
+  /**
+   * Canonical paths a re-render's whole-file write rewrote this run —
+   * written because the render differs from what the Tree held, or the
+   * Tree held nothing there; not one skipped as byte-identical, and not
+   * a skill or a hook. What every other recorded vertical's patches are
+   * replayed onto, and nothing else (`install.ts`' `patchesOnto`,
+   * roadmap S.7).
+   */
+  readonly rewritten: Set<string>;
 }
 
 /**
@@ -272,6 +283,7 @@ export function newOwnership(): Ownership {
     regions,
     writers: new Map(),
     engineSlots: new Set(regions.keys()),
+    rewritten: new Set(),
   };
 }
 
@@ -288,8 +300,12 @@ export function regionKey(target: string, region: Region): string {
   return JSON.stringify([canonicalTarget(target), region.begin]);
 }
 
-/** The Tree's own path canonicalization, mirrored for ownership keys. */
-function canonicalTarget(target: string): string {
+/**
+ * The Tree's own path canonicalization — forward slashes, no leading
+ * `./` or `/` — mirrored for ownership keys, and for the paths
+ * {@link Ownership.rewritten} holds.
+ */
+export function canonicalTarget(target: string): string {
   return target.replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '');
 }
 
@@ -720,7 +736,12 @@ export function makeCtx(
  * adapter, and `owners` is the cross-adapter memory that turns a
  * second claim on a skill name or a declared region into a refusal
  * naming both origins — one {@link Ownership} per run, threaded by
- * the caller.
+ * the caller. `replaying` is set where the contribution is replayed
+ * onto what a re-render rewrote (`install.ts`' `patchesOnto`, roadmap
+ * S.7): its adapter may then claim again, once, a region it claimed
+ * earlier in the run — by an install or a re-render ahead of the one
+ * that rewrote the file — since the patch is its own and puts the
+ * region back as it was; another contributor's claim still refuses.
  */
 export function applyContribution(
   adapter: Adapter,
@@ -728,13 +749,20 @@ export function applyContribution(
   tree: Tree,
   mode: ApplyMode = 'install',
   owners: Ownership = newOwnership(),
+  replaying = false,
 ): readonly StagedSkill[] {
+  const reclaimable = new Set(
+    replaying
+      ? [...owners.regions].flatMap(([key, owner]) => (owner === adapter.id ? [key] : []))
+      : [],
+  );
   for (const f of contribution.files ?? []) {
-    writeWholeFile(adapter, tree, mode, f.path, f.content, f.mode);
+    const rewrote = writeWholeFile(adapter, tree, mode, f.path, f.content, f.mode);
     owners.writers.set(canonicalTarget(f.path), adapter.id);
+    if (rewrote && mode === 'reapply') owners.rewritten.add(canonicalTarget(f.path));
   }
   for (const p of contribution.patches ?? []) {
-    const regions = claimRegions(adapter, p, owners);
+    const regions = claimRegions(adapter, p, owners, reclaimable);
     const current = tree.read(p.target);
     if (mode === 'scaffold' && current !== null && foundInProject(tree, owners, p.target)) {
       throw new PathConflictError(canonicalTarget(p.target), adapter.id);
@@ -823,13 +851,17 @@ function assertConfined(
  * adapter of the run, by this one twice, or by the engine — is a
  * refusal naming both. The one claim that goes through is the
  * engine's first on a region it pre-owns: that is the projection
- * commands' write path into the `AGENTS.md` slots, once a run.
+ * commands' write path into the `AGENTS.md` slots, once a run. And
+ * one of `reclaimable`, a region the adapter claimed before a replay
+ * of its contribution, goes through once (`applyContribution`'s
+ * `replaying`), so the replay still claims each region once.
  * Returns the validated regions, empty for a patch declaring none.
  */
 function claimRegions(
   adapter: Adapter,
   patch: ContributionPatch,
   owners: Ownership,
+  reclaimable: Set<string>,
 ): readonly Region[] {
   const regions = (patch.regions ?? []).map((raw) =>
     assertRegion(raw, `adapter '${adapter.id}', patch on '${patch.target}'`),
@@ -839,6 +871,7 @@ function claimRegions(
     const key = regionKey(patch.target, region);
     const owner = regionOwners.get(key);
     if (adapter.id === ENGINE_CONTRIBUTOR_ID && owners.engineSlots.delete(key)) continue;
+    if (reclaimable.delete(key)) continue;
     if (owner !== undefined) {
       throw new ContributionConflictError(
         owner === adapter.id
@@ -993,6 +1026,9 @@ function assertReminderBudget(contributions: readonly HarnessContribution[]): vo
  * so the staged changes stay an honest diff, unless the contribution
  * declares a mode: then the write goes through so a lost executable
  * bit comes back, and the tree stages nothing when disk has it.
+ * Returns whether the bytes it wrote differ from what the Tree held
+ * there, or the Tree held nothing: a mode written back onto the same
+ * bytes rewrote nothing.
  *
  * Which conflict depends on who put the file there. One this run
  * created is two contributions writing one path, keel's bug. Anything
@@ -1007,7 +1043,8 @@ function writeWholeFile(
   filePath: string,
   content: string | Buffer,
   fileMode?: number,
-): void {
+): boolean {
+  let same = false;
   if (tree.exists(filePath)) {
     if (mode !== 'reapply') {
       if (!createdThisRun(tree, filePath)) {
@@ -1022,9 +1059,11 @@ function writeWholeFile(
     }
     const current = tree.read(filePath);
     const next = Buffer.isBuffer(content) ? content : Buffer.from(content, 'utf8');
-    if (current !== null && current.equals(next) && fileMode === undefined) return;
+    same = current !== null && current.equals(next);
+    if (same && fileMode === undefined) return false;
   }
   tree.write(filePath, content, fileMode !== undefined ? { mode: fileMode } : undefined);
+  return !same;
 }
 
 /**

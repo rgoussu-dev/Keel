@@ -14,7 +14,11 @@
  * file's own line endings and around what the user wrote; elsewhere,
  * the shape an extra dev environment has always written; and a
  * definition customized away from keel's image refused as a file in
- * the way, before anything is written. The resolution block proves
+ * the way, before anything is written. The definition's own attached
+ * render is ranked the same way (roadmap S.7): without a server, for
+ * every family, it is what the upgrade writes, so a re-render after the
+ * dev environment rewrites nothing, with the tag or without. The
+ * resolution block proves
  * every non-composite stack's tag set covers the vertical, so no
  * stack can silently lose its dev container.
  */
@@ -31,7 +35,10 @@ import { spawnProcessRunner } from '../../../../src/infrastructure/process/spawn
 import { installVertical } from '../../../../src/domain/core/install.js';
 import { devContainerVertical } from '../../../../src/domain/core/verticals/dev-container.js';
 import { devEnvVertical } from '../../../../src/domain/core/verticals/dev-env.js';
-import { attachDevContainerToDevEnv } from '../../../../src/domain/core/adapters/dev-container.js';
+import {
+  attachDevContainerToDevEnv,
+  DEV_CONTAINER_COMPOSE_TARGET,
+} from '../../../../src/domain/core/adapters/dev-container.js';
 import { DEV_ENV_COMPOSE_ID } from '../../../../src/domain/core/adapters/dev-env-compose.js';
 import { shippedRegistry } from '../../../../src/domain/core/registry.js';
 import { resolveVertical } from '../../../../src/domain/core/resolver.js';
@@ -90,8 +97,8 @@ async function installDevEnv(installed: { tree: FsTree; manifest: ManifestV2 }):
   return installed.tree;
 }
 
-/** One family's HTTP project, as its manifest reads before the dev container installs. */
-interface HttpProject {
+/** One family's project, as its manifest reads before the dev container installs. */
+interface FamilyProject {
   readonly family: string;
   readonly tags: readonly string[];
   readonly answers: ManifestV2['answers'];
@@ -102,7 +109,7 @@ interface HttpProject {
  * family's features read; and one carrying the CLI as well, the tags a
  * CLI project grows to.
  */
-const HTTP_PROJECTS: readonly HttpProject[] = [
+const HTTP_PROJECTS: readonly FamilyProject[] = [
   {
     family: 'JVM, Gradle',
     tags: ['lang.java', 'runtime.jvm', 'framework.quarkus', 'arch.server-http', 'pkg.gradle'],
@@ -144,8 +151,26 @@ const HTTP_PROJECTS: readonly HttpProject[] = [
   },
 ];
 
+/**
+ * Each family's project without a server — a CLI, the tags a CLI preset
+ * has, or a front end — where the dev environment is an extra, installed
+ * after the dev container.
+ */
+const SERVERLESS_PROJECTS: readonly FamilyProject[] = [
+  ...HTTP_PROJECTS.filter((project) => !project.tags.includes('arch.cli')).map((project) => ({
+    ...project,
+    family: `${project.family}, as a CLI`,
+    tags: project.tags.map((tag) => (tag === 'arch.server-http' ? 'arch.cli' : tag)),
+  })),
+  {
+    family: 'web components',
+    tags: ['lang.typescript', 'runtime.browser', 'framework.web-components', 'pkg.npm'],
+    answers: { 'walking-skeleton/wc-spa-bootstrap': { projectName: 'shop' } },
+  },
+];
+
 /** `project`'s manifest before the dev container, `dev-env` recorded or not. */
-function manifestOf(project: HttpProject, devEnv: boolean): ManifestV2 {
+function manifestOf(project: FamilyProject, devEnv: boolean): ManifestV2 {
   return {
     ...emptyManifestV2('2026-08-18T00:00:00Z', '0.0.0-test'),
     tags: [...project.tags],
@@ -672,6 +697,53 @@ describe('dev-env installed after dev-container (order independence)', () => {
       `    "ghcr.io/devcontainers/features/go:1": {"version":"${pinValue('go-toolchain')}"}`,
     ]);
   });
+
+  it.each(SERVERLESS_PROJECTS.map((project) => [project.family, project] as const))(
+    'without a server, renders attached what the dev environment attaching it in place writes — what one run wrote (%s)',
+    async (_, project) => {
+      const upgraded = await installDevEnv(await install(manifestOf(project, false)));
+      const rendered = (await install(manifestOf(project, true))).tree;
+      expect(devcontainerOf(rendered)).toBe(devcontainerOf(upgraded));
+      expect(rendered.read(DEV_CONTAINER_COMPOSE_TARGET)?.toString()).toBe(
+        upgraded.read(DEV_CONTAINER_COMPOSE_TARGET)?.toString(),
+      );
+      expect(rendered.read('README.md')?.toString()).toContain('reachable by name');
+      // The docker feature first, as the attach in place lists it.
+      expect(featuresOf(devcontainerOf(rendered))[0]).toBe(DOCKER_FEATURE);
+    },
+  );
+
+  it.each(
+    [...HTTP_PROJECTS, ...SERVERLESS_PROJECTS].map((project) => [project.family, project] as const),
+  )(
+    're-rendered after the dev environment, rewrites nothing the dev environment attached in place (%s)',
+    async (_, project) => {
+      const attached = await installDevEnv(await install(manifestOf(project, false)));
+      const before = [devcontainerOf(attached), attached.read(DEV_CONTAINER_COMPOSE_TARGET)];
+      await installVertical({
+        vertical: devContainerVertical,
+        manifest: {
+          ...manifestOf(project, true),
+          verticals: [
+            { id: 'dev-container', installedAt: '2026-08-18T12:00:00Z' },
+            { id: 'dev-env', installedAt: '2026-08-18T13:00:00Z' },
+          ],
+        },
+        tree: attached,
+        mode: 'non-interactive',
+        prompt: rejectingPrompt,
+        logger: new FakeLogger(),
+        cwd: '/unused',
+        templates: ejsTemplateSource,
+        processes: new FakeProcessRunner(),
+        now: () => '2026-08-18T14:00:00Z',
+        apply: 'reapply',
+      });
+      expect([devcontainerOf(attached), attached.read(DEV_CONTAINER_COMPOSE_TARGET)]).toEqual(
+        before,
+      );
+    },
+  );
 
   it('leaves an already-attached definition untouched', () => {
     const attached = '{\n  "dockerComposeFile": ["../dev/compose.yaml", "compose.yaml"]\n}\n';

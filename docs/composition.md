@@ -1112,6 +1112,42 @@ re-runs the same resolution against the tags and answers recorded at
 bootstrap, so a vertical added months later composes exactly as it
 would have on day one.
 
+**A re-render runs within the recorded composition.**
+`keel add v --reapply` — and `--refresh v` beside an add — re-renders
+`v` from its recorded answers, its template-owned files rewritten
+where the render differs from what the project holds. Then every other
+vertical the manifest records is replayed for its patches alone, from
+its own recorded answers against the recorded manifest, onto the files
+the re-render rewrote and onto no other, and each context `keel add
+module` added replays its wiring among them where it arrived: before
+the first vertical a `keel add` recorded after it, and after every
+other — a row growth records at rank among them, since growth wires
+the contexts after its verticals. Several named verticals
+re-render each at its own rank among those replays, so what is
+recorded between two of them patches in before the later one, as one
+run has it; and beside an add, a vertical the add installed before the
+re-render replays after the recorded ones and the contexts, from what
+its install recorded. What a later vertical wrote into a file the re-render puts
+back pristine — the telemetry in the HTTP entrypoint, a context's
+registration in the assembly — therefore comes back as it was: a patch
+keel replays is its own fixed point, and one that is not refuses the
+run as `keel.reapply-conflict`. A replay writes no whole file, queues
+no action, realizes no harness element and records nothing, so only
+what the command names re-renders, and a whole file another vertical
+owns stays as the user left it. Every other recorded vertical replays,
+not only those recorded after `v`: a row recorded at its twin's rank
+([Growing an entrypoint](#growing-an-entrypoint)) keeps no arrival
+order, and one that truly ran before `v` cannot have patched `v`'s
+files. A re-render within the composition also renders what one run
+wrote where the render depends on arrival: the dev container's
+definition, attached to a dev environment that came after it on a
+project without an HTTP server, re-renders attached in place, as the
+dev environment attached it. The paths golden pins what each re-render
+leaves, and the composition grid's I11 holds each recorded vertical
+re-rendered alone, and the whole re-render, to staging nothing on
+brownfield's scaffolds and in composite's services, and the whole
+re-render on growth's twins.
+
 ## Peer tags and products
 
 Two more primitives compose services into **products**:

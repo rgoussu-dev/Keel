@@ -40,12 +40,24 @@
  *
  * **The plan** ({@link convergeOf}) is the target composition; the run,
  * one step per vertical in run order, each installed whole, installed
- * in part, re-rendered, or replayed for its deferred actions alone
- * where the caller settles (DR5, DS7); the contexts to wire; and the
- * caller's placement, as it is today — growth records at its twin's
- * rank and realizes the harness in its twin's order, every other
- * caller appends and realizes it in run order. S.8 moves the second
- * onto the reference order.
+ * in part, re-rendered, replayed for its patches alone onto what a
+ * re-render rewrote — a context `keel add module` added among them —
+ * or replayed for its deferred actions alone where the caller settles
+ * (DR5, DS7); the contexts to wire; and the caller's placement, as it
+ * is today — growth records at its twin's rank and realizes the
+ * harness in its twin's order, every other caller appends and
+ * realizes it in run order. S.8 moves the second onto the reference
+ * order.
+ *
+ * **A re-render keeps what later verticals wrote** (S.7, DS4). `keel
+ * add --reapply` and `--refresh` re-render what they name within the
+ * recorded composition: every other recorded vertical is replayed for
+ * its patches, and each context `keel add module` added for its
+ * wiring's, where it arrived among them, onto the whole files the
+ * re-render rewrote and onto no other — so a bootstrap re-rendered
+ * keeps observability's lines, and each context's wiring — and so is
+ * what a `--refresh` beside an add installed before the re-render.
+ * Only what the command names re-renders (D12).
  */
 
 import path from 'node:path';
@@ -211,16 +223,32 @@ export type ConvergeRequest =
  *   match; where `settles`, the others replay for their deferred
  *   actions alone;
  * - `rerender` — re-rendered from its recorded answers;
+ * - `replay` — replayed for its patches alone onto the whole files the
+ *   run's re-renders rewrote before it (`patchesOnto`, S.7), from what
+ *   it records: a recorded vertical the run does not name, or one it
+ *   installed, or re-rendered, before a re-render one run applies it
+ *   after — or, where `context` names one, keel's `bounded-context`
+ *   for a context `keel add module` added, by `adapters`, as its add
+ *   ran them. What it wrote into them comes back, and nothing else of
+ *   it is written, queued or recorded;
  * - `settle` — replayed for its deferred actions alone (`actionsOnly`),
  *   where the caller settles (DR5).
  */
 export interface ConvergeStep {
   readonly vertical: Vertical;
-  readonly posture: 'install' | 'only' | 'rerender' | 'settle';
-  /** Where `posture` is `only`: the adapters that install, by id, in declaration order. */
+  readonly posture: 'install' | 'only' | 'rerender' | 'replay' | 'settle';
+  /**
+   * Where `posture` is `only`: the adapters that install, by id, in
+   * declaration order; where a context replays: those of its wiring.
+   */
   readonly adapters?: readonly string[];
   /** Where `posture` is `only`: set where the adapters that do not install settle. */
   readonly settles?: true;
+  /**
+   * Where `posture` is `replay` of keel's `bounded-context`: the
+   * context `keel add module` added whose wiring replays (S.7, DS10).
+   */
+  readonly context?: string;
 }
 
 /**
@@ -268,7 +296,11 @@ export type ConvergePlan =
       readonly kind: 'converges';
       /** The composition the project is to have. */
       readonly target: Composition;
-      /** One step per vertical, in run order. */
+      /**
+       * One step per vertical, in run order — and, where it re-renders,
+       * one per context `keel add module` added, replayed where it
+       * arrived ({@link ConvergeStep.context}).
+       */
       readonly run: readonly ConvergeStep[];
       /**
        * The contexts the run wires, each by a run of keel's own
@@ -657,7 +689,10 @@ function refusedByPlan(error: DomainError): ConvergePlan {
 /**
  * `keel add`: the verticals named and those `--refresh` re-renders,
  * admitted together on the caller's scope, in the order they install —
- * each installed, or re-rendered where it is refreshed — appended.
+ * each installed, or re-rendered where it is refreshed, within the
+ * recorded composition, as `--reapply` re-renders, what it installed
+ * before the re-render replayed after it ({@link withReplays}) —
+ * appended.
  */
 function addOf(
   registry: Registry,
@@ -687,13 +722,20 @@ function addOf(
       [...manifest.verticals.map(({ id }) => id), ...incoming],
       addedContexts(manifest),
     ),
-    run,
+    run: withReplays(registry, manifest, run),
     modules: [],
     placement: APPENDED,
   };
 }
 
-/** `keel add --reapply`: the named verticals re-rendered, in the order the project records them. */
+/**
+ * `keel add --reapply`: the named verticals re-rendered, in the order
+ * the project records them, within the recorded composition (S.7) —
+ * every other recorded vertical replayed for its patches after the
+ * first, in that order, and each context `keel add module` added where
+ * it arrived among them, a later one named re-rendering at its own
+ * rank ({@link withReplays}).
+ */
 function reapplyOf(
   registry: Registry,
   manifest: ManifestV2,
@@ -705,10 +747,134 @@ function reapplyOf(
   return {
     kind: 'converges',
     target: compositionOf(registry, manifest),
-    run,
+    run: withReplays(registry, manifest, run),
     modules: [],
     placement: APPENDED,
   };
+}
+
+/**
+ * `run`, with `replay` steps where it re-renders anything (DS4): each
+ * re-render keeps what the rest of the composition wrote into the
+ * whole files it rewrites, every patch put back where one run of the
+ * target composition applies it — the recorded verticals in recorded
+ * order, each context `keel add module` added where it arrived among
+ * them, then what the run installs, in run order.
+ *
+ * - Every vertical `manifest` records that the run does not name
+ *   replays once the first re-render has run and every re-render still
+ *   to come is of a vertical recorded after it: before the next such
+ *   re-render or install, so what that one patches in lands after it;
+ *   the rest after the last re-render. Every one, not only those
+ *   recorded after a re-render, since a row recorded at rank (growth's)
+ *   keeps no arrival order, and one that ran first cannot have patched
+ *   those files. Neither `bounded-context`, nor a vertical no loaded
+ *   plugin provides any more, which nothing can render. Each context
+ *   `keel add module` added replays so too, at the rank of its arrival
+ *   among them ({@link contextReplays}).
+ * - After the last re-render, what ran before it that one run applies
+ *   after it replays too: a vertical re-rendered ahead of one recorded
+ *   before it, among the recorded at its rank; then each vertical the
+ *   run installed, in run order, since `--refresh` re-renders where the
+ *   planner puts it, which can be after an install that patched what
+ *   it rewrites.
+ *
+ * Where the re-renders run in recorded order — every `--reapply`, and a
+ * lone `--refresh` — that is one run's order exactly: a vertical named
+ * among several re-renders at its own rank, after what is recorded
+ * before it.
+ */
+function withReplays(
+  registry: Registry,
+  manifest: ManifestV2,
+  run: readonly ConvergeStep[],
+): readonly ConvergeStep[] {
+  const first = run.findIndex((step) => step.posture === 'rerender');
+  if (first === -1) return run;
+  const last = run.map((step) => step.posture).lastIndexOf('rerender');
+  const rank = new Map<ConvergeStep | string, number>(
+    manifest.verticals.map(({ id }, at) => [id, at]),
+  );
+  const rankOf = (step: ConvergeStep): number =>
+    rank.get(step) ?? rank.get(step.vertical.id) ?? Infinity;
+  const replay = ({ vertical }: ConvergeStep): ConvergeStep => ({ vertical, posture: 'replay' });
+  const named = new Set(run.map((step) => step.vertical.id));
+  const contexts = contextReplays(manifest);
+  for (const { step, at } of contexts) rank.set(step, at);
+  let pending = [
+    ...manifest.verticals.flatMap(({ id }): ConvergeStep[] => {
+      if (named.has(id) || id === BOUNDED_CONTEXT) return [];
+      const vertical = installedVertical(registry, id);
+      return vertical === null ? [] : [{ vertical, posture: 'replay' }];
+    }),
+    ...contexts.map(({ step }) => step),
+  ].sort((a, b) => rankOf(a) - rankOf(b));
+  const rerenders = run.flatMap((step, at) => (step.posture === 'rerender' ? [{ step, at }] : []));
+  const replayed = run.slice(0, first + 1);
+  for (let at = first + 1; at <= last; at += 1) {
+    const floor = Math.min(...rerenders.filter((r) => r.at >= at).map((r) => rankOf(r.step)));
+    replayed.push(...pending.filter((step) => rankOf(step) < floor), run[at] as ConvergeStep);
+    pending = pending.filter((step) => rankOf(step) >= floor);
+  }
+  const ahead = rerenders
+    .filter(({ step, at }) => rerenders.some((r) => r.at > at && rankOf(r.step) < rankOf(step)))
+    .map(({ step }) => replay(step));
+  return [
+    ...replayed,
+    ...[...pending, ...ahead].sort((a, b) => rankOf(a) - rankOf(b)),
+    ...run
+      .slice(0, last)
+      .filter((step) => step.posture === 'install')
+      .map(replay),
+    ...run.slice(last + 1),
+  ];
+}
+
+/**
+ * Each context `keel add module` added to the project `manifest`
+ * records, in recorded order, as a `replay` step (DS10): by every
+ * adapter of keel's `bounded-context` the tags match with the
+ * context's marker, as its add ran them. With it, the rank among the
+ * recorded verticals it replays at (`at`), where it arrived:
+ *
+ * - just before the first vertical recorded after the
+ *   `bounded-context` row that is not older than the context — the
+ *   first `keel add module` records that row after every other, and a
+ *   `keel add` appends after it — so what that one patched in after
+ *   the wiring lands after it again. Where they were recorded at one
+ *   instant, as under a pinned clock, every context goes before them;
+ * - after every recorded vertical where none is, a row growth records
+ *   at rank before `bounded-context` among them, since growth's run
+ *   wires the contexts after its verticals;
+ * - never before a context recorded before it, whose wiring its own
+ *   calls.
+ */
+function contextReplays(
+  manifest: ManifestV2,
+): readonly { readonly step: ConvergeStep; readonly at: number }[] {
+  const adapters = matchingIds(
+    boundedContextVertical,
+    new Set([...effectiveTags(manifest), CONTEXT_TAG]),
+  );
+  const rows = manifest.verticals;
+  const since = rows.findIndex(({ id }) => id === BOUNDED_CONTEXT);
+  const arrived = new Map(manifest.modules.map(({ name, installedAt }) => [name, installedAt]));
+  let after = -Infinity;
+  return addedContexts(manifest).map((name) => {
+    const added = Date.parse(arrived.get(name) ?? '');
+    const next =
+      since === -1
+        ? -1
+        : rows.findIndex((row, at) => at > since && !(Date.parse(row.installedAt) < added));
+    after = Math.max(after, (next === -1 ? rows.length : next) - 0.5);
+    const step: ConvergeStep = {
+      vertical: boundedContextVertical,
+      posture: 'replay',
+      context: name,
+      adapters,
+    };
+    return { step, at: after };
+  });
 }
 
 /**

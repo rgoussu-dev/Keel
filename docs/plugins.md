@@ -281,7 +281,7 @@ when there are none, refuse a broken pair. A plain-JavaScript plugin
 spells the two marker strings and its own replace; what the engine
 checks is the declaration, not how the transform was written.
 
-Two things to hold to:
+Three things to hold to:
 
 - **Stay inside.** A transform that changed anything outside its
   declared regions — whitespace beside a region included — or removed
@@ -291,6 +291,16 @@ Two things to hold to:
   adapters of a run on one target is a hard refusal naming both, and
   the `keel:map` / `keel:skills-index` slots of `AGENTS.md` are the
   engine's — declaring one is refused naming the engine.
+- **Be your own fixed point on a file another vertical writes whole.**
+  When that vertical re-renders (`keel add <it> --reapply`, or
+  `--refresh` beside an add), the file goes back as its template
+  renders it, and your patch is replayed onto it from your recorded
+  answers, so what you wrote there stays. An owned region or a guarded
+  insert applies to its own result without changing it; a patch that
+  does not — a plain append — would add its line again on every
+  re-render, so the re-render is refused as `keel.reapply-conflict`,
+  naming your adapter and the file, before anything is written. See
+  [Composition → One install, end to end](composition.md#one-install-end-to-end).
 
 ### Conflicts
 

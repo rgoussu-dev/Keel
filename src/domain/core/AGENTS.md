@@ -78,7 +78,10 @@ the shipped source, every refusal naming its origin) and
   The dev container's in-place attach (`dev-container.ts`) is ranked by
   the tags as its README section is: the template's shape on
   `arch.server-http`, the shape an extra dev environment has always
-  written elsewhere. The template's shape lists the docker feature
+  written elsewhere — and so is the definition's own attached render
+  (S.7), the standalone definition attached in place where the tag is
+  missing, so a re-render after the dev environment writes what one
+  run wrote. The template's shape lists the docker feature
   last, so the entry before it takes a comma: the features are read
   through `codeOnly`, the comma goes where that entry's code ends,
   ahead of a comment trailing it, which JSONC allows, and the feature
@@ -300,7 +303,8 @@ the caller plans on, `reapply`, `entrypoint` (growth's reading, and
 growth's refusals), `module`, `new` from a seed manifest, naming the
 product and the service's path where it is one — and returns
 the target composition, the run (each step installed, installed in
-part, re-rendered or settled), the contexts to wire, and the caller's
+part, re-rendered, replayed onto what a re-render rewrote, or
+settled), the contexts to wire, and the caller's
 placement as it is today: growth's at its twin's rank, every other
 appended, until S.8. Growth's plan is read there with the handler's
 own pure pieces, moved out of `handlers/add-entrypoint.ts` in S.2:
@@ -328,11 +332,41 @@ otherwise; the refresh proposals, over the steps it installs in run
 order, each worded as a later run takes it up (`proposeForLater`) or
 as this one could; and the report, the caller's notes before and
 after the proposals, and the diffs where anything re-rendered.
-`commitConverged` is the one commit after it: the tree, then the
-manifest, then the deferred actions. `handlers/add-vertical.ts` keeps
-what is its own — naming the verticals, the scope and a product
-root's reading of its services, the generation gate and
-`bringsHarness`, D4's notes (installed, provided, in the services),
+A re-render runs within the recorded composition (S.7, DS4):
+`convergeOf`'s `reapply` plan, and its `add` plan where `--refresh`
+names anything, replays every other vertical the project records
+(`replay` steps) in recorded order after the first re-render, a later
+one named re-rendering at its own rank among them (`withReplays`),
+each context `keel add module` added among them where it arrived — a
+`replay` step of `bounded-context` naming it (`ConvergeStep.context`),
+just before the first vertical recorded after the `bounded-context`
+row that is not older than it, else after them all, never before one
+recorded before it (`contextReplays`); and after the last re-render,
+what the run installed before it, in run order. Each replays in
+`installVertical`'s `patchesOnto` posture: contributed from what it
+records — the manifest its own step left, where it ran earlier in the
+run, else the one the run starts from, or the one the caller seeds, a
+context's (`installVerticals`' `replays` are positions, `ReplayAt`,
+since one vertical can install and replay in a run, and
+`bounded-context` replay once per context) — asking nothing, and only
+its patches onto the whole files the run's re-renders rewrote
+(`apply.ts`' `Ownership.rewritten`, what a `reapply` write records
+where the bytes differ, or the file was gone) applied, in the `reapply`
+posture, where a region its adapter claimed earlier in the run — an
+install, or a re-render, ahead of the one that rewrote the file — is
+its own to claim once more (`applyContribution`'s `replaying`); no
+whole file, harness element, action, reported adapter or record. So a
+guarded patch comes back as it was, and one that is not
+its own fixed point is a divergence the run refuses as
+`keel.reapply-conflict`; a re-render that rewrites nothing replays onto
+nothing, and contributes nothing. A replayed vertical is not one the
+run ran: the retrofit still replays its harness elements, and a
+refresh proposal still reads it. `commitConverged` is the one commit
+after it: the tree, then the manifest, then the deferred actions.
+`handlers/add-vertical.ts` keeps what is its own — naming the
+verticals, the scope and a product root's reading of its services, the
+generation gate and `bringsHarness`, D4's notes (installed, provided,
+in the services),
 the refusals of a re-render (not installed, or against its own rules)
 and the early answer check — and hands `convergeOf`'s `add` or
 `reapply` plan to the run, appended and realized in run order, the

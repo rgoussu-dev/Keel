@@ -40,8 +40,12 @@
  *     recorded vertical `keel add` can name — re-renders each and
  *     stages nothing (`fixed:<stack>`), and so does the modulith
  *     scaffold's, before any context is added to it
- *     (`fixed:<stack>/modulith`); and each `reapply:` and `refresh:`
- *     pair above installs Ok, re-rendering the vertical it names.
+ *     (`fixed:<stack>/modulith`), and the whole-menu scaffold's where
+ *     the dev environment is an extra (`fixed:<stack>/menu`); and each
+ *     `reapply:` and `refresh:` pair above installs Ok, re-rendering
+ *     the vertical it names — a `reapply:` pair staging nothing, on the
+ *     opening scaffold and on the whole menu alike
+ *     (`reapply:<stack>/menu+<v>`).
  *
  * Holds I6 over every refusal on the way.
  */
@@ -127,10 +131,38 @@ describe('composition grid: brownfield', () => {
         }
         await holdRerenders(grid, stack, status, verticals, cwd);
         await holdModulith(grid, stack, verticals);
+        await holdWholeMenu(grid, stack, verticals);
       });
     },
   });
 });
+
+/**
+ * The extra whose arrival after the dev container decides the shape a
+ * re-render of the definition keeps (roadmap S.7): named for what the
+ * whole-menu scaffolds below pin, as the paths golden names the
+ * vertical it re-renders once a preset has grown.
+ */
+const DEV_ENV = 'dev-env';
+
+/**
+ * Holds the whole-menu scaffold of `stack` — its opening dials with
+ * every extra its menu offers — where the dev environment is one of
+ * them, to I9 and I11: each vertical it records re-rendered alone
+ * (`reapply:<stack>/menu+<v>`), staging nothing, and its whole
+ * re-render (`fixed:<stack>/menu`). There the dev environment arrives
+ * after the dev container, and attaches it in place, which is what a
+ * re-render of the definition has to keep (roadmap S.7). The scaffold
+ * is the cells' setting, not a cell: it adds no verdict.
+ */
+async function holdWholeMenu(grid: Grid, stack: string, catalog: readonly string[]): Promise<void> {
+  const { target, offered } = await settle(grid, stack);
+  if (!offered.has(DEV_ENV)) return;
+  const cwd = await grid.scratch();
+  await grid.read(installCommandFor({ ...target, extraVerticals: [...offered] }, runIn(cwd)));
+  const status = await grid.read(projectStatusQuery({ cwd }));
+  await holdRerenders(grid, `${stack}/menu`, status, catalog, cwd, false);
+}
 
 /**
  * Holds a modulith scaffold of `stack` — its opening dials with the

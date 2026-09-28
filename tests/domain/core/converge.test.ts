@@ -224,8 +224,8 @@ function runOf(plan: ConvergePlan): readonly string[] {
   return plan.run.map(
     (step) =>
       `${step.vertical.id} ${step.posture}${step.settles === true ? '+settle' : ''}${
-        step.adapters === undefined ? '' : ` ${step.adapters.join(',')}`
-      }`,
+        step.context === undefined ? '' : ` ${step.context}`
+      }${step.adapters === undefined ? '' : ` ${step.adapters.join(',')}`}`,
   );
 }
 
@@ -482,11 +482,71 @@ describe('convergeOf', () => {
           scope: projectScope(family, manifest, ['acme-zimage']),
         }),
       );
-      expect(runOf(plan)).toEqual(['acme-zimage rerender', 'acme-ship install']);
+      // Within the recorded composition: what the project records
+      // replays straight after the re-render, before what installs.
+      expect(runOf(plan)).toEqual([
+        'acme-zimage rerender',
+        'acme-vcs replay',
+        'acme-skeleton replay',
+        'agent-harness replay',
+        'acme-ship install',
+      ]);
       expect(plan.target.recorded).toEqual([
         ...manifest.verticals.map(({ id }) => id),
         'acme-ship',
       ]);
+    });
+
+    it('replays what it installed ahead of the re-render after it, from what the install recorded', () => {
+      // The planner runs acme-alpha first: its patches into what the
+      // re-render then rewrites go back after the recorded ones, where
+      // one run of the target composition, appending it, applies them.
+      const plan = converged(
+        convergeOf(family, cli, {
+          kind: 'add',
+          verticals: ['acme-alpha'],
+          refresh: ['acme-skeleton'],
+          scope: projectScope(family, cli, ['acme-skeleton']),
+        }),
+      );
+      expect(runOf(plan)).toEqual([
+        'acme-alpha install',
+        'acme-skeleton rerender',
+        'acme-vcs replay',
+        'agent-harness replay',
+        'acme-alpha replay',
+      ]);
+    });
+
+    it('replays a vertical it re-rendered ahead of one recorded before it, at its rank', () => {
+      const plan = converged(
+        convergeOf(family, cli, {
+          kind: 'add',
+          verticals: ['acme-alpha'],
+          refresh: ['acme-skeleton', 'acme-vcs'],
+          scope: projectScope(family, cli, ['acme-skeleton', 'acme-vcs']),
+        }),
+      );
+      expect(runOf(plan)).toEqual([
+        'acme-alpha install',
+        'acme-skeleton rerender',
+        'acme-vcs rerender',
+        'acme-skeleton replay',
+        'agent-harness replay',
+        'acme-alpha replay',
+      ]);
+    });
+
+    it('replays nothing where it re-renders nothing', () => {
+      const plan = converged(
+        convergeOf(family, cli, {
+          kind: 'add',
+          verticals: ['acme-alpha'],
+          scope: projectScope(family, cli),
+        }),
+      );
+      expect(runOf(plan)).toEqual(['acme-alpha install']);
+      expect(plan.modules).toEqual([]);
     });
 
     it('refuses what the scope cannot carry, as the planner refuses it', () => {
@@ -502,13 +562,63 @@ describe('convergeOf', () => {
     });
   });
 
-  it('reapply: re-renders what is named, in the order the project records it', () => {
-    const plan = converged(
-      convergeOf(family, cli, { kind: 'reapply', verticals: ['agent-harness', 'acme-vcs'] }),
-    );
-    expect(runOf(plan)).toEqual(['acme-vcs rerender', 'agent-harness rerender']);
-    expect(plan.target).toEqual(compositionOf(family, cli));
-    expect(plan.placement).toEqual({ rows: 'append', harness: 'run' });
+  describe('reapply', () => {
+    it('re-renders what is named, in the order the project records it, a later one at its rank among the replays of every other recorded vertical', () => {
+      // acme-skeleton, recorded between the two, patches the second's
+      // files, if any, before the second's own patches, as one run does.
+      const plan = converged(
+        convergeOf(family, cli, { kind: 'reapply', verticals: ['agent-harness', 'acme-vcs'] }),
+      );
+      expect(runOf(plan)).toEqual([
+        'acme-vcs rerender',
+        'acme-skeleton replay',
+        'agent-harness rerender',
+      ]);
+      expect(plan.modules).toEqual([]);
+      expect(plan.target).toEqual(compositionOf(family, cli));
+      expect(plan.placement).toEqual({ rows: 'append', harness: 'run' });
+    });
+
+    it('replays what is recorded before the vertical it re-renders too, in recorded order', () => {
+      // Rows recorded at rank keep no arrival order: one recorded first
+      // may have arrived after, and patched what the re-render rewrites.
+      const manifest = scaffoldOf(HTTP, {
+        verticals: ['acme-obs', 'acme-vcs', 'acme-skeleton', 'agent-harness', 'acme-dev'],
+      });
+      expect(
+        runOf(
+          converged(
+            convergeOf(family, manifest, { kind: 'reapply', verticals: ['acme-skeleton'] }),
+          ),
+        ),
+      ).toEqual([
+        'acme-skeleton rerender',
+        'acme-obs replay',
+        'acme-vcs replay',
+        'agent-harness replay',
+        'acme-dev replay',
+      ]);
+    });
+
+    it('replays no vertical nothing registered provides any more, and none where every recorded one re-renders', () => {
+      const manifest = scaffoldOf(CLI, {
+        verticals: [...CLI.verticals.map(({ id }) => id), 'acme-gone'],
+      });
+      expect(
+        runOf(
+          converged(
+            convergeOf(family, manifest, { kind: 'reapply', verticals: ['acme-skeleton'] }),
+          ),
+        ),
+      ).toEqual(['acme-skeleton rerender', 'acme-vcs replay', 'agent-harness replay']);
+      const whole = converged(
+        convergeOf(family, cli, {
+          kind: 'reapply',
+          verticals: cli.verticals.map(({ id }) => id),
+        }),
+      );
+      expect(whole.run.every((step) => step.posture === 'rerender')).toBe(true);
+    });
   });
 
   describe('entrypoint', () => {
@@ -585,6 +695,147 @@ describe('convergeOf', () => {
       });
       expect(plan.target.order.at(-1)).toBe('bounded-context');
       expect(plan.placement).toEqual({ rows: 'append', harness: 'run' });
+    });
+
+    const ADAPTERS = 'bounded-context/go-context,bounded-context/go-context-cli';
+    /** The replays of every vertical the Go CLI preset records but the bootstrap. */
+    const replayed = goCli.verticals
+      .map(({ id }) => id)
+      .filter((id) => id !== 'walking-skeleton')
+      .map((id) => `${id} replay`);
+
+    it('replays each context it added after a re-render, in recorded order, by every adapter its add ran — the bounded-context row never a step of its own', () => {
+      const given = scaffoldOf(goCli, {
+        layout: MODULITH,
+        verticals: [...goCli.verticals.map(({ id }) => id), 'bounded-context'],
+        modules: [SKELETON, ORDERS, { ...ORDERS, name: 'shipping', consumes: 'orders' }],
+      });
+      const plan = converged(
+        convergeOf(shippedRegistry, given, { kind: 'reapply', verticals: ['walking-skeleton'] }),
+      );
+      expect(runOf(plan)).toEqual([
+        'walking-skeleton rerender',
+        ...replayed,
+        `bounded-context replay orders ${ADAPTERS}`,
+        `bounded-context replay shipping ${ADAPTERS}`,
+      ]);
+      expect(plan.modules).toEqual([]);
+    });
+
+    it('replays each context it added where it arrived: before what a keel add appended after it, after what arrived first', () => {
+      // orders came before ci and persistence, shipping between them;
+      // observability, grown last, is recorded at rank before the
+      // bounded-context row, and growth's run wired the contexts after it.
+      const at = (minute: number) => `2026-09-27T00:${String(minute).padStart(2, '0')}:00Z`;
+      const given = scaffoldOf(goCli, {
+        layout: MODULITH,
+        verticals: [...goCli.verticals.map(({ id }) => id)],
+        modules: [SKELETON, { ...ORDERS, installedAt: at(1) }],
+      });
+      const history: ManifestV2 = {
+        ...given,
+        verticals: [
+          ...given.verticals,
+          { id: 'observability', installedAt: at(5) },
+          { id: 'bounded-context', installedAt: at(1) },
+          { id: 'ci', installedAt: at(2) },
+          { id: 'persistence', installedAt: at(4) },
+        ],
+        modules: [
+          ...given.modules,
+          { ...ORDERS, name: 'shipping', consumes: 'orders', installedAt: at(3) },
+        ],
+      };
+      expect(
+        runOf(
+          converged(
+            convergeOf(shippedRegistry, history, {
+              kind: 'reapply',
+              verticals: ['walking-skeleton'],
+            }),
+          ),
+        ),
+      ).toEqual([
+        'walking-skeleton rerender',
+        ...replayed,
+        'observability replay',
+        `bounded-context replay orders ${ADAPTERS}`,
+        'ci replay',
+        `bounded-context replay shipping ${ADAPTERS}`,
+        'persistence replay',
+      ]);
+      // Recorded at one instant, as under a pinned clock: each goes
+      // before what is appended after the bounded-context row.
+      const pinned: ManifestV2 = {
+        ...history,
+        verticals: history.verticals.map((row) => ({ ...row, installedAt: at(0) })),
+        modules: history.modules.map((row) => ({ ...row, installedAt: at(0) })),
+      };
+      expect(
+        runOf(
+          converged(
+            convergeOf(shippedRegistry, pinned, {
+              kind: 'reapply',
+              verticals: ['walking-skeleton'],
+            }),
+          ),
+        ),
+      ).toEqual([
+        'walking-skeleton rerender',
+        ...replayed,
+        'observability replay',
+        `bounded-context replay orders ${ADAPTERS}`,
+        `bounded-context replay shipping ${ADAPTERS}`,
+        'ci replay',
+        'persistence replay',
+      ]);
+    });
+
+    it('replays each context it added before a later named vertical that arrived after it re-renders', () => {
+      const given = scaffoldOf(goCli, {
+        layout: MODULITH,
+        verticals: [...goCli.verticals.map(({ id }) => id), 'bounded-context', 'persistence'],
+        modules: [SKELETON, ORDERS],
+      });
+      expect(
+        runOf(
+          converged(
+            convergeOf(shippedRegistry, given, {
+              kind: 'reapply',
+              verticals: ['walking-skeleton', 'persistence'],
+            }),
+          ),
+        ),
+      ).toEqual([
+        'walking-skeleton rerender',
+        ...replayed,
+        `bounded-context replay orders ${ADAPTERS}`,
+        'persistence rerender',
+      ]);
+    });
+
+    it('replays each context it added after a --refresh re-render beside an add, before what the add installed ahead of it', () => {
+      const given = scaffoldOf(goCli, {
+        layout: MODULITH,
+        verticals: [...goCli.verticals.map(({ id }) => id), 'bounded-context'],
+        modules: [SKELETON, ORDERS],
+      });
+      const plan = converged(
+        convergeOf(shippedRegistry, given, {
+          kind: 'add',
+          verticals: ['ci'],
+          refresh: ['walking-skeleton'],
+          scope: projectScope(shippedRegistry, given, ['walking-skeleton']),
+        }),
+      );
+      expect(runOf(plan)).toEqual([
+        'ci install',
+        'walking-skeleton rerender',
+        ...replayed,
+        `bounded-context replay orders ${ADAPTERS}`,
+        'ci replay',
+      ]);
+      expect(plan.modules).toEqual([]);
     });
 
     it('records the row once, and wires the one it adds alone, consuming none where it names none', () => {

@@ -806,7 +806,7 @@
       "backend/CLAUDE.md": "3e2b9f8126bfc711",
       "backend/Dockerfile": "7370c68ed2f48de3",
       "backend/README.md": "3105f8ca9d56987c",
-      "backend/application": "cc7912533728d09e",
+      "backend/application": "e1e0db0467de4b4f",
       "backend/build.gradle.kts": "092b986095e8e72d",
       "backend/contract": "ca017f871b61f23a",
       "backend/dev": "a85507ae6a9383e9",
@@ -892,7 +892,7 @@
       }
     },
     "actions": "88d5039041818cae",
-    "report": "c6ca680e1a81a053",
+    "report": "0ce902ab3db4aa52",
     "docs": 0
   },
   "keel new --stack fullstack --build-system backend=gradle,frontend=npm --layout monorepo && cd frontend && keel add agent-harness --reapply": {
@@ -1502,14 +1502,14 @@
       "frontend/CLAUDE.md": "9723650339f04513",
       "frontend/Dockerfile": "67f8a06a117af5fe",
       "frontend/README.md": "f8093af292857d0b",
-      "frontend/application": "3a4a7e2470843aec",
+      "frontend/application": "a131567ddf5e2fce",
       "frontend/deploy-assets.sh": "06737697db60ef61",
       "frontend/design-system": "bd792aeaeaac2423",
-      "frontend/domain": "219a24ccab582aa8",
+      "frontend/domain": "2736b7ca718e04ac",
       "frontend/eslint.config.js": "7f66fc6f1f740f4e",
       "frontend/infrastructure": "a54f5f94d8d8246f",
       "frontend/nginx.conf": "2b3fbdbdaba74740",
-      "frontend/package.json": "9b8e4bc444dc16c6",
+      "frontend/package.json": "ee523cbbcaf183e2",
       "frontend/tsconfig.base.json": "d173154f6f8890f1",
       "scripts": "182237a0d49684f3"
     },
@@ -1564,7 +1564,7 @@
       }
     },
     "actions": "fe285a5faa36030b",
-    "report": "6c65169409089313",
+    "report": "44a2eff0fa18cfc3",
     "docs": 0
   },
   "keel new --stack fullstack --build-system backend=gradle,frontend=npm --layout polyrepo && cd backend && keel add agent-harness --reapply": {
@@ -2278,7 +2278,7 @@
       "backend/CHANGELOG.md": "9cdf61870ba303f2",
       "backend/CLAUDE.md": "3e2b9f8126bfc711",
       "backend/README.md": "3105f8ca9d56987c",
-      "backend/application": "cc7912533728d09e",
+      "backend/application": "e1e0db0467de4b4f",
       "backend/build.gradle.kts": "092b986095e8e72d",
       "backend/contract": "ca017f871b61f23a",
       "backend/dev": "a85507ae6a9383e9",
@@ -2347,7 +2347,7 @@
       }
     },
     "actions": "88d5039041818cae",
-    "report": "c6ca680e1a81a053",
+    "report": "0ce902ab3db4aa52",
     "docs": 0
   },
   "keel new --stack fullstack --build-system backend=gradle,frontend=npm --layout polyrepo && cd frontend && keel add agent-harness --reapply": {
@@ -2911,13 +2911,13 @@
       "frontend/CHANGELOG.md": "6417225aa09f4df1",
       "frontend/CLAUDE.md": "9723650339f04513",
       "frontend/README.md": "f8093af292857d0b",
-      "frontend/application": "3a4a7e2470843aec",
+      "frontend/application": "a131567ddf5e2fce",
       "frontend/design-system": "bd792aeaeaac2423",
       "frontend/docs": "877712e882dc2db5",
-      "frontend/domain": "219a24ccab582aa8",
+      "frontend/domain": "2736b7ca718e04ac",
       "frontend/eslint.config.js": "7f66fc6f1f740f4e",
       "frontend/infrastructure": "a54f5f94d8d8246f",
-      "frontend/package.json": "9b8e4bc444dc16c6",
+      "frontend/package.json": "ee523cbbcaf183e2",
       "frontend/scripts": "85873eac519d8955",
       "frontend/tsconfig.base.json": "d173154f6f8890f1"
     },
@@ -2956,7 +2956,7 @@
       }
     },
     "actions": "fe285a5faa36030b",
-    "report": "6c65169409089313",
+    "report": "44a2eff0fa18cfc3",
     "docs": 0
   },
   "keel new --stack fullstack-go --build-system frontend=npm --layout monorepo && cd backend && keel add agent-harness --reapply": {
@@ -3745,7 +3745,7 @@
       "backend/CLAUDE.md": "3e2b9f8126bfc711",
       "backend/Dockerfile": "bc3cd7b8f01ddba0",
       "backend/README.md": "a2c97480dbc8ac2c",
-      "backend/cmd": "cdaa8fbd736f5772",
+      "backend/cmd": "032aad1ee7f16629",
       "backend/contract": "ca017f871b61f23a",
       "backend/dev": "a85507ae6a9383e9",
       "backend/go.mod": "093a7cddce8aa88e",
@@ -3828,7 +3828,7 @@
       }
     },
     "actions": "da403f8737d963a8",
-    "report": "905e1fb6403b7a81",
+    "report": "29c9faeb10fe2b83",
     "docs": 0
   },
   "keel new --stack fullstack-go --build-system frontend=npm --layout monorepo && cd frontend && keel add agent-harness --reapply": {
@@ -4420,14 +4420,14 @@
       "frontend/CLAUDE.md": "9723650339f04513",
       "frontend/Dockerfile": "67f8a06a117af5fe",
       "frontend/README.md": "f8093af292857d0b",
-      "frontend/application": "3a4a7e2470843aec",
+      "frontend/application": "a131567ddf5e2fce",
       "frontend/deploy-assets.sh": "06737697db60ef61",
       "frontend/design-system": "bd792aeaeaac2423",
-      "frontend/domain": "219a24ccab582aa8",
+      "frontend/domain": "2736b7ca718e04ac",
       "frontend/eslint.config.js": "7f66fc6f1f740f4e",
       "frontend/infrastructure": "a54f5f94d8d8246f",
       "frontend/nginx.conf": "2b3fbdbdaba74740",
-      "frontend/package.json": "9b8e4bc444dc16c6",
+      "frontend/package.json": "ee523cbbcaf183e2",
       "frontend/tsconfig.base.json": "d173154f6f8890f1",
       "scripts": "182237a0d49684f3"
     },
@@ -4482,7 +4482,7 @@
       }
     },
     "actions": "fe285a5faa36030b",
-    "report": "6c65169409089313",
+    "report": "44a2eff0fa18cfc3",
     "docs": 0
   },
   "keel new --stack fullstack-go --build-system frontend=npm --layout polyrepo && cd backend && keel add agent-harness --reapply": {
@@ -5172,7 +5172,7 @@
       "backend/CHANGELOG.md": "9cdf61870ba303f2",
       "backend/CLAUDE.md": "3e2b9f8126bfc711",
       "backend/README.md": "a2c97480dbc8ac2c",
-      "backend/cmd": "cdaa8fbd736f5772",
+      "backend/cmd": "032aad1ee7f16629",
       "backend/contract": "ca017f871b61f23a",
       "backend/dev": "a85507ae6a9383e9",
       "backend/docs": "0c2aed0cdda4346e",
@@ -5238,7 +5238,7 @@
       }
     },
     "actions": "da403f8737d963a8",
-    "report": "905e1fb6403b7a81",
+    "report": "29c9faeb10fe2b83",
     "docs": 0
   },
   "keel new --stack fullstack-go --build-system frontend=npm --layout polyrepo && cd frontend && keel add agent-harness --reapply": {
@@ -5781,13 +5781,13 @@
       "frontend/CHANGELOG.md": "6417225aa09f4df1",
       "frontend/CLAUDE.md": "9723650339f04513",
       "frontend/README.md": "f8093af292857d0b",
-      "frontend/application": "3a4a7e2470843aec",
+      "frontend/application": "a131567ddf5e2fce",
       "frontend/design-system": "bd792aeaeaac2423",
       "frontend/docs": "877712e882dc2db5",
-      "frontend/domain": "219a24ccab582aa8",
+      "frontend/domain": "2736b7ca718e04ac",
       "frontend/eslint.config.js": "7f66fc6f1f740f4e",
       "frontend/infrastructure": "a54f5f94d8d8246f",
-      "frontend/package.json": "9b8e4bc444dc16c6",
+      "frontend/package.json": "ee523cbbcaf183e2",
       "frontend/scripts": "85873eac519d8955",
       "frontend/tsconfig.base.json": "d173154f6f8890f1"
     },
@@ -5826,7 +5826,7 @@
       }
     },
     "actions": "fe285a5faa36030b",
-    "report": "6c65169409089313",
+    "report": "44a2eff0fa18cfc3",
     "docs": 0
   },
   "keel new --stack fullstack-micronaut --build-system backend=gradle,frontend=npm --layout monorepo && cd backend && keel add agent-harness --reapply": {
@@ -6636,7 +6636,7 @@
       "backend/CLAUDE.md": "3e2b9f8126bfc711",
       "backend/Dockerfile": "39972da248e9febd",
       "backend/README.md": "386d932cd68bff72",
-      "backend/application": "19334817ebac80ba",
+      "backend/application": "27d149635bdd883e",
       "backend/build.gradle.kts": "d02b5f21f68be0d6",
       "backend/contract": "ca017f871b61f23a",
       "backend/dev": "a85507ae6a9383e9",
@@ -6722,7 +6722,7 @@
       }
     },
     "actions": "88d5039041818cae",
-    "report": "0ac5bdf4068fa5eb",
+    "report": "dd54286889b6f1b6",
     "docs": 0
   },
   "keel new --stack fullstack-micronaut --build-system backend=gradle,frontend=npm --layout monorepo && cd frontend && keel add agent-harness --reapply": {
@@ -7332,14 +7332,14 @@
       "frontend/CLAUDE.md": "9723650339f04513",
       "frontend/Dockerfile": "67f8a06a117af5fe",
       "frontend/README.md": "f8093af292857d0b",
-      "frontend/application": "3a4a7e2470843aec",
+      "frontend/application": "a131567ddf5e2fce",
       "frontend/deploy-assets.sh": "06737697db60ef61",
       "frontend/design-system": "bd792aeaeaac2423",
-      "frontend/domain": "219a24ccab582aa8",
+      "frontend/domain": "2736b7ca718e04ac",
       "frontend/eslint.config.js": "7f66fc6f1f740f4e",
       "frontend/infrastructure": "a54f5f94d8d8246f",
       "frontend/nginx.conf": "2b3fbdbdaba74740",
-      "frontend/package.json": "9b8e4bc444dc16c6",
+      "frontend/package.json": "ee523cbbcaf183e2",
       "frontend/tsconfig.base.json": "d173154f6f8890f1",
       "scripts": "182237a0d49684f3"
     },
@@ -7394,7 +7394,7 @@
       }
     },
     "actions": "fe285a5faa36030b",
-    "report": "6c65169409089313",
+    "report": "44a2eff0fa18cfc3",
     "docs": 0
   },
   "keel new --stack fullstack-micronaut --build-system backend=gradle,frontend=npm --layout polyrepo && cd backend && keel add agent-harness --reapply": {
@@ -8108,7 +8108,7 @@
       "backend/CHANGELOG.md": "9cdf61870ba303f2",
       "backend/CLAUDE.md": "3e2b9f8126bfc711",
       "backend/README.md": "386d932cd68bff72",
-      "backend/application": "19334817ebac80ba",
+      "backend/application": "27d149635bdd883e",
       "backend/build.gradle.kts": "d02b5f21f68be0d6",
       "backend/contract": "ca017f871b61f23a",
       "backend/dev": "a85507ae6a9383e9",
@@ -8177,7 +8177,7 @@
       }
     },
     "actions": "88d5039041818cae",
-    "report": "0ac5bdf4068fa5eb",
+    "report": "dd54286889b6f1b6",
     "docs": 0
   },
   "keel new --stack fullstack-micronaut --build-system backend=gradle,frontend=npm --layout polyrepo && cd frontend && keel add agent-harness --reapply": {
@@ -8741,13 +8741,13 @@
       "frontend/CHANGELOG.md": "6417225aa09f4df1",
       "frontend/CLAUDE.md": "9723650339f04513",
       "frontend/README.md": "f8093af292857d0b",
-      "frontend/application": "3a4a7e2470843aec",
+      "frontend/application": "a131567ddf5e2fce",
       "frontend/design-system": "bd792aeaeaac2423",
       "frontend/docs": "877712e882dc2db5",
-      "frontend/domain": "219a24ccab582aa8",
+      "frontend/domain": "2736b7ca718e04ac",
       "frontend/eslint.config.js": "7f66fc6f1f740f4e",
       "frontend/infrastructure": "a54f5f94d8d8246f",
-      "frontend/package.json": "9b8e4bc444dc16c6",
+      "frontend/package.json": "ee523cbbcaf183e2",
       "frontend/scripts": "85873eac519d8955",
       "frontend/tsconfig.base.json": "d173154f6f8890f1"
     },
@@ -8786,7 +8786,7 @@
       }
     },
     "actions": "fe285a5faa36030b",
-    "report": "6c65169409089313",
+    "report": "44a2eff0fa18cfc3",
     "docs": 0
   },
   "keel new --stack fullstack-rust --build-system frontend=npm --layout monorepo && cd backend && keel add agent-harness --reapply": {
@@ -9580,13 +9580,13 @@
       "backend/.gitignore": "1336b7b0171b1bfd",
       "backend/AGENTS.md": "75bd5405316aced0",
       "backend/CLAUDE.md": "3e2b9f8126bfc711",
-      "backend/Cargo.toml": "3179e208a5ff5fbe",
+      "backend/Cargo.toml": "9440a154ef3da660",
       "backend/Dockerfile": "56e96d6f87599860",
       "backend/README.md": "32424bdb8d859977",
       "backend/contract": "ca017f871b61f23a",
       "backend/dev": "a85507ae6a9383e9",
       "backend/rustfmt.toml": "d386489a87cb5b3f",
-      "backend/src": "8f2c14d81f81aac2",
+      "backend/src": "2f59507fd8eb41fa",
       "backend/tests": "113ddae154ab19f4",
       "compose.yaml": "e2cbce4cec3053cd",
       "docs": "62b72f9ae543ccdf",
@@ -9666,7 +9666,7 @@
       }
     },
     "actions": "ac6270db478bbd5d",
-    "report": "a15557627a9c2e24",
+    "report": "1dce120210510520",
     "docs": 0
   },
   "keel new --stack fullstack-rust --build-system frontend=npm --layout monorepo && cd frontend && keel add agent-harness --reapply": {
@@ -10264,14 +10264,14 @@
       "frontend/CLAUDE.md": "9723650339f04513",
       "frontend/Dockerfile": "67f8a06a117af5fe",
       "frontend/README.md": "f8093af292857d0b",
-      "frontend/application": "3a4a7e2470843aec",
+      "frontend/application": "a131567ddf5e2fce",
       "frontend/deploy-assets.sh": "06737697db60ef61",
       "frontend/design-system": "bd792aeaeaac2423",
-      "frontend/domain": "219a24ccab582aa8",
+      "frontend/domain": "2736b7ca718e04ac",
       "frontend/eslint.config.js": "7f66fc6f1f740f4e",
       "frontend/infrastructure": "a54f5f94d8d8246f",
       "frontend/nginx.conf": "2b3fbdbdaba74740",
-      "frontend/package.json": "9b8e4bc444dc16c6",
+      "frontend/package.json": "ee523cbbcaf183e2",
       "frontend/tsconfig.base.json": "d173154f6f8890f1",
       "scripts": "182237a0d49684f3"
     },
@@ -10326,7 +10326,7 @@
       }
     },
     "actions": "fe285a5faa36030b",
-    "report": "6c65169409089313",
+    "report": "44a2eff0fa18cfc3",
     "docs": 0
   },
   "keel new --stack fullstack-rust --build-system frontend=npm --layout polyrepo && cd backend && keel add agent-harness --reapply": {
@@ -11023,14 +11023,14 @@
       "backend/AGENTS.md": "75bd5405316aced0",
       "backend/CHANGELOG.md": "9cdf61870ba303f2",
       "backend/CLAUDE.md": "3e2b9f8126bfc711",
-      "backend/Cargo.toml": "3179e208a5ff5fbe",
+      "backend/Cargo.toml": "9440a154ef3da660",
       "backend/README.md": "32424bdb8d859977",
       "backend/contract": "ca017f871b61f23a",
       "backend/dev": "a85507ae6a9383e9",
       "backend/docs": "0c2aed0cdda4346e",
       "backend/rustfmt.toml": "d386489a87cb5b3f",
       "backend/scripts": "d3384ce66aae8628",
-      "backend/src": "8f2c14d81f81aac2",
+      "backend/src": "2f59507fd8eb41fa",
       "backend/tests": "113ddae154ab19f4",
       "frontend/.aider.conf.yml": "9f08336987a5a126",
       "frontend/.claude": "a228bbd8401d3971",
@@ -11091,7 +11091,7 @@
       }
     },
     "actions": "ac6270db478bbd5d",
-    "report": "a15557627a9c2e24",
+    "report": "1dce120210510520",
     "docs": 0
   },
   "keel new --stack fullstack-rust --build-system frontend=npm --layout polyrepo && cd frontend && keel add agent-harness --reapply": {
@@ -11641,13 +11641,13 @@
       "frontend/CHANGELOG.md": "6417225aa09f4df1",
       "frontend/CLAUDE.md": "9723650339f04513",
       "frontend/README.md": "f8093af292857d0b",
-      "frontend/application": "3a4a7e2470843aec",
+      "frontend/application": "a131567ddf5e2fce",
       "frontend/design-system": "bd792aeaeaac2423",
       "frontend/docs": "877712e882dc2db5",
-      "frontend/domain": "219a24ccab582aa8",
+      "frontend/domain": "2736b7ca718e04ac",
       "frontend/eslint.config.js": "7f66fc6f1f740f4e",
       "frontend/infrastructure": "a54f5f94d8d8246f",
-      "frontend/package.json": "9b8e4bc444dc16c6",
+      "frontend/package.json": "ee523cbbcaf183e2",
       "frontend/scripts": "85873eac519d8955",
       "frontend/tsconfig.base.json": "d173154f6f8890f1"
     },
@@ -11686,7 +11686,7 @@
       }
     },
     "actions": "fe285a5faa36030b",
-    "report": "6c65169409089313",
+    "report": "44a2eff0fa18cfc3",
     "docs": 0
   },
   "keel new --stack fullstack-spring --build-system backend=gradle,frontend=npm --layout monorepo && cd backend && keel add agent-harness --reapply": {
@@ -12496,7 +12496,7 @@
       "backend/CLAUDE.md": "3e2b9f8126bfc711",
       "backend/Dockerfile": "236e2dcb4e7f86ec",
       "backend/README.md": "04fc8555a88d07ee",
-      "backend/application": "23514ca96f039d75",
+      "backend/application": "ce9cf58963e09d31",
       "backend/build.gradle.kts": "d02b5f21f68be0d6",
       "backend/contract": "ca017f871b61f23a",
       "backend/dev": "a85507ae6a9383e9",
@@ -12582,7 +12582,7 @@
       }
     },
     "actions": "88d5039041818cae",
-    "report": "bc3f6b32336ec9af",
+    "report": "6d50b651d0d5fb17",
     "docs": 0
   },
   "keel new --stack fullstack-spring --build-system backend=gradle,frontend=npm --layout monorepo && cd frontend && keel add agent-harness --reapply": {
@@ -13192,14 +13192,14 @@
       "frontend/CLAUDE.md": "9723650339f04513",
       "frontend/Dockerfile": "67f8a06a117af5fe",
       "frontend/README.md": "f8093af292857d0b",
-      "frontend/application": "3a4a7e2470843aec",
+      "frontend/application": "a131567ddf5e2fce",
       "frontend/deploy-assets.sh": "06737697db60ef61",
       "frontend/design-system": "bd792aeaeaac2423",
-      "frontend/domain": "219a24ccab582aa8",
+      "frontend/domain": "2736b7ca718e04ac",
       "frontend/eslint.config.js": "7f66fc6f1f740f4e",
       "frontend/infrastructure": "a54f5f94d8d8246f",
       "frontend/nginx.conf": "2b3fbdbdaba74740",
-      "frontend/package.json": "9b8e4bc444dc16c6",
+      "frontend/package.json": "ee523cbbcaf183e2",
       "frontend/tsconfig.base.json": "d173154f6f8890f1",
       "scripts": "182237a0d49684f3"
     },
@@ -13254,7 +13254,7 @@
       }
     },
     "actions": "fe285a5faa36030b",
-    "report": "6c65169409089313",
+    "report": "44a2eff0fa18cfc3",
     "docs": 0
   },
   "keel new --stack fullstack-spring --build-system backend=gradle,frontend=npm --layout polyrepo && cd backend && keel add agent-harness --reapply": {
@@ -13968,7 +13968,7 @@
       "backend/CHANGELOG.md": "9cdf61870ba303f2",
       "backend/CLAUDE.md": "3e2b9f8126bfc711",
       "backend/README.md": "04fc8555a88d07ee",
-      "backend/application": "23514ca96f039d75",
+      "backend/application": "ce9cf58963e09d31",
       "backend/build.gradle.kts": "d02b5f21f68be0d6",
       "backend/contract": "ca017f871b61f23a",
       "backend/dev": "a85507ae6a9383e9",
@@ -14037,7 +14037,7 @@
       }
     },
     "actions": "88d5039041818cae",
-    "report": "bc3f6b32336ec9af",
+    "report": "6d50b651d0d5fb17",
     "docs": 0
   },
   "keel new --stack fullstack-spring --build-system backend=gradle,frontend=npm --layout polyrepo && cd frontend && keel add agent-harness --reapply": {
@@ -14601,13 +14601,13 @@
       "frontend/CHANGELOG.md": "6417225aa09f4df1",
       "frontend/CLAUDE.md": "9723650339f04513",
       "frontend/README.md": "f8093af292857d0b",
-      "frontend/application": "3a4a7e2470843aec",
+      "frontend/application": "a131567ddf5e2fce",
       "frontend/design-system": "bd792aeaeaac2423",
       "frontend/docs": "877712e882dc2db5",
-      "frontend/domain": "219a24ccab582aa8",
+      "frontend/domain": "2736b7ca718e04ac",
       "frontend/eslint.config.js": "7f66fc6f1f740f4e",
       "frontend/infrastructure": "a54f5f94d8d8246f",
-      "frontend/package.json": "9b8e4bc444dc16c6",
+      "frontend/package.json": "ee523cbbcaf183e2",
       "frontend/scripts": "85873eac519d8955",
       "frontend/tsconfig.base.json": "d173154f6f8890f1"
     },
@@ -14646,7 +14646,7 @@
       }
     },
     "actions": "fe285a5faa36030b",
-    "report": "6c65169409089313",
+    "report": "44a2eff0fa18cfc3",
     "docs": 0
   },
   "keel new --stack fullstack-ts --build-system backend=npm,frontend=npm --layout monorepo && cd backend && keel add agent-harness --reapply": {
@@ -15472,7 +15472,7 @@
       "backend/CLAUDE.md": "3e2b9f8126bfc711",
       "backend/Dockerfile": "15e6a2989b964d79",
       "backend/README.md": "41e43692c2914ea8",
-      "backend/application": "0ed26505db0df491",
+      "backend/application": "69a58e5e2efd3c68",
       "backend/contract": "ca017f871b61f23a",
       "backend/dev": "a85507ae6a9383e9",
       "backend/domain": "d9eb0dd687df3ebd",
@@ -15558,7 +15558,7 @@
       }
     },
     "actions": "189908c8fa6b780a",
-    "report": "4a1df211cfb2739c",
+    "report": "e348465b84bdd293",
     "docs": 0
   },
   "keel new --stack fullstack-ts --build-system backend=npm,frontend=npm --layout monorepo && cd frontend && keel add agent-harness --reapply": {
@@ -16180,14 +16180,14 @@
       "frontend/CLAUDE.md": "9723650339f04513",
       "frontend/Dockerfile": "67f8a06a117af5fe",
       "frontend/README.md": "f8093af292857d0b",
-      "frontend/application": "3a4a7e2470843aec",
+      "frontend/application": "a131567ddf5e2fce",
       "frontend/deploy-assets.sh": "06737697db60ef61",
       "frontend/design-system": "bd792aeaeaac2423",
-      "frontend/domain": "219a24ccab582aa8",
+      "frontend/domain": "2736b7ca718e04ac",
       "frontend/eslint.config.js": "7f66fc6f1f740f4e",
       "frontend/infrastructure": "a54f5f94d8d8246f",
       "frontend/nginx.conf": "2b3fbdbdaba74740",
-      "frontend/package.json": "9b8e4bc444dc16c6",
+      "frontend/package.json": "ee523cbbcaf183e2",
       "frontend/tsconfig.base.json": "d173154f6f8890f1",
       "scripts": "182237a0d49684f3"
     },
@@ -16242,7 +16242,7 @@
       }
     },
     "actions": "fe285a5faa36030b",
-    "report": "6c65169409089313",
+    "report": "44a2eff0fa18cfc3",
     "docs": 0
   },
   "keel new --stack fullstack-ts --build-system backend=npm,frontend=npm --layout polyrepo && cd backend && keel add agent-harness --reapply": {
@@ -16974,7 +16974,7 @@
       "backend/CHANGELOG.md": "9cdf61870ba303f2",
       "backend/CLAUDE.md": "3e2b9f8126bfc711",
       "backend/README.md": "41e43692c2914ea8",
-      "backend/application": "0ed26505db0df491",
+      "backend/application": "69a58e5e2efd3c68",
       "backend/contract": "ca017f871b61f23a",
       "backend/dev": "a85507ae6a9383e9",
       "backend/docs": "0c2aed0cdda4346e",
@@ -17043,7 +17043,7 @@
       }
     },
     "actions": "189908c8fa6b780a",
-    "report": "4a1df211cfb2739c",
+    "report": "e348465b84bdd293",
     "docs": 0
   },
   "keel new --stack fullstack-ts --build-system backend=npm,frontend=npm --layout polyrepo && cd frontend && keel add agent-harness --reapply": {
@@ -17621,13 +17621,13 @@
       "frontend/CHANGELOG.md": "6417225aa09f4df1",
       "frontend/CLAUDE.md": "9723650339f04513",
       "frontend/README.md": "f8093af292857d0b",
-      "frontend/application": "3a4a7e2470843aec",
+      "frontend/application": "a131567ddf5e2fce",
       "frontend/design-system": "bd792aeaeaac2423",
       "frontend/docs": "877712e882dc2db5",
-      "frontend/domain": "219a24ccab582aa8",
+      "frontend/domain": "2736b7ca718e04ac",
       "frontend/eslint.config.js": "7f66fc6f1f740f4e",
       "frontend/infrastructure": "a54f5f94d8d8246f",
-      "frontend/package.json": "9b8e4bc444dc16c6",
+      "frontend/package.json": "ee523cbbcaf183e2",
       "frontend/scripts": "85873eac519d8955",
       "frontend/tsconfig.base.json": "d173154f6f8890f1"
     },
@@ -17666,7 +17666,7 @@
       }
     },
     "actions": "fe285a5faa36030b",
-    "report": "6c65169409089313",
+    "report": "44a2eff0fa18cfc3",
     "docs": 0
   },
   "keel new --stack go-cli --module-layout basic && keel add agent-harness --reapply": {
@@ -18016,7 +18016,7 @@
       }
     },
     "actions": "56c240f95babd5b4",
-    "report": "f554757f248402e7",
+    "report": "0784cbba1a3f1926",
     "docs": 0
   },
   "keel new --stack go-cli --module-layout basic --with ci,dev-env,toolchain && keel add ci --reapply": {
@@ -18116,7 +18116,7 @@
     "tree": {
       ".aider.conf.yml": "c06f3e37decdef68",
       ".claude": "759a8f7c1bd887bc",
-      ".devcontainer": "80b439ffdbec96c8",
+      ".devcontainer": "2e27b94830f301fd",
       ".editorconfig": "ae9d3963a8dfdde1",
       ".gemini": "118677e61f229eab",
       ".gitattributes": "b3129e849b4ed930",
@@ -18154,7 +18154,7 @@
       }
     },
     "actions": "4f53cda18c2baa0c",
-    "report": "47138dd6c311a883",
+    "report": "7f78db97af163e99",
     "docs": 0
   },
   "keel new --stack go-cli --module-layout basic --with ci,dev-env,toolchain && keel add dev-env --reapply": {
@@ -18664,7 +18664,7 @@
       "CHANGELOG.md": "5e4a6723dd9729d7",
       "CLAUDE.md": "967987cbc3781a84",
       "README.md": "cc71b7d1cdd219fd",
-      "cmd": "3b56e628fb6af752",
+      "cmd": "ad5da9cc01fcb2f7",
       "dev": "3039f1b8857deb40",
       "docs": "62b72f9ae543ccdf",
       "go.mod": "26df4f3a0f1fe3a2",
@@ -18690,7 +18690,7 @@
       }
     },
     "actions": "9f68a3e8ea08dc37",
-    "report": "131c702b14926ccb",
+    "report": "5ff7d4b9b7fcf0bc",
     "docs": 0
   },
   "keel new --stack go-cli-http --module-layout basic --with ci,containerization,persistence,distribution,iac,toolchain && keel add agent-harness --reapply": {
@@ -19374,7 +19374,7 @@
       "CLAUDE.md": "967987cbc3781a84",
       "Dockerfile": "81cee679e5b4ebb5",
       "README.md": "f021100f8e00e8f5",
-      "cmd": "3b56e628fb6af752",
+      "cmd": "444d678a39f714b6",
       "deploy": "965fe798efa83cc2",
       "dev": "a00add2968cd0f19",
       "docs": "62b72f9ae543ccdf",
@@ -19404,7 +19404,7 @@
       }
     },
     "actions": "9f68a3e8ea08dc37",
-    "report": "0f2eb1caa1477738",
+    "report": "5ff7d4b9b7fcf0bc",
     "docs": 0
   },
   "keel new --stack go-http --module-layout basic && keel add agent-harness --reapply": {
@@ -19730,7 +19730,7 @@
       "CHANGELOG.md": "5e4a6723dd9729d7",
       "CLAUDE.md": "967987cbc3781a84",
       "README.md": "7a44e1bbe445f04f",
-      "cmd": "1c207f100a5f1d97",
+      "cmd": "699d08e48555800f",
       "dev": "3039f1b8857deb40",
       "docs": "62b72f9ae543ccdf",
       "go.mod": "26df4f3a0f1fe3a2",
@@ -19756,7 +19756,7 @@
       }
     },
     "actions": "9f68a3e8ea08dc37",
-    "report": "6e502cfc6dbed493",
+    "report": "29c9faeb10fe2b83",
     "docs": 0
   },
   "keel new --stack go-http --module-layout basic --with ci,containerization,persistence,distribution,iac,toolchain && keel add agent-harness --reapply": {
@@ -20440,7 +20440,7 @@
       "CLAUDE.md": "967987cbc3781a84",
       "Dockerfile": "81cee679e5b4ebb5",
       "README.md": "63a920abfa788151",
-      "cmd": "1c207f100a5f1d97",
+      "cmd": "351ece9b70d7e726",
       "deploy": "965fe798efa83cc2",
       "dev": "a00add2968cd0f19",
       "docs": "62b72f9ae543ccdf",
@@ -20470,7 +20470,7 @@
       }
     },
     "actions": "9f68a3e8ea08dc37",
-    "report": "70e02c4f0acd6dc8",
+    "report": "29c9faeb10fe2b83",
     "docs": 0
   },
   "keel new --stack micronaut-cli --build-system gradle --module-layout basic && keel add agent-harness --reapply": {
@@ -20844,7 +20844,7 @@
       }
     },
     "actions": "fa4f873f03235fd8",
-    "report": "7988723f0c864950",
+    "report": "85fe5407c4229af3",
     "docs": 0
   },
   "keel new --stack micronaut-cli --build-system gradle --module-layout basic --with ci,dev-env,toolchain && keel add ci --reapply": {
@@ -20950,7 +20950,7 @@
     "tree": {
       ".aider.conf.yml": "c06f3e37decdef68",
       ".claude": "270688a741f341d5",
-      ".devcontainer": "7883be0628640d12",
+      ".devcontainer": "0fa3fe112ea4f11a",
       ".editorconfig": "ae9d3963a8dfdde1",
       ".gemini": "118677e61f229eab",
       ".gitattributes": "b3129e849b4ed930",
@@ -20991,7 +20991,7 @@
       }
     },
     "actions": "4f53cda18c2baa0c",
-    "report": "716aa06a8658b582",
+    "report": "5caaf8f66a8ca741",
     "docs": 0
   },
   "keel new --stack micronaut-cli --build-system gradle --module-layout basic --with ci,dev-env,toolchain && keel add dev-env --reapply": {
@@ -21561,7 +21561,7 @@
       }
     },
     "actions": "fa4f873f03235fd8",
-    "report": "ee54259f3dbcf95b",
+    "report": "d9934344ad0a6cf8",
     "docs": 0
   },
   "keel new --stack micronaut-cli-kotlin --build-system gradle --module-layout basic --with ci,dev-env,toolchain && keel add ci --reapply": {
@@ -21667,7 +21667,7 @@
     "tree": {
       ".aider.conf.yml": "c06f3e37decdef68",
       ".claude": "270688a741f341d5",
-      ".devcontainer": "7883be0628640d12",
+      ".devcontainer": "0fa3fe112ea4f11a",
       ".editorconfig": "ae9d3963a8dfdde1",
       ".gemini": "118677e61f229eab",
       ".gitattributes": "b3129e849b4ed930",
@@ -21708,7 +21708,7 @@
       }
     },
     "actions": "4f53cda18c2baa0c",
-    "report": "716aa06a8658b582",
+    "report": "5caaf8f66a8ca741",
     "docs": 0
   },
   "keel new --stack micronaut-cli-kotlin --build-system gradle --module-layout basic --with ci,dev-env,toolchain && keel add dev-env --reapply": {
@@ -22251,7 +22251,7 @@
       "CHANGELOG.md": "5e4a6723dd9729d7",
       "CLAUDE.md": "967987cbc3781a84",
       "README.md": "846028219d56535a",
-      "application": "017221dfd8f1d83f",
+      "application": "0fd4bac84957bd1f",
       "build.gradle.kts": "b7ce79bde77216b8",
       "dev": "3039f1b8857deb40",
       "docs": "62b72f9ae543ccdf",
@@ -22280,7 +22280,7 @@
       }
     },
     "actions": "f645f1451a059276",
-    "report": "9b0eb00634a3e8e5",
+    "report": "1a1910945e9286d9",
     "docs": 0
   },
   "keel new --stack micronaut-cli-rest --build-system gradle --module-layout basic --with ci,containerization,persistence,distribution,iac,toolchain && keel add agent-harness --reapply": {
@@ -23003,7 +23003,7 @@
       "CLAUDE.md": "967987cbc3781a84",
       "Dockerfile": "ba6755c9312a3666",
       "README.md": "55813d828b2c872c",
-      "application": "c6fa6067eba09b75",
+      "application": "bbf4bd50f4d9a929",
       "build.gradle.kts": "b7ce79bde77216b8",
       "deploy": "2894d211b8181871",
       "dev": "a00add2968cd0f19",
@@ -23036,7 +23036,7 @@
       }
     },
     "actions": "f645f1451a059276",
-    "report": "64457ccf19c56aae",
+    "report": "1a1910945e9286d9",
     "docs": 0
   },
   "keel new --stack micronaut-cli-rest-kotlin --build-system gradle --module-layout basic && keel add agent-harness --reapply": {
@@ -23383,7 +23383,7 @@
       "CHANGELOG.md": "5e4a6723dd9729d7",
       "CLAUDE.md": "967987cbc3781a84",
       "README.md": "846028219d56535a",
-      "application": "d07147c1ad0550f2",
+      "application": "eef82d178f12d7d4",
       "build.gradle.kts": "b059c76e62ea956d",
       "dev": "3039f1b8857deb40",
       "docs": "62b72f9ae543ccdf",
@@ -23412,7 +23412,7 @@
       }
     },
     "actions": "f645f1451a059276",
-    "report": "c91eed6e2a63ee54",
+    "report": "53e8b8db0276b32a",
     "docs": 0
   },
   "keel new --stack micronaut-cli-rest-kotlin --build-system gradle --module-layout basic --with ci,containerization,persistence,distribution,iac,toolchain && keel add agent-harness --reapply": {
@@ -24135,7 +24135,7 @@
       "CLAUDE.md": "967987cbc3781a84",
       "Dockerfile": "ba6755c9312a3666",
       "README.md": "55813d828b2c872c",
-      "application": "a69de96e79b65c21",
+      "application": "634531d06e636608",
       "build.gradle.kts": "b059c76e62ea956d",
       "deploy": "2894d211b8181871",
       "dev": "a00add2968cd0f19",
@@ -24168,7 +24168,7 @@
       }
     },
     "actions": "f645f1451a059276",
-    "report": "511fc665cb2adc54",
+    "report": "53e8b8db0276b32a",
     "docs": 0
   },
   "keel new --stack micronaut-rest --build-system gradle --module-layout basic && keel add agent-harness --reapply": {
@@ -24515,7 +24515,7 @@
       "CHANGELOG.md": "5e4a6723dd9729d7",
       "CLAUDE.md": "967987cbc3781a84",
       "README.md": "c0cfdef4b825e501",
-      "application": "7638844bae02eff6",
+      "application": "e7746b27b5b8290e",
       "build.gradle.kts": "b7ce79bde77216b8",
       "dev": "3039f1b8857deb40",
       "docs": "62b72f9ae543ccdf",
@@ -24544,7 +24544,7 @@
       }
     },
     "actions": "f645f1451a059276",
-    "report": "0ac5bdf4068fa5eb",
+    "report": "dd54286889b6f1b6",
     "docs": 0
   },
   "keel new --stack micronaut-rest --build-system gradle --module-layout basic --with ci,containerization,persistence,distribution,iac,toolchain && keel add agent-harness --reapply": {
@@ -25267,7 +25267,7 @@
       "CLAUDE.md": "967987cbc3781a84",
       "Dockerfile": "ba6755c9312a3666",
       "README.md": "6d597143b4af04d4",
-      "application": "2caec2a07749d699",
+      "application": "31f6a93303764094",
       "build.gradle.kts": "b7ce79bde77216b8",
       "deploy": "2894d211b8181871",
       "dev": "a00add2968cd0f19",
@@ -25300,7 +25300,7 @@
       }
     },
     "actions": "f645f1451a059276",
-    "report": "9aaae4aab3ef5b9d",
+    "report": "dd54286889b6f1b6",
     "docs": 0
   },
   "keel new --stack micronaut-rest-kotlin --build-system gradle --module-layout basic && keel add agent-harness --reapply": {
@@ -25647,7 +25647,7 @@
       "CHANGELOG.md": "5e4a6723dd9729d7",
       "CLAUDE.md": "967987cbc3781a84",
       "README.md": "c0cfdef4b825e501",
-      "application": "50db671ba51b0d6f",
+      "application": "7c033d8ff5faf035",
       "build.gradle.kts": "b059c76e62ea956d",
       "dev": "3039f1b8857deb40",
       "docs": "62b72f9ae543ccdf",
@@ -25676,7 +25676,7 @@
       }
     },
     "actions": "f645f1451a059276",
-    "report": "59d6563a610c7aab",
+    "report": "2637954cc380ce50",
     "docs": 0
   },
   "keel new --stack micronaut-rest-kotlin --build-system gradle --module-layout basic --with ci,containerization,persistence,distribution,iac,toolchain && keel add agent-harness --reapply": {
@@ -26399,7 +26399,7 @@
       "CLAUDE.md": "967987cbc3781a84",
       "Dockerfile": "ba6755c9312a3666",
       "README.md": "6d597143b4af04d4",
-      "application": "076c5324817aa698",
+      "application": "a9d99308ee523152",
       "build.gradle.kts": "b059c76e62ea956d",
       "deploy": "2894d211b8181871",
       "dev": "a00add2968cd0f19",
@@ -26432,7 +26432,7 @@
       }
     },
     "actions": "f645f1451a059276",
-    "report": "7a0a29738b203a60",
+    "report": "2637954cc380ce50",
     "docs": 0
   },
   "keel new --stack quarkus-cli --build-system gradle --module-layout basic && keel add agent-harness --reapply": {
@@ -26806,7 +26806,7 @@
       }
     },
     "actions": "fa4f873f03235fd8",
-    "report": "8534f59bf5eb5b47",
+    "report": "12fe72cfe37fb60a",
     "docs": 0
   },
   "keel new --stack quarkus-cli --build-system gradle --module-layout basic --with ci,dev-env,distribution,toolchain && keel add ci --reapply": {
@@ -26912,7 +26912,7 @@
     "tree": {
       ".aider.conf.yml": "c06f3e37decdef68",
       ".claude": "3e2d1668ffa1ce2e",
-      ".devcontainer": "7883be0628640d12",
+      ".devcontainer": "0fa3fe112ea4f11a",
       ".editorconfig": "ae9d3963a8dfdde1",
       ".gemini": "118677e61f229eab",
       ".gitattributes": "b3129e849b4ed930",
@@ -26953,7 +26953,7 @@
       }
     },
     "actions": "4f53cda18c2baa0c",
-    "report": "716aa06a8658b582",
+    "report": "5caaf8f66a8ca741",
     "docs": 0
   },
   "keel new --stack quarkus-cli --build-system gradle --module-layout basic --with ci,dev-env,distribution,toolchain && keel add dev-env --reapply": {
@@ -27572,7 +27572,7 @@
       }
     },
     "actions": "fa4f873f03235fd8",
-    "report": "d1b36b538faa429c",
+    "report": "9371f6a335ade901",
     "docs": 0
   },
   "keel new --stack quarkus-cli-kotlin --build-system gradle --module-layout basic --with ci,dev-env,distribution,toolchain && keel add ci --reapply": {
@@ -27678,7 +27678,7 @@
     "tree": {
       ".aider.conf.yml": "c06f3e37decdef68",
       ".claude": "3e2d1668ffa1ce2e",
-      ".devcontainer": "7883be0628640d12",
+      ".devcontainer": "0fa3fe112ea4f11a",
       ".editorconfig": "ae9d3963a8dfdde1",
       ".gemini": "118677e61f229eab",
       ".gitattributes": "b3129e849b4ed930",
@@ -27719,7 +27719,7 @@
       }
     },
     "actions": "4f53cda18c2baa0c",
-    "report": "716aa06a8658b582",
+    "report": "5caaf8f66a8ca741",
     "docs": 0
   },
   "keel new --stack quarkus-cli-kotlin --build-system gradle --module-layout basic --with ci,dev-env,distribution,toolchain && keel add dev-env --reapply": {
@@ -28311,7 +28311,7 @@
       "CHANGELOG.md": "5e4a6723dd9729d7",
       "CLAUDE.md": "967987cbc3781a84",
       "README.md": "6f85c9318a12c015",
-      "application": "6d020cd338518f34",
+      "application": "84b7fc1a5de44c4c",
       "build.gradle.kts": "d6c5e6191163d24f",
       "dev": "3039f1b8857deb40",
       "docs": "62b72f9ae543ccdf",
@@ -28340,7 +28340,7 @@
       }
     },
     "actions": "f645f1451a059276",
-    "report": "a6aa9d2b33a92a7d",
+    "report": "b2096c7e32fa5824",
     "docs": 0
   },
   "keel new --stack quarkus-cli-rest --build-system gradle --module-layout basic --with ci,containerization,persistence,distribution,iac,toolchain && keel add agent-harness --reapply": {
@@ -29063,7 +29063,7 @@
       "CLAUDE.md": "967987cbc3781a84",
       "Dockerfile": "af27a108a6eed425",
       "README.md": "01e3b10385436fb0",
-      "application": "37c358ee78cc0241",
+      "application": "3e981cb301ff71b5",
       "build.gradle.kts": "d6c5e6191163d24f",
       "deploy": "2894d211b8181871",
       "dev": "a00add2968cd0f19",
@@ -29096,7 +29096,7 @@
       }
     },
     "actions": "f645f1451a059276",
-    "report": "b207be9f1d0be4df",
+    "report": "b2096c7e32fa5824",
     "docs": 0
   },
   "keel new --stack quarkus-cli-rest-kotlin --build-system gradle --module-layout basic && keel add agent-harness --reapply": {
@@ -29443,7 +29443,7 @@
       "CHANGELOG.md": "5e4a6723dd9729d7",
       "CLAUDE.md": "967987cbc3781a84",
       "README.md": "6f85c9318a12c015",
-      "application": "e06ca57d6a191f90",
+      "application": "9dea28518e5d4419",
       "build.gradle.kts": "a758be09710bebf8",
       "dev": "3039f1b8857deb40",
       "docs": "62b72f9ae543ccdf",
@@ -29472,7 +29472,7 @@
       }
     },
     "actions": "f645f1451a059276",
-    "report": "1e434611f72e3ccf",
+    "report": "af18501cfec9ac9a",
     "docs": 0
   },
   "keel new --stack quarkus-cli-rest-kotlin --build-system gradle --module-layout basic --with ci,containerization,persistence,distribution,iac,toolchain && keel add agent-harness --reapply": {
@@ -30195,7 +30195,7 @@
       "CLAUDE.md": "967987cbc3781a84",
       "Dockerfile": "af27a108a6eed425",
       "README.md": "01e3b10385436fb0",
-      "application": "278102fb0f217f82",
+      "application": "5efabbb5b4dbe6d5",
       "build.gradle.kts": "a758be09710bebf8",
       "deploy": "2894d211b8181871",
       "dev": "a00add2968cd0f19",
@@ -30228,7 +30228,7 @@
       }
     },
     "actions": "f645f1451a059276",
-    "report": "94771b6cb5924299",
+    "report": "af18501cfec9ac9a",
     "docs": 0
   },
   "keel new --stack quarkus-rest --build-system gradle --module-layout basic && keel add agent-harness --reapply": {
@@ -30575,7 +30575,7 @@
       "CHANGELOG.md": "5e4a6723dd9729d7",
       "CLAUDE.md": "967987cbc3781a84",
       "README.md": "27406eb303c39209",
-      "application": "afcb596568b14c5f",
+      "application": "277739cd1beaf48e",
       "build.gradle.kts": "d6c5e6191163d24f",
       "dev": "3039f1b8857deb40",
       "docs": "62b72f9ae543ccdf",
@@ -30604,7 +30604,7 @@
       }
     },
     "actions": "f645f1451a059276",
-    "report": "d1a7aaa81dd69ade",
+    "report": "0ce902ab3db4aa52",
     "docs": 0
   },
   "keel new --stack quarkus-rest --build-system gradle --module-layout basic --with ci,containerization,persistence,distribution,iac,toolchain && keel add agent-harness --reapply": {
@@ -31327,7 +31327,7 @@
       "CLAUDE.md": "967987cbc3781a84",
       "Dockerfile": "af27a108a6eed425",
       "README.md": "194178c89a518b6e",
-      "application": "24dbe497dfd0b172",
+      "application": "93acbab3f5d586fa",
       "build.gradle.kts": "d6c5e6191163d24f",
       "deploy": "2894d211b8181871",
       "dev": "a00add2968cd0f19",
@@ -31360,7 +31360,7 @@
       }
     },
     "actions": "f645f1451a059276",
-    "report": "0fbe23824d7ac737",
+    "report": "0ce902ab3db4aa52",
     "docs": 0
   },
   "keel new --stack quarkus-rest-kotlin --build-system gradle --module-layout basic && keel add agent-harness --reapply": {
@@ -31707,7 +31707,7 @@
       "CHANGELOG.md": "5e4a6723dd9729d7",
       "CLAUDE.md": "967987cbc3781a84",
       "README.md": "27406eb303c39209",
-      "application": "79d3600d4d12dbf6",
+      "application": "c1664ef358f1e9ff",
       "build.gradle.kts": "a758be09710bebf8",
       "dev": "3039f1b8857deb40",
       "docs": "62b72f9ae543ccdf",
@@ -31736,7 +31736,7 @@
       }
     },
     "actions": "f645f1451a059276",
-    "report": "22aad277e23e000c",
+    "report": "0c9506d4f326ef8d",
     "docs": 0
   },
   "keel new --stack quarkus-rest-kotlin --build-system gradle --module-layout basic --with ci,containerization,persistence,distribution,iac,toolchain && keel add agent-harness --reapply": {
@@ -32459,7 +32459,7 @@
       "CLAUDE.md": "967987cbc3781a84",
       "Dockerfile": "af27a108a6eed425",
       "README.md": "194178c89a518b6e",
-      "application": "883c56e0b766ad45",
+      "application": "b059a85520b64fae",
       "build.gradle.kts": "a758be09710bebf8",
       "deploy": "2894d211b8181871",
       "dev": "a00add2968cd0f19",
@@ -32492,7 +32492,7 @@
       }
     },
     "actions": "f645f1451a059276",
-    "report": "3315a21c26012ae2",
+    "report": "0c9506d4f326ef8d",
     "docs": 0
   },
   "keel new --stack rust-cli --module-layout basic && keel add agent-harness --reapply": {
@@ -32850,7 +32850,7 @@
       }
     },
     "actions": "0bd80ca0c6712cbb",
-    "report": "63f43b9c52551eb5",
+    "report": "12190c97151a34ac",
     "docs": 0
   },
   "keel new --stack rust-cli --module-layout basic --with ci,dev-env,toolchain && keel add ci --reapply": {
@@ -32952,7 +32952,7 @@
     "tree": {
       ".aider.conf.yml": "c06f3e37decdef68",
       ".claude": "58ddea783acc2d6e",
-      ".devcontainer": "ada4bf78613887b4",
+      ".devcontainer": "0c3b291fdc99aeda",
       ".editorconfig": "ae9d3963a8dfdde1",
       ".gemini": "118677e61f229eab",
       ".gitattributes": "b3129e849b4ed930",
@@ -32991,7 +32991,7 @@
       }
     },
     "actions": "4f53cda18c2baa0c",
-    "report": "6e0d7737a939e737",
+    "report": "cb355d032685d479",
     "docs": 0
   },
   "keel new --stack rust-cli --module-layout basic --with ci,dev-env,toolchain && keel add dev-env --reapply": {
@@ -33511,13 +33511,13 @@
       "AGENTS.md": "b5e5955aeff69bda",
       "CHANGELOG.md": "5e4a6723dd9729d7",
       "CLAUDE.md": "967987cbc3781a84",
-      "Cargo.toml": "6a883aa498e255cb",
+      "Cargo.toml": "1e172fabd334b62e",
       "README.md": "069444e0dbcfaf17",
       "dev": "3039f1b8857deb40",
       "docs": "62b72f9ae543ccdf",
       "rustfmt.toml": "1864d83889cda64c",
       "scripts": "182237a0d49684f3",
-      "src": "e938134b05c9729e",
+      "src": "0ed6f9badb35d2c8",
       "tests": "c2f9f41bfa005052"
     },
     "manifest": {
@@ -33539,7 +33539,7 @@
       }
     },
     "actions": "380b05c001b378e2",
-    "report": "088f3ecaec4d616c",
+    "report": "6ba049c85680d176",
     "docs": 0
   },
   "keel new --stack rust-cli-http --module-layout basic --with ci,containerization,persistence,distribution,iac,toolchain && keel add agent-harness --reapply": {
@@ -34234,7 +34234,7 @@
       "AGENTS.md": "cb67c3560ba542dd",
       "CHANGELOG.md": "5e4a6723dd9729d7",
       "CLAUDE.md": "967987cbc3781a84",
-      "Cargo.toml": "6a883aa498e255cb",
+      "Cargo.toml": "62380829de40aa46",
       "Dockerfile": "27e81960cccce2ef",
       "README.md": "aae49b5d71cdea8a",
       "deploy": "965fe798efa83cc2",
@@ -34244,7 +34244,7 @@
       "migrations": "ef56bafbe88c9d4a",
       "rustfmt.toml": "1864d83889cda64c",
       "scripts": "182237a0d49684f3",
-      "src": "37a91528277553a8",
+      "src": "b9f3591ac22fed4d",
       "tests": "39a1053f2fdff320"
     },
     "manifest": {
@@ -34267,7 +34267,7 @@
       }
     },
     "actions": "380b05c001b378e2",
-    "report": "375935aaf2f6b0df",
+    "report": "6ba049c85680d176",
     "docs": 0
   },
   "keel new --stack rust-http --module-layout basic && keel add agent-harness --reapply": {
@@ -34599,13 +34599,13 @@
       "AGENTS.md": "182a3a660935e685",
       "CHANGELOG.md": "5e4a6723dd9729d7",
       "CLAUDE.md": "967987cbc3781a84",
-      "Cargo.toml": "fe16a4fd4f3c2507",
+      "Cargo.toml": "dec0e6f079d23ce7",
       "README.md": "8752c2ddac95b5be",
       "dev": "3039f1b8857deb40",
       "docs": "62b72f9ae543ccdf",
       "rustfmt.toml": "1864d83889cda64c",
       "scripts": "182237a0d49684f3",
-      "src": "ebce72b0f332eae3",
+      "src": "620a6d8ef2b9fca1",
       "tests": "c2f9f41bfa005052"
     },
     "manifest": {
@@ -34627,7 +34627,7 @@
       }
     },
     "actions": "380b05c001b378e2",
-    "report": "842e0625c1abb103",
+    "report": "1dce120210510520",
     "docs": 0
   },
   "keel new --stack rust-http --module-layout basic --with ci,containerization,persistence,distribution,iac,toolchain && keel add agent-harness --reapply": {
@@ -35322,7 +35322,7 @@
       "AGENTS.md": "da1110388630cb95",
       "CHANGELOG.md": "5e4a6723dd9729d7",
       "CLAUDE.md": "967987cbc3781a84",
-      "Cargo.toml": "fe16a4fd4f3c2507",
+      "Cargo.toml": "16643e065e9dbff3",
       "Dockerfile": "27e81960cccce2ef",
       "README.md": "6c02bf5be6446bb9",
       "deploy": "965fe798efa83cc2",
@@ -35332,7 +35332,7 @@
       "migrations": "ef56bafbe88c9d4a",
       "rustfmt.toml": "1864d83889cda64c",
       "scripts": "182237a0d49684f3",
-      "src": "72035a9479024673",
+      "src": "251d7bc08a312067",
       "tests": "39a1053f2fdff320"
     },
     "manifest": {
@@ -35355,7 +35355,7 @@
       }
     },
     "actions": "380b05c001b378e2",
-    "report": "87738f625c884ef3",
+    "report": "1dce120210510520",
     "docs": 0
   },
   "keel new --stack spring-cli --build-system gradle --module-layout basic && keel add agent-harness --reapply": {
@@ -35729,7 +35729,7 @@
       }
     },
     "actions": "fa4f873f03235fd8",
-    "report": "da8bdb31cd70f2cd",
+    "report": "10efc4bdbfae0061",
     "docs": 0
   },
   "keel new --stack spring-cli --build-system gradle --module-layout basic --with ci,dev-env,toolchain && keel add ci --reapply": {
@@ -35835,7 +35835,7 @@
     "tree": {
       ".aider.conf.yml": "c06f3e37decdef68",
       ".claude": "d5d0b740ae120143",
-      ".devcontainer": "7883be0628640d12",
+      ".devcontainer": "0fa3fe112ea4f11a",
       ".editorconfig": "ae9d3963a8dfdde1",
       ".gemini": "118677e61f229eab",
       ".gitattributes": "b3129e849b4ed930",
@@ -35876,7 +35876,7 @@
       }
     },
     "actions": "4f53cda18c2baa0c",
-    "report": "716aa06a8658b582",
+    "report": "5caaf8f66a8ca741",
     "docs": 0
   },
   "keel new --stack spring-cli --build-system gradle --module-layout basic --with ci,dev-env,toolchain && keel add dev-env --reapply": {
@@ -36446,7 +36446,7 @@
       }
     },
     "actions": "fa4f873f03235fd8",
-    "report": "092edea784a414b5",
+    "report": "4903e2203a6f264e",
     "docs": 0
   },
   "keel new --stack spring-cli-kotlin --build-system gradle --module-layout basic --with ci,dev-env,toolchain && keel add ci --reapply": {
@@ -36552,7 +36552,7 @@
     "tree": {
       ".aider.conf.yml": "c06f3e37decdef68",
       ".claude": "d5d0b740ae120143",
-      ".devcontainer": "7883be0628640d12",
+      ".devcontainer": "0fa3fe112ea4f11a",
       ".editorconfig": "ae9d3963a8dfdde1",
       ".gemini": "118677e61f229eab",
       ".gitattributes": "b3129e849b4ed930",
@@ -36593,7 +36593,7 @@
       }
     },
     "actions": "4f53cda18c2baa0c",
-    "report": "716aa06a8658b582",
+    "report": "5caaf8f66a8ca741",
     "docs": 0
   },
   "keel new --stack spring-cli-kotlin --build-system gradle --module-layout basic --with ci,dev-env,toolchain && keel add dev-env --reapply": {
@@ -37136,7 +37136,7 @@
       "CHANGELOG.md": "5e4a6723dd9729d7",
       "CLAUDE.md": "967987cbc3781a84",
       "README.md": "b1ea7fb5b0b6fa0a",
-      "application": "7593ed917574f931",
+      "application": "8cd4a375f59dc925",
       "build.gradle.kts": "b7ce79bde77216b8",
       "dev": "3039f1b8857deb40",
       "docs": "62b72f9ae543ccdf",
@@ -37165,7 +37165,7 @@
       }
     },
     "actions": "f645f1451a059276",
-    "report": "19c1b840b9a62f4c",
+    "report": "043e5946a5307c69",
     "docs": 0
   },
   "keel new --stack spring-cli-rest --build-system gradle --module-layout basic --with ci,containerization,persistence,distribution,iac,toolchain && keel add agent-harness --reapply": {
@@ -37888,7 +37888,7 @@
       "CLAUDE.md": "967987cbc3781a84",
       "Dockerfile": "000421b92828ab2b",
       "README.md": "222748787796e889",
-      "application": "9586d769508be928",
+      "application": "78d4b5b841e52063",
       "build.gradle.kts": "b7ce79bde77216b8",
       "deploy": "2894d211b8181871",
       "dev": "a00add2968cd0f19",
@@ -37921,7 +37921,7 @@
       }
     },
     "actions": "f645f1451a059276",
-    "report": "8f679e22df20416f",
+    "report": "043e5946a5307c69",
     "docs": 0
   },
   "keel new --stack spring-cli-rest-kotlin --build-system gradle --module-layout basic && keel add agent-harness --reapply": {
@@ -38268,7 +38268,7 @@
       "CHANGELOG.md": "5e4a6723dd9729d7",
       "CLAUDE.md": "967987cbc3781a84",
       "README.md": "b1ea7fb5b0b6fa0a",
-      "application": "b508aa8f894f4405",
+      "application": "f67e4e0f131f28e5",
       "build.gradle.kts": "23d10fb962bb0f1a",
       "dev": "3039f1b8857deb40",
       "docs": "62b72f9ae543ccdf",
@@ -38297,7 +38297,7 @@
       }
     },
     "actions": "f645f1451a059276",
-    "report": "9105c934f71f48c5",
+    "report": "933218e111982045",
     "docs": 0
   },
   "keel new --stack spring-cli-rest-kotlin --build-system gradle --module-layout basic --with ci,containerization,persistence,distribution,iac,toolchain && keel add agent-harness --reapply": {
@@ -39020,7 +39020,7 @@
       "CLAUDE.md": "967987cbc3781a84",
       "Dockerfile": "000421b92828ab2b",
       "README.md": "222748787796e889",
-      "application": "602c46b01a1df92f",
+      "application": "502f736d1f0dacca",
       "build.gradle.kts": "23d10fb962bb0f1a",
       "deploy": "2894d211b8181871",
       "dev": "a00add2968cd0f19",
@@ -39053,7 +39053,7 @@
       }
     },
     "actions": "f645f1451a059276",
-    "report": "4d251d09fa8130ed",
+    "report": "933218e111982045",
     "docs": 0
   },
   "keel new --stack spring-rest --build-system gradle --module-layout basic && keel add agent-harness --reapply": {
@@ -39400,7 +39400,7 @@
       "CHANGELOG.md": "5e4a6723dd9729d7",
       "CLAUDE.md": "967987cbc3781a84",
       "README.md": "718f930741ffb76b",
-      "application": "fd0f180a87076e4f",
+      "application": "156932682b82eb97",
       "build.gradle.kts": "b7ce79bde77216b8",
       "dev": "3039f1b8857deb40",
       "docs": "62b72f9ae543ccdf",
@@ -39429,7 +39429,7 @@
       }
     },
     "actions": "f645f1451a059276",
-    "report": "bc3f6b32336ec9af",
+    "report": "6d50b651d0d5fb17",
     "docs": 0
   },
   "keel new --stack spring-rest --build-system gradle --module-layout basic --with ci,containerization,persistence,distribution,iac,toolchain && keel add agent-harness --reapply": {
@@ -40152,7 +40152,7 @@
       "CLAUDE.md": "967987cbc3781a84",
       "Dockerfile": "000421b92828ab2b",
       "README.md": "9aad0409d1734bfa",
-      "application": "96d187351a264f75",
+      "application": "4aac82081637c69d",
       "build.gradle.kts": "b7ce79bde77216b8",
       "deploy": "2894d211b8181871",
       "dev": "a00add2968cd0f19",
@@ -40185,7 +40185,7 @@
       }
     },
     "actions": "f645f1451a059276",
-    "report": "d1d6cbb554a18a72",
+    "report": "6d50b651d0d5fb17",
     "docs": 0
   },
   "keel new --stack spring-rest-kotlin --build-system gradle --module-layout basic && keel add agent-harness --reapply": {
@@ -40532,7 +40532,7 @@
       "CHANGELOG.md": "5e4a6723dd9729d7",
       "CLAUDE.md": "967987cbc3781a84",
       "README.md": "718f930741ffb76b",
-      "application": "7d62973253592f46",
+      "application": "184e9e13658978d6",
       "build.gradle.kts": "23d10fb962bb0f1a",
       "dev": "3039f1b8857deb40",
       "docs": "62b72f9ae543ccdf",
@@ -40561,7 +40561,7 @@
       }
     },
     "actions": "f645f1451a059276",
-    "report": "c33b5f2d2d4fa219",
+    "report": "7b06d859a710a84e",
     "docs": 0
   },
   "keel new --stack spring-rest-kotlin --build-system gradle --module-layout basic --with ci,containerization,persistence,distribution,iac,toolchain && keel add agent-harness --reapply": {
@@ -41284,7 +41284,7 @@
       "CLAUDE.md": "967987cbc3781a84",
       "Dockerfile": "000421b92828ab2b",
       "README.md": "9aad0409d1734bfa",
-      "application": "17adec580624d162",
+      "application": "b649aad9556c562c",
       "build.gradle.kts": "23d10fb962bb0f1a",
       "deploy": "2894d211b8181871",
       "dev": "a00add2968cd0f19",
@@ -41317,7 +41317,7 @@
       }
     },
     "actions": "f645f1451a059276",
-    "report": "8918aae9fcf5d613",
+    "report": "7b06d859a710a84e",
     "docs": 0
   },
   "keel new --stack ts-cli --build-system npm --module-layout basic && keel add agent-harness --reapply": {
@@ -41707,7 +41707,7 @@
       }
     },
     "actions": "21ed9735fbc22164",
-    "report": "6eeff53a71c3ebfd",
+    "report": "2e3040ea3c330223",
     "docs": 0
   },
   "keel new --stack ts-cli --build-system npm --module-layout basic --with ci,dev-env,toolchain && keel add ci --reapply": {
@@ -41817,7 +41817,7 @@
     "tree": {
       ".aider.conf.yml": "c06f3e37decdef68",
       ".claude": "97cf682b811cd375",
-      ".devcontainer": "853611418e06cfab",
+      ".devcontainer": "724468046d667b2d",
       ".editorconfig": "ae9d3963a8dfdde1",
       ".gemini": "118677e61f229eab",
       ".gitattributes": "b3129e849b4ed930",
@@ -41860,7 +41860,7 @@
       }
     },
     "actions": "4f53cda18c2baa0c",
-    "report": "6ce93d862706e973",
+    "report": "e38a73aec0ca1af3",
     "docs": 0
   },
   "keel new --stack ts-cli --build-system npm --module-layout basic --with ci,dev-env,toolchain && keel add dev-env --reapply": {
@@ -42427,7 +42427,7 @@
       "CHANGELOG.md": "5e4a6723dd9729d7",
       "CLAUDE.md": "967987cbc3781a84",
       "README.md": "1973554c9d10e99a",
-      "application": "06b638f1bd57fd45",
+      "application": "7ef18387a82bdaa0",
       "dev": "3039f1b8857deb40",
       "docs": "62b72f9ae543ccdf",
       "domain": "713fce24a21f8fbb",
@@ -42456,7 +42456,7 @@
       }
     },
     "actions": "2ddbae72d785c27d",
-    "report": "5e0dd0f5e8f0b4be",
+    "report": "76ea2a807472454e",
     "docs": 0
   },
   "keel new --stack ts-cli-http --build-system npm --module-layout basic --with ci,containerization,persistence,distribution,iac,toolchain && keel add agent-harness --reapply": {
@@ -43207,7 +43207,7 @@
       "CLAUDE.md": "967987cbc3781a84",
       "Dockerfile": "3cee1e3a22e9a880",
       "README.md": "4d56d3b1fec21139",
-      "application": "fc70545947f93562",
+      "application": "35d2798368e10ba6",
       "deploy": "965fe798efa83cc2",
       "dev": "a00add2968cd0f19",
       "docs": "62b72f9ae543ccdf",
@@ -43240,7 +43240,7 @@
       }
     },
     "actions": "2ddbae72d785c27d",
-    "report": "1e87728d83929e0f",
+    "report": "76ea2a807472454e",
     "docs": 0
   },
   "keel new --stack ts-http --build-system npm --module-layout basic && keel add agent-harness --reapply": {
@@ -43603,7 +43603,7 @@
       "CHANGELOG.md": "5e4a6723dd9729d7",
       "CLAUDE.md": "967987cbc3781a84",
       "README.md": "8ab3a0cff33fdd0f",
-      "application": "b082222e9a0ca7f0",
+      "application": "a1a44d8f74bfa73d",
       "dev": "3039f1b8857deb40",
       "docs": "62b72f9ae543ccdf",
       "domain": "713fce24a21f8fbb",
@@ -43632,7 +43632,7 @@
       }
     },
     "actions": "2ddbae72d785c27d",
-    "report": "f329d3c8d9b6fc5e",
+    "report": "e348465b84bdd293",
     "docs": 0
   },
   "keel new --stack ts-http --build-system npm --module-layout basic --with ci,containerization,persistence,distribution,iac,toolchain && keel add agent-harness --reapply": {
@@ -44383,7 +44383,7 @@
       "CLAUDE.md": "967987cbc3781a84",
       "Dockerfile": "3cee1e3a22e9a880",
       "README.md": "d9cc29d2f7f38d97",
-      "application": "7318aeef74f46294",
+      "application": "0aa94d4f67cdb435",
       "deploy": "965fe798efa83cc2",
       "dev": "a00add2968cd0f19",
       "docs": "62b72f9ae543ccdf",
@@ -44416,7 +44416,7 @@
       }
     },
     "actions": "2ddbae72d785c27d",
-    "report": "4d3a557d97a87c38",
+    "report": "e348465b84bdd293",
     "docs": 0
   },
   "keel new --stack web-components --build-system npm --module-layout basic && keel add agent-harness --reapply": {
@@ -44687,7 +44687,7 @@
       "domain": "3fc124764833ab87",
       "eslint.config.js": "64a2d56520def383",
       "infrastructure": "7f3e056a2da8574b",
-      "package.json": "f4beed164fd268e1",
+      "package.json": "5924c3fcb2e5095d",
       "scripts": "182237a0d49684f3",
       "tsconfig.base.json": "63c239c1f571fbbd"
     },
@@ -44710,7 +44710,7 @@
       }
     },
     "actions": "2ddbae72d785c27d",
-    "report": "a345f17adf29dbda",
+    "report": "44a2eff0fa18cfc3",
     "docs": 0
   },
   "keel new --stack web-components --build-system npm --module-layout basic --with ci,containerization,dev-env,distribution,iac,toolchain && keel add agent-harness --reapply": {
@@ -44828,7 +44828,7 @@
       }
     },
     "actions": "21ed9735fbc22164",
-    "report": "d30e43ebd2fac84e",
+    "report": "8e201c2a37abcfd2",
     "docs": 0
   },
   "keel new --stack web-components --build-system npm --module-layout basic --with ci,containerization,dev-env,distribution,iac,toolchain && keel add ci --reapply": {
@@ -45013,7 +45013,7 @@
     "tree": {
       ".aider.conf.yml": "c06f3e37decdef68",
       ".claude": "ab036cc9fd157d8b",
-      ".devcontainer": "853611418e06cfab",
+      ".devcontainer": "724468046d667b2d",
       ".dockerignore": "2e2237f8cf866f85",
       ".editorconfig": "ae9d3963a8dfdde1",
       ".gemini": "118677e61f229eab",
@@ -45064,7 +45064,7 @@
       }
     },
     "actions": "4f53cda18c2baa0c",
-    "report": "6ce93d862706e973",
+    "report": "e38a73aec0ca1af3",
     "docs": 0
   },
   "keel new --stack web-components --build-system npm --module-layout basic --with ci,containerization,dev-env,distribution,iac,toolchain && keel add dev-env --reapply": {
@@ -45394,7 +45394,7 @@
       "iac": "a3b252112996a3a5",
       "infrastructure": "7f3e056a2da8574b",
       "nginx.conf": "2dc6ff71f3c919f3",
-      "package.json": "f4beed164fd268e1",
+      "package.json": "5924c3fcb2e5095d",
       "scripts": "182237a0d49684f3",
       "tsconfig.base.json": "63c239c1f571fbbd"
     },
@@ -45418,7 +45418,7 @@
       }
     },
     "actions": "2ddbae72d785c27d",
-    "report": "a345f17adf29dbda",
+    "report": "44a2eff0fa18cfc3",
     "docs": 0
   }
 }

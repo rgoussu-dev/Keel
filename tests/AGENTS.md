@@ -121,9 +121,19 @@ runs them in parallel:
   `keel.dials` settles it — a setting, not a cell — where the whole
   re-render is held to I11 before any context is added
   (`fixed:<stack>/modulith`) and `keel add module orders` to I9
-  (`module:<stack>`). None of these keys starts with `add:`, which is
-  the prefix the docs' matrix reads (`support/generated-docs.ts`), so
-  none reaches it.
+  (`module:<stack>`). Each `reapply:` pair's install also stages
+  nothing (I11): a re-render runs within the recorded composition
+  (roadmap S.7), so a vertical re-rendered alone keeps what the rest
+  wrote into the files it rewrites. And each preset whose opening menu
+  offers the dev environment as an extra — the ten CLI and front-end
+  presets — is scaffolded again with its whole menu (`holdWholeMenu`,
+  a setting too), where each recorded vertical re-rendered alone
+  (`reapply:<stack>/menu+<v>`) and the whole re-render
+  (`fixed:<stack>/menu`) are held to I9 and I11: there the dev
+  environment attached the dev container in place, the shape a
+  re-render of the definition has to keep. None of these keys starts
+  with `add:`, which is the prefix the docs' matrix reads
+  (`support/generated-docs.ts`), so none reaches it.
 - `composite` — every product under every repository layout its install
   offers: first each service's own extras menu (`keel.dials`'
   `services[].verticals`), every vertical of it named for that service
@@ -166,7 +176,12 @@ runs them in parallel:
   record of `growthOf`) reads for the cell (I10, over the actions the
   grid's deferred runner records, `Grid.queued`). The add also
   previews as it installs on the scaffold (I9, over no answers and
-  over the monitoring stack answered away from its default). All 192
+  over the monitoring stack answered away from its default). Each
+  twin, scaffolded once for every cell that grows into it, is held to
+  I11 as well, its whole re-render staging nothing (`fixed:` and the
+  twin's command lines: 160 twins, 64 with a module history, whose
+  contexts' wiring the re-render replays): I10 makes each grown
+  project its twin's bytes, so the twin carries the grown cell. All 192
   grow, and all 128 with a history: epic R's R.3 lifted
   `keel.contexts-need-rewiring` family by family (Go's with R.3a,
   Rust's with R.3b, TypeScript's with R.3c, the JVM's with R.3d), so
@@ -197,7 +212,9 @@ the record can only shrink. Beside each suite:
   preview came to read the answers it is sent as the install does,
   I10 hard from the day it landed, with R.2b's command, and I11 hard
   from the day it landed too, with S.1b, on the projects whose recorded
-  composition was a fixed point already. Every
+  composition was a fixed point already — widened hard by S.7 to each
+  vertical re-rendered alone, growth's twins and the whole menus where
+  the dev environment is an extra. Every
   known file is empty now but brownfield's I5 key; growth's holds only
   hard invariants, and is `{}` because `sweepGrid` reads each axis's
   known file whatever it holds.
@@ -212,16 +229,20 @@ the record can only shrink. Beside each suite:
   composite goldens (`generated-docs.test.ts`, above), so a change that
   moves a verdict regenerates the docs last, after the grid.
 
-About 80 s wall on its own, growth the longest: growth about 77 s
-alone (480 real scaffolds — 320 cells and 160 twins, one per setting
+About 2 minutes wall on its own, growth the longest: growth about 102
+to 124 s alone at a load average of 2 to 4, and some 150 s in the full
+suite (480 real scaffolds — 320 cells and 160 twins, one per setting
 and history, which both directions share — 384 real `keel add module`
-runs, 320 real adds and 960 dry-run dispatches for I9; the JVM's are
-the heaviest), greenfield ~23 s, of which I8's orderings are about
-3.5 s and I9's bodies — some 260 whole-menu dispatches — about 14 s,
-brownfield about 13 s alone and 17 to 20 s in the full suite (1,711
-cells, 1,208 of them S.1b's I9 and I11 cells, and 28 real modulith
-scaffolds beside the 28 opening ones), and composite about 11 s alone
-and 13 to 15 s in the full suite (1,656 cells, 984 of them S.1b's).
+runs, 320 real adds, 960 dry-run dispatches for I9, and since S.7 a
+status read and a dry-run whole re-render on each of the 160 twins for
+I11, some 7 s paired with the axis before it, less than the load swings
+it by; the JVM's are the heaviest), greenfield ~23 s, of which I8's
+orderings are about 3.5 s and I9's bodies — some 260 whole-menu
+dispatches — about 14 s, brownfield about 17 to 21 s alone and about
+28 s in the full suite (1,891 cells, 1,208 of them S.1b's I9 and I11
+cells and 180 S.7's, and 28 real modulith scaffolds and 10 whole-menu
+ones beside the 28 opening ones), and composite about 15 s alone and
+17 to 18 s in the full suite (1,656 cells, 984 of them S.1b's).
 
 **The weekly sweep beside it.** The grid's preview axes read each
 preset's opening dials only, each extra alone and the whole menu, and
@@ -514,9 +535,11 @@ not installed, `keel add entrypoint` in a monorepo product, `keel add
 module` where no context goes), each recorded by its code (`gate`);
 then `convergeOf`'s refusal (`refused`, with the planner's sentence),
 or the target's reference order, each step of the run (`<vertical>
-<posture>`, `+settle` and the adapters where it installs some), the
-contexts it wires and where it records (`append/run`, or `twin/twin`
-for growth). What each cell comes to is held against the verdict its
+<posture>`, `+settle` and the adapters where it installs some, the
+posture `replay` where a re-render puts its patches back, S.7, and
+`bounded-context replay <name> <adapters>` for a context it puts
+back), the contexts it wires, and where it records (`append/run`, or
+`twin/twin` for growth). What each cell comes to is held against the verdict its
 paths golden records, code for code, `keel.unknown-answer` apart (an
 answer is no part of a request). A `keel new` cell is read per scope
 on the seed manifest each starts from, then run, and each manifest it

@@ -702,7 +702,9 @@ offers the plain re-render:
 `--refresh <ids>` takes it up in the same run: each named installed
 vertical is re-rendered after whatever it reads or whatever decides its
 adapters, under `--reapply`'s posture (template-owned files rewritten,
-each with a diff; a diverging patch refuses the run). Its recorded
+each with a diff, what the rest of the project, and what the add
+installed before it, patched into them put back; a diverging patch
+refuses the run). Its recorded
 answers are frozen, but an adapter it now resolves to has none — the
 container image's release pipeline above — so that adapter's questions
 are asked (and shown in `keel ui`'s preview), and `--set` reaches it.
@@ -804,6 +806,28 @@ deliberately conservative:
   before anything is committed, because without a recorded base a
   changed result cannot be told apart from a double application.
   Resolve that file by hand, then re-run.
+- **What the rest of the project wrote into a rewritten file comes
+  back.** A re-render runs within the recorded composition: every
+  other vertical the manifest records puts its patches back, from its
+  recorded answers, onto the template-owned files the re-render
+  rewrote, and onto no other file, in the order the manifest records
+  them — several named verticals each re-render at its own place in
+  that order, so each one's patches land where one run puts them —
+  and each context `keel add module` added puts its wiring back where
+  it arrived among them, before a vertical you added after it. So
+  `keel add walking-skeleton --reapply` keeps observability's lines in
+  the HTTP entrypoint, persistence's wiring, code-style's scripts, the
+  gateway and each context's registration — on an unedited project it
+  changes nothing, and after an edit of yours to a file the bootstrap
+  owns, its diff shows that edit going and nothing else. Nothing else
+  of those verticals is re-rendered: none of their whole files, actions
+  or harness elements, and nothing is recorded for them — name one to
+  re-render it. A patch put back that is not its own fixed point
+  refuses the run with `keel.reapply-conflict`, as a re-rendered one
+  does; none of keel's own is. The dev container's definition
+  re-renders in the shape the project holds: attached to a dev
+  environment added as an extra, on a project without an HTTP server,
+  it keeps the attachment the dev environment made in place.
 - **Answers are frozen.** An adapter the manifest records answers for
   resolves from them without asking; a `--set` for one errors with
   `keel.reapply-frozen-answers`. A question the vertical grew since

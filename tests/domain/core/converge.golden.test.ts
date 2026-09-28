@@ -142,7 +142,11 @@ type Reading =
   | {
       /** The target composition's reference order, its ids joined by a space. */
       readonly order: string;
-      /** Each step of the run: `<vertical> <posture>`, then `+settle` and the adapters installing, where it installs some. */
+      /**
+       * Each step of the run: `<vertical> <posture>`, then `+settle`,
+       * the context a replay puts back, and the adapters installing or
+       * replayed, where it names some.
+       */
       readonly run: readonly string[];
       /** Each context the run wires: `<name> <adapters>`. */
       readonly modules?: readonly string[];
@@ -741,7 +745,9 @@ function recorded(plan: ConvergePlan): Reading {
     order: plan.target.order.join(' '),
     run: plan.run.map(stepLine),
     ...(plan.modules.length > 0
-      ? { modules: plan.modules.map(({ name, adapters }) => `${name} ${adapters.join(',')}`) }
+      ? {
+          modules: plan.modules.map(({ name, adapters }) => `${name} ${adapters.join(',')}`),
+        }
       : {}),
     placement: `${plan.placement.rows}/${plan.placement.harness}`,
   };
@@ -755,11 +761,12 @@ function verdictOf(reading: Reading): string {
   return OK;
 }
 
-/** A step as a cell records it: `<vertical> <posture>[+settle][ <adapters>]`. */
+/** A step as a cell records it: `<vertical> <posture>[+settle][ <context>][ <adapters>]`. */
 function stepLine(step: ConvergeStep): string {
   const settles = step.settles === true ? '+settle' : '';
+  const context = step.context === undefined ? '' : ` ${step.context}`;
   const adapters = step.adapters === undefined ? '' : ` ${step.adapters.join(',')}`;
-  return `${step.vertical.id} ${step.posture}${settles}${adapters}`;
+  return `${step.vertical.id} ${step.posture}${settles}${context}${adapters}`;
 }
 
 function readJson(file: URL): Readonly<Record<string, unknown>> {

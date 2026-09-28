@@ -8,8 +8,10 @@
  * to read: each posture, both placements, the harness realized in each
  * order, an element the twin ranks nothing of, the retrofit with and
  * without the recorded contexts — which never replays the family's
- * `bounded-context` — a conflict read as a refused re-render naming
- * what re-rendered in the order the project records it, the caller's
+ * `bounded-context` — a re-render within the recorded composition,
+ * which puts back what the rest patched into the files it rewrites, a
+ * conflict read as a refused re-render naming what re-rendered in the
+ * order the project records it, the caller's
  * answer check, the
  * refresh proposals — what they read, over what, in the caller's
  * words — `keel new`'s part as a caller from a seed manifest (the
@@ -24,7 +26,8 @@
  * carrying the first three, and the CLI + HTTP one all four, the
  * observability before the notes — beside extras: metrics, a log whose
  * patch appends a line on every application, a deploy vertical that
- * reads both, a vertical writing a file the skeleton writes, a draft
+ * reads both, a vertical writing a file the skeleton writes, two that
+ * patch it — one guarded, one appending on every application — a draft
  * whose one adapter a later vertical's tag rules out, and a context
  * vertical of the family's own, under the id `keel add module`
  * records. A project is scaffolded by the run itself onto an empty
@@ -58,6 +61,7 @@ import {
 } from '../../../src/domain/contract/manifest.js';
 import type { ManifestStore } from '../../../src/domain/contract/ports/manifest-store.js';
 import { PathConflictError, RefusalError } from '../../../src/domain/contract/refusal.js';
+import { markdownRegion, regionPatch } from '../../../src/domain/contract/region.js';
 import type { Stack } from '../../../src/domain/contract/stack.js';
 import { ContributionConflictError, newOwnership } from '../../../src/domain/core/apply.js';
 import {
@@ -81,6 +85,7 @@ import { addedContext, CONTEXT_TAG } from '../../../src/domain/core/adapters/add
 import { growthOf } from '../../../src/domain/core/growth.js';
 import { installVerticals } from '../../../src/domain/core/install.js';
 import { pluginOrigin, registryOf } from '../../../src/domain/core/registry.js';
+import { projectScope } from '../../../src/domain/core/scope.js';
 import { DomainError, type Result } from '../../../src/domain/kernel/result.js';
 import { FakeClock } from '../../../src/infrastructure/commons/fake-clock.js';
 import { FakeLogger } from '../../../src/infrastructure/commons/fake-logger.js';
@@ -285,6 +290,57 @@ const final = vertical(
   { promotes: [FINAL] },
 );
 
+/**
+ * Puts a line into the file the CLI bootstrap writes whole where it is
+ * not there yet — its own fixed point — and writes a file of its own.
+ */
+const wire = vertical('acme-wire', [
+  adapter(
+    'acme-wire',
+    'main',
+    ['lang.acme', 'arch.cli'],
+    (ctx) => ({
+      files: [{ path: 'wire.txt', content: 'wire\n' }],
+      patches: [
+        {
+          target: 'cli.txt',
+          apply: (text: string) => {
+            const line = `wired ${ctx.answer('depth')}\n`;
+            return text.includes(line) ? text : `${text}${line}`;
+          },
+        },
+      ],
+      actions: [deferring('acme wire')],
+    }),
+    { questions: [question('depth', 'deep')] },
+  ),
+]);
+
+/** Appends a line to the file the CLI bootstrap writes whole on every application: no fixed point. */
+const tail = vertical('acme-tail', [
+  adapter('acme-tail', 'main', ['lang.acme', 'arch.cli'], () => ({
+    patches: [{ target: 'cli.txt', apply: (text: string) => `${text}tail\n` }],
+  })),
+]);
+
+/** Writes a file of its own whole, rendered with the vertical that owns a region of it. */
+const yfile = vertical(
+  'acme-yfile',
+  [
+    adapter('acme-yfile', 'main', ['lang.acme'], () => ({
+      files: [{ path: 'y.txt', content: 'y\n' }],
+    })),
+  ],
+  { reads: ['acme-zreg'] },
+);
+
+/** Owns a region of the file `acme-yfile` writes whole: its own fixed point. */
+const zreg = vertical('acme-zreg', [
+  adapter('acme-zreg', 'main', ['lang.acme'], () => ({
+    patches: [regionPatch({ target: 'y.txt', region: markdownRegion('zreg'), body: 'zreg\n' })],
+  })),
+]);
+
 /** Writes the file the CLI bootstrap writes. */
 const clash = vertical('acme-clash', [
   adapter('acme-clash', 'main', ['lang.acme'], () => ({
@@ -305,7 +361,23 @@ function preset(id: string, entrypoints: readonly Tag[], verticals: readonly Ver
 const family = registryOf([
   {
     origin: pluginOrigin('acme'),
-    verticals: [skeleton, harness, notes, obs, metrics, deploy, log, clash, draft, final, context],
+    verticals: [
+      skeleton,
+      harness,
+      notes,
+      obs,
+      metrics,
+      deploy,
+      log,
+      wire,
+      tail,
+      yfile,
+      zreg,
+      clash,
+      draft,
+      final,
+      context,
+    ],
     stacks: [
       preset('acme-cli', ['arch.cli'], [skeleton, harness, notes]),
       preset('acme-cli-http', ['arch.cli', HTTP], [skeleton, harness, obs, notes]),
@@ -714,6 +786,104 @@ describe('converge: a conflict a contribution cannot settle', () => {
       );
     expect(failure).toBeInstanceOf(ContributionConflictError);
     expect((failure as ContributionConflictError).kind).toBe('overwrite');
+  });
+});
+
+describe('converge: a re-render within the recorded composition', () => {
+  /** `keel add <named> --reapply`'s plan on `stored`, as the reading makes it. */
+  const reapplying = (stored: ManifestV2, named: readonly string[]): ConvergingPlan => {
+    const plan = convergeOf(family, stored, { kind: 'reapply', verticals: named });
+    if (plan.kind !== 'converges') throw new Error('the re-render was refused');
+    return plan;
+  };
+
+  it('puts back what every other recorded vertical patched into a file it rewrites — one recorded before it too — and writes nothing else of them', async () => {
+    const world = new World();
+    const scaffolded = await world.scaffold([skeleton, harness, notes, wire]);
+    expect(world.read('cli.txt')).toBe('cli\nwired deep\n');
+    world.files.set('cli.txt', Buffer.from('cli\nwired deep\nedited by hand\n'));
+    world.files.set('wire.txt', Buffer.from('mine\n'));
+    // Recorded at rank, as growth records: first, though it came last.
+    const stored: ManifestV2 = {
+      ...scaffolded,
+      verticals: [
+        ...scaffolded.verticals.filter(({ id }) => id === 'acme-wire'),
+        ...scaffolded.verticals.filter(({ id }) => id !== 'acme-wire'),
+      ],
+    };
+
+    const run = ok(await world.run(stored, reapplying(stored, ['acme-skeleton'])));
+
+    expect(run.tree.read('cli.txt')?.toString('utf8')).toBe('cli\nwired deep\n');
+    expect(changed(run.report)).toEqual(['modify cli.txt']);
+    expect(run.report.diffs?.map(({ path }) => path)).toEqual(['cli.txt']);
+    expect(run.report.diffs?.[0]?.diff).toContain('-edited by hand');
+    // A whole file another vertical owns is left as the user left it,
+    // and the replay queues, resolves and records nothing of it.
+    expect(run.tree.read('wire.txt')?.toString('utf8')).toBe('mine\n');
+    expect(run.report.actions).toEqual(['acme fetch']);
+    expect(run.report.resolvedAdapters?.map(({ id }) => id)).toEqual(['acme-skeleton/cli']);
+    expect(ids(run.manifest.verticals)).toEqual(ids(stored.verticals));
+    expect(run.manifest.answers).toEqual(stored.answers);
+  });
+
+  it('refuses, as keel.reapply-conflict naming what it re-rendered, a patch that cannot be put back as it was', async () => {
+    const world = new World();
+    const stored = await world.scaffold([skeleton, harness, notes, tail]);
+    expect(world.read('cli.txt')).toBe('cli\ntail\n');
+
+    const error = refused(await world.run(stored, reapplying(stored, ['acme-skeleton'])));
+    expect(error.code).toBe('keel.reapply-conflict');
+    expect(error.message).toBe(
+      "reapply of 'acme-skeleton' refused: adapter 'acme-tail/main': reapplying its patch would change 'cli.txt' — without a recorded base a changed result cannot be told apart from a double application; update the file by hand",
+    );
+    expect(world.read('cli.txt')).toBe('cli\ntail\n');
+  });
+
+  it('puts back a region that a vertical installed ahead of a --refresh re-render owns in the file it rewrites, as the add alone leaves it', async () => {
+    const world = new World();
+    const stored = await world.scaffold([skeleton, harness, notes, yfile]);
+    const adding = (refresh: readonly string[]): ConvergingPlan => {
+      const plan = convergeOf(family, stored, {
+        kind: 'add',
+        verticals: ['acme-zreg'],
+        refresh,
+        scope: projectScope(family, stored, refresh),
+      });
+      if (plan.kind !== 'converges') throw new Error('the add was refused');
+      return plan;
+    };
+    const alone = ok(await world.run(stored, adding([])));
+    expect(alone.report.refreshProposals).toEqual([
+      { vertical: 'acme-yfile', reads: ['acme-zreg'] },
+    ]);
+
+    // The planner installs the region's owner ahead of the re-render,
+    // which claims it; its replay after claims it once more, its own.
+    const plan = adding(['acme-yfile']);
+    expect(plan.run.map(({ vertical, posture }) => `${vertical.id} ${posture}`)).toEqual([
+      'acme-zreg install',
+      'acme-yfile rerender',
+      'acme-skeleton replay',
+      'agent-harness replay',
+      'acme-notes replay',
+      'acme-zreg replay',
+    ]);
+    const run = ok(await world.run(stored, plan));
+    expect(run.tree.read('y.txt')?.toString('utf8')).toBe(
+      alone.tree.read('y.txt')?.toString('utf8'),
+    );
+    expect(run.tree.read('y.txt')?.toString('utf8')).toContain('zreg\n');
+    expect(changed(run.report)).toEqual(changed(alone.report));
+  });
+
+  it('replays onto nothing where the re-render rewrites no whole file, so such a patch is never reached', async () => {
+    const world = new World();
+    const stored = await world.scaffold([skeleton, harness, notes, tail]);
+
+    const run = ok(await world.run(stored, reapplying(stored, ['agent-harness'])));
+    expect(changed(run.report)).toEqual([]);
+    expect(run.tree.read('cli.txt')?.toString('utf8')).toBe('cli\ntail\n');
   });
 });
 

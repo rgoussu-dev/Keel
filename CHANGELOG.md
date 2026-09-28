@@ -14,6 +14,49 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Fixed
 
+- **`keel add walking-skeleton --reapply` keeps what observability,
+  persistence, code-style, the gateway and each added context wrote
+  into the files it rewrites.** A re-render put the bootstrap's files
+  back as its template renders them, and dropped every line a later
+  vertical had patched into them: on every HTTP project the entrypoint
+  lost its telemetry and, with persistence, its database wiring; a
+  `web-components` front end lost code-style's scripts in
+  `package.json`, and a product's front end its gateway; on a modulith,
+  each context `keel add module` added lost its registration in the
+  assembly — on the JVM, Rust, TypeScript and `web-components`. On an
+  unedited project the re-render rewrote those files anyway. A
+  re-render now runs within the recorded composition: every other
+  vertical the project records puts its patches back, from its recorded
+  answers, onto the files the re-render rewrote — and onto no other —
+  in the order the project records them, several verticals you name
+  each re-rendering at its own place in that order; and each context
+  `keel add module` added puts its wiring back where it arrived among
+  them, before a vertical you added after it. So
+  `keel add walking-skeleton --reapply` on an unedited project changes
+  nothing, and after an edit of yours to a file the bootstrap owns it
+  shows that edit going in its diff, and nothing else. The same holds
+  for `--refresh` beside an add, where what the add installed ahead of
+  the re-render comes back too, and for every vertical re-rendered,
+  alone, several together or all at once. Nothing else of those
+  verticals is written: a whole file another vertical owns stays as
+  you left it, and only what you name re-renders.
+
+- **`keel add dev-container --reapply` after a dev environment added
+  as an extra keeps the definition's shape.** On a CLI or front-end
+  project, `keel add dev-env` (or `keel new --with dev-env`) attaches
+  the existing standalone definition in place: the note below
+  `"name"`, the docker feature listed first. Re-rendered after that,
+  the dev container wrote the template's attached shape instead, the
+  one an HTTP project scaffolds — moving the note above `"name"` and
+  the docker feature last, a diff on every re-render, and one every
+  `keel add … --reapply` naming the dev container showed. Its attached
+  render is now ranked by the project's tags, as the attachment is: on
+  a project with an HTTP server, the template's shape, as before;
+  anywhere else, the standalone definition attached as the dev
+  environment attaches it, which is what the project holds. A CLI
+  project that has since grown an HTTP server takes the template's
+  shape, the one a project scaffolded with both has.
+
 - **A JVM modulith's runbook no longer gives every context a REST or
   CLI adapter.** The layout map in the root `AGENTS.md` of a Quarkus,
   Spring or Micronaut modulith listed
@@ -635,6 +678,19 @@ new` the terminal adds the way past it (move it aside, or start in
   `modules.context` marker, so a vertical of yours whose adapters
   require or exclude that tag is indexed there as a later sync indexes
   it.
+
+- **A re-render refuses, as `keel.reapply-conflict`, where a later
+  vertical's patch cannot be put back as it was.** `keel add --reapply`
+  and `--refresh` now put back what every other recorded vertical
+  patched into the files they rewrite (under _Fixed_). A patch keel
+  puts back must be its own fixed point — applying it again to its
+  result changes nothing — as a re-rendered vertical's own patch must
+  be: one that is not, a plugin's append into a file keel rewrites,
+  would add its line again on every re-render, and without a recorded
+  base keel cannot tell its line from yours. Such a re-render is now
+  refused before anything is written, in the words a re-rendered
+  patch's divergence has always been refused in, naming the patch's
+  adapter and the file. No patch of keel's own reaches it.
 
 - **A section keel adds to an existing README, an entry it adds to a
   build file's list, and what a later dev environment adds to the dev

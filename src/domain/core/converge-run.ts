@@ -12,7 +12,11 @@
  *
  * **The run.** One `installVerticals` pass over the plan's steps, each
  * in its posture — installed whole, installed in part (`only`),
- * re-rendered (`rerender`), or replayed for its deferred actions alone
+ * re-rendered (`rerender`), replayed for its patches alone onto the
+ * whole files the re-renders before it rewrote (`replays`, S.7) — a
+ * context `keel add module` added among them, by keel's own
+ * `bounded-context` on the manifest the run starts from, seeded with
+ * its inputs — or replayed for its deferred actions alone
  * (`actionsOnly`) — then each context the plan wires, by a run of
  * keel's own `bounded-context` of its own, in the order recorded
  * ({@link ConvergePlan}'s `modules`), the one `keel add module` adds
@@ -42,7 +46,8 @@
  * takes it up, or as this one could; the diffs of what re-rendered; and
  * where anything re-rendered, a conflict a contribution cannot settle
  * read as `keel.reapply-conflict`, naming the re-render it stopped in
- * the order the project records it.
+ * the order the project records it — a replayed patch that is not its
+ * own fixed point among them, since it cannot be put back as it was.
  */
 
 import { DomainError, err, ok, type Result } from '../kernel/result.js';
@@ -84,6 +89,7 @@ import {
   installVerticals,
   type InstallVerticalInputs,
   type InstallVerticalResult,
+  type ReplayAt,
 } from './install.js';
 import { refreshProposals } from './planner.js';
 import { rankedIndex } from './rank.js';
@@ -240,7 +246,11 @@ export async function converge(inputs: ConvergeInputs): Promise<Result<Converged
   const owners = inputs.owners ?? newOwnership();
   const harness: HarnessContribution[] = [];
   const rerendered = plan.run.filter((s) => s.posture === 'rerender').map((s) => s.vertical.id);
-  const ran = new Set(plan.run.filter((s) => s.posture !== 'settle').map((s) => s.vertical.id));
+  const ran = new Set(
+    plan.run
+      .filter((s) => s.posture !== 'settle' && s.posture !== 'replay')
+      .map((s) => s.vertical.id),
+  );
   const harnessRuns = ran.has(HARNESS);
   const ports = {
     prompt: inputs.prompt,
@@ -265,6 +275,17 @@ export async function converge(inputs: ConvergeInputs): Promise<Result<Converged
       actionsOnly: plan.run
         .filter((step) => step.posture === 'settle' || step.settles === true)
         .map((step) => step.vertical.id),
+      replays: plan.run.flatMap((step, at): ReplayAt[] => {
+        if (step.posture !== 'replay') return [];
+        if (step.context === undefined) return [{ at }];
+        return [
+          {
+            at,
+            manifest: contextReplayed(inputs.from ?? stored, step.context),
+            only: new Set(step.adapters ?? []),
+          },
+        ];
+      }),
       manifest: inputs.from ?? stored,
       supplied: inputs.answers,
       tree,
@@ -457,6 +478,21 @@ async function wireModules(
     applyResult: { ...result.applyResult, actions },
     adapters,
     reads,
+  };
+}
+
+/**
+ * `recorded`, the manifest a run starts from, as a replay of the
+ * context `name` reads it (S.7): with the context's marker and inputs
+ * seeded, what it consumes read off its record, as `keel add module`
+ * seeded them ({@link wireModules}).
+ */
+function contextReplayed(recorded: ManifestV2, name: string): ManifestV2 {
+  const consumes = recorded.modules.find((each) => each.name === name)?.consumes ?? null;
+  return {
+    ...recorded,
+    tags: [...recorded.tags, CONTEXT_TAG].sort(),
+    answers: { ...recorded.answers, ...addModuleInputs({ name, consumes }) },
   };
 }
 

@@ -10241,7 +10241,7 @@ Beyond the text above:
   hands it the buffer. Taking the finalize out is left to a step that
   changes `install.ts` anyway.
 
-### S.7 — A re-render keeps what later verticals wrote (L)
+### S.7 — A re-render keeps what later verticals wrote (L) ✅
 
 This is the first step that changes what a command writes, and it
 fixes R's blocker 8. A re-render (`--reapply v`, `--refresh v`) now
@@ -10347,6 +10347,431 @@ every golden.
 - naming `bounded-context` or a product root's `fullstack` row. The
   contexts come back with the vertical whose files they patch (DS10),
   and the root is U's.
+
+**Landed as the first step that changes what a command writes**, in
+one commit. `install.ts`' `installVertical` gains the posture,
+`patchesOnto`, a set of paths: each adapter the vertical resolves to
+on the manifest it is handed is contributed from what that records
+(`recordedContribution`, asking nothing, reading no supplied answer),
+and of what it contributes only the patches onto those paths apply, in
+the `reapply` apply mode, as a replay: `apply.ts`' `applyContribution`
+takes `replaying`, under which an adapter claims once more, once, a
+region it claimed earlier in the run. It writes no whole file, collects
+no harness element, queues no action, reports no resolved adapter and
+records nothing, and onto an empty set it contributes nothing at all.
+`installVerticals` takes the positions it replays so (`replays`, each
+a `ReplayAt`), each from what it records — the manifest its own step
+left, where it installed or re-rendered at an earlier position, else
+the one the run starts from, or the one the caller seeds, with the
+adapters it names — and onto `Ownership.rewritten`, which `apply.ts`
+fills: a `reapply` whole-file write records its path where the bytes differ
+from the Tree's, or the Tree holds none, and not where it skips them as
+identical or writes a mode back alone (`writeWholeFile` now says
+which). `converge.ts`' `reapply` plan, and its `add` plan where
+`--refresh` names anything, gain a `replay` step for every other
+vertical the project records, in recorded order after the first
+re-render, each as soon as every re-render still to come is of a
+vertical recorded after it, so a later named vertical re-renders at
+its own rank among them; and, after the last re-render, one for each
+vertical the run re-rendered ahead of one recorded before it, at its
+rank, then for each it installed before it, in run order
+(`withReplays`). Among the recorded ones, they gain a `replay` step of
+keel's `bounded-context` for each context `keel add module` added,
+naming it (`ConvergeStep.context`), by every adapter the tags match
+with the marker, where it arrived (`contextReplays`): just before the
+first vertical recorded after the `bounded-context` row that is not
+older than it, after them all where none is, never before a context
+recorded before it. `converge-run.ts` runs every replay by position,
+a context's on the manifest the run starts from, seeded with its
+inputs as `keel add module` seeds them (`contextReplayed`), and
+`wireModules` only wires, as before. A replayed vertical is not one that
+ran, so the harness retrofit still replays its harness elements and a
+refresh proposal still reads it, as before.
+`handlers/add-vertical.ts` leaves the replays out of the verticals it
+holds supplied answers against and of its empty plan. And
+`adapters/dev-container.ts`' `devContainerDefinition`, handed its
+adapter's id, renders the attached shape by the tags: without
+`arch.server-http`, the standalone render passed through
+`attachDevContainerToDevEnv`, as `dev-env` attaches it in place.
+
+**The golden moves**, on the cells the text lists and no other. Each
+golden was regenerated with `KEEL_UPDATE_GOLDEN=1`, in the order
+`tests/AGENTS.md` gives, and compared with HEAD's by a script, cell by
+cell and field by field. The paths golden moved on 466 cells, each in
+its tree and its report, or, as a dry run, its report alone:
+
+- **`paths-reapply`, 82 of 731:**
+  - `keel new --stack <preset> <opening dials> && keel add
+walking-skeleton --reapply`, and the same after `--with <whole menu>`,
+    on the 19 presets the text counts, 38 cells: the twelve JVM REST
+    presets and `ts-http` and `ts-cli-http` in `application`, `go-http`
+    and `go-cli-http` in `cmd`, `rust-http` and `rust-cli-http` in
+    `Cargo.toml` and `src`, and `web-components` in `package.json`,
+    where code-style writes its scripts;
+  - `keel new --stack <product> … --layout <layout> && cd <service> &&
+keel add walking-skeleton --reapply` in all 24 services: the twelve
+    front ends in `application`, `domain` and `package.json`, the
+    gateway and code-style, and the twelve back ends in `application`
+    (8), `cmd` (2) or `Cargo.toml` and `src` (2);
+  - `keel new --stack <preset> <opening dials> --with <whole menu> &&
+keel add dev-container --reapply` in `.devcontainer`, and the whole
+    re-render in its report, on the ten presets where the dev
+    environment is an extra: `go-cli`, `rust-cli`, `ts-cli`, the
+    Quarkus, Spring and Micronaut CLIs in Java and Kotlin, and
+    `web-components`. 20 cells.
+- **`paths-grow`, 384 of 690:** `keel new --stack <preset> <modulith
+dials> && keel add module orders --consumes greeting && keel add
+module shipping --consumes orders && keel add walking-skeleton
+--reapply` on 196 of the 200 histories, every one but `go-cli`'s
+  four, and the whole re-render after 188 of them, every one but Go's
+  twelve.
+- **`paths-new` and `paths-add`:** none of 689 and 1,326.
+
+Every single re-render that moved now leaves its scaffold's tree, byte
+for byte. The converge golden moved on 1,091 of its 3,436 cells, each
+a re-render gaining its replay steps and nothing else (the script held
+each cell's order, placement and re-rendered steps to HEAD's): the 651
+single re-renders of `paths-reapply`, the 200 bootstraps and 200 whole
+re-renders after a history, which also replay each context, a step
+at the end of the run (`bounded-context replay orders …`, then
+`shipping`), since no history adds a vertical after one; the 18 grown
+projects' `keel add dev-container --reapply`, the 20 pairs taking
+`--refresh distribution`, which also replay what the add installs
+ahead of the re-render after the recorded verticals (persistence on
+18, containerization on two), and Q3.4's two `keel add distribution
+--reapply`. The 80 whole re-renders with no history replay nothing,
+since every recorded vertical re-renders, and did not move.
+
+What they stage was read by a scratch sweep, not kept, that ran the
+last command of all 1,171 re-render cells of the three families, on
+HEAD's sources and on these. HEAD's staged files on 258 bootstrap
+re-renders (19, 19, 24 and 196), 198 whole re-renders (10 and 188) and
+the ten `dev-container` ones. Now none of them stages anything. The
+only re-renders alone that still stage are Q3.4's two, which move
+distribution onto the image's adapter, as S.9 will say. The 20 pairs
+stage what they staged, changes and diffs alike, and every cell
+resolves the adapters it resolved. Instrumented in a scratch edit, not
+kept, the replays over the re-render and history families put 2,644
+patches back, by 1,298 adapters replayed: 2,064 by 1,040 of the
+contexts', 380 by 176 of observability's, 92 by 20 of the gateway's,
+64 by 18 of persistence's and 44 by 44 of code-style's.
+
+**Held byte for byte:** the greenfield and composite goldens,
+`growth.golden.json` (360 cells), `shared-files.golden.json` (498), the
+agent-harness, run-skill, planner-readiness and stack-registry goldens,
+and the four known files: brownfield's `{"I5": {}}`, `{}` for the
+others. I10 holds on all 320 growth cells, and every greenfield byte
+with it: no `keel new` cell of the paths golden moved.
+
+**I11 widens, hard.** `holdRerenders` holds each `reapply:` pair's
+install to staging nothing, on brownfield's scaffolds and in every
+composite service. The brownfield axis gains `holdWholeMenu`: each
+preset whose opening menu offers the dev environment as an extra is
+scaffolded again with its whole menu, a setting and not a cell, and
+held to I9 and I11 there. `brownfield.golden.json` goes from 1,711
+verdicts to 1,891: 10 `fixed:<stack>/menu` cells and 85
+`reapply:<stack>/menu+<v>` pairs, all `ok`. The growth axis holds I11
+too, on each twin it scaffolds, as `fixed:` and the twin's command
+lines: `growth.golden.json` goes from 1,280 verdicts to 1,440, 160
+twins, 64 of them with a history, all `ok`. No key was lost or
+changed, and none starts with `add:`.
+
+**The proof**, each tried in a scratch edit and undone byte for byte:
+
+- **The replay dropped**, `withReplays` returning what it was handed,
+  the contexts' steps with the rest. I11 failed on exactly the cells
+  the golden moved: in brownfield on 20 (the 19
+  `reapply:<stack>+walking-skeleton` and
+  `reapply:web-components/menu+walking-skeleton`), in composite on all
+  24 `+walking-skeleton` pairs, and in growth on 60 twins, those of
+  every history but Go's four. So did 21 unit cases:
+  `converge-run.test.ts`' three new re-renders, ten of
+  `converge.test.ts`' plan readings and eight of `add-vertical.test.ts`'
+  re-renders.
+- **The contexts replayed after everything**, as the text's DS10
+  reads it: five unit cases failed, the three plan readings of where a
+  context arrived and `add-vertical.test.ts`' two on a vertical added
+  after one. Dropped from an add's plan alone (a `--refresh` beside an
+  add), three: the plan reading and `add-vertical.test.ts`' two
+  modulith refreshes. Placing each context by its row alone, the
+  timestamps ignored, fails the plan reading of a context added after a
+  `keel add`; by its timestamp alone, the `bounded-context` row
+  ignored, four plan readings, a row growth records at rank among
+  them.
+- **The region reclaimed no more**, `replayPatches` without
+  `replaying`: `converge-run.test.ts`' region case failed, refused as
+  declaring the region twice.
+- **The dev container's rule dropped**, `dev-container.ts` as HEAD has
+  it. I11 failed on exactly 20 brownfield cells, `fixed:<stack>/menu`
+  and `reapply:<stack>/menu+dev-container` on the ten presets, and
+  nothing in composite or growth. So did the 14 of
+  `dev-container.test.ts`' 21 new cases that run without the tag, and
+  no other.
+
+**Tests.** `apply.test.ts` holds what a `reapply` records as rewritten,
+and that an install records nothing, and that a replay claims once
+more, once, a region its adapter claimed earlier in the run, and never
+another contributor's. `install-verticals.test.ts` holds
+the posture in ten cases: it writes the one patch onto the files it
+is handed, no whole file, element, action, reported adapter or record;
+it reads its answers as recorded, a question left open by its default,
+never supplied or asked; a guarded patch is its own fixed point and one
+that is not is a divergence; onto no file it contributes nothing; it
+replays only the adapters it is handed, where set; it reads a patch's
+target as the Tree does (`./main.txt`); and in a run it replays onto
+what a re-render rewrote and not onto a file it never wrote, onto no
+file a re-render skipped as identical (an append there would refuse),
+a vertical installed at an earlier position, after a later re-render,
+from the answer its install recorded, and one vertical at several
+positions, each from the manifest and adapters it is handed there.
+`converge.test.ts` holds the plan in nine new cases and two changed:
+the `reapply` plan's replay steps, a later named vertical re-rendering
+at its rank among them, one recorded before the vertical re-rendered
+replayed after it, none for a vertical no plugin provides or where
+every recorded one re-renders; on keel's Go CLI, the contexts replayed
+as steps, each where it arrived — before a `keel add` recorded after
+it, after one recorded before it or grown at rank, under a pinned
+clock too — before a later named vertical that arrived after it, and
+after a `--refresh` re-render beside an add, before what the add
+installed; the `--refresh` plan's replay steps, an install the planner
+runs ahead of the re-render replayed after the recorded ones, a
+vertical re-rendered ahead of one recorded before it replayed at its
+rank, and none for a plain add. `converge-run.test.ts` gains four
+cases on the `acme` family, with a vertical that puts a guarded line
+into the file the CLI bootstrap writes, one that appends one, and one
+that owns a region of a file another writes whole and reads it: the
+line put back, the vertical recorded first, a whole file of its own
+left as the user left it; the new refusal (no shipped patch reaches
+it); the region put back where the planner installs its owner ahead of
+a `--refresh` re-render, as the add alone leaves it (no shipped patch
+reaches it either); and a re-render that rewrites no whole file never
+reaching the append.
+`dev-container.test.ts` gains 21: for each family without a server,
+the attached render is what `dev-env` attaching it in place writes
+(seven), and a re-render after the dev environment rewrites nothing,
+with the tag or without (fourteen), each family without a server
+titled apart (`…, as a CLI`). `add-vertical.test.ts` gains ten: on
+`go-http`, `keel add walking-skeleton --reapply` over an edited
+`cmd/http/main.go` puts back exactly the scaffold's bytes; on a
+`ts-cli` modulith after `keel add module orders` it stages nothing,
+and on a `ts-http` one that took persistence after the context too,
+the context's handler still listed before persistence's; `keel add ci
+--refresh walking-skeleton` on the `ts-cli` modulith and `keel add
+persistence --refresh walking-skeleton` on the `ts-http` one leave
+what the add alone leaves;
+`keel add walking-skeleton persistence --reapply` on `go-http --with
+persistence` stages nothing; `keel add ci --refresh walking-skeleton`
+and `keel add persistence --refresh walking-skeleton` on `go-http`
+stage and leave what the add alone does; a `go-cli --with dev-env`
+grown HTTP re-renders its definition to `go-cli-http`'s; and a `--set`
+for a vertical a re-render only replays is refused as
+`keel.frozen-answer`, not as a re-rendered one's. And the growth axis
+gains its I11 test.
+
+**Runs.** The four `keel ui` browser suites passed, 44 tests in 75 s
+wall, before the fixes below and again after them, and in 69 s on the
+sources this step lands with. The `code-style-jvm` e2e suite ran
+twice. In the first run its re-render case, `keel add code-style
+--reapply` and then `spotlessCheck` on a fresh `quarkus-cli`, passed,
+and its other case failed as Maven Central answered 429 _Too Many
+Requests_. The retry failed in both cases on the same 429, before
+either built. On the sources this step lands with, it ran twice more:
+both cases failed on the 429 before building, then the re-render case
+passed in 89 s and the other failed on it again. Maven Central
+rate-limits this box, so CI's `jvm-basic-quarkus` e2e shard, which
+runs the suite on every push, is its record for this step.
+
+**The weekly sweep**, before S.7 as _The measure_ has it. The
+`arrival` suite, filtered to one preset per family (`quarkus-cli-rest`,
+`go-cli-http`, `rust-cli-http`, `ts-cli-http` and `web-components`:
+48 dial settings, 1,302 pairs and 288 arrivals alone, 918 scaffolds and
+1,584 adds), found 12 findings on HEAD's sources in 3.8 minutes, all on
+`quarkus-cli-rest`: Q3.4's second finding on its six Gradle settings,
+`keel add containerization --refresh distribution` leaving the native
+release's two workflows and its answers key and tag behind, and its
+third on the same six, `keel add iac` refused as `keel.needs-refresh`.
+Run again on this step, it found the same 12, line for line, in 3.9
+minutes.
+
+**Times**, under `CI=true` on four cores, with another checkout's
+suite beside most runs. The run of `CI=true pnpm test` this step lands
+with took 344.7 s as vitest reports it (5 min 46 s wall), with 202
+files and 3,300 tests passing, 57 more than HEAD's 3,243, at a load
+average rising from 0.9 to 6.5. A second run, before each context
+replayed where it arrived and a replay claimed its own region again
+(below), took 382.4 s (6 min 23 s wall) at 5.1 to 9.3. A first run,
+before the replay's order and what an add installs ahead of a
+re-render were fixed (below), took 434.4 s (7 min 16 s wall) at a load
+average rising from 4.1 to 11.7, and HEAD's, run just after at 7.0 to
+8.9, 374.1 s (6 min 15 s wall). Beside the rest, the landing run's
+first, then the second's and the first's, with HEAD's in brackets:
+
+- growth's axis 137.6, 148.4 and 151.8 s (131.5 s);
+- brownfield 21.5, 27.6 and 28.1 s (19.2 s), and composite 21.3, 18.1
+  and 17.0 s (23.7 s);
+- the converge golden 66.1, 66.1 and 81.0 s (66.0 s);
+- the paths golden's four 37.6, 49.6, 16.0 and 54.4 s, then 42.5,
+  57.9, 15.0 and 59.2 s, then 50.1, 64.0, 18.5 and 72.2 s (39.0, 53.3,
+  16.8 and 51.2 s; new, add, reapply, grow);
+- `converge-run.test.ts` 99, 83 and 142 ms, `install-verticals.test.ts`
+  62, 51 and 34 ms, `dev-container.test.ts` 589, 407 and 762 ms, and
+  `add-vertical.test.ts` 8.6, 7.2 and 8.9 s.
+
+The twins' I11 costs growth some 7 s. Paired alone in review, HEAD's
+sources, then these twice, then HEAD's, at a load average of 2.0 to
+3.3, growth took 115.0 and 117.3 s against HEAD's 109.5 and
+107.9 s: 7.4 s more, 6.8%. On this machine the load swings more than
+that: three more such pairings here read 102.0 to 152.5 s against
+HEAD's 112.0 to 143.9 s, at 2.1 to 5.6 alone and at 2.3 to 8.7 beside
+brownfield and composite, one pairing faster than HEAD's. Paired alone
+at 1.8 to 2.7, `paths-grow` took 49.4 s (44.8 s), its 400 re-renders
+after a history now replaying each context, and the converge golden
+48.6 s (49.4 s). Paired alone at 3.5 to 4.5, brownfield took 20.7 and
+18.1 s against HEAD's 17.2 and 14.3 s, its 180 new cells among them,
+and composite, at 2.7 to 3.5, 14.7 and 14.8 s against 14.0 and 15.1 s.
+
+`pnpm lint`, dependency-cruiser among it (306 modules, 1,506
+dependencies, as at HEAD), and `pnpm typecheck` pass. The CHANGELOG
+entries are the two under _Fixed_ and the one under _Changed_ the text
+gives. `docs/cli.md` → `--reapply` says what a re-render keeps,
+`docs/composition.md` what a re-render is,
+`docs/verticals/dev-container.md` that a re-render keeps the
+definition's shape, `docs/plugins.md` that a plugin's patch onto a
+file another vertical writes whole must be its own fixed point,
+`src/domain/core/AGENTS.md` names the posture, and `tests/AGENTS.md`
+what each axis now holds under I11.
+
+Beyond the text above:
+
+- **Each replay goes where one run of the target composition applies
+  it.** The text replays every other vertical after `v`. Where several
+  are named, each re-renders at its own rank among the replays after
+  the first, so what is recorded between two of them patches in before
+  the later one. Replayed after the last re-render instead,
+  `keel add walking-skeleton persistence --reapply` on a scaffold
+  `--with persistence` staged the entrypoint on `go-http` and
+  `rust-http`, observability's lines gone where persistence's patch
+  had rewritten their anchor, and the build file and the properties on
+  `quarkus-rest` and `spring-rest`, their sections swapped; each now
+  stages nothing. Beside an add, what the project records replays
+  before what the add installs after the re-render. No golden or grid
+  cell names two verticals or more but all of them, so none moved on
+  this; `add-vertical.test.ts` holds it on `go-http`.
+- **What an add installs ahead of a `--refresh` re-render replays
+  after it.** The text replays the recorded composition. The planner
+  can run an install first, `admit` ordering by id where nothing else
+  decides, and the re-render then rewrote what the install had
+  patched: `keel add persistence --refresh walking-skeleton` left
+  `go-http`, `rust-http`, `quarkus-rest` and `spring-rest` without
+  persistence's wiring in the entrypoint or the build files, and
+  recorded it installed; each now leaves what the add alone leaves.
+  After the last re-render, the recorded replays and the contexts,
+  each vertical the run installed before it replays in run order,
+  from the manifest its
+  install left — so `installVerticals`' `replays` are positions, since
+  one vertical installs and replays in one run — and so does a
+  vertical re-rendered ahead of one recorded before it, at its rank.
+  Where the re-renders run in recorded order, every `--reapply` and a
+  lone `--refresh`, that is one run's order exactly. Several `--refresh`
+  re-renders the planner orders otherwise, with an install between
+  them, still put every patch back after the last, but can apply two
+  onto one file out of one run's order; no shipped command line reaches
+  it. The converge golden's 20 refresh pairs gain that one step, and no
+  paths cell moved, since neither install patches what distribution
+  rewrites (below).
+- **Each context replays where it arrived.** DS10 replays the
+  contexts' wiring after the verticals, measured on histories that add
+  no vertical after a context. A vertical added after one patched in
+  after its wiring: on a modulith that took `keel add module orders`
+  and then persistence, replaying the contexts last staged
+  `MediatorFactory.java` on the four Micronaut REST presets,
+  `application/http/Cargo.toml` on `rust-http` and `rust-cli-http`,
+  and `application/rest/src/main.ts` on `ts-http` and `ts-cli-http`,
+  the lines back in another order, and
+  `keel add persistence --refresh walking-skeleton` left them so. Each
+  context now replays as a step among the recorded verticals, just
+  before the first one recorded after the `bounded-context` row that is
+  not older than it — the first `keel add module` records that row
+  after every other, and a `keel add` appends after it — after them
+  all where none is, and never before a context recorded before it; so
+  always before what the run installs. A row growth records at rank
+  sits before that row, and growth's run wires the contexts after its
+  verticals, so the contexts replay after it too. Recorded at one
+  instant, as a pinned test clock records, a context goes before every
+  row after `bounded-context`: right for the first, not for one added
+  after such a row, which a real clock tells apart. S.8 records a new
+  row before `bounded-context`, so it needs another reading of arrival
+  there; `add-vertical.test.ts`' `ts-http` case holds the one this step
+  reads. Measured by a scratch sweep, not kept, on every modulith
+  preset (28): `keel add module orders --consumes greeting`, then each
+  of eight extras, 143 adds that write something, then
+  `keel add walking-skeleton --reapply` as a dry run and, on a twin,
+  the add with `--refresh walking-skeleton` against the add alone. On
+  HEAD's sources, 140 of the 143 re-renders staged and 140 refreshes
+  left other bytes, all but `go-cli`'s three; with the contexts
+  replayed last, eight of each, persistence on the eight presets above;
+  now none, under an advancing clock and a pinned one alike. Each
+  context replays by every adapter of keel's `bounded-context` the
+  recorded tags match with the marker, which is what its add ran and
+  what growth wired since. No golden or grid cell adds a vertical after
+  a context, so none moved on this, and the converge golden's 400 cells
+  that replay a context spell it as a step at the end of the run, where
+  it sat.
+- **A replay claims its own region again.** The replay goes through
+  the run's ownership, where a vertical the run installed or
+  re-rendered ahead of the re-render has claimed its regions already.
+  `keel add P` proposes refreshing a vertical that reads P; where that
+  vertical writes a file whole and P owns a region of it, taking the
+  proposal installs P first, re-renders the vertical, and was then
+  refused as `keel.reapply-conflict`, P's replay declaring the region a
+  second time. `applyContribution`'s `replaying` lets an adapter claim
+  once more, once, a region it claimed earlier in the run; another
+  contributor's claim, or its own twice in one replay, still refuses.
+  No shipped vertical reaches it — keel's own region patches target
+  `.editorconfig`, `.gitattributes` and `.gitlab-ci.yml`, which no
+  vertical writes whole — so a fixture of `converge-run.test.ts` holds
+  it.
+- **A vertical no loaded plugin provides is not replayed**, since
+  nothing can render it. `add-vertical.test.ts`' case planning on a
+  project that records one, a `--reapply` among its runs, passes as it
+  did.
+- **On the tag, the definition still renders the template.** There
+  its bytes are what `attachDevContainerToDevEnv` makes of the
+  standalone render, as R.1b's suite holds for each HTTP family, so no
+  test tells the two apart; the template stays the reference that hold
+  is read against, rather than the attach being held to itself.
+  `add-vertical.test.ts` holds the one shape the text says a re-render
+  moves: `go-cli --with dev-env`, grown HTTP, re-renders its definition
+  to `go-cli-http`'s.
+- **A pair the text leaves to its reading is confirmed.** A declared
+  read is the one way a replay could write something new. On the 20
+  pairs that take a refresh, and Q3.4's two `--reapply`, distribution
+  re-renders and rewrites `deploy/compose.yaml`, and Q3.4's
+  `.github/workflows/release-image.yml` too. The instrumented replay
+  met 347 adapters there, none with a patch on either file, and no
+  `paths-add` cell moved. Run again once the add's installs replay
+  too, it met 413, none with a patch on either file.
+- **The grown project's `keel add dev-container --reapply` moved no
+  paths cell.** The text lists it where the project took the dev
+  environment as an extra. The paths golden runs it on each preset's
+  opening scaffold, which has no extra, and growth installs the dev
+  environment as the twin's vertical, attached on the grown tags in
+  the template's shape already. The converge golden's 18 such cells
+  gain their replay steps.
+- **The whole-menu scaffolds carry `reapply:` pairs too.** The measure
+  names their whole re-render. Each vertical re-rendered alone there is
+  the reading S.7 adds on brownfield, and it is the one that holds
+  `keel add dev-container --reapply` by itself: 85 pairs, and no
+  `refresh:` pairs.
+- **A `refresh:` pair stages what its add stages**, so I11 holds it to
+  coming back Ok and re-rendering what it names, as S.1b did, and not
+  to staging nothing.
+- **No shard option.** _The measure_ has one land first where S.7
+  finds growth past about 150 s under `CI=true pnpm test`. The first
+  full run read it at 151.8 s, at a load average near 11; the run this
+  step lands with, 148.4 s at 5.1 to 9.3. The twins' I11 is some 7 s of
+  it (_Times_), and the rest of the axis is what HEAD runs. So no shard
+  option landed.
 
 ### S.8 — One record order (M)
 

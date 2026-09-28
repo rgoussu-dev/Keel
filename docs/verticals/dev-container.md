@@ -46,7 +46,14 @@ on a line of its own. On a CLI or SPA project, where the dev
 environment is an extra installed after the dev container, it keeps
 the shape `--with dev-env` has always written there: `"name"` above
 the note, the docker feature first. Either way, anything else you
-wrote into the file stays. The one exception is a definition you have
+wrote into the file stays. A re-render keeps the same shape
+(`keel add dev-container --reapply`): the definition's own attached
+render is ranked by the same tags, so on a CLI or SPA project that
+took the dev environment as an extra it renders the standalone
+definition attached in place, as the project holds it, and rewrites
+nothing there; a CLI project that has since grown an HTTP server
+takes the template's shape, which a project scaffolded with both
+entrypoints has. The one exception is a definition you have
 customized away from the scaffolded shape (e.g. a different base
 image): the upgrade then refuses to rewrite it rather than silently
 lose your changes — `keel.path-conflict`, before anything is written,

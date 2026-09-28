@@ -19,7 +19,12 @@ import path from 'node:path';
 import os from 'node:os';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { addVerticalCommand, newProjectCommand } from '../../../../src/domain/contract/commands.js';
+import {
+  addEntrypointCommand,
+  addModuleCommand,
+  addVerticalCommand,
+  newProjectCommand,
+} from '../../../../src/domain/contract/commands.js';
 import { previewQuery, projectStatusQuery } from '../../../../src/domain/contract/queries.js';
 import type { Vertical } from '../../../../src/domain/contract/composition.js';
 import { projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
@@ -479,6 +484,17 @@ describe('keel.add-vertical (keel add)', () => {
       );
     });
 
+    it('refuses --set for a vertical the re-render only replays as frozen, never as re-rendered', async () => {
+      await seedQuarkusCli();
+      expectOk(await addDistribution());
+      const error = expectErr(
+        await reapplyDistribution({
+          answers: { 'walking-skeleton/quarkus-cli-bootstrap': { projectName: 'other' } },
+        }),
+      );
+      expect(error.code).toBe('keel.frozen-answer');
+    });
+
     it('refuses --set for an adapter nothing re-rendered reads, as any install would', async () => {
       await seedQuarkusCli();
       expectOk(await addDistribution());
@@ -531,6 +547,13 @@ describe('keel.add-vertical (keel add)', () => {
       return out;
     };
     const composeOf = (dir: string) => fs.readFile(path.join(dir, 'deploy/compose.yaml'), 'utf8');
+    /** Where the manifest is, in {@link snapshot}'s keys: the one file a re-render stamps anew. */
+    const MANIFEST = '.claude/.keel-manifest.json';
+    /** {@link snapshot} of `dir` but the manifest. */
+    const files = async (dir: string) => {
+      const { [MANIFEST]: _, ...rest } = await snapshot(dir);
+      return rest;
+    };
 
     let twin: string;
     beforeEach(async () => {
@@ -588,11 +611,6 @@ describe('keel.add-vertical (keel add)', () => {
       expectOk(await add(cwd, ['persistence']));
       expectOk(await add(twin, ['persistence', 'agent-harness']));
 
-      const MANIFEST = '.claude/.keel-manifest.json';
-      const files = async (dir: string) => {
-        const { [MANIFEST]: _, ...rest } = await snapshot(dir);
-        return rest;
-      };
       expect(await files(twin)).toEqual(await files(cwd));
       // The manifest records the same install; only the provenance of a
       // harness document persistence patches differs, as it does
@@ -655,6 +673,165 @@ describe('keel.add-vertical (keel add)', () => {
       expect(unknown.code).toBe('keel.unknown-answer');
       expect(await snapshot(cwd)).toEqual(before);
     });
+
+    it('re-renders the bootstrap within the recorded composition: observability’s lines come back, and a hand edit goes', async () => {
+      await scaffold(cwd, 'go-http');
+      const main = path.join(cwd, 'cmd/http/main.go');
+      const pristine = await fs.readFile(main, 'utf8');
+      expect(pristine).toContain('otel');
+      const scaffolded = await files(cwd);
+      await fs.writeFile(main, `${pristine}// edited by hand\n`);
+
+      const report = expectOk(await add(cwd, ['walking-skeleton'], { reapply: true }));
+      expect(report.changes).toEqual([{ kind: 'modify', path: 'cmd/http/main.go' }]);
+      expect(report.diffs?.map((d) => d.path)).toEqual(['cmd/http/main.go']);
+      expect(report.diffs?.[0]?.diff).toContain('-// edited by hand');
+      expect(await files(cwd)).toEqual(scaffolded);
+    });
+
+    /** `stack` scaffolded as a modulith in `dir`, then `keel add module orders --consumes greeting`. */
+    const withOrders = async (dir: string, stack: string) => {
+      expectOk(
+        await mediator().dispatch(
+          newProjectCommand({
+            cwd: dir,
+            stack,
+            moduleLayout: 'modulith',
+            answers: {},
+            interactive: false,
+            dryRun: false,
+          }),
+        ),
+      );
+      expectOk(
+        await mediator().dispatch(
+          addModuleCommand({
+            cwd: dir,
+            module: 'orders',
+            consumes: 'greeting',
+            answers: {},
+            interactive: false,
+            dryRun: false,
+          }),
+        ),
+      );
+    };
+
+    it('re-renders the bootstrap of a modulith within the recorded composition: each context’s wiring comes back', async () => {
+      await withOrders(cwd, 'ts-cli');
+      const wired = await files(cwd);
+
+      const report = expectOk(await add(cwd, ['walking-skeleton'], { reapply: true }));
+      expect(report.changes).toEqual([]);
+      expect(await files(cwd)).toEqual(wired);
+    });
+
+    it('re-renders the bootstrap of a modulith that took a vertical after a context, putting the context’s wiring back before that vertical’s lines', async () => {
+      // persistence, added after orders, lists its handlers after the
+      // context's in the entrypoint's mediator.
+      await withOrders(cwd, 'ts-http');
+      expectOk(await add(cwd, ['persistence']));
+      const main = await fs.readFile(path.join(cwd, 'application/rest/src/main.ts'), 'utf8');
+      expect(main.indexOf('createOrdersContextHandler()')).toBeLessThan(
+        main.indexOf('createListGreetingsHandler(greetingLog)'),
+      );
+      const grown = await files(cwd);
+
+      const report = expectOk(await add(cwd, ['walking-skeleton'], { reapply: true }));
+      expect(report.changes).toEqual([]);
+      expect(await files(cwd)).toEqual(grown);
+    });
+
+    it.each([
+      ['ci', 'ts-cli'],
+      ['persistence', 'ts-http'],
+    ])(
+      'keel add %s --refresh walking-skeleton on a %s modulith leaves what the add alone leaves: each context’s wiring comes back, before what the add installed',
+      async (vertical, stack) => {
+        await withOrders(cwd, stack);
+        await fs.copy(cwd, twin);
+        const alone = expectOk(await add(twin, [vertical]));
+
+        const refreshed = expectOk(await add(cwd, [vertical], { refresh: ['walking-skeleton'] }));
+        expect(refreshed.changes).toEqual(alone.changes);
+        expect(await files(cwd)).toEqual(await files(twin));
+      },
+    );
+
+    it('re-renders several named verticals each at its rank: what is recorded between them patches in before the later one', async () => {
+      // Observability, recorded between the bootstrap and persistence,
+      // patches the entrypoint before persistence rewires the handler
+      // its lines wrap.
+      expectOk(
+        await mediator().dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'go-http',
+            extraVerticals: ['persistence'],
+            answers: {},
+            interactive: false,
+            dryRun: false,
+          }),
+        ),
+      );
+      const scaffolded = await files(cwd);
+
+      const report = expectOk(
+        await add(cwd, ['walking-skeleton', 'persistence'], { reapply: true }),
+      );
+      expect(report.changes).toEqual([]);
+      expect(await files(cwd)).toEqual(scaffolded);
+    });
+
+    it('re-renders the dev container of a CLI project that took the dev environment as an extra and grew HTTP in its twin’s shape', async () => {
+      // The one shape a re-render moves: attached in place when the dev
+      // environment came after it, the template's on the grown tags.
+      expectOk(
+        await mediator().dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'go-cli',
+            extraVerticals: ['dev-env'],
+            answers: {},
+            interactive: false,
+            dryRun: false,
+          }),
+        ),
+      );
+      expectOk(
+        await mediator().dispatch(
+          addEntrypointCommand({
+            cwd,
+            entrypoint: 'http',
+            answers: {},
+            interactive: false,
+            dryRun: false,
+          }),
+        ),
+      );
+      await scaffold(twin, 'go-cli-http');
+      const definition = '.devcontainer/devcontainer.json';
+      const grown = await fs.readFile(path.join(cwd, definition), 'utf8');
+      const twinDefinition = await fs.readFile(path.join(twin, definition), 'utf8');
+      expect(grown).not.toBe(twinDefinition);
+
+      const report = expectOk(await add(cwd, ['dev-container'], { reapply: true }));
+      expect(report.changes).toEqual([{ kind: 'modify', path: definition }]);
+      expect(await fs.readFile(path.join(cwd, definition), 'utf8')).toBe(twinDefinition);
+    });
+
+    it.each([['ci'], ['persistence']])(
+      'keel add %s --refresh walking-skeleton leaves what the add alone leaves: what the project records, and what the add installed ahead of the re-render, come back',
+      async (vertical) => {
+        await scaffold(cwd, 'go-http');
+        await fs.copy(cwd, twin);
+        const alone = expectOk(await add(twin, [vertical]));
+
+        const refreshed = expectOk(await add(cwd, [vertical], { refresh: ['walking-skeleton'] }));
+        expect(refreshed.changes).toEqual(alone.changes);
+        expect(await files(cwd)).toEqual(await files(twin));
+      },
+    );
 
     it('re-renders a vertical named and refreshed, rather than noting it is there', async () => {
       await scaffold(cwd, 'go-http');

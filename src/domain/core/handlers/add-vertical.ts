@@ -90,7 +90,11 @@
  * the working tree), while a patch that would change an
  * already-patched file aborts the whole run with
  * `keel.reapply-conflict`, naming what re-rendered in the order the
- * project installed it, before anything is committed. Tags the
+ * project installed it, before anything is committed. It runs within
+ * the recorded composition (roadmap S.7): every other recorded
+ * vertical's patches, and each added context's wiring, go back onto
+ * the whole files the re-render rewrote, and onto no other — one that
+ * cannot be put back as it was refuses the run the same way. Tags the
  * previous apply promoted re-fold through set semantics, so they never
  * double; the vertical keeps its original `installedAt`.
  */
@@ -308,7 +312,9 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
       }
       return err(plan.refusal.error);
     }
-    const order = plan.run.map((step) => step.vertical);
+    // What the run installs or re-renders: a vertical it replays onto
+    // what a re-render rewrote reads no answer, and is no reason to run.
+    const order = plan.run.filter((step) => step.posture !== 'replay').map((step) => step.vertical);
 
     // What the report says of the plan, which the plan does not carry:
     // what the planner added, and a move among the verticals named.
