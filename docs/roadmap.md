@@ -9432,7 +9432,7 @@ Beyond the text above:
   `KEEL_UPDATE_GOLDEN=1`, and `git diff --exit-code` shows every golden
   and known file as HEAD has it.
 
-### S.4 — `keel add`, `--refresh` and `--reapply`, callers (M)
+### S.4 — `keel add`, `--refresh` and `--reapply`, callers (M) ✅
 
 `add-vertical.ts` keeps what is its own:
 
@@ -9467,6 +9467,221 @@ suite runs. No CHANGELOG entry.
 
 **Leaves out:** what a re-render replays (S.7), and where a new row
 goes (S.8).
+
+**Landed as the run's second caller**, in one commit, with no golden
+moved. `handlers/add-vertical.ts` goes from 608 lines to 494. It reads
+its plan with `convergeOf`: the `add` request, naming the verticals it
+installs, those `--refresh` names beside them, and the scope and
+siblings it plans on (`addScopeOf`, less what it re-renders, and
+`siblingsOf`); or, under `--reapply`, the `reapply` request, naming
+what `--reapply` and `--refresh` name. It hands the plan to
+`converge`, and the run to `commitConverged` unless it is a dry run.
+Its copies of the tail go: the `installVerticals` call, the retrofit,
+the finalize, the restamp, the conflict mapping, `refreshProposals`,
+the report and the commit, and so do `proposalNote` and
+`hasAnswers`. What it keeps is the text's list, the refusals of a
+re-render of a vertical not installed or of one its own rules refuse
+(`ruleRefusal`), the empty plan's early return, and its admission
+notes. It says four things to the run:
+
+- the recorded contexts are replayed where the harness runs, adopted
+  or re-rendered (`retrofit.contexts`), under the retrofit's own
+  command line, `keel add agent-harness`, as before;
+- the exact answer check is `strayAnswerRefusal` over the staged run;
+- a proposal is worded as `!dryRun` says (`proposeForLater`);
+- its notes go before the proposals, the admission notes then D4's,
+  and none after.
+
+`converge.ts` changes in one doc comment, its module's, which names
+`keel add` the reading's second caller. `converge-run.ts` changes in
+how a refused re-render names what it re-rendered (below), and in two
+doc comments: its module's, which names `keel add` the run's second
+caller, and `proposeForLater`'s.
+
+- **Held byte for byte**, each suite against its committed JSON under
+  `CI=true`, and `git diff --exit-code` over every golden and known
+  file after: the four paths goldens (689, 1,326, 731 and 690 cells,
+  every `keel add`, `--reapply`, `--refresh`, adoption and product cell
+  among them), `converge.golden.json` (3,436), `growth.golden.json`
+  (360), and the shared-files, agent-harness and run-skill goldens. The
+  grid's four axes pass: brownfield's and composite's I4, I5, I9 and
+  I11 among them, and growth's I10 on all 320 cells. The known files
+  are as they were: brownfield's `{"I5": {}}`, `{}` for the others.
+- **The handler's 34 cases pass unchanged**, as do the other 26
+  handler suites (460 tests), one case of which goes on (below), and
+  `tests/application`'s web and CLI suites (18 files, 313 tests).
+  Four cases join them, each pinning
+  what no case of those suites, and no cell of the paths golden, held,
+  and each passing on HEAD's handler and run as on this one. A 35th:
+  the notes of what was there already come before the refresh the run
+  proposes. On `go-http` with distribution,
+  `keel add distribution persistence --dry-run` says distribution is
+  installed, then proposes its refresh in this run's words. The
+  admission notes before D4's were held already. A 36th: on `go-http`
+  with distribution then persistence,
+  `keel add distribution --reapply --refresh persistence` restores an
+  edited `migrations/README.md` and resolves distribution's adapter
+  before persistence's four, in the order recorded, although
+  distribution reads persistence. The last two run on a plugin's
+  family. A 37th: of a log whose patch appends a line and a deploy
+  that reads it, installed deploy first, a `--refresh` of both runs
+  the log first, meets the log's own line, and is refused naming
+  `'acme-deploy', 'acme-log'`. A 38th: a `go-cli` project recording a
+  plugin's vertical, the plugin gone, plans an add and a `--reapply`
+  under `--dry-run`, and adopting the harness beside `ci` is refused
+  as `keel.missing-harness-contributor`, naming
+  `keel add agent-harness`, not the command run. `converge-run.test.ts`
+  gains a 21st case: a refused re-render names what it re-rendered in
+  the order the project records it, whatever order it ran in, and one
+  the manifest does not record after the rest. And
+  `agent-harness-grown.test.ts`' adoption on a grown project goes on
+  to re-render the harness it adopted, since the handler now asks for
+  the contexts' replay (`retrofit.contexts`) where HEAD's got it from
+  the manifest it handed the retrofit. A `--reapply` of the harness,
+  then a `--refresh agent-harness`, each over the greeting
+  context's skill edited and the team notes cut back to the user's
+  prose, puts the skill back byte for byte and each context's region
+  back, the domain files, the deferred actions and the modules
+  recorded as they were. An unedited tree cannot tell a re-render
+  that replays no context: it writes the same bytes. The case passes
+  on HEAD's handler and run as on this one, and takes about 0.3 s
+  more (0.88 to 1.03 s against 0.62 to 0.77 s, three runs each).
+
+**The proof** that the suites catch the handler's part. Each was tried
+in a scratch edit of `add-vertical.ts` and undone byte for byte, then
+run against the handler suites, `tests/application`, the paths
+golden's add, re-render and growth files and the brownfield and
+composite axes (50 files, 832 tests):
+
+- **D4's notes moved after the proposals.** Nothing failed before the
+  35th case. With it, that case alone fails.
+- **The admission notes dropped.** Five of the handler's cases fail,
+  and 189 cells of `paths-add` move, each in `report` alone: the adds
+  whose admission note names what the planner added. S.1a's proof
+  counted 189 adds bringing a prerequisite too.
+- **The proposals worded as a later run's under `--dry-run` too.** Two
+  of the handler's cases fail, the 35th among them.
+- **The exact answer check dropped.** Eight cases fail: two in
+  `add-vertical.test.ts`, three in `preview-answers.test.ts` and three
+  in `supplied-answers.test.ts`.
+- **The empty plan run rather than returned.** Two cases fail: the
+  handler's own case of adding nothing a second time, whose manifest
+  store records the write, and `composite-scope.test.ts`' monorepo
+  root adding what its services have.
+- **The retrofit replaying no recorded context.**
+  `agent-harness-grown.test.ts`' adoption on a grown project fails, and
+  no other case. No paths or grid cell moved, since no context adapter
+  of keel's declares a harness element (S.5).
+
+The 36th to 38th cases were then added, and three more edits run on the
+same 50 files, now 835 tests. Each failed one case and no other:
+
+- **`--reapply` naming what it names alone**, not what `--refresh`
+  names beside it: the 36th, its adapters distribution's alone.
+- **The retrofit handed `keel add`'s own command line**: the 38th, its
+  refusal naming `keel add agent-harness ci`.
+- **The run naming a refused re-render in run order again**, in
+  `converge-run.ts`: the 37th, naming `'acme-log', 'acme-deploy'`, so
+  without it nothing in the 50 files catches the edit, and in
+  `converge-run.test.ts` its 21st case alone.
+
+The adoption case's re-render came last, and two more edits run on the
+same 50 files, still 835 tests. Each replays the recorded contexts
+where the harness is adopted and not where one flag re-renders it:
+
+- **`contexts: !reapply`** fails the adoption case, at the skill its
+  `--reapply` leaves edited, and no other case.
+- **`contexts` false under `--refresh agent-harness` alone** fails the
+  same case, at its `--refresh`, and no other.
+
+Before the re-render, all 835 passed under both, the adoption case as
+it stood among them. The retrofit replaying no context at all still
+fails that case at the adoption, before its re-render.
+
+**Times**, under `CI=true` on four cores, as vitest reports a file's
+tests. Five files carry most of the step's dispatches:
+`add-vertical.test.ts`, `paths-add`, `paths-reapply` and the
+brownfield and composite axes. They were run together four times,
+alternating this handler with HEAD's copy of it, at a load average of
+4 to 8 from other work on the box:
+
+- this handler's two runs took 52.8 s and 49.5 s: `paths-add` 43.7 s
+  and 41.1 s, brownfield 16.6 s and 16.7 s, composite 14.8 s and
+  15.0 s, `paths-reapply` 13.8 s and 13.3 s, and the handler's suite
+  5.1 s and 5.5 s;
+- HEAD's took 50.7 s and 63.3 s, in the same order 39.8 s and 48.0 s,
+  16.9 s and 20.0 s, 13.9 s and 15.5 s, 13.5 s and 15.6 s, and 7.0 s
+  and 10.0 s;
+- HEAD's, run alone before the step at a load average below 1, took
+  50.4 s: 42.1 s, 15.3 s, 13.6 s, 13.9 s and 5.0 s.
+
+The second admission, and a re-render's reading of its composition,
+show no cost that stands out from the load. In one run of
+`CI=true pnpm test`, at a load average of 8.3 to 8.5, the suite took
+346.6 s as vitest reports it (5 min 47 s wall), with 202 files and
+3,236 tests passing, two tests more than S.3's 3,234. Growth's axis
+took 118.8 s and the converge golden 72.9 s. The paths golden's four
+took 39.2 s, 51.2 s, 15.7 s and 51.7 s (new, add, reapply, grow),
+brownfield 18.1 s, composite 15.7 s and the handler's suite 8.7 s.
+Those run high against S.3's run (280.8 s, at a load average of 3.5),
+in step with the load, so the paired runs above are the comparison. A
+last run, after the 36th to 38th cases and the converge golden's
+reading of `--reapply` beside `--refresh` (below), took 391.9 s
+(6 min 33 s wall) at a load average rising from 2.4 to 10.8, with 202
+files and 3,239 tests passing, the converge golden among them in
+60.9 s and the handler's suite in 7.8 s, and `git diff --exit-code`
+over every golden and known file clean after it.
+
+No preview changes, so neither the `keel ui` browser suites nor any
+e2e suite was run. There is no CHANGELOG entry, since nothing a user
+sees moves. `pnpm lint` and `pnpm typecheck` pass. Dependency-cruiser,
+part of `pnpm lint`, cruises 306 modules and 1,505 dependencies, three
+fewer than at S.3, since the handler imports less.
+`src/domain/core/AGENTS.md` names `keel add` among the run's callers,
+and says what its handler keeps and what it tells the run.
+
+Beyond the text above:
+
+- **A refused re-render names what it re-rendered in recorded order.**
+  The handler named a `keel.reapply-conflict`'s verticals in the order
+  the project installed them, and the run named them in the order they
+  ran. Under `--reapply` the two orders are one. `--refresh`, though,
+  re-renders in the planner's order, so a `--refresh` of two verticals
+  the planner orders otherwise than the record would have changed its
+  sentence if a conflict stopped it. No paths or grid cell reaches
+  that; the handler's 37th case does, on a plugin's family.
+  `converge-run.ts`' `recordedFirst` names them in the order the
+  project records them, any it does not record after. Growth
+  re-renders the harness alone, so nothing of it moves.
+- **`hasAnswers` goes with its guard, rather than moving.**
+  `unusedAnswers` and `strayAnswerRefusal` find nothing where nothing
+  is supplied, and `keel add module` already calls the latter
+  unguarded. So both checks now run on every add, and the early one
+  reads the reachable adapters where it did not before.
+  `add-entrypoint.ts` keeps its own copy, since S.4 touches no other
+  handler.
+- **The handler admits the set twice**, as `keel add entrypoint` reads
+  growth twice. `convergeOf` admits it for the plan. The handler admits
+  it again on the same scope for the admission notes, which the plan
+  does not carry, and, as before, once more without the refresh set
+  under `--refresh`. The second admission is of the set `convergeOf`
+  admitted, on its scope, and the planner is pure, so it cannot
+  refuse: where it would, the handler throws, as it does for a growth
+  refusal an `add` or `reapply` request cannot earn, and it takes no
+  siblings, which only word a refusal. No test can reach either. A
+  `--reapply` now reads a plan too, and so reads the project's
+  composition (`compositionOf`), which it did not before; the 38th case
+  holds that reading on a project recording a vertical no plugin
+  loaded provides. The times above show what it costs.
+- **`--reapply` beside `--refresh`** re-renders both, in recorded
+  order, as it did: the `reapply` request names both, and the 36th
+  case holds it. The converge golden's reading of `keel add` builds
+  that request as the handler does, gating a `--refresh` of a vertical
+  not installed under `--reapply` too. No paths cell combines the two,
+  so no byte of `converge.golden.json` moves.
+- **The empty plan stays the handler's.** Run, it would stage nothing
+  and still write the manifest's `updatedAt`, which the proof above
+  shows two suites hold.
 
 ### S.5 — `keel add module`, a caller, and one reading of the added contexts (M)
 

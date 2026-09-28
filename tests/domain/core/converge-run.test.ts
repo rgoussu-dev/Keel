@@ -6,7 +6,8 @@
  * byte (I10); this holds each part of the run on a family small enough
  * to read: each posture, both placements, the harness realized in each
  * order, the retrofit with and without the recorded contexts, a
- * conflict read as a refused re-render, the caller's answer check, the
+ * conflict read as a refused re-render naming what re-rendered in the
+ * order the project records it, the caller's answer check, the
  * refresh proposals — what they read, over what, in the caller's
  * words — and the commit, its deferred actions run for real.
  *
@@ -626,6 +627,27 @@ describe('converge: a conflict a contribution cannot settle', () => {
     expect(error.message).toBe(
       "reapply of 'acme-log' refused: adapter 'acme-log/main': reapplying its patch would change 'log.txt' — without a recorded base a changed result cannot be told apart from a double application; update the file by hand",
     );
+  });
+
+  it('names what it re-rendered in the order the project records it, whatever order it ran in', async () => {
+    // `keel add --refresh` re-renders in the order the planner installs,
+    // and has always named a refused re-render in the recorded one.
+    const world = new World();
+    const stored = await world.scaffold([skeleton, harness, notes, log]);
+    const plan = (on: ManifestV2) => planOf(on, [rerender(log), rerender(notes)]);
+    const named = /^reapply of '([^:]*)' refused: /;
+
+    const recorded = refused(await world.run(stored, plan(stored)));
+    expect(recorded.code).toBe('keel.reapply-conflict');
+    expect(recorded.message.match(named)?.[1]).toBe("acme-notes', 'acme-log");
+
+    // One the manifest does not record is still named, after the rest.
+    const unrecorded = {
+      ...stored,
+      verticals: stored.verticals.filter(({ id }) => id !== 'acme-log'),
+    };
+    const after = refused(await world.run(unrecorded, plan(unrecorded)));
+    expect(after.message.match(named)?.[1]).toBe("acme-notes', 'acme-log");
   });
 
   it('is thrown as it is where nothing re-rendered', async () => {

@@ -326,5 +326,32 @@ describe('harness adoption on a grown project', () => {
         ...moduleNames.map((name) => `.claude/skills/inspect-${name}/SKILL.md`),
       ].sort(),
     );
+
+    // Re-rendering the harness replays each recorded context too, and
+    // puts back what it wrote: an unedited tree cannot tell.
+    const skill = path.join(cwd, '.claude/skills/inspect-greeting/SKILL.md');
+    const greeting = await fs.readFile(skill, 'utf8');
+    for (const rerender of [{ reapply: true }, { refresh: ['agent-harness'] }]) {
+      await fs.writeFile(skill, 'edited\n');
+      await fs.writeFile(path.join(cwd, teamNotes), prose);
+      expectOk(
+        await mediator.dispatch(
+          addVerticalCommand({
+            cwd,
+            verticals: ['agent-harness'],
+            answers: {},
+            interactive: false,
+            dryRun: false,
+            ...rerender,
+          }),
+        ),
+      );
+      expect(await fs.readFile(skill, 'utf8')).toBe(greeting);
+      for (const name of moduleNames)
+        expect(await fs.readFile(path.join(cwd, teamNotes), 'utf8')).toContain(`Context: ${name}`);
+      expect(await domainSnapshot()).toEqual(domainBefore);
+      expect(deferred.flat()).toEqual([]);
+      expect((await fsManifestStore.read(projectScopeRoot(cwd)))!.modules).toEqual(before.modules);
+    }
   });
 });

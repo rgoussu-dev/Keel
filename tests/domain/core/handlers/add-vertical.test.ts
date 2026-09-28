@@ -9,6 +9,10 @@
  * user's in the way or gone) surface as domain errors. Then several
  * verticals at once, with what they need and what is there already,
  * and the installed ones a run re-renders (`--refresh`) or proposes.
+ * Last, on a plugin's family, two refusals the converge run words for
+ * it: a refused refresh, naming what it re-rendered in the order the
+ * project installed it, and the harness retrofit's, naming
+ * `keel add agent-harness` whatever the command run.
  */
 
 import path from 'node:path';
@@ -17,8 +21,16 @@ import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { addVerticalCommand, newProjectCommand } from '../../../../src/domain/contract/commands.js';
 import { previewQuery, projectStatusQuery } from '../../../../src/domain/contract/queries.js';
+import type { Vertical } from '../../../../src/domain/contract/composition.js';
 import { projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
+import type { Registry } from '../../../../src/domain/contract/ports/registry.js';
 import { RefusalError } from '../../../../src/domain/contract/refusal.js';
+import {
+  pluginOrigin,
+  registryOf,
+  shippedRegistry,
+  shippedSource,
+} from '../../../../src/domain/core/registry.js';
 import { FakeClock } from '../../../../src/infrastructure/commons/fake-clock.js';
 import type { ManifestStore } from '../../../../src/domain/contract/ports/manifest-store.js';
 import { fsManifestStore } from '../../../../src/infrastructure/manifest/fs-manifest-store.js';
@@ -657,6 +669,30 @@ describe('keel.add-vertical (keel add)', () => {
       expect(await fs.readFile(compose, 'utf8')).toBe(pristine);
     });
 
+    it('re-renders what --refresh names beside --reapply, in the order the project installed them', async () => {
+      await scaffold(cwd, 'go-http');
+      expectOk(await add(cwd, ['distribution']));
+      expectOk(await add(cwd, ['persistence']));
+      const readme = path.join(cwd, 'migrations/README.md');
+      const pristine = await fs.readFile(readme, 'utf8');
+      await fs.writeFile(readme, 'edited by hand\n');
+
+      const report = expectOk(
+        await add(cwd, ['distribution'], { reapply: true, refresh: ['persistence'] }),
+      );
+      // Distribution first, as recorded, although it reads persistence
+      // and a refresh would run it after.
+      expect(report.resolvedAdapters?.map((adapter) => adapter.id)).toEqual([
+        'distribution/go-container',
+        'persistence/database-compose',
+        'persistence/flyway-migrations',
+        'persistence/go-persistence',
+        'persistence/liquibase-migrations',
+      ]);
+      expect(report.diffs?.map((d) => d.path)).toContain('migrations/README.md');
+      expect(await fs.readFile(readme, 'utf8')).toBe(pristine);
+    });
+
     it('proposes re-rendering what reads an incoming vertical, and --refresh takes it up', async () => {
       await scaffold(cwd, 'go-http');
       expectOk(await add(cwd, ['distribution']));
@@ -824,6 +860,19 @@ describe('keel.add-vertical (keel add)', () => {
       ]);
     });
 
+    it('says what it found there already before the refresh it proposes', async () => {
+      await scaffold(cwd, 'go-http');
+      expectOk(await add(cwd, ['distribution']));
+      const report = expectOk(await add(cwd, ['distribution', 'persistence'], { dryRun: true }));
+      expect(report.refreshProposals).toEqual([
+        { vertical: 'distribution', reads: ['persistence'] },
+      ]);
+      expect(report.notes).toEqual([
+        "Distribution is already installed; 'keel add distribution --reapply' re-renders it",
+        "refresh proposed: Distribution reads Persistence, which it was rendered without — re-render it in this run with --refresh distribution, or afterwards with 'keel add distribution --reapply'",
+      ]);
+    });
+
     it('reports a move among the verticals named, and never a refreshed one as installed', async () => {
       await scaffold(cwd, 'go-http');
       expectOk(await add(cwd, ['persistence']));
@@ -882,6 +931,127 @@ describe('keel.add-vertical (keel add)', () => {
       const error = expectErr(await add(cwd, ['persistence'], { refresh: ['distribution'] }));
       expect(error.code).toBe('keel.vertical-not-installed');
       expect(error.message).toMatch(/nothing to refresh/);
+    });
+  });
+
+  describe("on a plugin's family, what the converge run refuses for it", () => {
+    /** Appends a line on every application: re-rendered, it cannot tell its own line from a user's. */
+    const log: Vertical = {
+      id: 'acme-log',
+      description: 'Logs.',
+      dimensions: ['log'],
+      adapters: [
+        {
+          id: 'acme-log/main',
+          vertical: 'acme-log',
+          covers: ['log'],
+          predicate: { requires: ['lang.acme'] },
+          contribute: () => ({
+            patches: [{ target: 'log.txt', seed: '', apply: (text: string) => `${text}logged\n` }],
+          }),
+        },
+      ],
+    };
+    /** Reads the log, so a refresh runs it after the log, whatever order the project installed them. */
+    const deploy: Vertical = {
+      id: 'acme-deploy',
+      description: 'Deploys.',
+      dimensions: ['deploy'],
+      reads: ['acme-log'],
+      adapters: [
+        {
+          id: 'acme-deploy/main',
+          vertical: 'acme-deploy',
+          covers: ['deploy'],
+          predicate: { requires: ['lang.acme'] },
+          contribute: () => ({ files: [{ path: 'deploy.txt', content: 'deploy\n' }] }),
+        },
+      ],
+    };
+    /** A plugin's vertical on a Go project, which the project records after the plugin is gone. */
+    const extra: Vertical = {
+      id: 'extra',
+      description: 'A plugin vertical',
+      dimensions: ['only'],
+      adapters: [
+        {
+          id: 'extra/go',
+          vertical: 'extra',
+          covers: ['only'],
+          predicate: { requires: ['lang.go'] },
+          contribute: () => ({ files: [{ path: 'extra.txt', content: 'extra\n' }] }),
+        },
+      ],
+    };
+    const mediator = (registry: Registry) =>
+      installMediator({ runDeferred: () => Promise.resolve(), registry });
+    const add = (
+      registry: Registry,
+      verticals: readonly string[],
+      more: Partial<Parameters<typeof addVerticalCommand>[0]> = {},
+    ) =>
+      mediator(registry).dispatch(
+        addVerticalCommand({
+          cwd,
+          verticals,
+          answers: {},
+          interactive: false,
+          dryRun: false,
+          ...more,
+        }),
+      );
+
+    it('names a refused refresh in the order the project installed it, whatever order it ran in', async () => {
+      const acme = registryOf([
+        {
+          origin: pluginOrigin('acme'),
+          verticals: [deploy, log],
+          stacks: [{ id: 'acme', description: 'acme', tags: ['lang.acme'], verticals: [] }],
+        },
+      ]);
+      expectOk(
+        await mediator(acme).dispatch(
+          newProjectCommand({ cwd, stack: 'acme', answers: {}, interactive: false, dryRun: false }),
+        ),
+      );
+      expectOk(await add(acme, ['acme-deploy']));
+      expectOk(await add(acme, ['acme-log']));
+
+      // The log runs first, since the deploy reads it; its patch, run
+      // again, meets its own line and stops the re-render.
+      const error = expectErr(
+        await add(acme, ['acme-log'], { refresh: ['acme-deploy', 'acme-log'] }),
+      );
+      expect(error.code).toBe('keel.reapply-conflict');
+      expect(error.message).toMatch(/^reapply of 'acme-deploy', 'acme-log' refused: /);
+    });
+
+    it('plans on a project recording a vertical no plugin loaded provides, and adopting the harness there names keel add agent-harness', async () => {
+      expectOk(
+        await mediator(
+          registryOf([shippedSource, { origin: pluginOrigin('acme'), verticals: [extra] }]),
+        ).dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'go-cli',
+            answers: {},
+            interactive: false,
+            dryRun: false,
+            agentHarness: false,
+            extraVerticals: ['extra'],
+          }),
+        ),
+      );
+
+      expectOk(await add(shippedRegistry, ['ci'], { dryRun: true }));
+      expectOk(await add(shippedRegistry, ['vcs'], { reapply: true, dryRun: true }));
+      // The retrofit replays what the project records, and cannot
+      // replay what nothing registered provides.
+      const error = expectErr(await add(shippedRegistry, ['agent-harness', 'ci']));
+      expect(error.code).toBe('keel.missing-harness-contributor');
+      expect(error.message).toBe(
+        "cannot restore harness elements from installed vertical 'extra' — restore the plugin that provides it and re-run 'keel add agent-harness'",
+      );
     });
   });
 });

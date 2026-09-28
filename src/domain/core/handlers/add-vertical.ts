@@ -21,53 +21,62 @@
  *      product root builds — and one a product root's services have,
  *      each with a note saying where it is. Refuse a `--reapply` or a
  *      `--refresh` of one that is not installed.
- *   4. Plan the named set with the planner (`../planner.ts`), the
+ *   4. Read the plan with `convergeOf` (`../converge.ts`), the one
+ *      reading every path that installs or re-renders verticals is to
+ *      make. Under `--reapply`, its `reapply` request: what is named,
+ *      and what `--refresh` names beside it, re-rendered in the order
+ *      the project installed them. Otherwise its `add` request: the
+ *      named set planned with the planner (`../planner.ts`), the
  *      reading the extras menu, `keel new --with` and this project's
- *      cards share (`../plan-refusal.ts`, `../add-readiness.ts`):
- *      closed over its prerequisites — a vertical it needs that the
- *      project lacks is installed with it, and the report's first note
- *      names it — and ordered. A vertical it re-renders (`--refresh`)
- *      is planned as if it were not there yet, so it goes after what
- *      it reads and what decides its adapters. The assembly rules hold
- *      over the installed pieces and the incoming ones together, against
- *      every tag the run would add. A vertical the planner reads as
- *      unavailable here is refused — in a monorepo service, one whose
- *      place is the repository root, or that needs one, under
- *      `keel.wrong-scope` — one breaking a rule among them, and a tie
- *      between two sets of prerequisites.
+ *      cards share (`../plan-refusal.ts`, `../add-readiness.ts`), on
+ *      the scope and beside the siblings this handler reads: closed
+ *      over its prerequisites — a vertical it needs that the project
+ *      lacks is installed with it, and the report's first note names
+ *      it — and ordered. A vertical it re-renders (`--refresh`) is
+ *      planned as if it were not there yet, so it goes after what it
+ *      reads and what decides its adapters. The assembly rules hold
+ *      over the installed pieces and the incoming ones together,
+ *      against every tag the run would add. A vertical the planner
+ *      reads as unavailable here is refused — in a monorepo service,
+ *      one whose place is the repository root, or that needs one,
+ *      under `keel.wrong-scope` — one breaking a rule among them, and
+ *      a tie between two sets of prerequisites. Either way the run
+ *      appends what it records, and realizes the harness in run order.
  *   5. Refuse a supplied answer for a re-rendered adapter that has
  *      answers recorded — they are frozen — and one no adapter of the
  *      planned verticals could read, before a question is asked.
- *   6. Install the plan against a Tree rooted at cwd, through the
- *      loop `keel new` installs each scope through
- *      (`installVerticals`), the re-rendered verticals in the
+ *   6. Hand the plan to the converge run (`../converge-run.ts`'
+ *      `converge`), against a Tree rooted at cwd: one
+ *      `installVerticals` pass, the re-rendered verticals in the
  *      `reapply` posture. The pre-existing project files on disk live
  *      in the Tree as "real" reads — patches against them work, and a
  *      whole-file write over one is refused as `keel.path-conflict`
  *      naming the file (which is exactly the diagnostic we want); a
  *      patch target the user deleted is refused as `keel.path-missing`.
- *      The run's harness buffer stays this handler's to finalize:
- *      adopting a harness replays the project's earlier contributors
- *      into it before the finalize, and restamps the harness
- *      generation after.
+ *      Adopting or re-rendering the harness replays the project's
+ *      earlier contributors, and each context it records, into the
+ *      run's harness buffer before the finalize, and restamps the
+ *      harness generation after.
  *   7. Refuse a supplied answer the run did not read — one for an
  *      installed vertical's adapter is frozen, any other is unknown
  *      (`../supplied-answers.ts`) — against the adapters it resolved,
- *      which only the staged run knows exactly. Only the adapters an
- *      answer is keyed to take it, so nothing else it names is ever
- *      recorded.
- *   8. Ask the planner which installed verticals the run changed the
- *      rendering of without re-rendering them, and report each as a
- *      proposal — never a re-render of its own accord.
+ *      which only the staged run knows exactly: the run's check, before
+ *      its harness pass. Only the adapters an answer is keyed to take
+ *      it, so nothing else it names is ever recorded.
+ *   8. The run asks the planner which installed verticals it changed
+ *      the rendering of without re-rendering them, and reports each as
+ *      a proposal — never a re-render of its own accord — worded, under
+ *      dry-run, as this very run could take it up (`--refresh`), and
+ *      otherwise as a later one does, after this handler's notes.
  *   9. Under dry-run: report the plan, commit nothing. A plan left
  *      empty — every vertical named was there already, and nothing
  *      is re-rendered — is reported as it stands, its notes saying
  *      why, before anything is staged: the project is not touched.
- *  10. Otherwise: commit the Tree, persist the updated manifest, then
- *      run the deferred actions — manifest before actions, as in the
- *      new-project handler, so a failed action leaves a coherent
- *      (files + manifest) pair and a re-run finds the vertical
- *      installed rather than installing it twice.
+ *  10. Otherwise the run's one commit (`commitConverged`): the Tree,
+ *      then the updated manifest, then the deferred actions — manifest
+ *      before actions, as in the new-project handler, so a failed
+ *      action leaves a coherent (files + manifest) pair and a re-run
+ *      finds the vertical installed rather than installing it twice.
  *
  * A re-render differs in the guards and the apply posture, not in the
  * pipeline: the vertical must already be installed; an adapter the
@@ -80,7 +89,8 @@
  * the pristine re-render (each reported with a unified diff against
  * the working tree), while a patch that would change an
  * already-patched file aborts the whole run with
- * `keel.reapply-conflict` before anything is committed. Tags the
+ * `keel.reapply-conflict`, naming what re-rendered in the order the
+ * project installed it, before anything is committed. Tags the
  * previous apply promoted re-fold through set semantics, so they never
  * double; the vertical keeps its original `installedAt`.
  */
@@ -88,23 +98,15 @@
 import type { Action } from '../../kernel/action.js';
 import type { Handler } from '../../kernel/handler.js';
 import { DomainError, err, ok, type Result } from '../../kernel/result.js';
-import type {
-  AddVerticalCommand,
-  InstallReport,
-  PresetAnswers,
-  RefreshProposal,
-} from '../../contract/commands.js';
-import { effectiveTags, HARNESS_GENERATION, projectScopeRoot } from '../../contract/manifest.js';
+import type { AddVerticalCommand, InstallReport } from '../../contract/commands.js';
+import { effectiveTags, projectScopeRoot } from '../../contract/manifest.js';
 import { NOT_INITIALISED_CODE, notInitialisedSentence } from '../../contract/nearby.js';
 import { addScopeOf, productRootReading, type ProductRootReading } from '../add-readiness.js';
+import { convergeOf } from '../converge.js';
+import { commitConverged, converge } from '../converge-run.js';
 import { harnessGenerationRefusal } from '../harness-generation.js';
-import { runActions } from '../actions.js';
-import { ContributionConflictError, newOwnership, type HarnessContribution } from '../apply.js';
-import { workingTreeDiffs } from '../diff.js';
-import { finalizeHarness, installVerticals } from '../install.js';
-import { retrofitHarness } from '../harness-retrofit.js';
 import { admissionNotes, admit, type AdmittedSet } from '../plan-refusal.js';
-import { reachableAdapters, refreshProposals } from '../planner.js';
+import { reachableAdapters } from '../planner.js';
 import {
   alreadyInstalledNote,
   elsewhereRefusal,
@@ -113,8 +115,6 @@ import {
   placementRefusal,
   providedNote,
   providedNotInstalledSentence,
-  reapplyConflictSentence,
-  refreshProposalNote,
   ruleRefusal,
   VERTICAL_NOT_INSTALLED_CODE,
 } from '../refusals.js';
@@ -262,7 +262,7 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
         return err(this.notInstalled(vertical, 'refresh', given, member, atRoot));
     }
 
-    // A re-render plans nothing, so its rules are read here: each
+    // A re-render admits nothing, so its rules are read here: each
     // vertical's own, against the tags the manifest records. What the
     // run installs is held to the rules by the planner below — its own
     // and the installed pieces', over the tags it would add.
@@ -271,55 +271,68 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
       if (refusal !== null) return err(refusal);
     }
 
-    // What re-renders: under --reapply, everything named; otherwise
-    // what --refresh names — in the order the project installed them.
-    const rerender = stored.verticals.flatMap(
-      ({ id }) =>
-        [...(reapply ? named.value : []), ...refresh.value].find((v) => v.id === id) ?? [],
+    // The plan, `convergeOf`'s reading. A reapply re-renders what is
+    // there — everything named, and what --refresh names beside it —
+    // in the order the project installed it, so it has nothing to
+    // admit. Otherwise the planner's reading, the one `keel new
+    // --with`, the extras menu and this project's cards
+    // (`keel.project-status`) share: the named set closed over what it
+    // needs, in the order it installs — a vertical re-rendered beside
+    // it planned as if it were not there yet, so it goes after whatever
+    // it reads or whatever decides its adapters. The assembly rules
+    // hold over what is installed and what comes in together: an
+    // incoming vertical's own, and an installed one's, against every
+    // tag the run would add. A vertical this project cannot carry is
+    // refused here, in the words its card already showed — never
+    // discovered inside an adapter — carrying the entrypoint to add
+    // where that is what it lacks.
+    const ids = (verticals: readonly Vertical[]) => verticals.map((v) => v.id);
+    const scope = reapply ? null : addScopeOf(registry, where, ids(refresh.value));
+    const siblings = reapply ? [] : siblingsOf(registry, where);
+    const plan = convergeOf(
+      registry,
+      stored,
+      scope === null
+        ? { kind: 'reapply', verticals: ids([...named.value, ...refresh.value]) }
+        : {
+            kind: 'add',
+            verticals: ids(adding),
+            refresh: ids(refresh.value),
+            scope,
+            siblings,
+          },
     );
+    if (plan.kind === 'refused') {
+      if (plan.refusal.kind !== 'plan') {
+        throw new Error('keel add: a plan that grows no entrypoint was refused as growth');
+      }
+      return err(plan.refusal.error);
+    }
+    const order = plan.run.map((step) => step.vertical);
 
-    // The planner's reading, the one `keel new --with`, the extras
-    // menu and this project's cards (`keel.project-status`) share: the
-    // named set closed over what it needs, in the order it installs —
-    // a vertical re-rendered beside it planned as if it were not there
-    // yet, so it goes after whatever it reads or whatever decides its
-    // adapters. The assembly rules hold over what is installed and
-    // what comes in together: an incoming vertical's own, and an
-    // installed one's, against every tag the run would add. A vertical
-    // this project cannot carry is refused here, in the words its card
-    // already showed — never discovered inside an adapter — carrying the
-    // entrypoint to add where that is what it lacks. A reapply
-    // re-renders what is there, so it has nothing to plan.
-    let admitted: AdmittedSet | null = null;
-    // What the report says of the plan: `--refresh` is a list beside
-    // the set, named in no order, so its notes speak of the verticals
-    // the run installs, and of a move only among the ones named.
+    // What the report says of the plan, which the plan does not carry:
+    // what the planner added, and a move among the verticals named.
+    // Read of the set `convergeOf` admitted, on the same scope, so it
+    // cannot refuse, and needs no siblings, which only word a refusal.
+    // Under `--refresh`, a list beside the set named in no order, its
+    // notes speak of the verticals the run installs, and of a move only
+    // among the ones named.
     let told: AdmittedSet | null = null;
-    if (!reapply) {
-      const scope = addScopeOf(
-        registry,
-        where,
-        rerender.map((v) => v.id),
-      );
-      const planned = admit(
-        registry,
-        scope,
-        [...adding, ...refresh.value],
-        siblingsOf(registry, where),
-      );
-      if (!planned.ok) return planned;
-      admitted = planned.value;
-      told = admitted;
+    if (scope !== null) {
+      const planned = admit(registry, scope, [...adding, ...refresh.value]);
+      if (!planned.ok) {
+        throw new Error('keel add: the set convergeOf admitted was refused on the same scope');
+      }
+      told = planned.value;
       if (refresh.value.length > 0) {
         const alone = admit(registry, scope, adding);
         told = {
-          ...admitted,
-          order: admitted.order.filter((v) => !refresh.value.some((r) => r.id === v.id)),
-          reordered: admitted.reordered && (!alone.ok || alone.value.reordered),
+          ...planned.value,
+          order: planned.value.order.filter((v) => !refresh.value.some((r) => r.id === v.id)),
+          reordered: planned.value.reordered && (!alone.ok || alone.value.reordered),
         };
       }
     }
-    const order = admitted?.order ?? rerender;
 
     // Answers are held before anything runs against every adapter the
     // run could reach. One for a re-rendered vertical's recorded
@@ -332,20 +345,19 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
     // depends on the tags its first verticals add, so it is only known
     // once staged — as under `keel new --with`.
     const history = historyOf(registry, stored);
-    if (hasAnswers(command.answers)) {
-      const [early] = unusedAnswers(
-        command.answers,
-        resolvedAdapters(reachableAdapters(order, effectiveTags(stored))),
-        history,
-      );
-      if (
-        early !== undefined &&
-        (command.interactive || order.length === 0 || early.code === REAPPLY_FROZEN_ANSWERS_CODE)
-      ) {
-        return err(new DomainError(early.message, early.code));
-      }
+    const [early] = unusedAnswers(
+      command.answers,
+      resolvedAdapters(reachableAdapters(order, effectiveTags(stored))),
+      history,
+    );
+    if (
+      early !== undefined &&
+      (command.interactive || order.length === 0 || early.code === REAPPLY_FROZEN_ANSWERS_CODE)
+    ) {
+      return err(new DomainError(early.message, early.code));
     }
 
+    const subject = ids(named.value).join(' ');
     const already = [
       ...present.map(alreadyInstalledNote),
       ...provided.map((provision) => providedNote(provision.vertical, provision.by)),
@@ -356,7 +368,7 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
     // staged, and the manifest is not written again.
     if (order.length === 0) {
       return ok({
-        subject: named.value.map((v) => v.id).join(' '),
+        subject,
         changes: [],
         actions: [],
         committed: !command.dryRun,
@@ -364,146 +376,42 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
       });
     }
 
-    const now = this.deps.clock.nowIso();
-    const tree = this.deps.trees(command.cwd);
-    const ran = new Set(order.map((v) => v.id));
-    const harnessRuns = ran.has('agent-harness');
-    let result;
-    const owners = newOwnership();
-    const harness: HarnessContribution[] = [];
-    try {
-      result = await installVerticals({
-        verticals: order,
-        rerender: rerender.map((v) => v.id),
-        manifest: stored,
-        supplied: command.answers,
-        tree,
-        owners,
-        harness,
-        // A re-rendered adapter with recorded answers resolves from
-        // them without asking whatever the mode; one it newly resolves
-        // to is asked like any first install.
-        mode: command.interactive ? 'interactive' : 'non-interactive',
-        prompt: this.deps.prompt,
-        logger: this.deps.logger,
-        cwd: command.cwd,
-        templates: this.deps.templates,
-        processes: this.deps.processes,
-        now: () => now,
-        apply: 'install',
-        registry,
-      });
+    const converged = await converge({
+      ...this.deps,
+      plan,
+      stored,
+      tree: this.deps.trees(command.cwd),
+      cwd: command.cwd,
+      answers: command.answers,
+      // A re-rendered adapter with recorded answers resolves from them
+      // without asking whatever the mode; one it newly resolves to is
+      // asked like any first install.
+      interactive: command.interactive,
+      dryRun: command.dryRun,
+      subject,
+      // Where the harness runs — adopted, or re-rendered — every
+      // vertical the run does not is replayed into its buffer, and so
+      // is each context the project records.
+      retrofit: { contexts: true },
       // Held against what the run resolved and what it read — exact,
       // and what the preview reports. Nothing is committed yet.
-      if (hasAnswers(command.answers)) {
-        const stray = strayAnswerRefusal(
+      check: (staged) =>
+        strayAnswerRefusal(
           command.answers,
-          resolvedAdapters(result.adapters),
+          resolvedAdapters(staged.adapters),
           history,
-          result.reads,
-        );
-        if (stray !== null) return err(stray);
-      }
-      if (harnessRuns) {
-        // The verticals of this run put their declarations in the
-        // buffer as they installed; the ones installed before it are
-        // replayed into it.
-        await retrofitHarness({
-          ...this.deps,
-          manifest: {
-            ...result.manifest,
-            verticals: result.manifest.verticals.filter((v) => !ran.has(v.id)),
-          },
-          tree,
-          owners,
-          harness,
-          cwd: command.cwd,
-          mode: 'non-interactive',
-          now: () => now,
-        });
-      }
-      const finalized = finalizeHarness({
-        manifest: result.manifest,
-        harness,
-        tree,
-        owners,
-        logger: this.deps.logger,
-        now: () => now,
-      });
-      result = {
-        ...result,
-        // Adopting or re-rendering the harness writes this keel's
-        // layout, so it is what restamps the generation.
-        manifest: harnessRuns
-          ? { ...finalized.manifest, harnessGeneration: HARNESS_GENERATION }
-          : finalized.manifest,
-        applyResult: {
-          ...result.applyResult,
-          skills: finalized.skills,
-          ...(finalized.skipped > 0 ? { skippedHarnessElements: finalized.skipped } : {}),
-        },
-      };
-    } catch (e) {
-      if (rerender.length > 0 && e instanceof ContributionConflictError) {
-        return err(
-          new DomainError(
-            reapplyConflictSentence(
-              rerender.map((v) => v.id),
-              e.message,
-            ),
-            'keel.reapply-conflict',
-          ),
-        );
-      }
-      throw e;
-    }
-
-    const incoming = order.map((v) => v.id).filter((id) => !rerender.some((v) => v.id === id));
-    const proposals = refreshProposals(
-      registry,
-      stored.verticals.map((v) => v.id).filter((id) => !ran.has(id)),
-      incoming,
-      effectiveTags(stored),
-      effectiveTags(result.manifest),
-    );
-    // What the run adds unasked comes first: it is the note that
-    // changes what is written (D1).
-    const notes = [
-      ...(told === null ? [] : admissionNotes(told)),
-      ...already,
-      ...proposals.map((proposal) => this.proposalNote(proposal, !command.dryRun)),
-    ];
-    const report: InstallReport = {
-      subject: named.value.map((v) => v.id).join(' '),
-      changes: tree.changes(),
-      actions: result.applyResult.actions.map((a) => a.description),
-      committed: !command.dryRun,
-      ...(notes.length > 0 ? { notes } : {}),
-      ...(proposals.length > 0 ? { refreshProposals: proposals } : {}),
-      ...(result.adapters.length > 0
-        ? { resolvedAdapters: resolvedAdapters(result.adapters) }
-        : {}),
-      ...(result.applyResult.skippedHarnessElements
-        ? { skippedHarnessElements: result.applyResult.skippedHarnessElements }
-        : {}),
-      ...(rerender.length > 0
-        ? { diffs: workingTreeDiffs(this.deps.trees, command.cwd, tree) }
-        : {}),
-    };
-
-    if (command.dryRun) return ok(report);
-
-    await tree.commit();
-    await this.deps.manifests.write(scopeRoot, result.manifest);
-    const runDeferred = this.deps.runDeferred ?? runActions;
-    await runDeferred({
-      actions: result.applyResult.actions,
-      cwd: command.cwd,
-      logger: this.deps.logger,
-      processes: this.deps.processes,
-      dryRun: false,
+          staged.reads,
+        ),
+      // Staged and not written, a proposal is one this very run can
+      // take up with --refresh; once written, a later run's.
+      proposeForLater: !command.dryRun,
+      // What the run adds unasked comes first: it is the note that
+      // changes what is written (D1).
+      notes: { before: [...(told === null ? [] : admissionNotes(told)), ...already], after: [] },
     });
-    return ok(report);
+    if (!converged.ok) return converged;
+    if (!command.dryRun) await commitConverged(this.deps, converged.value);
+    return ok(converged.value.report);
   }
 
   /**
@@ -572,28 +480,6 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
     }
     return new DomainError(notInstalledSentence(vertical, verb), VERTICAL_NOT_INSTALLED_CODE);
   }
-
-  /** {@link refreshProposalNote} for one proposal, its ids resolved. */
-  private proposalNote(proposal: RefreshProposal, committed: boolean): string {
-    const byId = (id: string): Vertical[] => {
-      const vertical = this.deps.registry.vertical(id);
-      return vertical === null ? [] : [vertical];
-    };
-    const [vertical] = byId(proposal.vertical);
-    if (vertical === undefined) {
-      throw new Error(`proposalNote: '${proposal.vertical}' is not registered`);
-    }
-    return refreshProposalNote(
-      vertical,
-      proposal.reads.flatMap(byId),
-      proposal.adapters !== undefined,
-      committed,
-    );
-  }
-}
-
-function hasAnswers(answers: PresetAnswers): boolean {
-  return Object.values(answers).some((byQuestion) => Object.keys(byQuestion).length > 0);
 }
 
 /** The command line a generation refusal names as the one to re-run. */

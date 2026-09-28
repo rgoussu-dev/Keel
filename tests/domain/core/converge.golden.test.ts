@@ -362,10 +362,11 @@ async function readingOf(cell: CellReading): Promise<Cell> {
 /**
  * `keel add`'s request, as the handler builds it before it plans: its
  * gates — no project, a vertical a product root cannot carry, a
- * re-render of one not installed, or refused by its own rules — then
- * the verticals it installs, named less what the project has (or its
- * product gives it, or its services have), and those it re-renders,
- * planned on its scope.
+ * re-render of one not installed, or refused by its own rules — then,
+ * under `--reapply`, what it names and what `--refresh` names beside
+ * it, re-rendered; otherwise the verticals it installs, named less what
+ * the project has (or its product gives it, or its services have), and
+ * those it re-renders, planned on its scope.
  */
 function addReading(where: DirectoryScope, target: AddVerticalTarget): Reading {
   const stored = where.manifest;
@@ -403,19 +404,23 @@ function addReading(where: DirectoryScope, target: AddVerticalTarget): Reading {
     }
     return VERTICAL_NOT_INSTALLED_CODE;
   };
-  if (target.reapply === true) {
-    const missing = named.find(({ id }) => !installed.has(id));
-    if (missing !== undefined) return { gate: notInstalled(missing.id) };
+  const reapply = target.reapply === true;
+  const missing = reapply ? named.find(({ id }) => !installed.has(id)) : undefined;
+  if (missing !== undefined) return { gate: notInstalled(missing.id) };
+  const unrefreshable = refresh.find(({ id }) => !installed.has(id));
+  if (unrefreshable !== undefined) return { gate: notInstalled(unrefreshable.id) };
+  if (reapply) {
     for (const vertical of named) {
       const refusal = ruleRefusal(registry, vertical, stored.tags);
       if (refusal !== null) return { gate: refusal.code };
     }
     return recorded(
-      convergeOf(registry, stored, { kind: 'reapply', verticals: named.map(({ id }) => id) }),
+      convergeOf(registry, stored, {
+        kind: 'reapply',
+        verticals: [...named, ...refresh].map(({ id }) => id),
+      }),
     );
   }
-  const unrefreshable = refresh.find(({ id }) => !installed.has(id));
-  if (unrefreshable !== undefined) return { gate: notInstalled(unrefreshable.id) };
   const adding = named
     .map(({ id }) => id)
     .filter((id) => !installed.has(id) && !given(id) && !inServices.includes(id));

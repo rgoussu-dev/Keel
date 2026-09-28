@@ -4,8 +4,9 @@
  * committed. `./converge.ts` stays the pure reading; this is the one
  * run of it, the tail `keel add` and `keel add entrypoint` each wrote
  * out for themselves, and {@link commitConverged} the one commit after
- * it. `keel add entrypoint` is its first caller; the other paths that
- * install or re-render verticals become callers in S.4 to S.6.
+ * it. `keel add entrypoint` is its first caller (S.3), and `keel add`
+ * — `--refresh` and `--reapply` with it — its second (S.4); `keel add
+ * module` and `keel new` become callers in S.5 and S.6.
  *
  * **The run.** One `installVerticals` pass over the plan's steps, each
  * in its posture — installed whole, installed in part (`only`),
@@ -36,7 +37,8 @@
  * did not re-render, proposed, never done — each worded as a later run
  * takes it up, or as this one could; the diffs of what re-rendered; and
  * where anything re-rendered, a conflict a contribution cannot settle
- * read as `keel.reapply-conflict`, naming the re-render it stopped.
+ * read as `keel.reapply-conflict`, naming the re-render it stopped in
+ * the order the project records it.
  */
 
 import { DomainError, err, ok, type Result } from '../kernel/result.js';
@@ -149,7 +151,7 @@ export interface ConvergeInputs extends ConvergeDeps {
    * or, false, as this run could, under `--refresh` — `./refusals.ts`
    * `refreshProposalNote`'s `committed`, whatever {@link dryRun} says:
    * `keel add entrypoint`, which takes no `--refresh`, passes true, dry
-   * run or not; `keel add` is to pass `!dryRun`, as it words them.
+   * run or not; `keel add` passes `!dryRun`, as it has always worded them.
    */
   readonly proposeForLater: boolean;
   /** The caller's notes, in its order: those before the refresh proposals', and those after. */
@@ -297,7 +299,10 @@ export async function converge(inputs: ConvergeInputs): Promise<Result<Converged
   } catch (e) {
     if (rerendered.length > 0 && e instanceof ContributionConflictError) {
       return err(
-        new DomainError(reapplyConflictSentence(rerendered, e.message), 'keel.reapply-conflict'),
+        new DomainError(
+          reapplyConflictSentence(recordedFirst(stored, rerendered), e.message),
+          'keel.reapply-conflict',
+        ),
       );
     }
     throw e;
@@ -390,6 +395,16 @@ async function wireModules(
     applyResult: { ...result.applyResult, actions },
     adapters,
   };
+}
+
+/**
+ * `ids`, vertical ids, in the order `stored` records them — a refused
+ * re-render names what it re-rendered so, whatever order it ran in —
+ * and any it does not record after them, as they come.
+ */
+function recordedFirst(stored: ManifestV2, ids: readonly string[]): readonly string[] {
+  const recorded = stored.verticals.map(({ id }) => id).filter((id) => ids.includes(id));
+  return [...recorded, ...ids.filter((id) => !recorded.includes(id))];
 }
 
 /** {@link refreshProposalNote} for one proposal, its ids resolved in `registry`. */

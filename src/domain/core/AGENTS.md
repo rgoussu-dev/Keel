@@ -273,8 +273,9 @@ command's own answer, what it would install or why it would refuse
 every path that installs or re-renders verticals is to call (roadmap
 S): pure as `planner.ts` and `growth.ts` are. Its reading
 (`compositionOf`, `referenceOrder`, `convergeOf`) is
-`keel add entrypoint`'s since S.3, run by `converge-run.ts` (below);
-S.4 to S.6 make each other path its caller. `compositionOf` reads
+`keel add entrypoint`'s since S.3 and `keel add`'s — `--refresh` and
+`--reapply` with it — since S.4, run by `converge-run.ts` (below);
+S.5 and S.6 make the other paths its callers. `compositionOf` reads
 what a manifest already says `keel new` was given, with no field
 recorded for it (DS2): the preset the drill-down places it on, on the
 setting of its dials the tags record — `growth.ts`' `settingOf`, how
@@ -319,16 +320,27 @@ realized in the placement's order (the twin's for growth, where each
 adapter ranks by where it runs in the twin, whose preset is the
 target's); the record at the placement (`twinOrder`, `atRank`,
 `inPlace`); a `ContributionConflictError` read as
-`keel.reapply-conflict` over the re-rendered ids where anything
-re-rendered, and rethrown otherwise; the refresh proposals, over the
-steps it installs in run order, each worded as a later run takes it
-up (`proposeForLater`) or as this one could; and the report, the
-caller's notes before and after the proposals, and the diffs where
-anything re-rendered. `commitConverged` is the one commit after it:
-the tree, then the manifest, then the deferred actions. `keel add`,
-`keel add module` and `keel new` keep their own tails until S.4 to
-S.6 make them callers. `tests/domain/core/converge-run.test.ts` holds
-each part on a fixture family.
+`keel.reapply-conflict` over the re-rendered ids, named in the order
+the project records them, where anything re-rendered, and rethrown
+otherwise; the refresh proposals, over the steps it installs in run
+order, each worded as a later run takes it up (`proposeForLater`) or
+as this one could; and the report, the caller's notes before and
+after the proposals, and the diffs where anything re-rendered.
+`commitConverged` is the one commit after it: the tree, then the
+manifest, then the deferred actions. `handlers/add-vertical.ts` keeps
+what is its own — naming the verticals, the scope and a product
+root's reading of its services, the generation gate and
+`bringsHarness`, D4's notes (installed, provided, in the services),
+the refusals of a re-render (not installed, or against its own rules)
+and the early answer check — and hands `convergeOf`'s `add` or
+`reapply` plan to the run, appended and realized in run order, the
+recorded contexts replayed where the harness runs, adopted or
+re-rendered, and its admission and D4 notes before the proposals,
+worded as this run could take them up under `--dry-run`
+(`proposeForLater: !dryRun`). `keel add module` and `keel new` keep
+their own tails until S.5 and S.6 make them callers.
+`tests/domain/core/converge-run.test.ts` holds each part on a fixture
+family.
 
 **The stack presets are data.** `stack-presets.json`, because nothing in
 a `Stack` is code — `tags` and `projects` are strings and every other

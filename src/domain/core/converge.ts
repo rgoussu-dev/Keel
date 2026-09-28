@@ -8,10 +8,12 @@
  * `keel add module` — is one operation run on a different request.
  * This is its reading, pure as `./planner.ts` and `./growth.ts` are:
  * nothing here runs, reads a file or is worded; `./converge-run.ts`
- * runs it. `keel add entrypoint` is its first caller (S.3); until each
- * other path is (S.4 to S.6), it is the reading that path's handler
- * makes today, and `tests/domain/core/converge.golden.test.ts` records
- * it on every cell of the paths golden.
+ * runs it. `keel add entrypoint` is its first caller (S.3), and `keel
+ * add`, with `--refresh` and `--reapply`, its second (S.4); until
+ * `keel add module` and `keel new` are (S.5 and S.6), it is the reading
+ * their handlers make today, and
+ * `tests/domain/core/converge.golden.test.ts` records it on every cell
+ * of the paths golden.
  *
  * **The composition needs no new record** (DS2). A manifest already
  * says what `keel new` was given ({@link compositionOf}): the preset the
