@@ -1,4 +1,9 @@
-/** Real presets and a grown modulith exercise harness opt-out and later adoption. */
+/**
+ * Real presets and a grown modulith exercise harness opt-out, later
+ * adoption, the root map a registry's own `bounded-context` never
+ * enters, and the one `keel add module` re-indexes without its
+ * transient context marker.
+ */
 import os from 'node:os';
 import path from 'node:path';
 import fs from 'fs-extra';
@@ -6,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   addModuleCommand,
   addVerticalCommand,
+  docsSyncCommand,
   newProjectCommand,
 } from '../../../../src/domain/contract/commands.js';
 import type {
@@ -15,10 +21,12 @@ import type {
 } from '../../../../src/domain/contract/composition.js';
 import { projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
 import type { Registry } from '../../../../src/domain/contract/ports/registry.js';
+import { docsCheckQuery } from '../../../../src/domain/contract/queries.js';
 import { markdownRegion, regionPatch } from '../../../../src/domain/contract/region.js';
 import {
   ADD_MODULE_INPUT_ID,
   addedContext,
+  CONTEXT_TAG,
 } from '../../../../src/domain/core/adapters/added-context.js';
 import { shippedRegistry } from '../../../../src/domain/core/registry.js';
 import { boundedContextVertical } from '../../../../src/domain/core/verticals/bounded-context.js';
@@ -102,9 +110,12 @@ function retrofitRegistry(): Registry {
           },
     ),
   };
-  // Harness elements on each context's shell alone: a skill is one
+  // A `bounded-context` of the registry's own, under keel's id, with
+  // harness elements on each context's shell alone: a skill is one
   // adapter's whole file, and a context's wiring adapters — one per
   // entrypoint the project has — write its assembly wiring beside it.
+  // `keel add module` runs keel's own, and so does every replay of the
+  // contexts it added, so none of these elements is ever written.
   const wiring = (adapter: Adapter): boolean =>
     (adapter.predicate.requires ?? []).some((tag) => tag.startsWith('arch.'));
   const contextsWithSkills: Vertical = {
@@ -209,7 +220,7 @@ describe('real preset harness opt-out', () => {
 });
 
 describe('harness adoption on a grown project', () => {
-  it('replays recorded answers and every module while preserving domain edits and unowned prose', async () => {
+  it('replays recorded answers, and no bounded context of a registry’s own, while preserving domain edits and unowned prose', async () => {
     const deferred: string[][] = [];
     const mediator = installMediator({
       registry: retrofitRegistry(),
@@ -285,7 +296,9 @@ describe('harness adoption on a grown project', () => {
     );
 
     expect(await domainSnapshot()).toEqual(domainBefore);
-    expect(await fs.readFile(path.join(cwd, teamNotes), 'utf8')).toContain(prose.trim());
+    // Nothing keel runs writes into the team's notes: only the
+    // registry's context vertical, which no replay reads, would.
+    expect(await fs.readFile(path.join(cwd, teamNotes), 'utf8')).toBe(prose);
     expect(await fs.readFile(path.join(cwd, 'CLAUDE.md'), 'utf8')).toBe('@AGENTS.md\n');
     expect(await fs.readFile(path.join(cwd, '.claude/skills/run/SKILL.md'), 'utf8')).toContain(
       'name: run',
@@ -293,14 +306,12 @@ describe('harness adoption on a grown project', () => {
     expect(
       await fs.readFile(path.join(cwd, '.claude/skills/inspect-persistence/SKILL.md'), 'utf8'),
     ).toContain('Engine: mariadb. Migrations: flyway. Project: warehouse.');
+    // Keel's own `bounded-context` is what `keel add module` ran, and
+    // what the retrofit replays for each context it added: the one the
+    // registry lists under that id is read neither for those nor for
+    // the skeleton's.
     for (const name of moduleNames) {
-      const consumes = name === 'ordering' ? 'greeting' : name === 'shipping' ? 'ordering' : 'none';
-      expect(
-        await fs.readFile(path.join(cwd, `.claude/skills/inspect-${name}/SKILL.md`), 'utf8'),
-      ).toContain(
-        `Read modules/${name}/domain/core. Package: com.acme.warehouse. Consumes: ${consumes}.`,
-      );
-      expect(await fs.readFile(path.join(cwd, teamNotes), 'utf8')).toContain(`Context: ${name}`);
+      expect(await fs.pathExists(path.join(cwd, `.claude/skills/inspect-${name}`))).toBe(false);
     }
     expect(report.actions).toEqual([]);
     expect(deferred.flat()).toEqual([]);
@@ -318,13 +329,148 @@ describe('harness adoption on a grown project', () => {
     expect(
       after.entries
         .filter((entry) => entry.target.startsWith('.claude/skills/inspect-'))
-        .map((entry) => entry.target)
-        .sort(),
-    ).toEqual(
-      [
-        '.claude/skills/inspect-persistence/SKILL.md',
-        ...moduleNames.map((name) => `.claude/skills/inspect-${name}/SKILL.md`),
-      ].sort(),
+        .map((entry) => entry.target),
+    ).toEqual(['.claude/skills/inspect-persistence/SKILL.md']);
+
+    // Re-rendering the harness replays what did not run, and puts back
+    // what it wrote: an unedited tree cannot tell. The contexts `keel add
+    // module` added replay through keel's own `bounded-context`, so none
+    // of the registry's context elements is written.
+    const skill = path.join(cwd, '.claude/skills/inspect-persistence/SKILL.md');
+    const persistence = await fs.readFile(skill, 'utf8');
+    for (const rerender of [{ reapply: true }, { refresh: ['agent-harness'] }]) {
+      await fs.writeFile(skill, 'edited\n');
+      expectOk(
+        await mediator.dispatch(
+          addVerticalCommand({
+            cwd,
+            verticals: ['agent-harness'],
+            answers: {},
+            interactive: false,
+            dryRun: false,
+            ...rerender,
+          }),
+        ),
+      );
+      expect(await fs.readFile(skill, 'utf8')).toBe(persistence);
+      for (const name of moduleNames)
+        expect(await fs.pathExists(path.join(cwd, `.claude/skills/inspect-${name}`))).toBe(false);
+      expect(await fs.readFile(path.join(cwd, teamNotes), 'utf8')).toBe(prose);
+      expect(await domainSnapshot()).toEqual(domainBefore);
+      expect(deferred.flat()).toEqual([]);
+      expect((await fsManifestStore.read(projectScopeRoot(cwd)))!.modules).toEqual(before.modules);
+    }
+  });
+});
+
+describe('the root map on a registry listing its own bounded-context', () => {
+  it('indexes none of its elements when keel add module adds a context, nor when keel docs syncs or checks it', async () => {
+    const mediator = installMediator({ registry: retrofitRegistry(), runDeferred: async () => {} });
+    expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-rest',
+          moduleLayout: 'modulith',
+          answers: {
+            'walking-skeleton/quarkus-rest-bootstrap': {
+              projectName: 'warehouse',
+              basePackage: 'com.acme.warehouse',
+            },
+          },
+          interactive: false,
+          dryRun: false,
+        }),
+      ),
     );
+    await fs.outputFile(path.join(cwd, teamNotes), prose);
+    const root = () => fs.readFile(path.join(cwd, 'AGENTS.md'), 'utf8');
+
+    expectOk(
+      await mediator.dispatch(
+        addModuleCommand({
+          cwd,
+          module: 'ordering',
+          consumes: 'greeting',
+          answers: {},
+          interactive: false,
+          dryRun: false,
+        }),
+      ),
+    );
+    expect(await root()).not.toContain('inspect-');
+    expect(expectOk(await mediator.dispatch(docsCheckQuery({ cwd }))).drift).toEqual([]);
+
+    expectOk(await mediator.dispatch(docsSyncCommand({ cwd, dryRun: false })));
+    expect(await root()).not.toContain('inspect-');
+    expect(await fs.readFile(path.join(cwd, teamNotes), 'utf8')).toBe(prose);
+    const after = (await fsManifestStore.read(projectScopeRoot(cwd)))!;
+    expect(
+      after.entries.filter(({ target }) => target.startsWith('.claude/skills/inspect-')),
+    ).toEqual([]);
+  });
+});
+
+/**
+ * `code-style` with one more adapter, gated on `modules.context`: the
+ * marker `keel add module` puts on the manifest for its run alone, and
+ * no written manifest carries.
+ */
+function markerReadingRegistry(): Registry {
+  const style = shippedRegistry.vertical('code-style')!;
+  const marked: Vertical = {
+    ...style,
+    skills: [...(style.skills ?? []), 'marked'],
+    adapters: [
+      ...style.adapters,
+      {
+        id: 'code-style/marked',
+        vertical: 'code-style',
+        covers: [],
+        predicate: { requires: [CONTEXT_TAG] },
+        contribute: () => ({
+          skills: [{ name: 'marked', description: 'Marked.', body: 'Marked.' }],
+        }),
+      },
+    ],
+  };
+  return {
+    stacks: () => shippedRegistry.stacks(),
+    stack: (id) => shippedRegistry.stack(id),
+    verticals: () =>
+      shippedRegistry
+        .verticals()
+        .map((vertical) => (vertical.id === 'code-style' ? marked : vertical)),
+    vertical: (id) => (id === 'code-style' ? marked : shippedRegistry.vertical(id)),
+  };
+}
+
+describe('the root map on a registry whose vertical reads the context marker', () => {
+  it('is re-indexed by keel add module as keel docs check reads it, without the marker', async () => {
+    const mediator = installMediator({
+      registry: markerReadingRegistry(),
+      runDeferred: async () => {},
+    });
+    expectOk(
+      await mediator.dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'go-cli',
+          moduleLayout: 'modulith',
+          answers: {},
+          interactive: false,
+          dryRun: false,
+        }),
+      ),
+    );
+
+    expectOk(
+      await mediator.dispatch(
+        addModuleCommand({ cwd, module: 'orders', answers: {}, interactive: false, dryRun: false }),
+      ),
+    );
+
+    expect(await fs.readFile(path.join(cwd, 'AGENTS.md'), 'utf8')).not.toContain('marked');
+    expect(expectOk(await mediator.dispatch(docsCheckQuery({ cwd }))).drift).toEqual([]);
   });
 });

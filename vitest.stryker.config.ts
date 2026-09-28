@@ -4,7 +4,7 @@ import base from './vitest.config';
 /**
  * The vitest config Stryker runs mutants against.
  *
- * Same config as `pnpm test`, minus six suites — all excluded by
+ * Same config as `pnpm test`, minus eleven suites — all excluded by
  * construction, not by environment:
  *
  *   - `tests/e2e/`. Those suites decide for themselves whether to
@@ -37,7 +37,13 @@ import base from './vitest.config';
  *     only compare the hashes recorded there. It holds those hashes
  *     in `verify`. So do `growth.golden.test.ts` and
  *     `growth-render.test.ts` beside it, whose scaffolds and readings
- *     all run in theirs; `growth.test.ts` holds `growthOf` itself.
+ *     all run in theirs; `growth.test.ts` holds `growthOf` itself. And
+ *     so do the paths golden's four families,
+ *     `tests/domain/core/paths-*.golden.test.ts`, which run every cell
+ *     in a `beforeAll` and only compare the digests recorded there, and
+ *     the converge golden, `converge.golden.test.ts`, which reads each
+ *     of those cells in one; `converge.test.ts` holds the reading
+ *     itself.
  *
  * The second exclusion would be right even if the dry run survived
  * it. A text sweep sees the mutant *in the source* rather than in the
@@ -58,6 +64,8 @@ export default mergeConfig(
         'tests/domain/core/shared-files.golden.test.ts',
         'tests/domain/core/growth.golden.test.ts',
         'tests/domain/core/growth-render.test.ts',
+        'tests/domain/core/paths-*.golden.test.ts',
+        'tests/domain/core/converge.golden.test.ts',
       ],
     },
   }),

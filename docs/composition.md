@@ -772,12 +772,19 @@ as an edit until a run next writes that document.
 Brownfield `keel add agent-harness` re-renders recorded contributors
 non-interactively, including the recorded values of repeat questions,
 collecting only their harness declarations. Domain files
-and deferred actions are untouched. The transient `bounded-context`
-vertical is replayed once per manifest module with synthetic add-module
-inputs, which are never persisted. The module record retains its `consumes`
-peer so replay preserves the context's dependency; older records without
-that optional field replay without a consumer. An unavailable plugin contributor
-refuses the adoption before anything is committed.
+and deferred actions are untouched. keel's own `bounded-context` — the
+vertical `keel add module` runs, never one a plugin registers under
+that id — is replayed once per context that command added, with
+synthetic add-module inputs, which are never persisted; the skeleton's
+context and the peer's are `walking-skeleton`'s, replayed with it. The
+module record retains its `consumes` peer, which the replay seeds so a
+context's harness elements would read its dependency as its first
+install did; older records without that optional field replay without
+a consumer. keel's own context adapters declare no harness element, so
+today that replay writes nothing and nothing depends on the peer it
+seeds. `keel add module`'s re-index of the root map, `keel docs sync`
+and `keel docs check` replay the same way. An unavailable plugin
+contributor refuses the adoption before anything is committed.
 
 See the [per-contributor catalog](verticals/agent-harness.md#per-contributor-catalog)
 for ownership, currently shipped elements and planned seams.
@@ -1104,6 +1111,91 @@ The **manifest** is what makes brownfield growth work: `keel add`
 re-runs the same resolution against the tags and answers recorded at
 bootstrap, so a vertical added months later composes exactly as it
 would have on day one.
+
+It also records in one order. `keel new` records the preset's
+verticals in the preset's order, then the extras in the order the
+planner installs them; `keel add module` records `bounded-context`
+after them. Every later run records what it brings where one run of
+`keel new` of the project it leaves records it — the **reference
+order** — and moves nothing already recorded: `keel add` (with
+`--refresh` and `--reapply`) and `keel add module` put each new row of
+`verticals`, each new adapter's `answers` and each new harness file's
+entry before the first recorded one that order puts after it, a row
+before `bounded-context`, which stays last; `keel add entrypoint` does
+the same by its twin's order. A new harness entry's place is read
+without replaying the project: by the stage the realization pass
+writes its file in (skills and hooks whole, the hook settings, patches
+and doc sections, each doc's pointer, the index), then its
+contributor's rank in that order — so a recorded vertical no loaded
+plugin provides, or one the add's tags no longer cover, refuses
+nothing an add does not ask of it. So `keel
+new X` then `keel add y` records what `keel new X --with y` records,
+and the navigation index, which replays the recorded verticals in
+order, reads what one run wrote. Where the drill-down places no preset
+— a monorepo product's root, a plugin's preset keel no longer loads, a
+manifest migrated from v1 — the recorded order stands in for the
+reference, and new rows are appended.
+
+**A re-render runs within the recorded composition.**
+`keel add v --reapply` — and `--refresh v` beside an add — re-renders
+`v` from its recorded answers, its template-owned files rewritten
+where the render differs from what the project holds. Then every other
+vertical the manifest records is replayed for its patches alone, from
+its own recorded answers against the recorded manifest, onto the files
+the re-render rewrote and onto no other, and each context `keel add
+module` added replays its wiring among them where it arrived: before
+the first vertical a `keel add` recorded after it, and after every
+other — a row growth records at rank among them, since growth wires
+the contexts after its verticals. A `keel add` records its row before
+`bounded-context`, where one run records it, so on a manifest this keel
+wrote the contexts replay after every vertical, as one run writes
+them: a re-render after `keel add y` on a module history writes `y`'s
+lines before the contexts' wiring, keeping every line of both, and is
+a fixed point from then on; on a manifest an older keel appended, each
+context comes back where it arrived. Several named verticals
+re-render each at its own rank among those replays, so what is
+recorded between two of them patches in before the later one, as one
+run has it; and beside an add, a vertical the add installed before the
+re-render replays after the recorded ones and the contexts, from what
+its install recorded. What a later vertical wrote into a file the re-render puts
+back pristine — the telemetry in the HTTP entrypoint, a context's
+registration in the assembly — therefore comes back as it was: a patch
+keel replays is its own fixed point, and one that is not refuses the
+run as `keel.reapply-conflict`. A replay writes no whole file, queues
+no action, realizes no harness element and records nothing, so only
+what the command names re-renders, and a whole file another vertical
+owns stays as the user left it. Every other recorded vertical replays,
+not only those recorded after `v`: a row recorded at its twin's rank
+([Growing an entrypoint](#growing-an-entrypoint)) keeps no arrival
+order, and one that truly ran before `v` cannot have patched `v`'s
+files. A re-render within the composition also renders what one run
+wrote where the render depends on arrival: the dev container's
+definition, attached to a dev environment that came after it on a
+project without an HTTP server, re-renders attached in place, as the
+dev environment attached it. The paths golden pins what each re-render
+leaves, and the composition grid's I11 holds each recorded vertical
+re-rendered alone, and the whole re-render, to staging nothing on
+brownfield's scaffolds and in composite's services, and the whole
+re-render on growth's twins.
+
+**A re-render says what it leaves.** A project's own tags only
+accrue, so a re-render moves a vertical off an adapter where a tag
+arrived that the adapter excludes — `distribution/quarkus-cli-native`
+once a JVM image is there — or where relinking a peer withdrew a peer
+tag it needs. keel removes nothing it wrote: without a recorded base it
+cannot tell its lines from yours (roadmap L). So the report names the
+adapter, where the manifest records that it ran — answers under its
+id, or, where the project's tags hold all the adapter requires, a tag
+it may promote that none of the re-render's adapters may promote and
+that no other vertical the project records promotes on its own answers
+(containerization's image, built native, promotes the native
+release's) — with the files it writes whole, on those answers,
+that the project still holds and the run did not write whole, as the
+user's to delete, and its answers and tags, which stay. Its skills and
+hooks are the harness's, recorded and wired, and stay with that record
+unnamed. An adapter that recorded neither leaves no trace to read, and
+no note. Saying so writes and removes nothing, and the run succeeds or
+is refused as it would be anyway.
 
 ## Peer tags and products
 

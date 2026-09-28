@@ -119,7 +119,7 @@ export interface PlanScope {
   /**
    * Ids of {@link installed} a run may re-render beside what it
    * installs — a project on disk's own verticals (`keel add
-   * --refresh`), in the order it installed them. Where one of them is
+   * --refresh`), in the order it records them. Where one of them is
    * all that stops a vertical, the gap says so
    * ({@link ReadinessGap.refresh}) rather than reading as a capability
    * nothing can add. Absent before `keel new` writes anything: a
@@ -308,7 +308,7 @@ function unionPlan(
  * run installed (`incoming`), and those whose adapters the tags the
  * run leaves (`after`) resolve differently from the tags the project
  * had (`before`). `installed` is every vertical to consider, in the
- * order they were installed; one the registry does not know (a
+ * order the project records them; one the registry does not know (a
  * product's glue) is passed over, and so is anything in `incoming`.
  *
  * A proposal and never a step of the plan: re-rendering overwrites
@@ -808,7 +808,7 @@ function linkOnly(gap: ReadinessGap): boolean {
  * request. A re-render changes only which adapters a vertical renders
  * through, so one that could never supply what is missing is no
  * answer, and the first that plans is — in the order the project
- * installed them.
+ * records them.
  */
 function refreshGap(
   registry: Registry,

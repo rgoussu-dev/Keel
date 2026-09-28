@@ -72,8 +72,8 @@ it guards:
 `domain/core/composition-grid/` sweeps keel's whole composition surface
 through the real mediator, over `support/composition-grid.ts`: the
 measure behind roadmap epic Q, whose invariants (I1–I9) it
-holds, and epic R's I10. Four suites, split so vitest runs them in
-parallel:
+holds, epic R's I10, and epic S's I11 and I12. Four suites, split so
+vitest runs them in parallel:
 
 - `greenfield` — every stack × every vertical as its one extra, held
   against the `keel.dials` menu (I2 offered ⇒ Ok, I3 accepted ⇒
@@ -102,7 +102,38 @@ parallel:
   same outcome as greenfield: Ok on both sides, or refused under the
   same code in the same sentence), plus a user `Dockerfile`
   or `.github/workflows/ci.yml` seeded wherever the add would create
-  it.
+  it. On the same scaffold every install target is held to I9, previewed
+  and installed as a dry run: each vertical's add (`add:<stack>+<v>`,
+  beside its install, `install:<stack>+<v>`), and, in `holdRerenders`,
+  `keel add v --reapply` of each installed vertical (`reapply:`) and
+  `--refresh v` of each beside the add of the first `ready` card
+  (`refresh:<stack>+<card>~<v>`), each pair held to I11 as well, its
+  install Ok and resolving an adapter of the vertical its key names —
+  parity alone holds as well for a body, or an engine, that re-renders
+  nothing. The scaffold is held to I11 too
+  (`fixed:<stack>`, `holdFixedPoint`, which `holdRerenders` calls
+  last): its whole re-render, one `--reapply` naming every recorded
+  vertical `keel add` can name (`nameableOf`: the recorded ids
+  `keel.catalog` lists), comes back Ok, resolves an adapter of every
+  vertical it names, so a re-render that skips one cannot pass, and
+  stages nothing. And each preset whose opening dials offer the
+  modulith is scaffolded again on them with that layout, as
+  `keel.dials` settles it — a setting, not a cell — where the whole
+  re-render is held to I11 before any context is added
+  (`fixed:<stack>/modulith`) and `keel add module orders` to I9
+  (`module:<stack>`). Each `reapply:` pair's install also stages
+  nothing (I11): a re-render runs within the recorded composition
+  (roadmap S.7), so a vertical re-rendered alone keeps what the rest
+  wrote into the files it rewrites. And each preset whose opening menu
+  offers the dev environment as an extra — the ten CLI and front-end
+  presets — is scaffolded again with its whole menu (`holdWholeMenu`,
+  a setting too), where each recorded vertical re-rendered alone
+  (`reapply:<stack>/menu+<v>`) and the whole re-render
+  (`fixed:<stack>/menu`) are held to I9 and I11: there the dev
+  environment attached the dev container in place, the shape a
+  re-render of the definition has to keep. None of these keys starts
+  with `add:`, which is the prefix the docs' matrix reads
+  (`support/generated-docs.ts`), so none reaches it.
 - `composite` — every product under every repository layout its install
   offers: first each service's own extras menu (`keel.dials`'
   `services[].verticals`), every vertical of it named for that service
@@ -118,7 +149,13 @@ parallel:
   hard: I5 is not, and would give this axis an allowance) — and every
   service cell to I7: never refused for a file in the way, and Ok or
   `keel.wrong-scope` under the monorepo layout wherever its polyrepo
-  twin, a repository of its own, is Ok.
+  twin, a repository of its own, is Ok. Each service is also held to
+  I9 and I11 as brownfield's scaffold is (`install:`, `reapply:`,
+  `refresh:` and `fixed:`, under `<product>/<layout>/<service>`). A
+  product root is not: its glue, `fullstack`, is a row no `keel add`
+  names, and the root is roadmap epic U's. There the sweep only throws
+  unless `nameableOf` leaves out the glue and nothing else, the one
+  place it drops a row.
 - `growth` — every single-entrypoint backend preset the stack finder
   lists, on every dial setting `keel.dials` offers it (build system,
   module layout, the peer context, each again with the agent harness
@@ -139,12 +176,35 @@ parallel:
   record of `growthOf`) reads for the cell (I10, over the actions the
   grid's deferred runner records, `Grid.queued`). The add also
   previews as it installs on the scaffold (I9, over no answers and
-  over the monitoring stack answered away from its default). All 192
+  over the monitoring stack answered away from its default). Each
+  twin, scaffolded once for every cell that grows into it, is held to
+  I11 as well, its whole re-render staging nothing (`fixed:` and the
+  twin's command lines: 160 twins, 64 with a module history, whose
+  contexts' wiring the re-render replays): I10 makes each grown
+  project its twin's bytes, so the twin carries the grown cell. All 192
   grow, and all 128 with a history: epic R's R.3 lifted
   `keel.contexts-need-rewiring` family by family (Go's with R.3a,
   Rust's with R.3b, TypeScript's with R.3c, the JVM's with R.3d), so
   the axis reads no refused cell on keel's presets now, though it
   still reads the growth golden for any.
+
+**I12, arriving later against one run** (roadmap S.8), is held in
+brownfield, hard from the day it landed (`holdArrival`). On each
+preset's opening dials, for each extra its menu offers, the scaffold is
+copied into a directory of its own and `keel add y` run there for real,
+with the refresh the add's preview proposes (read off its `add:` cell),
+against `keel new --with y` in another; and, where `keel.dials` lets
+the harness be left out, `keel new --no-agent-harness` then `keel add
+agent-harness` against the scaffold, and the same after `--with y`
+against `keel new --with y`. Every file must match byte for byte, the
+manifest among them — the pinned clock stamps both sides alike — so a
+row, an answers key or a harness entry recorded anywhere but where one
+run records it fails the grid. The runs go through `Grid.twin` and
+record no verdict, so the golden gains no key; a violation is keyed
+`arrival:<stack>+<y>`, `arrival:<stack>~agent-harness` or
+`arrival:<stack>+<y>~agent-harness`. That is 314 pairs over 628 real
+runs — 143 extras, 28 bare adoptions and 143 after an extra — which
+take brownfield from about 13 s alone to about 50 s.
 
 Cells come from `keel.catalog`, `keel.dials` and `keel.project-status`,
 never from a hand list, so a new preset or vertical is swept without an
@@ -168,10 +228,14 @@ the record can only shrink. Beside each suite:
   when a monorepo service came to read what its product gives it and
   what only a repository root may carry, I9 since Q2.1, when the
   preview came to read the answers it is sent as the install does,
-  and I10 hard from the day it landed, with R.2b's command. Every
-  known file is empty now but brownfield's I5 key; growth's holds only
-  hard invariants, and is `{}` because `sweepGrid` reads each axis's
-  known file whatever it holds.
+  I10 hard from the day it landed, with R.2b's command, I11 hard from
+  the day it landed too, with S.1b, on the projects whose recorded
+  composition was a fixed point already — widened hard by S.7 to each
+  vertical re-rendered alone, growth's twins and the whole menus where
+  the dev environment is an extra — and I12 hard from the day it
+  landed, with S.8. Every known file is empty now but brownfield's I5
+  key; growth's holds only hard invariants, and is `{}` because
+  `sweepGrid` reads each axis's known file whatever it holds.
 - brownfield's I5 reads `greenfield.golden.json`, so when a change moves
   both, regenerate greenfield first. Where either side refuses, it
   previews the greenfield twin again (`Grid.twin`, which records
@@ -183,12 +247,21 @@ the record can only shrink. Beside each suite:
   composite goldens (`generated-docs.test.ts`, above), so a change that
   moves a verdict regenerates the docs last, after the grid.
 
-About 80 s wall on its own, growth the longest: growth about 77 s
-alone (480 real scaffolds — 320 cells and 160 twins, one per setting
+About 2 minutes wall on its own, growth the longest: growth about 102
+to 124 s alone at a load average of 2 to 4, and some 150 s in the full
+suite (480 real scaffolds — 320 cells and 160 twins, one per setting
 and history, which both directions share — 384 real `keel add module`
-runs, 320 real adds and 960 dry-run dispatches for I9; the JVM's are
-the heaviest), greenfield ~23 s, of which I8's orderings are about
-3.5 s and I9's bodies — some 260 whole-menu dispatches — about 14 s.
+runs, 320 real adds, 960 dry-run dispatches for I9, and since S.7 a
+status read and a dry-run whole re-render on each of the 160 twins for
+I11, some 7 s paired with the axis before it, less than the load swings
+it by; the JVM's are the heaviest), greenfield ~23 s, of which I8's
+orderings are about 3.5 s and I9's bodies — some 260 whole-menu
+dispatches — about 14 s, brownfield about 53 s alone and 58 s
+in the full suite (1,891 cells, 1,208 of them S.1b's I9 and I11 cells
+and 180 S.7's, 28 real modulith scaffolds and 10 whole-menu ones
+beside the 28 opening ones, and S.8's 628 real I12 runs), and
+composite about 11 to 15 s alone and 13 to 18 s in the full suite
+(1,656 cells, 984 of them S.1b's).
 
 **The weekly sweep beside it.** The grid's preview axes read each
 preset's opening dials only, each extra alone and the whole menu, and
@@ -213,10 +286,13 @@ again with the agent harness left out wherever that is allowed.
   once in one run and once in two runs (`keel new --with x`, then
   `keel add y` with the `--refresh` its preview proposes), and each
   extra on its own the same way (`keel new`, then `keel add y`). The
-  two trees must match, manifests normalised. This is the one
-  comparison an undeclared `Vertical.reads` cannot pass, because the
-  planner sorts a set whatever order it is named in. A pair that
-  differs only as `y` does on its own is said so, under one heading.
+  two trees must match, each manifest with its timestamps normalised
+  and nothing else: since roadmap S.8 every caller records a row where
+  one run records it, so a row out of that order is a finding. This is
+  the one comparison an undeclared `Vertical.reads` cannot pass,
+  because the planner sorts a set whatever order it is named in. A pair
+  that differs only as `y` does on its own is said so, under one
+  heading.
 - `choices` answers every choice of every question asked by the whole
   menu, by no extra, or by any one extra with what it needs, one answer
   per body, then previews it and installs it as a dry run. The whole
@@ -363,6 +439,159 @@ keel's Go presets, since that command runs keel's own
 real preset — at the command line, on a card, on the page — scaffolds
 through `support/unsplit-peer.ts`, the shipped registry with Quarkus'
 peer context folded back into the one adapter it was before R.3d.
+
+**The paths golden.** Roadmap epic S moves every path that installs or
+re-renders verticals onto one converge operation, and the paths golden
+pins what each path leaves, absolutely, where every golden above pins
+one facet of it or compares two projects that can move together. It
+landed first, with no `src/` change (S.1a), so that each later step
+proves its paths byte-identical or names the cells it moves. Four
+suites over `support/paths-golden.ts`, one per family, each with its
+JSON beside it, so vitest runs them in parallel workers; each family's
+sweep, which derives its cells, is `support/paths-families.ts`', so
+the converge golden (below) enumerates the same cells:
+
+- `domain/core/paths-new.golden.test.ts` — `keel new`: every
+  single-service preset on every setting `harnessSettings` walks (the
+  harness on and off), the whole menu on every setting with the
+  harness, each offered extra alone on the opening dials, the whole
+  menu there under the grid's I9 answer bodies (`answered`, `borrowed`,
+  `twice`), and every product under each repository layout;
+- `paths-add` — `keel add`: each offered extra alone on each preset's
+  opening scaffold, on default answers and with every question its
+  preview asks answered away from its default; each after the module
+  history on the opening modulith setting; `keel add agent-harness` on
+  each `--no-agent-harness` scaffold, bare and with each extra offered
+  there; every ordered pair of extras (`keel new --with a`, then
+  `keel add b` with the refresh its preview proposes taken, and, where
+  it proposes one, without it) on each preset carrying both back
+  entrypoints, so that a proposal is pinned on the install whose report
+  makes it, not only through the cell that takes it; and every vertical
+  at each product's root and in each service, under both layouts;
+- `paths-reapply` — each recorded vertical re-rendered alone, and the
+  whole re-render, on each preset's opening and whole-menu scaffolds
+  and in each product service;
+- `paths-grow` — the module history on every modulith setting, the
+  bootstrap re-rendered alone after it, and the whole re-render; and
+  `keel add entrypoint` on each single-entrypoint backend preset: on
+  its opening scaffold with no extras and with the whole menu, after the
+  history, after `keel add agent-harness` on a `--no-agent-harness`
+  scaffold, and once grown, followed by
+  `keel add dev-container --reapply`.
+
+Cells come from `keel.catalog`, `keel.dials` and `keel.project-status`
+(and a preview's questions and proposals), never from a hand list, but
+for the one family named for what it pins: Q3.4's finding 2, on
+`quarkus-cli-rest` and its Kotlin twin under Gradle —
+`keel new --with distribution`, then `keel add containerization`,
+which proposes the refresh, and
+`keel add containerization --refresh distribution`, which takes it;
+and `keel add containerization`, then `keel add distribution --reapply`
+— the two re-renders whose report names what the native release leaves
+in place (roadmap S.9), and the only cells of the four files that do.
+The **whole re-render** is one `keel add v1 … vn --reapply` naming
+every recorded vertical `keel add` can name (all but `bounded-context`
+and a product root's `fullstack`), as a dry run. It names them in
+code-unit order: a re-render runs in recorded order whatever order it
+is named in, so a change to the record's order moves the cell rather
+than renaming it. Every other run is real, into one in-memory disk.
+Each `Tree` a run opens is the shipped `FakeTree`, seeded with what the
+disk holds under its root and committing back each file's bytes, so a
+product root and its services see one another's files. It commits each
+file's mode as git stores it, `0o755` where an executable bit is set,
+else `0o644` (`pinnedMode`), since an executable template's other bits
+are what the contributor's umask gave their checkout. It stages the net of its
+writes against the disk, as the filesystem adapter does: the fake
+alone lists a file written back onto its own bytes, and cannot read a
+mode back. The manifests go to the shipped `FakeManifestStore`. Each
+command of a cell runs at its own instant (`instantAt`: `PINNED_NOW`,
+a minute later per position in the chain), so a run that re-stamps
+what an earlier one recorded moves the manifest; the instant is the
+position's, so a cell copied from a scaffold records what the whole
+chain run in it would. The fake process runner answers git's `rev-parse`
+as outside any repository; unscripted, its empty toplevel resolves to
+the test's own directory, and version control's deferred actions would
+name the checkout. Each scaffold is made once and copied into every
+cell that starts from it.
+
+A cell is keyed by its command lines, joined by `&&`
+(`cd <service> && ` first in a service), and records:
+
+- its verdict: `ok`, the code, `thrown:<Error>`, or `stopped:<verdict>`
+  where a command before the last did not come back Ok;
+- a digest of each top-level entry of the tree it leaves (a service's
+  as `<service>/<entry>`), over each file's path, executable bit and
+  bytes;
+- each field of each manifest under it, digested apart, so a move of
+  the manifest alone names its field;
+- the last run's deferred actions, version control's included; a dry
+  run's are the ones its report says it would queue;
+- its report's subject, notes, proposals, changes, diffs (path and
+  hunks), resolved adapters and skipped harness elements, or the
+  sentence it refused in, with the cell's directory read as `<cell>`.
+  The changes and diffs are pinned as sets, in code-unit order, since a
+  `Tree` lists them by `localeCompare`, which follows the machine's
+  locale;
+- `keel docs check`'s drift.
+
+Nothing a cell records depends on where it runs, on the machine's git,
+on the umask its checkout was made under, or on its locale. A failure
+names each moved cell and its fields, the first 50 of them.
+`KEEL_UPDATE_GOLDEN=1 pnpm exec vitest run tests/domain/core/paths-*.golden.test.ts`
+rewrites the four through prettier; it reads no other golden, and the
+converge golden keys on it. About 35 s, 43 s, 13 s and 42 s alone (new,
+add, reapply, grow). They run in a `beforeAll`, so mutation testing
+leaves them out. `domain/core/paths-machinery.test.ts` holds what the
+four cannot see move, since they compare only what they record:
+`pinnedMode` across umasks, and a re-render's instant apart from its
+scaffold's, the same whether its cell ran the chain or copied the
+scaffold — in under a second, in its tests, so mutation testing keeps
+it.
+
+**The converge golden.** `domain/core/converge.golden.json` records
+`src/domain/core/converge.ts`' reading (roadmap S.2) on every cell the
+paths golden keys, and no other — its first test reads the four
+paths goldens for their keys. Each cell is read on the manifest its
+last command runs on, with the request that command makes, as its
+handler makes it before it plans: the handler's gates first (no
+project, a vertical a product root cannot carry, a re-render of one
+not installed, `keel add entrypoint` in a monorepo product, `keel add
+module` where no context goes), each recorded by its code (`gate`);
+then `convergeOf`'s refusal (`refused`, with the planner's sentence),
+or the target's reference order, each step of the run (`<vertical>
+<posture>`, `+settle` and the adapters where it installs some, the
+posture `replay` where a re-render puts its patches back, S.7, and
+`bounded-context replay <name> <adapters>` for a context it puts
+back), the contexts it wires, and where it records
+(`reference/reference` for `keel add` and `keel add module` since S.8,
+`append/run` for `keel new` and where no preset reads back, or
+`twin/twin` for growth). What each cell comes to is held against the
+verdict its paths golden records, code for code, `keel.unknown-answer`
+apart (an
+answer is no part of a request). A `keel new` cell is read per scope
+on the seed manifest each starts from, then run, and each manifest it
+leaves is read back through `compositionOf`: the round trip, on every
+single-service cell and in each product's services, must name the
+preset, the dials, the harness, what a product gives its service and
+the extras `keel new` was given, and its reference order must be the
+order the manifest records. The paths golden names no extra of a
+product's service, so the round trip also runs, recorded nowhere, on
+each product under each layout with every service naming its whole
+menu. A `keel add module` or `keel add entrypoint` cell that converges
+is run as well, and the verticals and contexts it records held against
+the reading's target, and a module's `bounded-context` adapters
+against those the reading wires. It runs the four families in one
+`PathsSweep` in its reading mode (`PathsReader`): every scaffold once,
+every command before a cell's last for real, and the last only where
+the reading runs it; `keel new` cells a scaffold of another family made
+are read off it — `keel new` sweeps last for that. About 44 s alone.
+The later steps of epic S make each path a caller, and their diffs are
+reviewed against it, as Q1.3's were against the readiness golden.
+Regenerate in this order: the paths golden, then
+`KEEL_UPDATE_GOLDEN=1 pnpm exec vitest run tests/domain/core/converge.golden.test.ts`,
+then the growth golden, then the grid. It runs in a `beforeAll`, so
+mutation testing leaves it out; `domain/core/converge.test.ts` holds
+each rule of the reading on a fixture family.
 
 **A menu-versus-gate test uses preview or install as its oracle.** A
 test claiming that what a front end offers is what keel accepts — a dial

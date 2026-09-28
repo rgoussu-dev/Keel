@@ -524,6 +524,20 @@ is refused (`keel.invalid-verticals`), and so is a tie between two
 verticals that would each supply what one needs
 (`keel.missing-prerequisites`, naming both).
 
+The manifest records what an add brings where one run would have
+recorded it: each row of `verticals`, each adapter's `answers` and
+each harness file's entry where `keel new` of the project the add
+leaves records it. So `keel new --stack=go-http` then `keel add
+persistence` leaves the manifest `keel new --stack=go-http --with
+persistence` leaves, its timestamps apart; `keel add agent-harness` on
+a project scaffolded without it records the harness straight after
+`walking-skeleton`, as a preset does; and an add after `keel add
+module` records its row before `bounded-context`, which stays last.
+A row already recorded never moves, so a manifest an earlier keel
+appended to keeps its order, and a project keel places on no preset —
+a monorepo product's root, or a project on a plugin's preset keel no
+longer loads — is appended to.
+
 A section an add writes into the project's `README.md` goes where one
 run would have put it. keel's sections keep one order — the
 entrypoints, then the dev environment, monitoring and the dev
@@ -702,17 +716,47 @@ offers the plain re-render:
 `--refresh <ids>` takes it up in the same run: each named installed
 vertical is re-rendered after whatever it reads or whatever decides its
 adapters, under `--reapply`'s posture (template-owned files rewritten,
-each with a diff; a diverging patch refuses the run). Its recorded
+each with a diff, what the rest of the project, and what the add
+installed before it, patched into them put back; a diverging patch
+refuses the run). Its recorded
 answers are frozen, but an adapter it now resolves to has none — the
 container image's release pipeline above — so that adapter's questions
 are asked (and shown in `keel ui`'s preview), and `--set` reaches it.
+Refreshing a vertical that is not installed is refused as
+`keel.vertical-not-installed`.
+
 A re-render onto another adapter writes the new adapter's files and
 removes none of the old one's: on `quarkus-cli-rest`, the native
 release's `native-build.yml` and `release.yml` stay beside the image
 pipeline — its `release.yml` releasing on each `v*` tag as the image's
 does — until you delete them ([distribution](verticals/distribution.md)).
-Refreshing a vertical that is not installed is refused as
-`keel.vertical-not-installed`.
+The report says so, in a note naming the adapter it moved off, the
+files that adapter wrote that the project still holds — one you
+deleted already is left out — and what the manifest keeps of it:
+
+```
+$ keel add containerization --refresh distribution
+keel add containerization: planned changes
+  note: Distribution no longer renders through distribution/quarkus-cli-native, and keel removes nothing it installed — without a recorded base, it cannot tell what it wrote from what you changed since — so .github/workflows/native-build.yml and .github/workflows/release.yml, which that adapter wrote, are yours to delete, and its answers and the tag it promoted stay in the manifest
+  …
+```
+
+`keel add distribution --reapply` after `keel add containerization` says
+the same, and so does every later re-render of distribution while the
+manifest records the native release: its answers, or the tag it
+promoted, are how the run knows the adapter ran — the tag only where the
+project has all the adapter needs and nothing else it records promotes
+the tag, as a JVM image built native (`flavor: native`) does, so a
+server whose native release never ran is told nothing. Saying so writes
+and removes nothing: the files stay, the manifest keeps the native
+release's answers and tag, and the run succeeds or is refused as it
+would be anyway. The preview (`--dry-run`, and `keel ui`'s) carries the
+note too. A skill or a hook of the adapter's is not named: the harness
+records and wires it, and it stays with that record. An adapter that
+recorded no answer and promoted no tag leaves nothing in the manifest to
+read, so no note can name what it wrote; among keel's, only the
+gateway's adapters could be moved off so, by relinking a project that no
+longer projects what they need.
 
 Where an installed vertical, as it was rendered, is all that stands in
 the way of one you ask for, the add is refused as `keel.needs-refresh`,
@@ -804,6 +848,28 @@ deliberately conservative:
   before anything is committed, because without a recorded base a
   changed result cannot be told apart from a double application.
   Resolve that file by hand, then re-run.
+- **What the rest of the project wrote into a rewritten file comes
+  back.** A re-render runs within the recorded composition: every
+  other vertical the manifest records puts its patches back, from its
+  recorded answers, onto the template-owned files the re-render
+  rewrote, and onto no other file, in the order the manifest records
+  them — several named verticals each re-render at its own place in
+  that order, so each one's patches land where one run puts them —
+  and each context `keel add module` added puts its wiring back where
+  it arrived among them, before a vertical you added after it. So
+  `keel add walking-skeleton --reapply` keeps observability's lines in
+  the HTTP entrypoint, persistence's wiring, code-style's scripts, the
+  gateway and each context's registration — on an unedited project it
+  changes nothing, and after an edit of yours to a file the bootstrap
+  owns, its diff shows that edit going and nothing else. Nothing else
+  of those verticals is re-rendered: none of their whole files, actions
+  or harness elements, and nothing is recorded for them — name one to
+  re-render it. A patch put back that is not its own fixed point
+  refuses the run with `keel.reapply-conflict`, as a re-rendered one
+  does; none of keel's own is. The dev container's definition
+  re-renders in the shape the project holds: attached to a dev
+  environment added as an extra, on a project without an HTTP server,
+  it keeps the attachment the dev environment made in place.
 - **Answers are frozen.** An adapter the manifest records answers for
   resolves from them without asking; a `--set` for one errors with
   `keel.reapply-frozen-answers`. A question the vertical grew since
@@ -1063,7 +1129,9 @@ already. It is refused, before a file moves, when:
   such as `web-components`; a plugin's preset with no twin on the
   project's build system and module layout; verticals the project has
   part of which would stop applying, since keel removes nothing it
-  installed;
+  installed: without a recorded base, it cannot tell what it wrote
+  from what you changed since (the reason `--reapply` refuses a patch
+  that keeps changing);
 - the entrypoint would break a rule a vertical the project has
   declares (`keel.incompatible`, the rule's own sentence and id), as
   `keel new` of the twin with that vertical is refused — no shipped
@@ -1260,6 +1328,15 @@ what it realized over the rows already there — it never saw the
 contributors it did not run — while `sync` recomputes the set
 outright, which is what prunes a row whose subject is gone. `keel new`
 runs every contributor, so the two agree on a fresh scaffold.
+
+Both read the contributors in the order the manifest records them,
+and a directory two of them document takes the description of the
+first. An add records what it brings where one run records it (see
+[`keel add`](#keel-add)), so after it too an install, `sync` and
+`check` read one order. A project that adopted the harness after
+persistence with an earlier keel recorded the harness last: `check`
+reports drift there, and `sync` rewrites the index in the order the
+manifest keeps, which is not the one `keel new` writes.
 
 What is left for the net is a **human or agent** structural edit:
 that is what `check` is for.

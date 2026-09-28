@@ -13,12 +13,16 @@
  * And a run over part of a vertical, as `keel add entrypoint` makes
  * one: only the adapters it names install, and the rest are replayed
  * for their harness elements, and for their deferred actions where it
- * asks — never applied or recorded.
+ * asks — never applied or recorded. And a re-render's replay (roadmap
+ * S.7, `patchesOnto`): a vertical's patches alone, onto the whole files
+ * a re-render rewrote, from what the manifest records — nothing else of
+ * it written, collected, queued, asked or recorded.
  */
 
 import { describe, expect, it } from 'vitest';
 import {
   finalizeHarness,
+  installVertical,
   installVerticals,
   type InstallVerticalsInputs,
 } from '../../../src/domain/core/install.js';
@@ -418,5 +422,322 @@ describe('installVerticals, over part of a vertical', () => {
     });
     expect(finalized.skills.map((s) => s.name)).toEqual(['trio-skill']);
     expect(tree.read('.claude/skills/trio-skill/SKILL.md')?.toString('utf8')).toContain('Run it.');
+  });
+});
+
+describe('installVertical, patching onto what a re-render rewrote (patchesOnto)', () => {
+  const WIRED = 'test.wired';
+  /** Guarded: appends `line` to `target` where it is not there yet, so it is its own fixed point. */
+  const guarded = (target: string, line: string) => ({
+    target,
+    apply: (text: string) => (text.includes(line) ? text : `${text}${line}\n`),
+  });
+  const sticky = (id: string, fallback: string) => ({
+    id,
+    prompt: `${id}?`,
+    doc: '',
+    default: fallback,
+    memory: 'sticky' as const,
+  });
+
+  /**
+   * Writes a file of its own, patches `main.txt` and `other.txt` with
+   * lines its answers name, promotes a tag, declares a toolchain need,
+   * queues an action and ships a skill: of all of it, a replay onto
+   * `main.txt` writes the one patch.
+   */
+  const wire: Vertical = {
+    id: 'wire',
+    description: 'the wire vertical',
+    dimensions: ['only'],
+    promotes: [WIRED],
+    skills: ['wire-skill'],
+    adapters: [
+      {
+        id: 'wire/adapter',
+        vertical: 'wire',
+        covers: ['only'],
+        predicate: {},
+        questions: [sticky('line', 'by default'), sticky('other', 'other by default')],
+        contribute: (ctx) => ({
+          files: [{ path: 'wire.txt', content: 'wire\n' }],
+          patches: [
+            guarded('main.txt', `wired ${ctx.answer('line')}`),
+            guarded('other.txt', `wired ${ctx.answer('other')}`),
+          ],
+          tagsAdd: [WIRED],
+          toolchain: [{ tool: 'go', version: '1.0' }],
+          actions: [{ id: 'wire', description: 'wire action', run: () => Promise.resolve() }],
+          skills: [{ name: 'wire-skill', description: 'Wire it.', body: 'Wire it.' }],
+        }),
+      },
+    ],
+  };
+
+  const recorded = (): ManifestV2 => ({
+    ...harnessed(),
+    updatedAt: 'then',
+    verticals: [{ id: 'wire', installedAt: 'then' }],
+    answers: { 'wire/adapter': { line: 'as recorded' } },
+  });
+
+  const replay = (tree: FakeTree, onto: ReadonlySet<string>, more: object = {}) =>
+    installVertical({
+      vertical: wire,
+      manifest: recorded(),
+      tree,
+      mode: 'interactive',
+      prompt: rejectingPrompt,
+      logger: new FakeLogger(),
+      cwd: '/project',
+      templates: new FakeTemplateSource(),
+      processes: new FakeProcessRunner(),
+      now: () => 'now',
+      patchesOnto: onto,
+      supplied: { 'wire/adapter': { line: 'supplied', other: 'supplied' } },
+      ...more,
+    });
+
+  it('writes its patches onto those files alone — no whole file, no harness element, no action — and records nothing', async () => {
+    const tree = new FakeTree();
+    tree.seed('main.txt', 'main\n');
+    tree.seed('other.txt', 'other\n');
+    const harness: HarnessContribution[] = [];
+    const manifest = recorded();
+
+    const result = await replay(tree, new Set(['main.txt']), { harness, manifest });
+
+    expect(tree.read('main.txt')?.toString('utf8')).toBe('main\nwired as recorded\n');
+    expect(tree.changes()).toEqual([{ kind: 'modify', path: 'main.txt' }]);
+    expect(tree.exists('wire.txt')).toBe(false);
+    expect(harness).toEqual([]);
+    expect(result.applyResult).toEqual({ tagsAdded: [], skills: [], actions: [] });
+    expect(result.adapters).toEqual([]);
+    expect(result.reads).toEqual([]);
+    // Handed back as it came: no answer, tag, need, row or `updatedAt`.
+    expect(result.manifest).toBe(manifest);
+  });
+
+  it('reads its answers as recorded, and a question the record leaves open by its default, never what is supplied or asked', async () => {
+    const tree = new FakeTree();
+    tree.seed('main.txt', 'main\n');
+    tree.seed('other.txt', 'other\n');
+
+    await replay(tree, new Set(['main.txt', 'other.txt']));
+
+    expect(tree.read('main.txt')?.toString('utf8')).toBe('main\nwired as recorded\n');
+    expect(tree.read('other.txt')?.toString('utf8')).toBe('other\nwired other by default\n');
+  });
+
+  it('is its own fixed point where its lines are there already, and refuses a patch that is not, as a divergence', async () => {
+    const tree = new FakeTree();
+    tree.seed('main.txt', 'main\nwired as recorded\n');
+    await replay(tree, new Set(['main.txt']));
+    expect(tree.changes()).toEqual([]);
+
+    const appending: Vertical = {
+      ...wire,
+      adapters: [
+        {
+          ...wire.adapters[0]!,
+          contribute: () => ({
+            patches: [{ target: 'main.txt', apply: (text: string) => `${text}appended\n` }],
+          }),
+        },
+      ],
+    };
+    const failure = await thrown(replay(tree, new Set(['main.txt']), { vertical: appending }));
+    expect(failure).toBeInstanceOf(ContributionConflictError);
+    expect((failure as ContributionConflictError).kind).toBe('reapply-divergence');
+    expect(tree.changes()).toEqual([]);
+  });
+
+  it('contributes nothing at all onto no file', async () => {
+    const tree = new FakeTree();
+    const refusing: Vertical = {
+      ...wire,
+      adapters: [
+        {
+          ...wire.adapters[0]!,
+          contribute: () => {
+            throw new Error('contributed onto no file');
+          },
+        },
+      ],
+    };
+    const result = await replay(tree, new Set(), { vertical: refusing });
+    expect(result.adapters).toEqual([]);
+    expect(tree.changes()).toEqual([]);
+  });
+
+  it('replays only the adapters it is handed, where set', async () => {
+    const tree = new FakeTree();
+    tree.seed('main.txt', 'main\n');
+    const pair: Vertical = {
+      ...wire,
+      adapters: ['a', 'b'].map((name) => ({
+        id: `wire/${name}`,
+        vertical: 'wire',
+        covers: ['only'],
+        predicate: {},
+        contribute: () => ({ patches: [guarded('main.txt', `wired by ${name}`)] }),
+      })),
+    };
+
+    await replay(tree, new Set(['main.txt']), { vertical: pair, only: new Set(['wire/a']) });
+
+    expect(tree.read('main.txt')?.toString('utf8')).toBe('main\nwired by a\n');
+  });
+
+  it("reads a patch's target as the Tree does, so './main.txt' is main.txt", async () => {
+    const tree = new FakeTree();
+    tree.seed('main.txt', 'main\n');
+    const dotted: Vertical = {
+      ...wire,
+      adapters: [
+        {
+          ...wire.adapters[0]!,
+          contribute: () => ({ patches: [guarded('./main.txt', 'wired')] }),
+        },
+      ],
+    };
+
+    await replay(tree, new Set(['main.txt']), { vertical: dotted });
+
+    expect(tree.read('main.txt')?.toString('utf8')).toBe('main\nwired\n');
+  });
+
+  /** Writes `main.txt` and `kept.txt` whole: the files a re-render rewrites. */
+  const owner: Vertical = {
+    id: 'owner',
+    description: 'the owner vertical',
+    dimensions: ['only'],
+    adapters: [
+      {
+        id: 'owner/adapter',
+        vertical: 'owner',
+        covers: ['only'],
+        predicate: {},
+        contribute: () => ({
+          files: [
+            { path: 'main.txt', content: 'main\n' },
+            { path: 'kept.txt', content: 'kept\n' },
+          ],
+        }),
+      },
+    ],
+  };
+
+  it('in a run, replays onto the whole files a re-render before it rewrote, and not onto one it never wrote', async () => {
+    const tree = new FakeTree();
+    // Edited by hand, as a re-render puts it back; the other as rendered.
+    tree.seed('main.txt', 'main\nwired as recorded\nedited by hand\n');
+    tree.seed('kept.txt', 'kept\n');
+    tree.seed('other.txt', 'other\n');
+
+    const result = await run([owner, wire], tree, undefined, {
+      manifest: {
+        ...recorded(),
+        verticals: [
+          { id: 'owner', installedAt: 'then' },
+          { id: 'wire', installedAt: 'then' },
+        ],
+      },
+      rerender: ['owner'],
+      replays: [{ at: 1 }],
+    });
+
+    expect(tree.read('main.txt')?.toString('utf8')).toBe('main\nwired as recorded\n');
+    expect(tree.read('other.txt')?.toString('utf8')).toBe('other\n');
+    expect(result.adapters.map((a) => a.id)).toEqual(['owner/adapter']);
+    expect(result.applyResult.actions).toEqual([]);
+    expect(result.manifest.verticals.map((v) => v.id)).toEqual(['owner', 'wire']);
+    expect(result.manifest.tags).not.toContain(WIRED);
+  });
+  it('in a run, replays onto no whole file a re-render skipped as identical', async () => {
+    // Were `kept.txt` replayed onto, this append — no fixed point —
+    // would refuse the run.
+    const appending: Vertical = {
+      ...wire,
+      adapters: [
+        {
+          ...wire.adapters[0]!,
+          contribute: () => ({
+            patches: [{ target: 'kept.txt', apply: (text: string) => `${text}appended\n` }],
+          }),
+        },
+      ],
+    };
+    const tree = new FakeTree();
+    tree.seed('main.txt', 'main\n');
+    tree.seed('kept.txt', 'kept\n');
+
+    await run([owner, appending], tree, undefined, {
+      manifest: {
+        ...recorded(),
+        verticals: [
+          { id: 'owner', installedAt: 'then' },
+          { id: 'wire', installedAt: 'then' },
+        ],
+      },
+      rerender: ['owner'],
+      replays: [{ at: 1 }],
+    });
+
+    expect(tree.read('kept.txt')?.toString('utf8')).toBe('kept\n');
+    expect(tree.changes()).toEqual([]);
+  });
+
+  it('in a run, replays one vertical at several positions, each from the manifest and the adapters it is handed there', async () => {
+    const tree = new FakeTree();
+    tree.seed('main.txt', 'main\nedited by hand\n');
+    tree.seed('kept.txt', 'kept\n');
+    const manifest: ManifestV2 = {
+      ...recorded(),
+      verticals: [
+        { id: 'owner', installedAt: 'then' },
+        { id: 'wire', installedAt: 'then' },
+      ],
+    };
+    const seeded = (line: string): ManifestV2 => ({
+      ...manifest,
+      answers: { 'wire/adapter': { line } },
+    });
+
+    const result = await run([owner, wire, wire, wire], tree, undefined, {
+      manifest,
+      rerender: ['owner'],
+      replays: [
+        { at: 1, manifest: seeded('first') },
+        { at: 2, manifest: seeded('second') },
+        { at: 3, only: new Set() },
+      ],
+    });
+
+    expect(tree.read('main.txt')?.toString('utf8')).toBe('main\nwired first\nwired second\n');
+    expect(result.adapters.map((a) => a.id)).toEqual(['owner/adapter']);
+    expect(result.manifest.answers).toEqual(manifest.answers);
+  });
+
+  it('in a run, replays a vertical it installed at an earlier position after a later re-render, as its install recorded it', async () => {
+    const tree = new FakeTree();
+    tree.seed('main.txt', 'main\nedited by hand\n');
+    tree.seed('kept.txt', 'kept\n');
+    tree.seed('other.txt', 'other\n');
+
+    const result = await run([wire, owner, wire], tree, undefined, {
+      manifest: { ...recorded(), verticals: [{ id: 'owner', installedAt: 'then' }], answers: {} },
+      supplied: { 'wire/adapter': { line: 'supplied' } },
+      rerender: ['owner'],
+      replays: [{ at: 2 }],
+    });
+
+    // Its install patched the file the re-render then rewrote; the
+    // replay puts its line back from the answer the install recorded.
+    expect(tree.read('main.txt')?.toString('utf8')).toBe('main\nwired supplied\n');
+    expect(tree.read('other.txt')?.toString('utf8')).toBe('other\nwired other by default\n');
+    expect(result.adapters.map((a) => a.id)).toEqual(['wire/adapter', 'owner/adapter']);
+    expect(result.applyResult.actions.map((a) => a.description)).toEqual(['wire action']);
+    expect(result.manifest.verticals.map((v) => v.id)).toEqual(['owner', 'wire']);
   });
 });

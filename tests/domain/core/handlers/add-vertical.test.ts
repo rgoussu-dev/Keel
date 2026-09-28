@@ -8,17 +8,35 @@
  * so, and the safeguards (unknown id, missing project, a file of the
  * user's in the way or gone) surface as domain errors. Then several
  * verticals at once, with what they need and what is there already,
- * and the installed ones a run re-renders (`--refresh`) or proposes.
+ * the installed ones a run re-renders (`--refresh`) or proposes, and
+ * what a re-render onto another adapter says it leaves in place.
+ * Last, on a plugin's family, two refusals the converge run words for
+ * it: a refused refresh, naming what it re-rendered in the order the
+ * project installed it, and the harness retrofit's, naming
+ * `keel add agent-harness` whatever the command run.
  */
 
 import path from 'node:path';
 import os from 'node:os';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { addVerticalCommand, newProjectCommand } from '../../../../src/domain/contract/commands.js';
+import {
+  addEntrypointCommand,
+  addModuleCommand,
+  addVerticalCommand,
+  newProjectCommand,
+} from '../../../../src/domain/contract/commands.js';
 import { previewQuery, projectStatusQuery } from '../../../../src/domain/contract/queries.js';
+import type { Vertical } from '../../../../src/domain/contract/composition.js';
 import { projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
+import type { Registry } from '../../../../src/domain/contract/ports/registry.js';
 import { RefusalError } from '../../../../src/domain/contract/refusal.js';
+import {
+  pluginOrigin,
+  registryOf,
+  shippedRegistry,
+  shippedSource,
+} from '../../../../src/domain/core/registry.js';
 import { FakeClock } from '../../../../src/infrastructure/commons/fake-clock.js';
 import type { ManifestStore } from '../../../../src/domain/contract/ports/manifest-store.js';
 import { fsManifestStore } from '../../../../src/infrastructure/manifest/fs-manifest-store.js';
@@ -467,6 +485,17 @@ describe('keel.add-vertical (keel add)', () => {
       );
     });
 
+    it('refuses --set for a vertical the re-render only replays as frozen, never as re-rendered', async () => {
+      await seedQuarkusCli();
+      expectOk(await addDistribution());
+      const error = expectErr(
+        await reapplyDistribution({
+          answers: { 'walking-skeleton/quarkus-cli-bootstrap': { projectName: 'other' } },
+        }),
+      );
+      expect(error.code).toBe('keel.frozen-answer');
+    });
+
     it('refuses --set for an adapter nothing re-rendered reads, as any install would', async () => {
       await seedQuarkusCli();
       expectOk(await addDistribution());
@@ -519,6 +548,31 @@ describe('keel.add-vertical (keel add)', () => {
       return out;
     };
     const composeOf = (dir: string) => fs.readFile(path.join(dir, 'deploy/compose.yaml'), 'utf8');
+    /** Where the manifest is, in {@link snapshot}'s keys: the one file a re-render stamps anew. */
+    const MANIFEST = '.claude/.keel-manifest.json';
+    /** {@link snapshot} of `dir` but the manifest. */
+    const files = async (dir: string) => {
+      const { [MANIFEST]: _, ...rest } = await snapshot(dir);
+      return rest;
+    };
+    /** What a native-only distribution on `quarkus-cli-rest` writes, which no image pipeline does. */
+    const NATIVE_FILES = [
+      '.github/workflows/native-build.yml',
+      '.github/workflows/release.yml',
+    ] as const;
+    /**
+     * The note a re-render of that distribution onto the image's pipeline
+     * gives, naming `left`, the native release's files the project still
+     * holds (roadmap S.9).
+     */
+    const leftOfNative = (left: readonly string[]) => {
+      const kept =
+        left.length === 0
+          ? ''
+          : `${left.join(' and ')}, which that adapter wrote, ${left.length === 1 ? 'is' : 'are'} yours to delete, and `;
+      const answers = left.length === 0 ? "that adapter's answers" : 'its answers';
+      return `Distribution no longer renders through distribution/quarkus-cli-native, and keel removes nothing it installed — without a recorded base, it cannot tell what it wrote from what you changed since — so ${kept}${answers} and the tag it promoted stay in the manifest`;
+    };
 
     let twin: string;
     beforeEach(async () => {
@@ -576,11 +630,6 @@ describe('keel.add-vertical (keel add)', () => {
       expectOk(await add(cwd, ['persistence']));
       expectOk(await add(twin, ['persistence', 'agent-harness']));
 
-      const MANIFEST = '.claude/.keel-manifest.json';
-      const files = async (dir: string) => {
-        const { [MANIFEST]: _, ...rest } = await snapshot(dir);
-        return rest;
-      };
       expect(await files(twin)).toEqual(await files(cwd));
       // The manifest records the same install; only the provenance of a
       // harness document persistence patches differs, as it does
@@ -644,6 +693,200 @@ describe('keel.add-vertical (keel add)', () => {
       expect(await snapshot(cwd)).toEqual(before);
     });
 
+    it('re-renders the bootstrap within the recorded composition: observability’s lines come back, and a hand edit goes', async () => {
+      await scaffold(cwd, 'go-http');
+      const main = path.join(cwd, 'cmd/http/main.go');
+      const pristine = await fs.readFile(main, 'utf8');
+      expect(pristine).toContain('otel');
+      const scaffolded = await files(cwd);
+      await fs.writeFile(main, `${pristine}// edited by hand\n`);
+
+      const report = expectOk(await add(cwd, ['walking-skeleton'], { reapply: true }));
+      expect(report.changes).toEqual([{ kind: 'modify', path: 'cmd/http/main.go' }]);
+      expect(report.diffs?.map((d) => d.path)).toEqual(['cmd/http/main.go']);
+      expect(report.diffs?.[0]?.diff).toContain('-// edited by hand');
+      expect(await files(cwd)).toEqual(scaffolded);
+    });
+
+    /** `stack` scaffolded as a modulith in `dir`, then `keel add module orders --consumes greeting`. */
+    const withOrders = async (dir: string, stack: string) => {
+      expectOk(
+        await mediator().dispatch(
+          newProjectCommand({
+            cwd: dir,
+            stack,
+            moduleLayout: 'modulith',
+            answers: {},
+            interactive: false,
+            dryRun: false,
+          }),
+        ),
+      );
+      expectOk(
+        await mediator().dispatch(
+          addModuleCommand({
+            cwd: dir,
+            module: 'orders',
+            consumes: 'greeting',
+            answers: {},
+            interactive: false,
+            dryRun: false,
+          }),
+        ),
+      );
+    };
+
+    it('re-renders the bootstrap of a modulith within the recorded composition: each context’s wiring comes back', async () => {
+      await withOrders(cwd, 'ts-cli');
+      const wired = await files(cwd);
+
+      const report = expectOk(await add(cwd, ['walking-skeleton'], { reapply: true }));
+      expect(report.changes).toEqual([]);
+      expect(await files(cwd)).toEqual(wired);
+    });
+
+    it('re-renders the bootstrap of a modulith that took a vertical after a context as one run writes it, keeping every line of both', async () => {
+      // persistence, added after orders, lists its handlers after the
+      // context's in the entrypoint's mediator, and is recorded where one
+      // run records it, before bounded-context (S.8): the re-render
+      // replays it there, and the context's wiring after it, as `keel new
+      // --with persistence` then `keel add module orders` writes them.
+      const main = (dir: string) =>
+        fs.readFile(path.join(dir, 'application/rest/src/main.ts'), 'utf8');
+      await withOrders(cwd, 'ts-http');
+      expectOk(await add(cwd, ['persistence']));
+      const arrived = await main(cwd);
+      expect(arrived.indexOf('createOrdersContextHandler()')).toBeLessThan(
+        arrived.indexOf('createListGreetingsHandler(greetingLog)'),
+      );
+      const twin = path.join(cwd, '..', `${path.basename(cwd)}-twin`);
+      await fs.ensureDir(twin);
+      expectOk(
+        await mediator().dispatch(
+          newProjectCommand({
+            cwd: twin,
+            stack: 'ts-http',
+            moduleLayout: 'modulith',
+            extraVerticals: ['persistence'],
+            answers: {},
+            interactive: false,
+            dryRun: false,
+          }),
+        ),
+      );
+      expectOk(
+        await mediator().dispatch(
+          addModuleCommand({
+            cwd: twin,
+            module: 'orders',
+            consumes: 'greeting',
+            answers: {},
+            interactive: false,
+            dryRun: false,
+          }),
+        ),
+      );
+
+      const report = expectOk(await add(cwd, ['walking-skeleton'], { reapply: true }));
+      expect(report.changes).toEqual([{ kind: 'modify', path: 'application/rest/src/main.ts' }]);
+      expect(await main(cwd)).toBe(await main(twin));
+      const converged = await files(cwd);
+      expect(expectOk(await add(cwd, ['walking-skeleton'], { reapply: true })).changes).toEqual([]);
+      expect(await files(cwd)).toEqual(converged);
+      await fs.remove(twin);
+    });
+
+    it.each([
+      ['ci', 'ts-cli'],
+      ['persistence', 'ts-http'],
+    ])(
+      'keel add %s --refresh walking-skeleton on a %s modulith leaves what the add alone leaves: each context’s wiring comes back, before what the add installed',
+      async (vertical, stack) => {
+        await withOrders(cwd, stack);
+        await fs.copy(cwd, twin);
+        const alone = expectOk(await add(twin, [vertical]));
+
+        const refreshed = expectOk(await add(cwd, [vertical], { refresh: ['walking-skeleton'] }));
+        expect(refreshed.changes).toEqual(alone.changes);
+        expect(await files(cwd)).toEqual(await files(twin));
+      },
+    );
+
+    it('re-renders several named verticals each at its rank: what is recorded between them patches in before the later one', async () => {
+      // Observability, recorded between the bootstrap and persistence,
+      // patches the entrypoint before persistence rewires the handler
+      // its lines wrap.
+      expectOk(
+        await mediator().dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'go-http',
+            extraVerticals: ['persistence'],
+            answers: {},
+            interactive: false,
+            dryRun: false,
+          }),
+        ),
+      );
+      const scaffolded = await files(cwd);
+
+      const report = expectOk(
+        await add(cwd, ['walking-skeleton', 'persistence'], { reapply: true }),
+      );
+      expect(report.changes).toEqual([]);
+      expect(await files(cwd)).toEqual(scaffolded);
+    });
+
+    it('re-renders the dev container of a CLI project that took the dev environment as an extra and grew HTTP in its twin’s shape', async () => {
+      // The one shape a re-render moves: attached in place when the dev
+      // environment came after it, the template's on the grown tags.
+      expectOk(
+        await mediator().dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'go-cli',
+            extraVerticals: ['dev-env'],
+            answers: {},
+            interactive: false,
+            dryRun: false,
+          }),
+        ),
+      );
+      expectOk(
+        await mediator().dispatch(
+          addEntrypointCommand({
+            cwd,
+            entrypoint: 'http',
+            answers: {},
+            interactive: false,
+            dryRun: false,
+          }),
+        ),
+      );
+      await scaffold(twin, 'go-cli-http');
+      const definition = '.devcontainer/devcontainer.json';
+      const grown = await fs.readFile(path.join(cwd, definition), 'utf8');
+      const twinDefinition = await fs.readFile(path.join(twin, definition), 'utf8');
+      expect(grown).not.toBe(twinDefinition);
+
+      const report = expectOk(await add(cwd, ['dev-container'], { reapply: true }));
+      expect(report.changes).toEqual([{ kind: 'modify', path: definition }]);
+      expect(await fs.readFile(path.join(cwd, definition), 'utf8')).toBe(twinDefinition);
+    });
+
+    it.each([['ci'], ['persistence']])(
+      'keel add %s --refresh walking-skeleton leaves what the add alone leaves: what the project records, and what the add installed ahead of the re-render, come back',
+      async (vertical) => {
+        await scaffold(cwd, 'go-http');
+        await fs.copy(cwd, twin);
+        const alone = expectOk(await add(twin, [vertical]));
+
+        const refreshed = expectOk(await add(cwd, [vertical], { refresh: ['walking-skeleton'] }));
+        expect(refreshed.changes).toEqual(alone.changes);
+        expect(await files(cwd)).toEqual(await files(twin));
+      },
+    );
+
     it('re-renders a vertical named and refreshed, rather than noting it is there', async () => {
       await scaffold(cwd, 'go-http');
       expectOk(await add(cwd, ['distribution']));
@@ -655,6 +898,46 @@ describe('keel.add-vertical (keel add)', () => {
       expect(report.notes).toBeUndefined();
       expect(report.diffs?.map((d) => d.path)).toContain('deploy/compose.yaml');
       expect(await fs.readFile(compose, 'utf8')).toBe(pristine);
+    });
+
+    it('re-renders what --refresh names beside --reapply, in the order the project records them', async () => {
+      await scaffold(cwd, 'go-http');
+      expectOk(await add(cwd, ['distribution']));
+      expectOk(await add(cwd, ['persistence']));
+      // Recorded where one run records it, before distribution, which
+      // reads it (roadmap S.8). An older keel appended it, and nothing
+      // recorded moves: the manifest is put back as one of those left it.
+      const stored = await fsManifestStore.read(projectScopeRoot(cwd));
+      if (stored === null) throw new Error('the adds recorded no manifest');
+      expect(stored.verticals.map(({ id }) => id).slice(-2)).toEqual([
+        'persistence',
+        'distribution',
+      ]);
+      await fsManifestStore.write(projectScopeRoot(cwd), {
+        ...stored,
+        verticals: [
+          ...stored.verticals.filter(({ id }) => id !== 'persistence'),
+          ...stored.verticals.filter(({ id }) => id === 'persistence'),
+        ],
+      });
+      const readme = path.join(cwd, 'migrations/README.md');
+      const pristine = await fs.readFile(readme, 'utf8');
+      await fs.writeFile(readme, 'edited by hand\n');
+
+      const report = expectOk(
+        await add(cwd, ['distribution'], { reapply: true, refresh: ['persistence'] }),
+      );
+      // Distribution first, as recorded, although it reads persistence
+      // and a refresh would run it after.
+      expect(report.resolvedAdapters?.map((adapter) => adapter.id)).toEqual([
+        'distribution/go-container',
+        'persistence/database-compose',
+        'persistence/flyway-migrations',
+        'persistence/go-persistence',
+        'persistence/liquibase-migrations',
+      ]);
+      expect(report.diffs?.map((d) => d.path)).toContain('migrations/README.md');
+      expect(await fs.readFile(readme, 'utf8')).toBe(pristine);
     });
 
     it('proposes re-rendering what reads an incoming vertical, and --refresh takes it up', async () => {
@@ -768,9 +1051,11 @@ describe('keel.add-vertical (keel add)', () => {
         refresh: { verticals: ['distribution'], prerequisites: [] },
       });
 
-      // `--refresh` names no order, so going first is no move to report.
+      // `--refresh` names no order, so going first is no move to report:
+      // what the run says is what its re-render leaves of the native
+      // release.
       const report = expectOk(await add(cwd, ['iac'], { refresh: ['distribution'] }));
-      expect(report.notes).toBeUndefined();
+      expect(report.notes).toEqual([leftOfNative(NATIVE_FILES)]);
       expect(await fs.pathExists(path.join(cwd, 'deploy/compose.yaml'))).toBe(true);
     });
 
@@ -793,9 +1078,108 @@ describe('keel.add-vertical (keel add)', () => {
       expect((named as RefusalError).refusal).toMatchObject({
         refresh: { verticals: ['distribution'], prerequisites: [] },
       });
-      // And the re-render it names is what installs it, the image first.
+      // And the re-render it names is what installs it, the image first,
+      // leaving what the native release wrote.
       const report = expectOk(await add(cwd, ['iac'], { refresh: ['distribution'], dryRun: true }));
-      expect(report.notes).toEqual(['added Container image — needed by Distribution']);
+      expect(report.notes).toEqual([
+        'added Container image — needed by Distribution',
+        leftOfNative(NATIVE_FILES),
+      ]);
+    });
+
+    it('says what moving onto the image’s pipeline leaves of the native release, and moves nothing of it, in both spellings', async () => {
+      await scaffold(cwd, 'quarkus-cli-rest', 'gradle');
+      expectOk(await add(cwd, ['distribution']));
+      const native = async (dir: string) =>
+        Object.fromEntries(
+          await Promise.all(
+            NATIVE_FILES.map(
+              async (file) => [file, await fs.readFile(path.join(dir, file), 'utf8')] as const,
+            ),
+          ),
+        );
+      const written = await native(cwd);
+      await fs.copy(cwd, twin);
+
+      // Taken with the add: planned, then written, it names the native
+      // release's two workflows and what the manifest keeps of it.
+      const planned = expectOk(
+        await add(cwd, ['containerization'], { refresh: ['distribution'], dryRun: true }),
+      );
+      expect(planned.notes).toEqual([leftOfNative(NATIVE_FILES)]);
+      const refreshed = expectOk(
+        await add(cwd, ['containerization'], { refresh: ['distribution'] }),
+      );
+      expect(refreshed.notes).toEqual(planned.notes);
+      expect(refreshed.resolvedAdapters?.map(({ id }) => id)).toEqual([
+        'containerization/quarkus-rest-image',
+        'distribution/jvm-container',
+      ]);
+
+      // Taken afterwards: the add proposes it and says nothing of what
+      // stays, since nothing moved yet; the re-render says the same.
+      const later = expectOk(await add(twin, ['containerization']));
+      expect(later.notes).toEqual([
+        "refresh proposed: Distribution renders differently with what this adds — re-render it with 'keel add distribution --reapply'",
+      ]);
+      const reapplied = expectOk(await add(twin, ['distribution'], { reapply: true }));
+      expect(reapplied.notes).toEqual([leftOfNative(NATIVE_FILES)]);
+
+      // Nothing of the native release moved: its files, its answers and
+      // its tag are as it left them, and the two spellings leave one
+      // project.
+      for (const dir of [cwd, twin]) {
+        expect(await native(dir)).toEqual(written);
+        const manifest = await fsManifestStore.read(projectScopeRoot(dir));
+        expect(manifest?.answers).toHaveProperty(['distribution/quarkus-cli-native']);
+        expect(manifest?.tags).toContain('runtime.graalvm-native');
+      }
+      expect(await files(twin)).toEqual(await files(cwd));
+    });
+
+    it('leaves a file of the native release the user already deleted out of what it names', async () => {
+      await scaffold(cwd, 'quarkus-cli-rest', 'gradle');
+      expectOk(await add(cwd, ['distribution']));
+      expectOk(await add(cwd, ['containerization']));
+      const [build, release] = NATIVE_FILES;
+      await fs.remove(path.join(cwd, release));
+
+      const one = expectOk(await add(cwd, ['distribution'], { reapply: true }));
+      expect(one.notes).toEqual([leftOfNative([build])]);
+      expect(await fs.pathExists(path.join(cwd, release))).toBe(false);
+
+      // Both gone, what stays is the manifest's record alone.
+      await fs.remove(path.join(cwd, build));
+      const none = expectOk(await add(cwd, ['distribution'], { reapply: true }));
+      expect(none.notes).toEqual([leftOfNative([])]);
+      expect(none.changes).toEqual([]);
+    });
+
+    it('reads no native release into the tag a native image promotes, and names none, whatever file the project keeps at its path', async () => {
+      // On quarkus-rest the native release never resolves; the JVM
+      // image, built native, promotes the tag it would have, and the
+      // release.yml there is the user's own.
+      await scaffold(cwd, 'quarkus-rest', 'gradle');
+      expectOk(
+        await add(cwd, ['containerization'], {
+          answers: { 'containerization/quarkus-rest-image': { flavor: 'native' } },
+        }),
+      );
+      expectOk(await add(cwd, ['distribution']));
+      const [, release] = NATIVE_FILES;
+      await fs.outputFile(path.join(cwd, release), 'name: my own release\n');
+      const manifest = await fsManifestStore.read(projectScopeRoot(cwd));
+      expect(manifest?.tags).toContain('runtime.graalvm-native');
+      expect(manifest?.answers).not.toHaveProperty(['distribution/quarkus-cli-native']);
+
+      const planned = expectOk(await add(cwd, ['distribution'], { reapply: true, dryRun: true }));
+      expect(planned.resolvedAdapters?.map(({ id }) => id)).toEqual(['distribution/jvm-container']);
+      expect(planned.notes).toBeUndefined();
+      expect(expectOk(await add(cwd, ['distribution'], { reapply: true })).notes).toBeUndefined();
+      expect(
+        expectOk(await add(cwd, ['iac'], { refresh: ['distribution'] })).notes,
+      ).toBeUndefined();
+      expect(await fs.readFile(path.join(cwd, release), 'utf8')).toBe('name: my own release\n');
     });
 
     it('releases the JVM image a refreshed distribution now ships, not the native binaries it shipped', async () => {
@@ -821,6 +1205,19 @@ describe('keel.add-vertical (keel add)', () => {
       expect(report.notes).toEqual([
         'added Container image, Distribution — needed by Infrastructure as code',
         "Persistence is already installed; 'keel add persistence --reapply' re-renders it",
+      ]);
+    });
+
+    it('says what it found there already before the refresh it proposes', async () => {
+      await scaffold(cwd, 'go-http');
+      expectOk(await add(cwd, ['distribution']));
+      const report = expectOk(await add(cwd, ['distribution', 'persistence'], { dryRun: true }));
+      expect(report.refreshProposals).toEqual([
+        { vertical: 'distribution', reads: ['persistence'] },
+      ]);
+      expect(report.notes).toEqual([
+        "Distribution is already installed; 'keel add distribution --reapply' re-renders it",
+        "refresh proposed: Distribution reads Persistence, which it was rendered without — re-render it in this run with --refresh distribution, or afterwards with 'keel add distribution --reapply'",
       ]);
     });
 
@@ -882,6 +1279,127 @@ describe('keel.add-vertical (keel add)', () => {
       const error = expectErr(await add(cwd, ['persistence'], { refresh: ['distribution'] }));
       expect(error.code).toBe('keel.vertical-not-installed');
       expect(error.message).toMatch(/nothing to refresh/);
+    });
+  });
+
+  describe("on a plugin's family, what the converge run refuses for it", () => {
+    /** Appends a line on every application: re-rendered, it cannot tell its own line from a user's. */
+    const log: Vertical = {
+      id: 'acme-log',
+      description: 'Logs.',
+      dimensions: ['log'],
+      adapters: [
+        {
+          id: 'acme-log/main',
+          vertical: 'acme-log',
+          covers: ['log'],
+          predicate: { requires: ['lang.acme'] },
+          contribute: () => ({
+            patches: [{ target: 'log.txt', seed: '', apply: (text: string) => `${text}logged\n` }],
+          }),
+        },
+      ],
+    };
+    /** Reads the log, so a refresh runs it after the log, whatever order the project installed them. */
+    const deploy: Vertical = {
+      id: 'acme-deploy',
+      description: 'Deploys.',
+      dimensions: ['deploy'],
+      reads: ['acme-log'],
+      adapters: [
+        {
+          id: 'acme-deploy/main',
+          vertical: 'acme-deploy',
+          covers: ['deploy'],
+          predicate: { requires: ['lang.acme'] },
+          contribute: () => ({ files: [{ path: 'deploy.txt', content: 'deploy\n' }] }),
+        },
+      ],
+    };
+    /** A plugin's vertical on a Go project, which the project records after the plugin is gone. */
+    const extra: Vertical = {
+      id: 'extra',
+      description: 'A plugin vertical',
+      dimensions: ['only'],
+      adapters: [
+        {
+          id: 'extra/go',
+          vertical: 'extra',
+          covers: ['only'],
+          predicate: { requires: ['lang.go'] },
+          contribute: () => ({ files: [{ path: 'extra.txt', content: 'extra\n' }] }),
+        },
+      ],
+    };
+    const mediator = (registry: Registry) =>
+      installMediator({ runDeferred: () => Promise.resolve(), registry });
+    const add = (
+      registry: Registry,
+      verticals: readonly string[],
+      more: Partial<Parameters<typeof addVerticalCommand>[0]> = {},
+    ) =>
+      mediator(registry).dispatch(
+        addVerticalCommand({
+          cwd,
+          verticals,
+          answers: {},
+          interactive: false,
+          dryRun: false,
+          ...more,
+        }),
+      );
+
+    it('names a refused refresh in the order the project installed it, whatever order it ran in', async () => {
+      const acme = registryOf([
+        {
+          origin: pluginOrigin('acme'),
+          verticals: [deploy, log],
+          stacks: [{ id: 'acme', description: 'acme', tags: ['lang.acme'], verticals: [] }],
+        },
+      ]);
+      expectOk(
+        await mediator(acme).dispatch(
+          newProjectCommand({ cwd, stack: 'acme', answers: {}, interactive: false, dryRun: false }),
+        ),
+      );
+      expectOk(await add(acme, ['acme-deploy']));
+      expectOk(await add(acme, ['acme-log']));
+
+      // The log runs first, since the deploy reads it; its patch, run
+      // again, meets its own line and stops the re-render.
+      const error = expectErr(
+        await add(acme, ['acme-log'], { refresh: ['acme-deploy', 'acme-log'] }),
+      );
+      expect(error.code).toBe('keel.reapply-conflict');
+      expect(error.message).toMatch(/^reapply of 'acme-deploy', 'acme-log' refused: /);
+    });
+
+    it('plans on a project recording a vertical no plugin loaded provides, and adopting the harness there names keel add agent-harness', async () => {
+      expectOk(
+        await mediator(
+          registryOf([shippedSource, { origin: pluginOrigin('acme'), verticals: [extra] }]),
+        ).dispatch(
+          newProjectCommand({
+            cwd,
+            stack: 'go-cli',
+            answers: {},
+            interactive: false,
+            dryRun: false,
+            agentHarness: false,
+            extraVerticals: ['extra'],
+          }),
+        ),
+      );
+
+      expectOk(await add(shippedRegistry, ['ci'], { dryRun: true }));
+      expectOk(await add(shippedRegistry, ['vcs'], { reapply: true, dryRun: true }));
+      // The retrofit replays what the project records, and cannot
+      // replay what nothing registered provides.
+      const error = expectErr(await add(shippedRegistry, ['agent-harness', 'ci']));
+      expect(error.code).toBe('keel.missing-harness-contributor');
+      expect(error.message).toBe(
+        "cannot restore harness elements from installed vertical 'extra' — restore the plugin that provides it and re-run 'keel add agent-harness'",
+      );
     });
   });
 });

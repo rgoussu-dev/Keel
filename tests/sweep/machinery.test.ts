@@ -346,7 +346,7 @@ describe("the sweep's comparison of two trees", () => {
       ]),
     );
 
-  it('reads a manifest by what it records, not when or in what order', async () => {
+  it('reads a manifest by what it records and in what order, not when', async () => {
     const written: string[] = [];
     const onDisk = async (content: Buffer): Promise<ReadonlyMap<string, Buffer>> => {
       const root = await scratchDirectory();
@@ -356,8 +356,15 @@ describe("the sweep's comparison of two trees", () => {
     };
     try {
       const one = { label: 'one run', tree: await onDisk(manifest(['a', 'b'], 't1')) };
+      const later = { label: 'two runs', tree: await onDisk(manifest(['a', 'b'], 't2')) };
+      expect(treeDifference(one, later)).toBeNull();
+      // Recorded in another order: every caller records where one run does (roadmap S.8).
       const two = { label: 'two runs', tree: await onDisk(manifest(['b', 'a'], 't2')) };
-      expect(treeDifference(one, two)).toBeNull();
+      expect(treeDifference(one, two)).toEqual({
+        sizes: 'one run: 1 file; two runs: 1 file',
+        paths: ['differing: .claude/.keel-manifest.json (answers, verticals)'],
+        nature: 'record',
+      });
       const other = { label: 'two runs', tree: await onDisk(manifest(['a'], 't1')) };
       expect(treeDifference(one, other)).toEqual({
         sizes: 'one run: 1 file; two runs: 1 file',

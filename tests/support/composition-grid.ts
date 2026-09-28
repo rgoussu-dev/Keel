@@ -2,7 +2,8 @@
  * The composition grid: every cell of keel's composition surface,
  * dispatched through the real mediator, and the ratchet that holds
  * epic Q's invariants over them (`docs/roadmap.md` → "The measure:
- * the composition grid"), and epic R's I10 ("The measure", under R).
+ * the composition grid"), epic R's I10 ("The measure", under R), and
+ * epic S's I11 and I12 ("The measure", under S).
  *
  * **Scenario.** Cells are derived, never listed: stacks and verticals
  * from `keel.catalog`, the extras menu from `keel.dials`, the
@@ -60,6 +61,8 @@ import type { Mediator } from '../../src/domain/kernel/mediator.js';
 import type { Adapter, DeferredAction, Vertical } from '../../src/domain/contract/composition.js';
 import {
   installCommandFor,
+  type InstallReport,
+  type InstallRun,
   type InstallTarget,
   type NewProjectTarget,
   type PresetAnswers,
@@ -96,6 +99,8 @@ export const INVARIANTS = {
   I8: 'any permutation of an accepted extras set stages byte-identical changes',
   I9: 'the same body previews and installs (dry run) alike: the same bytes, or the same refusal — the one the preview reports an unread answer with',
   I10: 'keel new X, and on a modulith keel new X with a keel add module history, then keel add entrypoint e leaves the tree, manifest and queued actions (less the repository setup) that keel new of the twin, given the same history, leaves on the same dials — or is refused as growth reads it',
+  I11: 'a project re-rendered whole — one keel add --reapply naming every recorded vertical keel add can name, as a dry run — comes back Ok, resolves an adapter of every vertical it names, and stages nothing; and each of those re-rendered alone, by keel add v --reapply or by --refresh v beside an add, comes back Ok and resolves an adapter of it — by --reapply, staging nothing',
+  I12: 'arriving later equals one run: keel new X then keel add y (with the refresh its preview proposes) leaves every file of keel new X --with y, its manifest byte for byte; and keel new X --no-agent-harness, with or without --with y, then keel add agent-harness leaves those of keel new X, with or without --with y',
 } as const;
 
 /** One of {@link INVARIANTS}. */
@@ -114,9 +119,28 @@ export type Invariant = keyof typeof INVARIANTS;
  * product gives it and what its repository root keeps from it — and
  * I7 landed hard, with the same step; I9 landed hard with Q2.1, when
  * the preview came to read the answers it is sent as the install does;
- * I10 landed hard with R.2b, with the command it holds to its twins.
+ * I10 landed hard with R.2b, with the command it holds to its twins;
+ * I11 landed hard with S.1b, on the projects whose recorded composition
+ * was a fixed point already, and S.7, which made a re-render keep what
+ * later verticals wrote, widened it hard: each vertical re-rendered
+ * alone, growth's twins, and the whole menus where the dev environment
+ * is an extra.
+ * I12 landed hard with S.8, when every caller came to record what it
+ * adds where one run records it.
  */
-export const HARD: readonly Invariant[] = ['I1', 'I2', 'I3', 'I4', 'I6', 'I7', 'I8', 'I9', 'I10'];
+export const HARD: readonly Invariant[] = [
+  'I1',
+  'I2',
+  'I3',
+  'I4',
+  'I6',
+  'I7',
+  'I8',
+  'I9',
+  'I10',
+  'I11',
+  'I12',
+];
 
 /**
  * The codes a refusal about a file in the way carries — the one kind
@@ -411,6 +435,14 @@ export class Grid {
 }
 
 /**
+ * A real run in `cwd`: non-interactive, on no answers, and not a dry
+ * run — how the axes write the scaffolds their cells run in.
+ */
+export function runIn(cwd: string): InstallRun {
+  return { cwd, answers: {}, interactive: false, dryRun: false };
+}
+
+/**
  * A stack's default target as `keel.dials` settles it, the extras its
  * menu offers there, and the verticals it shows as coming with the
  * preset — the target a blank form posts, and the menu it shows.
@@ -673,11 +705,32 @@ function adaptersById(registry: Registry): ReadonlyMap<string, Adapter> {
 }
 
 /**
+ * The two cells {@link holdParity} sweeps one body as: its preview, and
+ * a dry-run install of it. Named apart where the preview's id belongs
+ * to a family another reader keys on — brownfield's and composite's
+ * `add:` cards, which the docs' compatibility matrix reads by that
+ * prefix — so the install's id stays out of that family.
+ */
+export interface ParityCells {
+  /** The preview's cell id, under which an I9 disagreement is recorded. */
+  readonly preview: string;
+  /** The dry-run install's cell id. */
+  readonly install: string;
+}
+
+/** What {@link holdParity} held: the install's outcome, and what it staged. */
+export interface ParityHeld {
+  readonly install: Outcome<InstallReport>;
+  /** What the install staged, as {@link Grid.staged} reads it back; null where it was not Ok. */
+  readonly staged: readonly string[] | null;
+}
+
+/**
  * Holds one body to I9, as the cells `cell` (its preview) and
  * `cell!install` (a dry-run install of it, non-interactive as `keel ui`
- * installs): each stages into a directory of its own — or both into
- * `cwd`, the project a target that adds to one runs in, which neither
- * writes — and they agree when
+ * installs) — or the two {@link ParityCells} name: each stages into a
+ * directory of its own — or both into `cwd`, the project a target that
+ * adds to one runs in, which neither writes — and they agree when
  *
  * - the preview refuses, and the install refuses under the same code in
  *   the same sentence;
@@ -685,14 +738,21 @@ function adaptersById(registry: Registry): ReadonlyMap<string, Adapter> {
  *   install refuses in the first one's code and sentence
  *   (`InstallPreview.unusedAnswers`);
  * - or neither does, and both stage the same bytes, file for file.
+ *
+ * A disagreement is recorded under the preview's cell. Neither cell may
+ * have been swept yet ({@link Grid.staged}), so a preview another
+ * invariant reads too is swept here first, and read from the record
+ * after. Resolves to the install's outcome and what it staged, for a
+ * caller that holds what it ran to more than parity.
  */
 export async function holdParity(
   grid: Grid,
-  cell: string,
+  cell: string | ParityCells,
   target: InstallTarget,
   answers: PresetAnswers,
   cwd?: string,
-): Promise<void> {
+): Promise<ParityHeld> {
+  const cells = typeof cell === 'string' ? { preview: cell, install: `${cell}!install` } : cell;
   const previewAt = cwd ?? (await grid.scratch());
   const installAt = cwd ?? (await grid.scratch());
   const previewing = previewQuery({ cwd: previewAt, target, answers });
@@ -702,11 +762,11 @@ export async function holdParity(
     interactive: false,
     dryRun: true,
   });
-  const previewed = await grid.staged(cell, previewing, previewAt);
-  const installed = await grid.staged(`${cell}!install`, installing, installAt);
+  const previewed = await grid.staged(cells.preview, previewing, previewAt);
+  const installed = await grid.staged(cells.install, installing, installAt);
   // Answered from the record: both cells are swept already.
-  const preview = await grid.cell(cell, previewing);
-  const install = await grid.cell(`${cell}!install`, installing);
+  const preview = await grid.cell(cells.preview, previewing);
+  const install = await grid.cell(cells.install, installing);
   const unused = preview.value?.unusedAnswers?.[0];
   const agree =
     preview.verdict !== OK
@@ -714,7 +774,124 @@ export async function holdParity(
       : unused !== undefined
         ? install.verdict === unused.code && install.message === unused.message
         : install.verdict === OK && JSON.stringify(installed) === JSON.stringify(previewed);
-  if (!agree) grid.violate('I9', cell);
+  if (!agree) grid.violate('I9', cells.preview);
+  return { install, staged: installed };
+}
+
+/**
+ * What `keel add` can name of what the project `status` reads records,
+ * in recorded order: each recorded vertical `catalog` lists
+ * (`keel.catalog`'s verticals). What that leaves out is derived, never
+ * listed — today `bounded-context`, the row `keel add module` records,
+ * and a product root's glue, `fullstack`.
+ */
+export function nameableOf(status: ProjectStatus, catalog: readonly string[]): readonly string[] {
+  return status.installed.map((vertical) => vertical.id).filter((id) => catalog.includes(id));
+}
+
+/**
+ * Holds the project in `cwd` to I11 as the cell `cell`: its whole
+ * re-render — one `keel add --reapply` naming `verticals`, every
+ * recorded vertical `keel add` can name ({@link nameableOf}), as a dry
+ * run — comes back Ok, resolves an adapter of every vertical it names
+ * (its report's `resolvedAdapters`, so a re-render that skips one
+ * cannot pass for one that changed nothing), and stages nothing, read
+ * back byte for byte through the Trees it opened ({@link Grid.staged}),
+ * not off its report.
+ */
+export async function holdFixedPoint(
+  grid: Grid,
+  cell: string,
+  verticals: readonly string[],
+  cwd: string,
+): Promise<void> {
+  const whole = installCommandFor(
+    { kind: 'add-vertical', verticals, reapply: true },
+    { cwd, answers: {}, interactive: false, dryRun: true },
+  );
+  const staged = await grid.staged(cell, whole, cwd);
+  // Answered from the record: the cell is swept already.
+  const report = (await grid.cell(cell, whole)).value;
+  const reached = reachesAll(grid.registry, report, verticals);
+  if (staged === null || staged.length > 0 || !reached) grid.violate('I11', cell);
+}
+
+/**
+ * Whether a run's `report` — null where it was refused — resolved an
+ * adapter of each of `verticals`: what tells a re-render that skips one
+ * from one that changes nothing, since both stage nothing.
+ */
+function reachesAll(
+  registry: Registry,
+  report: InstallReport | null,
+  verticals: readonly string[],
+): boolean {
+  const adapters = adaptersById(registry);
+  const reached = new Set(
+    (report?.resolvedAdapters ?? []).map((resolved) => adapters.get(resolved.id)?.vertical),
+  );
+  return report !== null && verticals.every((vertical) => reached.has(vertical));
+}
+
+/**
+ * Holds every re-render of the project in `cwd`, which `status` reads,
+ * to I9 and I11, as cells under `scope`:
+ *
+ * - `reapply:<scope>+<v>` — `keel add v --reapply`, for each recorded
+ *   vertical `keel add` can name ({@link nameableOf} over `catalog`),
+ *   previewed as it installs ({@link holdParity}), and its install Ok
+ *   with an adapter of `v` among its `resolvedAdapters` and staging
+ *   nothing (I11, under the pair's key) — since parity alone holds as
+ *   well for a body, or an engine, that re-renders nothing, and a
+ *   re-render within the recorded composition (roadmap S.7) keeps what
+ *   every other vertical wrote into the files it rewrites;
+ * - `refresh:<scope>+<card>~<v>` — the add of the project's first
+ *   `ready` card, in the order `keel.project-status` lists them, with
+ *   `--refresh v`, for each of those verticals, the same, but for what
+ *   it stages, which is the card's; none where no card is ready, or
+ *   where `refresh` is false;
+ * - `fixed:<scope>` — all of them at once, re-rendering each and
+ *   staging nothing ({@link holdFixedPoint}).
+ *
+ * Every dispatch runs in `cwd` itself, and none writes.
+ */
+export async function holdRerenders(
+  grid: Grid,
+  scope: string,
+  status: ProjectStatus,
+  catalog: readonly string[],
+  cwd: string,
+  refresh = true,
+): Promise<void> {
+  const recorded = nameableOf(status, catalog);
+  const rerenders = async (
+    cell: string,
+    target: InstallTarget,
+    vertical: string,
+    stagesNothing: boolean,
+  ) => {
+    const { install, staged } = await holdParity(grid, cell, target, {}, cwd);
+    const stages = stagesNothing && staged?.length !== 0;
+    if (stages || !reachesAll(grid.registry, install.value, [vertical])) {
+      grid.violate('I11', cell);
+    }
+  };
+  for (const vertical of recorded) {
+    const target: InstallTarget = { kind: 'add-vertical', verticals: [vertical], reapply: true };
+    await rerenders(`reapply:${scope}+${vertical}`, target, vertical, true);
+  }
+  const card = status.available.find((candidate) => candidate.readiness === 'ready');
+  if (card !== undefined && refresh) {
+    for (const vertical of recorded) {
+      const target: InstallTarget = {
+        kind: 'add-vertical',
+        verticals: [card.id],
+        refresh: [vertical],
+      };
+      await rerenders(`refresh:${scope}+${card.id}~${vertical}`, target, vertical, false);
+    }
+  }
+  await holdFixedPoint(grid, `fixed:${scope}`, recorded, cwd);
 }
 
 /**

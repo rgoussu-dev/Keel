@@ -14,6 +14,49 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Fixed
 
+- **`keel add walking-skeleton --reapply` keeps what observability,
+  persistence, code-style, the gateway and each added context wrote
+  into the files it rewrites.** A re-render put the bootstrap's files
+  back as its template renders them, and dropped every line a later
+  vertical had patched into them: on every HTTP project the entrypoint
+  lost its telemetry and, with persistence, its database wiring; a
+  `web-components` front end lost code-style's scripts in
+  `package.json`, and a product's front end its gateway; on a modulith,
+  each context `keel add module` added lost its registration in the
+  assembly — on the JVM, Rust, TypeScript and `web-components`. On an
+  unedited project the re-render rewrote those files anyway. A
+  re-render now runs within the recorded composition: every other
+  vertical the project records puts its patches back, from its recorded
+  answers, onto the files the re-render rewrote — and onto no other —
+  in the order the project records them, several verticals you name
+  each re-rendering at its own place in that order; and each context
+  `keel add module` added puts its wiring back where it arrived among
+  them, before a vertical you added after it. So
+  `keel add walking-skeleton --reapply` on an unedited project changes
+  nothing, and after an edit of yours to a file the bootstrap owns it
+  shows that edit going in its diff, and nothing else. The same holds
+  for `--refresh` beside an add, where what the add installed ahead of
+  the re-render comes back too, and for every vertical re-rendered,
+  alone, several together or all at once. Nothing else of those
+  verticals is written: a whole file another vertical owns stays as
+  you left it, and only what you name re-renders.
+
+- **`keel add dev-container --reapply` after a dev environment added
+  as an extra keeps the definition's shape.** On a CLI or front-end
+  project, `keel add dev-env` (or `keel new --with dev-env`) attaches
+  the existing standalone definition in place: the note below
+  `"name"`, the docker feature listed first. Re-rendered after that,
+  the dev container wrote the template's attached shape instead, the
+  one an HTTP project scaffolds — moving the note above `"name"` and
+  the docker feature last, a diff on every re-render, and one every
+  `keel add … --reapply` naming the dev container showed. Its attached
+  render is now ranked by the project's tags, as the attachment is: on
+  a project with an HTTP server, the template's shape, as before;
+  anywhere else, the standalone definition attached as the dev
+  environment attaches it, which is what the project holds. A CLI
+  project that has since grown an HTTP server takes the template's
+  shape, the one a project scaffolded with both has.
+
 - **A JVM modulith's runbook no longer gives every context a REST or
   CLI adapter.** The layout map in the root `AGENTS.md` of a Quarkus,
   Spring or Micronaut modulith listed
@@ -25,6 +68,21 @@ use to keep a long-lived changelog scannable — and the root keeps
   `modules/greeting/user-side/…`, the skeleton's, and says no other
   context has any until you write them. `keel add agent-harness
 --reapply` renders it anew on a project already scaffolded.
+
+- **`keel docs check` is no longer red after `keel add agent-harness`
+  on a project that took persistence first.** Adopting the harness on
+  a project scaffolded `--no-agent-harness --with persistence` recorded
+  `agent-harness` after persistence, where a preset records it straight
+  after `walking-skeleton`. The navigation index replays the recorded
+  verticals in that order, and a directory two of them document takes
+  the description of the first it meets, so `keel docs check` reported
+  drift in the index the adoption had just written, and
+  `keel docs sync` rewrote it away from what
+  `keel new --with persistence` writes. The harness is now recorded
+  where one run records it (under _Changed_), and the check passes. A
+  project that adopted the harness with an earlier keel keeps the order
+  it recorded, and with it the drift, until `keel docs sync` rewrites
+  the index in that order.
 
 - **A dev container you customized is refused, not crashed on, when a
   dev environment arrives.** `keel add dev-env` on a project whose
@@ -563,6 +621,51 @@ new` the terminal adds the way past it (move it aside, or start in
 
 ### Changed
 
+- **A re-render that moves a vertical onto another adapter names the
+  files the first one wrote, which keel leaves in place.** On
+  `quarkus-cli-rest` and its Kotlin twin under Gradle, distribution
+  ships native binaries until a JVM image arrives, and
+  `keel add containerization --refresh distribution` — or
+  `keel add distribution --reapply` after the image — moves it onto the
+  image's pipeline. The native release's
+  `.github/workflows/native-build.yml` and `release.yml` stayed, with
+  its answers and its runtime tag in the manifest, and the report said
+  nothing of them. It now carries a note, in the preview too:
+  _Distribution no longer renders through
+  distribution/quarkus-cli-native, and keel removes nothing it
+  installed — without a recorded base, it cannot tell what it wrote
+  from what you changed since — so .github/workflows/native-build.yml
+  and .github/workflows/release.yml, which that adapter wrote, are
+  yours to delete, and its answers and the tag it promoted stay in the
+  manifest_. A file you deleted already is left out. The run reads
+  that the adapter ran off the manifest — answers under its id, or,
+  where the project has all the adapter needs, a tag it promotes that
+  neither the re-render's adapters nor another installed vertical
+  promotes, as a JVM image built native does — so one that recorded
+  neither goes unnamed. Nothing else changes: no file, no manifest
+  field, no verdict.
+
+- **`keel add` records what it adds where `keel new` records it.**
+  `keel add` — with `--refresh` and `--reapply` — and `keel add module`
+  appended what they recorded to the manifest: a new row of `verticals`
+  after every recorded one, a new adapter's `answers` after the others,
+  a new harness file's entry after every entry. So `keel new X` then
+  `keel add y` wrote the files `keel new X --with y` writes and recorded
+  them otherwise: `keel add agent-harness` recorded the harness last,
+  where a preset records it straight after `walking-skeleton`;
+  `keel add persistence` and `keel add iac` recorded their skill's
+  entry after every other, where one run records it among the skills,
+  before the hook settings; and an add after `keel add module` recorded
+  its row after `bounded-context`. Each is now recorded where one run
+  of `keel new` of the project the add leaves records it — the
+  manifests of the two are the same, their timestamps apart — and a row
+  added after `keel add module` goes before `bounded-context`, which
+  stays last. No file changes. Nothing already recorded moves: a
+  manifest an earlier keel appended to keeps its order, and one keel
+  places on no preset — a monorepo product's root, a plugin's preset
+  keel no longer loads, a manifest migrated from v1 — is appended to,
+  as before.
+
 - **A refusal an entrypoint would lift names the command that adds
   it.** `keel add observability` on a CLI project was refused in the
   sentence `keel new --with` gives it — _Observability needs an
@@ -614,6 +717,40 @@ new` the terminal adds the way past it (move it aside, or start in
   `keel new --with` but never with `keel add`. A plugin registering one
   is now refused when it loads (`keel.invalid-piece`), naming the
   plugin; rename the vertical.
+
+- **A plugin's own `bounded-context` is no longer replayed into the
+  agent harness.** `keel add module` runs keel's own `bounded-context`
+  vertical, whatever a plugin registers under that id, and
+  `keel add entrypoint` wires the contexts it added with that same
+  vertical. The harness replay behind `keel add agent-harness`,
+  `keel docs sync`, `keel docs check` and `keel add module`'s own
+  re-index of the root map read the plugin's instead, where one was
+  registered, and replayed it for every context the project records,
+  the skeleton's and the peer's included: `keel add agent-harness`
+  wrote a skill, hook or document section the plugin declared on it
+  for contexts it never scaffolded, and the root map gained index rows
+  for them — after `keel add module`, rows pointing at skills nothing
+  wrote. The replay now reads keel's own, once for each context
+  `keel add module` added and for no other. keel's own declares no
+  harness element, so no file of a project composed from keel's pieces
+  changes. `keel add module`'s re-index also reads the manifest
+  `keel docs sync` reads, without the context's transient
+  `modules.context` marker, so a vertical of yours whose adapters
+  require or exclude that tag is indexed there as a later sync indexes
+  it.
+
+- **A re-render refuses, as `keel.reapply-conflict`, where a later
+  vertical's patch cannot be put back as it was.** `keel add --reapply`
+  and `--refresh` now put back what every other recorded vertical
+  patched into the files they rewrite (under _Fixed_). A patch keel
+  puts back must be its own fixed point — applying it again to its
+  result changes nothing — as a re-rendered vertical's own patch must
+  be: one that is not, a plugin's append into a file keel rewrites,
+  would add its line again on every re-render, and without a recorded
+  base keel cannot tell its line from yours. Such a re-render is now
+  refused before anything is written, in the words a re-rendered
+  patch's divergence has always been refused in, naming the patch's
+  adapter and the file. No patch of keel's own reaches it.
 
 - **A section keel adds to an existing README, an entry it adds to a
   build file's list, and what a later dev environment adds to the dev
@@ -1234,7 +1371,11 @@ entrypoint http` on a CLI project, or `keel add entrypoint cli` on an
   none has the command), in a product's root or monorepo service
   (`keel.wrong-scope`), for a word naming no entrypoint
   (`keel.unknown-entrypoint`), for a front end or a project
-  no preset grows into (`keel.uncoverable-entrypoint`), where the
+  no preset grows into, or where the entrypoint would stop part of a
+  vertical the project has from applying, which only a plugin's family
+  reaches — keel removes nothing it installed, since without a recorded
+  base it cannot tell what it wrote from what you changed since
+  (`keel.uncoverable-entrypoint`), where the
   entrypoint would break a plugin vertical's rule, as `keel new` of
   the twin with that vertical is (`keel.incompatible`), and on a
   modulith of a plugin's family whose peer context is wired into its

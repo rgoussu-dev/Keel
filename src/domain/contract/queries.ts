@@ -569,7 +569,7 @@ export interface ReadinessGap {
 
 /** What {@link ReadinessGap.refresh} names: what to re-render, and what installs with it. */
 export interface RefreshGap {
-  /** The installed verticals to re-render, in the order the project installed them. */
+  /** The installed verticals to re-render, in the order the project records them. */
   readonly verticals: readonly string[];
   /**
    * What the run would install with it besides, first — as a `needs`
@@ -694,8 +694,9 @@ export interface InstallPreview {
    * sentence each — the install report's own notes
    * (`InstallReport.notes`): the prerequisites it adds and what needs
    * them, the order it installs in when the one named could not be
-   * kept, a vertical already there, each re-render it proposes. Absent
-   * when there is nothing to say.
+   * kept, a vertical already there, what a re-render moved a vertical
+   * off and leaves in place, each re-render it proposes. Absent when
+   * there is nothing to say.
    */
   readonly notes?: readonly string[];
   /**

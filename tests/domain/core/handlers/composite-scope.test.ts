@@ -13,8 +13,9 @@
  * `keel new` asked for a service's own extras (`--with
  * backend:persistence`), held to scaffolding then adding them there,
  * a preset whose monorepo backend installs the image its root
- * already builds — two scopes, one file — and a plugin's extra that
- * refuses the service's file it patches.
+ * already builds — two scopes, one file — a plugin's product listing
+ * two services at one path, and a plugin's extra that refuses the
+ * service's file it patches.
  *
  * **Factory.** `installMediator` over the real templates and
  * filesystem, deferred actions recorded rather than run — and, where
@@ -1314,6 +1315,46 @@ describe("keel new: a product's extras, each in its service", () => {
         }),
       ),
     );
+  });
+
+  it('refuses a product listing two services at one path as two scopes writing one file', async () => {
+    // Nothing in the registry refuses the listing, so each service is
+    // staged at `app/` on its own preset, and the first file both write
+    // is the check's to refuse, not a crash's.
+    const fullstack = STACKS['fullstack'] as Stack;
+    const registry = registryOf([
+      shippedSource,
+      {
+        origin: "plugin 'acme'",
+        stacks: [
+          {
+            ...fullstack,
+            id: 'acme-twinned',
+            services: [
+              { path: 'app', stack: 'go-http' },
+              { path: 'app', stack: 'web-components' },
+            ],
+          },
+        ],
+      },
+    ]);
+    const error = expectErr(
+      await mediatorOver(registry).dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'acme-twinned',
+          layout: 'polyrepo',
+          answers: {},
+          interactive: false,
+          dryRun: true,
+        }),
+      ),
+    );
+    expect(error.code).toBe('keel.cross-scope-write');
+    expect(error.message).toBe(
+      "app/.aider.conf.yml would be written by two scopes of this product — by agent-harness/claude-core in app/, and by agent-harness/claude-core in app/ — and the one written last would silently replace the other; one of the product's pieces has to leave the file to the other",
+    );
+    expect(await fs.readdir(cwd)).toEqual([]);
   });
 
   it("names a service's file from the product root, keeping what its refusal says of it", async () => {

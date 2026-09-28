@@ -40,7 +40,11 @@
  * dev environment first, it writes the attached shape the template
  * renders; elsewhere, where the dev environment is an extra installed
  * after the dev container, it keeps the shape that order has always
- * written.
+ * written. The definition's own attached render is ranked the same way
+ * (roadmap S.7): the template's on `arch.server-http`, and elsewhere the
+ * standalone definition as that upgrade attaches it, so re-rendering
+ * the dev container after the dev environment writes what one run
+ * wrote.
  */
 
 import { PathConflictError } from '../../contract/refusal.js';
@@ -67,6 +71,9 @@ export const DEV_CONTAINER_COMPOSE_TARGET = '.devcontainer/compose.yaml';
 
 /** The definition itself, in either shape. */
 export const DEV_CONTAINER_TARGET = '.devcontainer/devcontainer.json';
+
+/** The tag on which every preset installs the dev environment before the dev container. */
+const SERVER_HTTP: Tag = 'arch.server-http';
 
 /** True when the dev-env vertical is recorded on the manifest. */
 export function devEnvInstalled(manifest: ManifestV2): boolean {
@@ -105,28 +112,54 @@ export interface DevContainerFamily {
 }
 
 /**
- * Renders the Dev Container definition for one family: the
- * `.devcontainer/devcontainer.json` (both shapes), the compose
- * overlay (attached shape only), and the README section.
+ * Renders the Dev Container definition for one family, as the adapter
+ * `by`: the `.devcontainer/devcontainer.json` (both shapes), the
+ * compose overlay (attached shape only), and the README section.
+ *
+ * The attached shape is ranked by the tags, as the upgrade is
+ * ({@link attachDevContainerToDevEnv}), so a re-render writes what one
+ * run wrote (roadmap S.7). On `arch.server-http`, where every preset
+ * installs the dev environment first, it is the template's. Anywhere
+ * else the dev environment is an extra, installed after the dev
+ * container, which it attached in place: there the attached render is
+ * the standalone definition, attached as the dev environment attaches
+ * it — `"name"` above the note, the docker feature first. No `keel new`
+ * renders that branch, since there the dev container always comes
+ * first; a re-render after the dev environment does.
  */
 export async function devContainerDefinition(
   ctx: Ctx,
   family: DevContainerFamily,
+  by: string,
 ): Promise<Contribution> {
   const projectName = anyProjectName(ctx.manifest);
   const attachDevEnv = devEnvInstalled(ctx.manifest);
+  const inPlace = attachDevEnv && !ctx.manifest.tags.includes(SERVER_HTTP);
+  const templated = attachDevEnv && !inPlace;
   const features: Record<string, Readonly<Record<string, unknown>>> = { ...family.features };
-  if (attachDevEnv) {
+  if (templated) {
     features['ghcr.io/devcontainers/features/docker-outside-of-docker:1'] = {};
   }
   const rendered = await ctx.templates.render(TEMPLATE_ID, '', {
     projectName,
-    attachDevEnv,
+    attachDevEnv: templated,
     features,
     postCreateCommand: family.postCreateCommand ?? '',
   });
   const files = attachDevEnv
-    ? rendered
+    ? rendered.map((file) =>
+        inPlace && file.path === DEV_CONTAINER_TARGET
+          ? {
+              ...file,
+              content: attachDevContainerToDevEnv(
+                file.content.toString(),
+                projectName,
+                ctx.manifest.tags,
+                by,
+              ),
+            }
+          : file,
+      )
     : rendered.filter((f) => f.path !== DEV_CONTAINER_COMPOSE_TARGET);
   return {
     files,
@@ -207,7 +240,7 @@ export function attachDevContainerToDevEnv(
       'attach it to the dev environment',
     );
   }
-  if (tags.includes('arch.server-http')) return attachedAsRendered(existing, anchor, projectName);
+  if (tags.includes(SERVER_HTTP)) return attachedAsRendered(existing, anchor, projectName);
   const attached = existing.replace(anchor, `${ATTACH_NOTE}\n${ATTACHED_FIELDS(projectName)}`);
   if (attached.includes('docker-outside-of-docker')) return attached;
   return attached.replace('  "features": {\n', `  "features": {\n${DOCKER_FEATURE},\n`);
@@ -347,6 +380,6 @@ export function devContainerAdapter(
     covers: ['definition'],
     predicate: { requires },
     contribute: async (ctx) =>
-      devContainerDefinition(ctx, family(ctx, await loadToolchainPins(ctx, id))),
+      devContainerDefinition(ctx, family(ctx, await loadToolchainPins(ctx, id)), id),
   };
 }

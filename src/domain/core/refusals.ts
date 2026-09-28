@@ -57,8 +57,8 @@
  * (`./supplied-answers.ts`) live here too, for the same reason: both
  * front doors speak them. So do the notes a run reports what it
  * decided with: what it was asked for and found already there, the
- * prerequisites it added, the order it installed in, the refreshes it
- * proposes.
+ * prerequisites it added, the order it installed in, what a re-render
+ * leaves in place, the refreshes it proposes.
  */
 
 import { DomainError } from '../kernel/result.js';
@@ -778,6 +778,58 @@ export function refreshProposalNote(
 }
 
 /**
+ * Why keel takes nothing away (roadmap L, DS5): it keeps no base of what
+ * it wrote, so it cannot tell its own lines from the user's — which is
+ * also why `--reapply` refuses a patch that keeps changing. Said where
+ * an entrypoint would stop an adapter applying, and where a re-render
+ * moved a vertical off one ({@link leftBehindNote}).
+ */
+const REMOVES_NOTHING =
+  'keel removes nothing it installed — without a recorded base, it cannot tell what it wrote from what you changed since';
+
+/**
+ * The note a re-render gives where it moved `vertical` off `adapterId`,
+ * an adapter that ran (roadmap S.9): keel takes nothing away
+ * ({@link REMOVES_NOTHING}), so `files` — what the adapter wrote whole
+ * that the project still holds, by path — are the user's to delete, and
+ * what the manifest recorded of it stays: its answers, where
+ * `recorded.answers`, and `recorded.tags` tags it promoted, counted,
+ * never named. At least one of the two is there, since that record is
+ * how the run knows the adapter ran. "Distribution no longer renders
+ * through distribution/quarkus-cli-native, and keel removes nothing it
+ * installed — … — so .github/workflows/native-build.yml and
+ * .github/workflows/release.yml, which that adapter wrote, are yours to
+ * delete, and its answers and the tag it promoted stay in the
+ * manifest".
+ */
+export function leftBehindNote(
+  vertical: Vertical,
+  adapterId: string,
+  files: readonly string[],
+  recorded: { readonly answers: boolean; readonly tags: number },
+): string {
+  // Past REMOVES_NOTHING, whose `it` is keel, the adapter is named
+  // again before any pronoun stands for it.
+  const named = files.length > 0;
+  const promoter = named || recorded.answers ? 'it' : 'that adapter';
+  const record = [
+    ...(recorded.answers ? [named ? 'its answers' : "that adapter's answers"] : []),
+    ...(recorded.tags === 1 ? [`the tag ${promoter} promoted`] : []),
+    ...(recorded.tags > 1 ? [`the tags ${promoter} promoted`] : []),
+  ];
+  const stays = record.length === 1 && recorded.tags === 1 ? 'stays' : 'stay';
+  const kept = [
+    ...(files.length > 0
+      ? [
+          `${listed(files)}, which that adapter wrote, ${files.length === 1 ? 'is' : 'are'} yours to delete`,
+        ]
+      : []),
+    `${listed(record)} ${stays} in the manifest`,
+  ];
+  return `${verticalTitle(vertical)} no longer renders through ${adapterId}, and ${REMOVES_NOTHING} — so ${kept.join(', and ')}`;
+}
+
+/**
  * The sentence a run that re-renders `verticals` (by id) is refused
  * with where a contribution met a conflict it cannot settle — a patch
  * whose re-application keeps changing its file, two writers of one
@@ -822,7 +874,9 @@ export function unknownEntrypointSentence(word: string): string {
  * - `no-twin` — no stack keel offers is this project with the
  *   entrypoint as well, on its build system and module layout;
  * - `drops` — adding it would stop adapters of verticals the project
- *   has from applying, and keel removes nothing it installed.
+ *   has from applying, and keel removes nothing it installed: without
+ *   a recorded base it cannot tell what it wrote from what was changed
+ *   since (roadmap L, DS5).
  */
 export type UncoverableEntrypointReason = 'front-end' | 'no-twin' | 'drops';
 
@@ -830,7 +884,10 @@ export type UncoverableEntrypointReason = 'front-end' | 'no-twin' | 'drops';
  * The sentence adding the entrypoint `entrypoint` (an {@link ENTRYPOINTS}
  * id) is refused with when no stack is the project with it, for
  * `reason`; under `drops`, `dropping` are the verticals whose adapters
- * would stop applying, named by their titles.
+ * would stop applying, named by their titles, and the sentence says
+ * why keel does not take them away: it keeps no base of what it wrote
+ * to tell its own lines from the user's, which is also why `--reapply`
+ * refuses a patch that keeps changing.
  */
 export function uncoverableEntrypointSentence(
   entrypoint: string,
@@ -847,7 +904,7 @@ export function uncoverableEntrypointSentence(
     case 'no-twin':
       return `${lead}: no stack keel offers is this project with it as well, on its build system and module layout`;
     case 'drops':
-      return `${lead}: part of ${listed(dropping.map(verticalTitle))} would stop applying to this project, and keel removes nothing it installed`;
+      return `${lead}: part of ${listed(dropping.map(verticalTitle))} would stop applying to this project, and ${REMOVES_NOTHING}`;
   }
 }
 

@@ -15,15 +15,19 @@
  * (`domain/core/shared-files.golden.test.ts`), the growth golden
  * (`domain/core/growth.golden.test.ts`) and its render guard
  * (`domain/core/growth-render.test.ts`, which keeps the opening build
- * system only), and the composition grid's growth axis
- * (`domain/core/composition-grid/growth.test.ts`) over the mediator.
+ * system only), the composition grid's growth axis
+ * (`domain/core/composition-grid/growth.test.ts`), and the paths golden
+ * (`domain/core/paths-*.golden.test.ts`, over `support/paths-golden.ts`)
+ * and the converge golden (`domain/core/converge.golden.test.ts`), which
+ * reads the same cells through the paths golden's sweeps
+ * (`support/paths-families.ts`), over the mediator.
  * None keeps a list of settings: what a preset offers is whatever the
  * replies offer, so a dial or a rule registered tomorrow is walked
  * without an edit. The first two then
  * tick the extras on what they reached as the page does, from the run
  * it holds once a reply has settled ({@link settledRun}), over the
- * boxes it draws ({@link offeredAsExtra}); the shared-file golden names
- * those boxes to `keel.dials`.
+ * boxes it draws ({@link offeredAsExtra}); the shared-file golden and
+ * the paths golden name those boxes to `keel.dials`.
  */
 
 import { settle, withServiceBuild } from '../../assets/web/src/target.js';
@@ -40,9 +44,9 @@ import type { DialOptions, VerticalOption } from '../../src/domain/contract/quer
  * A seed is where the walk starts: the blank target of a preset, or
  * one per repository layout of a product, a dial `keel.dials` settles
  * but does not list (the preview asks it). The agent harness left out
- * is not walked here: the page presses it once, and the sweep and the
- * growth golden cross it with every setting — each caller's own
- * gesture over these replies.
+ * is not walked here: the page presses it once, and the sweep, the
+ * growth golden and the paths golden cross it with every setting — each
+ * caller's own gesture over these replies.
  *
  * `dials` answers null for a target it could not settle — the sweep
  * reports that as a finding rather than stopping — and the walk goes
@@ -82,7 +86,9 @@ export async function walkDials(
  * as the target it settled: the {@link walkDials} walk, and each
  * setting again with the agent harness left out wherever the reply
  * lets it be. What the growth golden (`domain/core/growth.golden.test.ts`)
- * reads growth on, and the composition grid's growth axis grows.
+ * reads growth on, the composition grid's growth axis grows, and the
+ * paths golden (`domain/core/paths-*.golden.test.ts`) scaffolds and
+ * gives its module history.
  */
 export async function harnessSettings(
   dials: (target: NewProjectTarget) => Promise<DialOptions>,
@@ -101,7 +107,8 @@ export async function harnessSettings(
 }
 
 /**
- * A single-service setting as the command line that scaffolds it —
+ * A setting as the command line that scaffolds it (a product's
+ * repository layout is spelled after it by the paths golden) —
  * spelled here rather than by the page's own `command.js`, so a change
  * to how the page prints a command moves no golden's key.
  */
@@ -122,8 +129,8 @@ export function newCommandLine(target: NewProjectTarget): string {
  * module` targets that add them, in order. A chain, so each context's
  * wiring calls the wiring of the one it consumes, which is what growing
  * an entrypoint has to replay in that order (roadmap R.3). What the
- * shared-file byte golden, the growth golden and the composition grid's
- * growth axis each add to every modulith setting.
+ * shared-file byte golden, the growth golden, the composition grid's
+ * growth axis and the paths golden each add to every modulith setting.
  */
 export function moduleHistory(skeleton: string): readonly AddModuleTarget[] {
   return [

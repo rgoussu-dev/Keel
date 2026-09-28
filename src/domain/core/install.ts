@@ -2,14 +2,16 @@
  * The top-level orchestrator: install verticals against a manifest and
  * a Tree.
  *
- * `installVerticals` is the run both front doors install through —
- * `keel new` with a scope's stack verticals and extras, `keel add` with
- * the verticals it planned, and the ones it re-renders beside them
- * (`rerender`). It installs each vertical in the order given onto one
- * Tree, each against the manifest the ones before it produced, under
- * one ownership memory and one harness buffer, then realizes the
- * run's harness declarations once — unless the caller supplied the
- * buffer, and finalizes it itself.
+ * `installVerticals` is the run both front doors install through, by
+ * way of `./converge-run.ts`' `converge` — `keel new` with a scope's
+ * stack verticals and extras, `keel add` with the verticals it planned,
+ * and the ones it re-renders beside them (`rerender`). It installs each
+ * vertical in the order given onto one Tree, each against the manifest
+ * the ones before it produced, under one ownership memory and one
+ * harness buffer, then realizes the run's harness declarations once —
+ * unless the caller supplied the buffer, and finalizes it itself, as
+ * `converge` always does: since roadmap S.6 no command reaches the
+ * run's own finalize.
  *
  * After each vertical it holds the run to the assembly rules: every
  * rule the pieces coming together declare — the verticals it installs,
@@ -18,6 +20,13 @@
  * rule its tags newly break refuses the run, naming the rule, before
  * anything is committed: the front doors plan against the promotions
  * a vertical *may* add, and this is the check against the ones it did.
+ *
+ * A re-render runs within the recorded composition (roadmap S.7): the
+ * whole files its re-rendered verticals rewrite are recorded as the run
+ * goes, and each vertical it replays (`replays`) puts its patches back
+ * onto those files alone (`patchesOnto`), from what the manifest
+ * records — so what a later vertical wrote into a file the pristine
+ * render drops comes back as it was, and nothing else is touched.
  *
  * `installVertical` installs one of them. Pipeline:
  *   1. `resolveVertical` — predicate match → topo sort → coverage check.
@@ -62,6 +71,7 @@ import { effectiveTags } from '../contract/manifest.js';
 import { TOOLCHAIN_SCHEMA_VERSION, type ToolchainNeed } from '../contract/toolchain.js';
 import {
   applyContribution,
+  canonicalTarget,
   collectHarness,
   realizeHarness,
   type HarnessContribution,
@@ -170,6 +180,25 @@ export interface InstallVerticalInputs {
    */
   readonly actionsOnly?: boolean;
   /**
+   * Replay the vertical's patches onto these paths alone — a re-render
+   * within the recorded composition (roadmap S.7, DS4): the files a
+   * re-render rewrote, where this vertical may have patched in what a
+   * pristine render drops. Each adapter the vertical resolves to on
+   * {@link manifest} — each of {@link only}, where set — is contributed
+   * from what the manifest records, asking nothing and reading no
+   * supplied answer, and of what it contributes only the patches whose
+   * target is one of these paths apply, in the `reapply` posture, a
+   * region its adapter claimed earlier in the run its own to claim once
+   * more (`applyContribution`'s `replaying`): a guarded patch is its
+   * own fixed point, so what it wrote comes back as it was, and one
+   * that is not refuses as a divergence
+   * (`ContributionConflictError`). It writes no whole file, collects no
+   * harness element, queues no action and records nothing — no answer,
+   * tag, toolchain need or row — and reports no resolved adapter, since
+   * it reads no answer. Empty, it contributes nothing at all.
+   */
+  readonly patchesOnto?: ReadonlySet<string>;
+  /**
    * What the run composes from — read only to word a refusal: a
    * vertical whose dimension is left uncovered for want of a
    * capability names the vertical that adds it. Absent, the refusal
@@ -203,7 +232,7 @@ export interface InstallVerticalResult {
 /** Inputs to {@link installVerticals}: one install's inputs, over a list of verticals. */
 export interface InstallVerticalsInputs extends Omit<
   InstallVerticalInputs,
-  'vertical' | 'harnessOnly' | 'only' | 'actionsOnly'
+  'vertical' | 'harnessOnly' | 'only' | 'actionsOnly' | 'patchesOnto'
 > {
   /**
    * The verticals to install, in the order they run. Each resolves
@@ -237,22 +266,53 @@ export interface InstallVerticalsInputs extends Omit<
    * of each, or each one outside its {@link only}. Absent, none.
    */
   readonly actionsOnly?: readonly string[];
+  /**
+   * Positions among {@link verticals} replayed there for their patches
+   * alone onto the whole files the run's re-renders ({@link rerender})
+   * rewrote before them ({@link Ownership.rewritten},
+   * {@link InstallVerticalInputs.patchesOnto}), each from what it
+   * records ({@link ReplayAt}). None threads the running manifest or
+   * records anything. By position, since a vertical the run installs
+   * can replay after a later re-render too, and one vertical can
+   * replay at several — keel's `bounded-context`, once per context.
+   * Absent, none.
+   */
+  readonly replays?: readonly ReplayAt[];
+}
+
+/** A position {@link InstallVerticalsInputs.replays} replays, and what from. */
+export interface ReplayAt {
+  /** The position among {@link InstallVerticalsInputs.verticals}. */
+  readonly at: number;
+  /**
+   * The manifest it replays from, where the caller seeds one — a
+   * context's, with its inputs. Absent, what the vertical records: the
+   * manifest its own install or re-render left, where it ran at an
+   * earlier position, and otherwise
+   * {@link InstallVerticalInputs.manifest}, the manifest the run starts
+   * from, whatever ran before it.
+   */
+  readonly manifest?: ManifestV2;
+  /** The adapters it replays ({@link InstallVerticalInputs.only}); absent, every one it resolves to. */
+  readonly only?: ReadonlySet<string>;
 }
 
 /**
  * Installs `verticals` in order onto one Tree — the loop `keel new`
  * runs over a scope's stack verticals and extras, and `keel add` over
- * the ones it planned and the ones it re-renders.
+ * the ones it planned and the ones it re-renders, each by way of
+ * `./converge-run.ts`' `converge`.
  *
  * The run is one scope: the running manifest threads from each
  * vertical into the next, and one {@link Ownership} and one harness
  * buffer serve every vertical, so a skill name or a region two
  * verticals both claim collides here, not only when both come from
  * one vertical. With no `harness` supplied the run realizes its
- * declarations itself once the last vertical has installed; with one,
- * the caller finalizes, having first added what else the run needs in
- * that buffer (`keel add agent-harness` replays the project's earlier
- * contributors into it). Nothing is committed.
+ * declarations itself once the last vertical has installed, which no
+ * command reaches since roadmap S.6; with one, as `converge` always
+ * supplies, the caller finalizes, having first added what else the run
+ * needs in that buffer (`keel add agent-harness` replays the project's
+ * earlier contributors into it). Nothing is committed.
  */
 export async function installVerticals(
   inputs: InstallVerticalsInputs,
@@ -263,6 +323,7 @@ export async function installVerticals(
     rules: around = [],
     only = {},
     actionsOnly = [],
+    replays = [],
     ...run
   } = inputs;
   const owners = inputs.owners ?? newOwnership();
@@ -275,7 +336,22 @@ export async function installVerticals(
   const rules = runRules(inputs, around);
   const broken = new Set(violatedBy(rules, effectiveTags(manifest)).map((rule) => rule.id));
 
-  for (const vertical of verticals) {
+  const left = new Map<string, ManifestV2>();
+  const replaying = new Map(replays.map((replay) => [replay.at, replay]));
+  for (const [at, vertical] of verticals.entries()) {
+    const replay = replaying.get(at);
+    if (replay !== undefined) {
+      await installVertical({
+        ...run,
+        vertical,
+        manifest: replay.manifest ?? left.get(vertical.id) ?? inputs.manifest,
+        ...(replay.only === undefined ? {} : { only: replay.only }),
+        owners,
+        harness,
+        patchesOnto: owners.rewritten,
+      });
+      continue;
+    }
     const installs = only[vertical.id];
     const result = await installVertical({
       ...run,
@@ -288,6 +364,7 @@ export async function installVerticals(
       ...(actionsOnly.includes(vertical.id) ? { actionsOnly: true } : {}),
     });
     manifest = result.manifest;
+    left.set(vertical.id, manifest);
     const newly = violatedBy(rules, effectiveTags(manifest)).filter((rule) => !broken.has(rule.id));
     if (newly.length > 0) throw brokenRulesRefusal(namesOf(inputs), vertical, newly);
     for (const tag of result.applyResult.tagsAdded) tagsAdded.add(tag);
@@ -355,6 +432,7 @@ function namesOf(inputs: InstallVerticalsInputs): RefusalNames {
 export async function installVertical(
   inputs: InstallVerticalInputs,
 ): Promise<InstallVerticalResult> {
+  if (inputs.patchesOnto !== undefined) return replayPatches(inputs, inputs.patchesOnto);
   const ordered = resolveVertical(inputs.vertical, effectiveTags(inputs.manifest), inputs.registry);
 
   let running: ManifestV2 = inputs.manifest;
@@ -464,6 +542,38 @@ export async function installVertical(
 }
 
 /**
+ * `inputs.vertical`'s patches onto `onto`, and onto no other file
+ * ({@link InstallVerticalInputs.patchesOnto}): each adapter it resolves
+ * to on the manifest, contributed from what that records, its patches
+ * on those paths applied in the `reapply` posture, as a replay, and
+ * nothing else of it. The manifest comes back as it was handed in.
+ */
+async function replayPatches(
+  inputs: InstallVerticalInputs,
+  onto: ReadonlySet<string>,
+): Promise<InstallVerticalResult> {
+  if (onto.size > 0) {
+    const owners = inputs.owners ?? newOwnership();
+    const tags = effectiveTags(inputs.manifest);
+    for (const adapter of resolveVertical(inputs.vertical, tags, inputs.registry)) {
+      if (inputs.only !== undefined && !inputs.only.has(adapter.id)) continue;
+      const contribution = await recordedContribution(adapter, inputs.manifest, inputs);
+      const patches = (contribution.patches ?? []).filter((patch) =>
+        onto.has(canonicalTarget(patch.target)),
+      );
+      if (patches.length > 0)
+        applyContribution(adapter, { patches }, inputs.tree, 'reapply', owners, true);
+    }
+  }
+  return {
+    manifest: inputs.manifest,
+    applyResult: { tagsAdded: [], skills: [], actions: [] },
+    adapters: [],
+    reads: [],
+  };
+}
+
+/**
  * The paths the adapters `vertical` resolves to on `manifest` would
  * write whole, each contributed from what the manifest records and
  * asking nothing — as {@link InstallVerticalInputs.actionsOnly} replays
@@ -487,9 +597,15 @@ export async function contributedPaths(
 
 /**
  * `adapter`'s contribution on `manifest`, its questions answered from
- * what the manifest records, or their defaults, asking nothing.
+ * what the manifest records, or their defaults, asking nothing, whatever
+ * its predicate says of the manifest's tags — with nothing applied,
+ * recorded or collected. Also what a run reads around a re-render that
+ * moved its vertical off an adapter (`./converge-run.ts`, roadmap S.9):
+ * the files that adapter wrote, on the answers it recorded, and the
+ * tags an adapter of another vertical the project records promotes on
+ * what it recorded.
  */
-async function recordedContribution(
+export async function recordedContribution(
   adapter: Adapter,
   manifest: ManifestV2,
   inputs: Pick<InstallVerticalInputs, 'prompt' | 'logger' | 'cwd' | 'templates' | 'processes'>,

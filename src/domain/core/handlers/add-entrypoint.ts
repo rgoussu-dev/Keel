@@ -39,46 +39,54 @@
  *      manifest records consuming none that holds the gateway keel
  *      writes for a consumer: one added before keel recorded what a
  *      context consumes, which the replay would wire in standalone.
- *   2. **The grown manifest**: the entrypoint's tag and the twin's
- *      `projects` folded in before anything resolves.
- *   3. **One run**, in the twin's order: the verticals with adapters
- *      that newly match install those alone (`only`), in the `install`
- *      posture, so a file already there is refused as
+ *   2. **The plan**, `convergeOf`'s reading of the entrypoint
+ *      (`../converge.ts`), growth's on the manifest with the
+ *      entrypoint's tag and the twin's `projects` folded in before
+ *      anything resolves. One run, in the twin's order: the verticals
+ *      with adapters that newly match install those alone (`only`), in
+ *      the `install` posture, so a file already there is refused as
  *      `keel.path-conflict` — the peer context's wiring for the new
  *      assembly among them; the harness re-renders; the verticals the
  *      project lacks install, closed over their prerequisites by the
- *      planner (`admit`) as any `keel add` is. No dev container is
- *      re-rendered: the dev environment's in-place upgrade writes the
- *      twin's definition on the grown tags. Then each context `keel
+ *      planner (`admit`) as any `keel add` is; and every other vertical
+ *      of the twin — but one placed at a repository root, whose actions
+ *      set up a repository the project has — settles: it replays its
+ *      adapters that matched before for their deferred actions alone
+ *      (`actionsOnly`), in its place in the run, so the grown project
+ *      queues what its twin queues: the JVM's build wrapper and
+ *      formatter (`gradle wrapper` and `spotlessApply`, or Maven's),
+ *      `go mod tidy`, `pnpm install`, `cargo check`. No dev container
+ *      is re-rendered: the dev environment's in-place upgrade writes
+ *      the twin's definition on the grown tags. Then each context `keel
  *      add module` added is wired into the new assembly, in the order
- *      it was added — a context's wiring calls the wiring of the one
- *      it consumes — by a run of `bounded-context` as that command ran
- *      it, installing what newly matches (`GrowthPlan.modules`). The
- *      run's harness buffer is this handler's to finalize: the
- *      verticals that did not run are replayed into it, and the
- *      generation restamped.
- *   4. **Settling**: every other vertical of the twin — but one placed
- *      at a repository root, whose actions set up a repository the
- *      project has — replays its adapters that matched before for
- *      their deferred actions alone (`actionsOnly`), in their place in
- *      the run, so the grown project queues what its twin queues: the
- *      JVM's build wrapper and formatter (`gradle wrapper` and
- *      `spotlessApply`, or Maven's), `go mod tidy`, `pnpm install`,
- *      `cargo check`.
- *   5. **Recording at rank**: the new `verticals` rows, `answers` keys
- *      and harness entries go where the twin records them, before the
- *      first one it records later — the harness realized in the twin's
- *      order for that; nothing recorded moves.
- *   6. **Answers, notes, report**: a supplied answer is held as `keel
- *      add` holds it — the new bootstrap reads its sibling's identity
- *      answers, so one supplied for it is frozen; the notes say what
- *      the planner added, the refreshes proposed, and which linked
- *      projects to link again — a linked project's record of what this
- *      one offers is its own manifest, which `keel link` writes and
- *      this command does not; the diffs show what re-rendered.
+ *      it was added — a context's wiring calls the wiring of the one it
+ *      consumes — by a run of `bounded-context` as that command ran it,
+ *      installing what newly matches (`GrowthPlan.modules`). Refused
+ *      where the planner refuses what the project lacks.
+ *   3. **Answers held early**, as `keel add` holds them: one for the
+ *      re-rendered harness's recorded answers whatever the mode, and at
+ *      a terminal every key no adapter the run could reach reads.
+ *   4. **The run**, `../converge-run.ts`' `converge`: the plan staged;
+ *      each supplied answer held once it is, exactly — the new
+ *      bootstrap reads its sibling's identity answers, so one supplied
+ *      for it is frozen; the verticals that did not run replayed into
+ *      the harness buffer, but no context, since the run wires the ones
+ *      `keel add module` added and the skeleton and the peer are
+ *      `walking-skeleton`'s; the generation restamped; and what is new
+ *      recorded at rank — the new `verticals` rows, `answers` keys and
+ *      harness entries where the twin records them, before the first
+ *      one it records later, the harness realized in the twin's order
+ *      for that; nothing recorded moves.
+ *   5. **Notes and report**: what the planner added, the refreshes
+ *      proposed — each a later run's, since this command takes no
+ *      `--refresh` — and which linked projects to link again: a linked
+ *      project's record of what this one offers is its own manifest,
+ *      which `keel link` writes and this command does not; the diffs
+ *      show what re-rendered.
  *
- * Under a real run: commit the tree, persist the manifest, then run
- * the deferred actions — manifest before actions, as `keel add` does.
+ * Under a real run, the run's one commit (`commitConverged`): the
+ * tree, then the manifest, then the deferred actions, as `keel add`
+ * commits.
  */
 
 import path from 'node:path';
@@ -89,46 +97,32 @@ import type {
   AddEntrypointCommand,
   InstallReport,
   PresetAnswers,
-  RefreshProposal,
 } from '../../contract/commands.js';
-import type { Adapter, Tree, Vertical } from '../../contract/composition.js';
+import type { Adapter, Tree } from '../../contract/composition.js';
 import type { Registry } from '../../contract/ports/registry.js';
-import {
-  effectiveTags,
-  HARNESS_GENERATION,
-  projectScopeRoot,
-  type InstalledVertical,
-  type ManifestEntry,
-  type ManifestV2,
-} from '../../contract/manifest.js';
+import { effectiveTags, projectScopeRoot, type ManifestV2 } from '../../contract/manifest.js';
 import { NOT_INITIALISED_CODE, notInitialisedSentence } from '../../contract/nearby.js';
-import { runActions } from '../actions.js';
-import { addModuleInputs, CONTEXT_TAG, withoutAddModuleInputs } from '../adapters/added-context.js';
-import { ContributionConflictError, newOwnership, type HarnessContribution } from '../apply.js';
-import { withoutHarness } from '../dials.js';
-import { workingTreeDiffs } from '../diff.js';
-import { growthOf, type GrowthModule, type GrowthPlan, type GrowthRefusal } from '../growth.js';
-import { harnessGenerationRefusal } from '../harness-generation.js';
-import { retrofitHarness } from '../harness-retrofit.js';
+import { addModuleInputs, CONTEXT_TAG } from '../adapters/added-context.js';
 import {
-  contributedPaths,
-  finalizeHarness,
-  installVertical,
-  installVerticals,
-  type InstallVerticalInputs,
-  type InstallVerticalResult,
-} from '../install.js';
-import { admissionNotes, admit, type AdmittedSet } from '../plan-refusal.js';
-import { reachableAdapters, refreshProposals } from '../planner.js';
-import { rankedIndex } from '../rank.js';
+  admitGrowth,
+  convergeOf,
+  grownManifest,
+  incomingOf,
+  type ConvergeRefusal,
+  type ConvergeStep,
+} from '../converge.js';
+import { commitConverged, converge } from '../converge-run.js';
+import { growthOf, type GrowthPlan, type GrowthRefusal } from '../growth.js';
+import { harnessGenerationRefusal } from '../harness-generation.js';
+import { contributedPaths } from '../install.js';
+import { admissionNotes } from '../plan-refusal.js';
+import { reachableAdapters } from '../planner.js';
 import {
   contextsNeedRewiringSentence,
   ENTRYPOINT_IN_PRODUCT_REASON,
   entrypointPresentNote,
   incompatibleEntrypointSentence,
-  reapplyConflictSentence,
   entrypointScopeSentence,
-  refreshProposalNote,
   relinkNote,
   uncoverableEntrypointSentence,
   unknownEntrypointSentence,
@@ -136,12 +130,10 @@ import {
   WRONG_SCOPE_CODE,
 } from '../refusals.js';
 import { installedVertical } from '../registry.js';
-import { resolveVertical } from '../resolver.js';
 import {
   enclosingProduct,
   nearbyProjects,
   productPlaceOf,
-  projectScope,
   scopeOf,
   type DirectoryScope,
 } from '../scope.js';
@@ -212,9 +204,12 @@ export class AddEntrypointHandler implements Handler<AddEntrypointCommand> {
     if (unrecorded !== null) return err(unrecorded);
 
     const grown = grownManifest(stored, growth);
-    const plan = this.planOf(stored, grown, growth);
-    if (!plan.ok) return plan;
-    const { run, admitted, twin } = plan.value;
+    const plan = convergeOf(registry, stored, { kind: 'entrypoint', word: command.entrypoint });
+    if (plan.kind === 'refused') return err(convergeRefusalError(registry, plan.refusal));
+    // The same reading `convergeOf` planned on: what the planner added
+    // is the report's first note.
+    const admitted = admitGrowth(registry, grown, growth);
+    if (!admitted.ok) return admitted;
 
     // Answers are held before anything runs, as `keel add` holds them:
     // one for the re-rendered harness's recorded answers whatever the
@@ -223,7 +218,7 @@ export class AddEntrypointHandler implements Handler<AddEntrypointCommand> {
     if (hasAnswers(command.answers)) {
       const [early] = unusedAnswers(
         command.answers,
-        resolvedAdapters(reachable(run, grown)),
+        resolvedAdapters(reachable(plan.run, grown)),
         history,
       );
       if (
@@ -234,213 +229,45 @@ export class AddEntrypointHandler implements Handler<AddEntrypointCommand> {
       }
     }
 
-    const now = this.deps.clock.nowIso();
-    const owners = newOwnership();
-    const harness: HarnessContribution[] = [];
-    const harnessRuns = growth.rerender.length > 0;
-    let result;
-    try {
-      result = await installVerticals({
-        verticals: run.map((step) => step.vertical),
-        rerender: growth.rerender,
-        only: Object.fromEntries(
-          run.flatMap((step) => (step.only === undefined ? [] : [[step.vertical.id, step.only]])),
-        ),
-        actionsOnly: run.filter((step) => step.settles).map((step) => step.vertical.id),
-        manifest: grown,
-        supplied: command.answers,
-        tree,
-        owners,
-        harness,
-        mode: command.interactive ? 'interactive' : 'non-interactive',
-        prompt: this.deps.prompt,
-        logger: this.deps.logger,
-        cwd: command.cwd,
-        templates: this.deps.templates,
-        processes: this.deps.processes,
-        now: () => now,
-        apply: 'install',
-        registry,
-      });
-      result = await wireModules(result, growth.modules, {
-        vertical: boundedContextVertical,
-        tree,
-        owners,
-        harness,
-        mode: 'non-interactive',
-        prompt: this.deps.prompt,
-        logger: this.deps.logger,
-        cwd: command.cwd,
-        templates: this.deps.templates,
-        processes: this.deps.processes,
-        now: () => now,
-        apply: 'install',
-        registry,
-      });
-      if (hasAnswers(command.answers)) {
-        const stray = strayAnswerRefusal(
-          command.answers,
-          resolvedAdapters(result.adapters),
-          history,
-          result.reads,
-        );
-        if (stray !== null) return err(stray);
-      }
-      const ran = new Set(
-        run.filter((step) => step.only !== undefined || !step.settles).map((s) => s.vertical.id),
-      );
-      if (harnessRuns) {
-        // What ran put its declarations in the buffer as it installed
-        // or re-rendered; the rest of the project is replayed into it.
-        // A vertical that installed some of its adapters counts as run:
-        // the install replayed the ones it left out itself. So did each
-        // context's replay; the skeleton and the peer are
-        // `walking-skeleton`'s, never `bounded-context`'s — so the
-        // retrofit replays no context.
-        await retrofitHarness({
-          ...this.deps,
-          manifest: {
-            ...result.manifest,
-            verticals: result.manifest.verticals.filter((v) => !ran.has(v.id)),
-            modules: [],
-          },
-          tree,
-          owners,
-          harness,
-          cwd: command.cwd,
-          mode: 'non-interactive',
-          now: () => now,
-          line,
-        });
-      }
-      const order = twinOrder(registry, stored, result.manifest, twin);
-      // Realized in the order the twin's one run realizes it, so a file
-      // recorded anew can be recorded where the twin records it.
-      harness.sort((a, b) => rankOf(order.ranks, a.adapter.id) - rankOf(order.ranks, b.adapter.id));
-      const finalized = finalizeHarness({
-        manifest: result.manifest,
-        harness,
-        tree,
-        owners,
-        logger: this.deps.logger,
-        now: () => now,
-      });
-      const restamped = harnessRuns
-        ? { ...finalized.manifest, harnessGeneration: HARNESS_GENERATION }
-        : finalized.manifest;
-      result = {
-        ...result,
-        manifest: atRank(stored, restamped, order, finalized.realized),
-        applyResult: {
-          ...result.applyResult,
-          skills: finalized.skills,
-          ...(finalized.skipped > 0 ? { skippedHarnessElements: finalized.skipped } : {}),
-        },
-        ran,
-      };
-    } catch (e) {
-      if (harnessRuns && e instanceof ContributionConflictError) {
-        return err(
-          new DomainError(
-            reapplyConflictSentence(growth.rerender, e.message),
-            'keel.reapply-conflict',
-          ),
-        );
-      }
-      throw e;
-    }
-
-    const proposals = refreshProposals(
-      registry,
-      stored.verticals.map((v) => v.id).filter((id) => !result.ran.has(id)),
-      admitted.order.map((v) => v.id),
-      effectiveTags(stored),
-      effectiveTags(result.manifest),
-    );
     const relinked = stored.peers.map((peer) => peer.ref);
-    const notes = [
-      ...admissionNotes(admitted),
+    const converged = await converge({
+      ...this.deps,
+      plan,
+      stored,
+      from: grown,
+      tree,
+      cwd: command.cwd,
+      answers: command.answers,
+      interactive: command.interactive,
+      dryRun: command.dryRun,
+      subject,
+      // Each context `keel add module` added is wired by the run; the
+      // skeleton and the peer are `walking-skeleton`'s, which installs
+      // in part — so the retrofit replays no context.
+      retrofit: { line, contexts: false },
+      check: (staged) =>
+        hasAnswers(command.answers)
+          ? strayAnswerRefusal(
+              command.answers,
+              resolvedAdapters(staged.adapters),
+              history,
+              staged.reads,
+            )
+          : null,
       // This command re-renders nothing it is not asked to: a proposal
       // is taken up afterwards, dry run or not.
-      ...proposals.map((proposal) => this.proposalNote(proposal)),
-      ...(relinked.length > 0 && !sameTags(stored.projects, growth.projects)
-        ? [relinkNote(growth.entrypoint, relinked)]
-        : []),
-    ];
-    const report: InstallReport = {
-      subject,
-      changes: tree.changes(),
-      actions: result.applyResult.actions.map((a) => a.description),
-      committed: !command.dryRun,
-      ...(notes.length > 0 ? { notes } : {}),
-      ...(proposals.length > 0 ? { refreshProposals: proposals } : {}),
-      ...(result.adapters.length > 0
-        ? { resolvedAdapters: resolvedAdapters(result.adapters) }
-        : {}),
-      ...(result.applyResult.skippedHarnessElements
-        ? { skippedHarnessElements: result.applyResult.skippedHarnessElements }
-        : {}),
-      ...(harnessRuns ? { diffs: workingTreeDiffs(this.deps.trees, command.cwd, tree) } : {}),
-    };
-
-    if (command.dryRun) return ok(report);
-
-    await tree.commit();
-    await this.deps.manifests.write(scopeRoot, result.manifest);
-    const runDeferred = this.deps.runDeferred ?? runActions;
-    await runDeferred({
-      actions: result.applyResult.actions,
-      cwd: command.cwd,
-      logger: this.deps.logger,
-      processes: this.deps.processes,
-      dryRun: false,
+      proposeForLater: true,
+      notes: {
+        before: admissionNotes(admitted.value),
+        after:
+          relinked.length > 0 && !sameTags(stored.projects, growth.projects)
+            ? [relinkNote(growth.entrypoint, relinked)]
+            : [],
+      },
     });
-    return ok(report);
-  }
-
-  /**
-   * The run, in the twin's order: each installed vertical with adapters
-   * the grown tags newly match installs those alone; the harness
-   * re-renders; the verticals the project lacks install, closed over
-   * their prerequisites; every other vertical of the twin not placed
-   * at a repository root replays what matched before for its actions.
-   * Refused where the planner refuses what the project lacks.
-   */
-  private planOf(
-    stored: ManifestV2,
-    grown: ManifestV2,
-    growth: GrowthPlan,
-  ): Result<{
-    readonly run: readonly RunStep[];
-    readonly admitted: AdmittedSet;
-    readonly twin: readonly string[];
-  }> {
-    const registry = this.deps.registry;
-    const stack = registry.stack(growth.twin);
-    if (stack === null) throw new Error(`growth named '${growth.twin}', which is not registered`);
-    const harness = stored.verticals.some((v) => v.id === 'agent-harness');
-    const twin = (harness ? stack : withoutHarness(stack)).verticals.map((v) => v.id);
-    const planned = admitGrowth(registry, grown, growth);
-    if (!planned.ok) return planned;
-    const incoming = incomingOf(registry, growth, planned.value);
-    const newly = new Map(growth.adapters.map((each) => [each.vertical, new Set(each.adapters)]));
-    const order = placed(
-      stored.verticals.map((v) => v.id),
-      incoming.map((v) => v.id),
-      twin,
-    );
-    const run = order.flatMap((id): RunStep[] => {
-      const vertical = incoming.find((v) => v.id === id) ?? installedVertical(registry, id) ?? null;
-      if (vertical === null) return [];
-      const settles = twin.includes(id) && vertical.placement?.scope !== 'repository';
-      if (growth.rerender.includes(id) || incoming.includes(vertical)) {
-        return [{ vertical, settles: false }];
-      }
-      const only = newly.get(id);
-      if (only !== undefined) return [{ vertical, only, settles }];
-      return settles ? [{ vertical, settles }] : [];
-    });
-    return ok({ run, admitted: planned.value, twin });
+    if (!converged.ok) return converged;
+    if (!command.dryRun) await commitConverged(this.deps, converged.value);
+    return ok(converged.value.report);
   }
 
   /**
@@ -543,24 +370,6 @@ export class AddEntrypointHandler implements Handler<AddEntrypointCommand> {
       NOT_INITIALISED_CODE,
     );
   }
-
-  /** {@link refreshProposalNote} for one proposal, its ids resolved, taken up by a later run. */
-  private proposalNote(proposal: RefreshProposal): string {
-    const byId = (id: string): Vertical[] => {
-      const vertical = this.deps.registry.vertical(id);
-      return vertical === null ? [] : [vertical];
-    };
-    const [vertical] = byId(proposal.vertical);
-    if (vertical === undefined) {
-      throw new Error(`proposalNote: '${proposal.vertical}' is not registered`);
-    }
-    return refreshProposalNote(
-      vertical,
-      proposal.reads.flatMap(byId),
-      proposal.adapters !== undefined,
-      true,
-    );
-  }
 }
 
 /**
@@ -631,6 +440,15 @@ export function growthRefusalError(registry: Registry, refusal: GrowthRefusal): 
 }
 
 /**
+ * The refusal of the plan `convergeOf` reads for growth: growth's own,
+ * in {@link growthRefusalError}'s words, or the planner's of what it
+ * installs, as both front doors word it.
+ */
+function convergeRefusalError(registry: Registry, refusal: ConvergeRefusal): DomainError {
+  return refusal.kind === 'growth' ? growthRefusalError(registry, refusal.refusal) : refusal.error;
+}
+
+/**
  * The command's refusal of where it runs: inside a monorepo product — at
  * its root, or below it — which records each service by its stack, and
  * refuses every entrypoint alike (`keel.wrong-scope`); null anywhere
@@ -642,260 +460,23 @@ function scopeRefusal(where: DirectoryScope): DomainError | null {
 }
 
 /**
- * `result`, a growing run, with each context `keel add module` added
- * wired into the new assembly (`modules`, in the order the manifest
- * records them: a context's wiring calls the wiring of the one it
- * consumes) as that command ran it, now on the grown project: its
- * vertical, `inputs.vertical`, with the context's marker and inputs
- * seeded — what it consumes read off the record — installing only the
- * adapters that newly match, and the inputs stripped after. Onto the
- * run's tree, ownership and harness buffer, after every vertical the
- * twin lists, where the twin's own history adds them.
- */
-async function wireModules(
-  result: InstallVerticalResult,
-  modules: readonly GrowthModule[],
-  inputs: Omit<InstallVerticalInputs, 'manifest' | 'only' | 'supplied'>,
-): Promise<InstallVerticalResult> {
-  let manifest = result.manifest;
-  const actions = [...result.applyResult.actions];
-  const adapters = [...result.adapters];
-  for (const module of modules) {
-    const recorded = manifest.modules.find((each) => each.name === module.name);
-    const context = { name: module.name, consumes: recorded?.consumes ?? null };
-    const wired = await installVertical({
-      ...inputs,
-      manifest: {
-        ...manifest,
-        tags: [...manifest.tags, CONTEXT_TAG].sort(),
-        answers: { ...manifest.answers, ...addModuleInputs(context) },
-      },
-      only: new Set(module.adapters),
-    });
-    manifest = withoutAddModuleInputs(wired.manifest);
-    actions.push(...wired.applyResult.actions);
-    adapters.push(...wired.adapters);
-  }
-  return {
-    ...result,
-    manifest,
-    applyResult: { ...result.applyResult, actions },
-    adapters,
-  };
-}
-
-/** The project `stored` records, with the tags and `projects` `growth` folds in. */
-function grownManifest(stored: ManifestV2, growth: GrowthPlan): ManifestV2 {
-  return { ...stored, tags: growth.tags, projects: growth.projects };
-}
-
-/** The verticals growth installs, registered, in the twin's order. */
-function lackingOf(registry: Registry, growth: GrowthPlan): readonly Vertical[] {
-  return growth.verticals.flatMap((id) => registry.vertical(id) ?? []);
-}
-
-/**
- * What a run growth plans installs: what the planner adds for what the
- * twin names, then that, in the twin's order.
- */
-function incomingOf(
-  registry: Registry,
-  growth: GrowthPlan,
-  admitted: AdmittedSet,
-): readonly Vertical[] {
-  return [
-    ...admitted.order.filter((v) => !growth.verticals.includes(v.id)),
-    ...lackingOf(registry, growth),
-  ];
-}
-
-/**
- * The verticals growth installs, admitted on `grown` — the harness it
- * re-renders planned as if it were not there yet, as `keel add --refresh`
- * plans one — closed over their prerequisites, or refused.
- */
-function admitGrowth(
-  registry: Registry,
-  grown: ManifestV2,
-  growth: GrowthPlan,
-): Result<AdmittedSet> {
-  return admit(
-    registry,
-    projectScope(registry, grown, growth.rerender),
-    lackingOf(registry, growth),
-  );
-}
-
-/**
- * One vertical of the run: installed or re-rendered whole; installing
- * `only` the adapters that newly match; and, where it `settles`,
- * replaying the adapters that do not install for their actions alone.
- */
-interface RunStep {
-  readonly vertical: Vertical;
-  readonly only?: ReadonlySet<string>;
-  readonly settles: boolean;
-}
-
-/**
- * `recorded`, the verticals a project records in its order, with
- * `incoming` placed among them where `twin` lists them: each before
- * the first recorded one the twin lists after it — one the twin does
- * not list takes the place of the next incoming one it does — and
- * after any other. Nothing recorded moves.
- */
-function placed(
-  recorded: readonly string[],
-  incoming: readonly string[],
-  twin: readonly string[],
-): readonly string[] {
-  const rankFrom = (from: number): number | undefined => {
-    for (const next of incoming.slice(from)) {
-      const rank = twin.indexOf(next);
-      if (rank !== -1) return rank;
-    }
-    return undefined;
-  };
-  const rows = [...recorded];
-  incoming.forEach((id, index) => {
-    const own = rankFrom(index);
-    const at =
-      own === undefined
-        ? -1
-        : rankedIndex(
-            rows.map((row) => (twin.includes(row) ? twin.indexOf(row) : undefined)),
-            own,
-          );
-    rows.splice(at === -1 ? rows.length : at, 0, id);
-  });
-  return rows;
-}
-
-/**
- * The grown project's order, as the twin's (roadmap DR4): `verticals`,
- * the rows of `manifest` — as the run left it — with each new one
- * before the first recorded one the twin lists later, and `ranks`,
- * each adapter of those verticals by where it runs in that order, as
- * it resolves on the grown tags.
- */
-interface TwinOrder {
-  readonly verticals: readonly InstalledVertical[];
-  readonly ranks: ReadonlyMap<string, number>;
-}
-
-/** The {@link TwinOrder} of `manifest`, a run over `stored` growing into `twin`. */
-function twinOrder(
-  registry: Registry,
-  stored: ManifestV2,
-  manifest: ManifestV2,
-  twin: readonly string[],
-): TwinOrder {
-  const had = new Set(stored.verticals.map((v) => v.id));
-  const order = placed(
-    stored.verticals.map((v) => v.id),
-    manifest.verticals.map((v) => v.id).filter((id) => !had.has(id)),
-    twin,
-  );
-  const rows = new Map(manifest.verticals.map((v) => [v.id, v]));
-  const verticals = order.flatMap((id): InstalledVertical[] => {
-    const row = rows.get(id);
-    return row === undefined ? [] : [row];
-  });
-  const tags = effectiveTags(manifest);
-  const ranks = new Map<string, number>();
-  verticals.forEach(({ id }, index) => {
-    // The context vertical `keel add module` records runs after every
-    // other, as keel's own (`wireModules`); one a registry lists ranks nothing.
-    const vertical = id === boundedContextVertical.id ? null : installedVertical(registry, id);
-    if (vertical === null) return;
-    resolveVertical(vertical, tags, registry).forEach((adapter, position) => {
-      if (!ranks.has(adapter.id)) ranks.set(adapter.id, index * 1_000 + position);
-    });
-  });
-  return { verticals, ranks };
-}
-
-/** Where `adapter` runs in the twin's order; after every adapter it ranks where none does. */
-function rankOf(ranks: ReadonlyMap<string, number>, adapter: string): number {
-  return ranks.get(adapter) ?? Number.MAX_SAFE_INTEGER;
-}
-
-/**
- * `manifest`, as the run left it, with what it recorded anew placed
- * where the twin records it (roadmap DR4): its `verticals` in
- * `order`; each new `answers` key before the first key of an adapter
- * that runs later in it; each new harness entry before the first
- * recorded one the run — realizing the harness in that order —
- * realized later (`realized`). Nothing recorded before moves, and a
- * key or an entry with no rank goes last.
- */
-function atRank(
-  stored: ManifestV2,
-  manifest: ManifestV2,
-  order: TwinOrder,
-  realized: readonly Pick<ManifestEntry, 'source' | 'target'>[],
-): ManifestV2 {
-  const keys = Object.keys(manifest.answers);
-  const answers = Object.fromEntries(
-    inPlace(
-      keys.filter((key) => key in stored.answers),
-      keys.filter((key) => !(key in stored.answers)),
-      (key) => order.ranks.get(key),
-    ).flatMap((key) => {
-      const value = manifest.answers[key];
-      return value === undefined ? [] : [[key, value] as const];
-    }),
-  );
-  const entryKey = (entry: Pick<ManifestEntry, 'source' | 'target'>) =>
-    `${entry.source} ${entry.target}`;
-  const realizedAt = new Map<string, number>();
-  realized.forEach((entry, index) => {
-    if (!realizedAt.has(entryKey(entry))) realizedAt.set(entryKey(entry), index);
-  });
-  const had = new Set(stored.entries.map(entryKey));
-  const entries = inPlace(
-    manifest.entries.filter((entry) => had.has(entryKey(entry))),
-    manifest.entries.filter((entry) => !had.has(entryKey(entry))),
-    (entry) => realizedAt.get(entryKey(entry)),
-  );
-  return { ...manifest, verticals: [...order.verticals], answers, entries };
-}
-
-/**
- * `recorded`, in its order, with each of `incoming` in turn before the
- * first row `rank` puts after it — after every row, where it has no
- * rank. Nothing recorded moves.
- */
-function inPlace<T>(
-  recorded: readonly T[],
-  incoming: readonly T[],
-  rank: (row: T) => number | undefined,
-): T[] {
-  const rows = [...recorded];
-  for (const row of incoming) {
-    const own = rank(row);
-    const at = own === undefined ? -1 : rankedIndex(rows.map(rank), own);
-    rows.splice(at === -1 ? rows.length : at, 0, row);
-  }
-  return rows;
-}
-
-/**
  * Every adapter the run could install or re-render — what an early
  * answer check reads: the newly matching ones of a vertical installed
  * in part, and those of the verticals installed or re-rendered whole,
  * read together, since one of them may need what another promotes. A
  * vertical that only settles reads no answer.
  */
-function reachable(run: readonly RunStep[], grown: ManifestV2): readonly Adapter[] {
+function reachable(run: readonly ConvergeStep[], grown: ManifestV2): readonly Adapter[] {
   const whole = reachableAdapters(
-    run.filter((step) => step.only === undefined && !step.settles).map((step) => step.vertical),
+    run
+      .filter((step) => step.posture === 'install' || step.posture === 'rerender')
+      .map((step) => step.vertical),
     effectiveTags(grown),
   );
   return run.flatMap((step) =>
-    step.only === undefined
-      ? whole.filter((adapter) => step.vertical.adapters.includes(adapter))
-      : step.vertical.adapters.filter((adapter) => step.only?.has(adapter.id)),
+    step.posture === 'only'
+      ? step.vertical.adapters.filter((adapter) => step.adapters?.includes(adapter.id))
+      : whole.filter((adapter) => step.vertical.adapters.includes(adapter)),
   );
 }
 

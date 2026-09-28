@@ -20,11 +20,20 @@ manifest under `.claude/` remains machinery, and `code-style` still
 installs formatter configuration. Adding the harness
 later re-renders installed contributors from their recorded answers,
 non-interactively, realizing only their declared harness elements.
-Every recorded bounded context is replayed with its transient module
-selector and recorded `consumes` peer so a grown project gains its
-per-module declarations too. Repeated-question answers reuse their recorded
+keel's own `bounded-context` — the vertical `keel add module` runs,
+never one a plugin registers under that id — is replayed once per
+context that command added, with its transient module selector and
+recorded `consumes` peer; the skeleton's context and the peer's are
+`walking-skeleton`'s, replayed with it. keel's own context adapters
+declare no harness element, so that replay writes nothing today; it
+is there so a context adapter that declares one is replayed as its
+first install ran it. Repeated-question answers reuse their recorded
 values during adoption; ordinary installs retain their repeat behavior.
 Older module records without a `consumes` field replay without a consumer.
+Adopted later, the harness is recorded where one run records it,
+straight after `walking-skeleton`, and so are its files' entries, so
+the manifest and the navigation index read as `keel new` without
+`--no-agent-harness` leaves them.
 
 Growing an entrypoint re-renders an installed harness without being
 asked: [`keel add entrypoint`](../cli.md#keel-add-entrypoint) renders
