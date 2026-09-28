@@ -5,7 +5,12 @@
  * entrypoint`, which the growth grid holds to its twin byte for byte
  * (I10), `keel add`, `keel add module` and, since S.6, `keel new`;
  * this holds each part of the run on a family small enough
- * to read: each posture, both placements, the harness realized in each
+ * to read: each posture, the three placements — at the twin's rank, at
+ * the reference order's (S.8: where one run of the target records each
+ * row, answers key and harness entry, found without replaying the
+ * project, so a recorded vertical no loaded plugin provides, or one the
+ * run's tags no longer cover, ranks nowhere rather than refusing the
+ * run) and appended — the harness realized in each
  * order, an element the twin ranks nothing of, the retrofit with and
  * without the recorded contexts — which never replays the family's
  * `bounded-context` — a re-render within the recorded composition,
@@ -32,7 +37,9 @@
  * vertical of the family's own, under the id `keel add module`
  * records. A project is scaffolded by the run itself onto an empty
  * manifest, and committed; each case varies the plan or the manifest
- * after it.
+ * after it. The reference placement's cases build presets of their own
+ * from the same pieces, beside verticals that each write a doc section,
+ * and hold two runs to one byte for byte.
  *
  * **Factory.** The shipped fakes — an in-memory disk each `FakeTree`
  * opens seeded from and a commit writes back into, `FakeManifestStore`,
@@ -60,6 +67,7 @@ import {
   type ManifestV2,
 } from '../../../src/domain/contract/manifest.js';
 import type { ManifestStore } from '../../../src/domain/contract/ports/manifest-store.js';
+import type { Registry } from '../../../src/domain/contract/ports/registry.js';
 import { PathConflictError, RefusalError } from '../../../src/domain/contract/refusal.js';
 import { markdownRegion, regionPatch } from '../../../src/domain/contract/region.js';
 import type { Stack } from '../../../src/domain/contract/stack.js';
@@ -426,6 +434,9 @@ class World {
   readonly files = new Map<string, Buffer>();
   readonly manifests = new FakeManifestStore();
 
+  /** @param registry what the runs compose from: the family, unless a case builds its own. */
+  constructor(readonly registry: Registry = family) {}
+
   /** A Tree over the disk, as a run opens one. */
   open(): FakeTree {
     const tree = new FakeTree();
@@ -448,7 +459,7 @@ class World {
 
   ports(): ConvergeDeps {
     return {
-      registry: family,
+      registry: this.registry,
       trees: () => this.open(),
       clock: new FakeClock(NOW),
       prompt: rejectingPrompt,
@@ -492,7 +503,13 @@ class World {
   /** A project of `verticals` on `tags`, installed by one run and committed. */
   async scaffold(verticals: readonly Vertical[], tags: readonly Tag[] = CLI): Promise<ManifestV2> {
     const empty = seed(tags);
-    const run = ok(await this.run(empty, planOf(empty, verticals.map(install))));
+    const plan = planOf(
+      empty,
+      verticals.map(install),
+      APPENDED,
+      compositionOf(this.registry, empty),
+    );
+    const run = ok(await this.run(empty, plan));
     await commitConverged(this.committing(), run);
     this.keep(run.tree as FakeTree);
     const manifest = await this.manifests.read(projectScopeRoot(CWD));
@@ -697,6 +714,473 @@ describe('converge: the harness, realized in the placement’s order', () => {
       'acme-obs',
       'acme-notes',
     ]);
+  });
+});
+
+describe('converge: recorded where one run of the target records it (S.8)', () => {
+  // The notes' skill beside a map's doc: a pass realizes every skill
+  // before any doc section, whatever order their contributors run in.
+  const map = vertical('acme-map', [
+    adapter(
+      'acme-map',
+      'main',
+      ['lang.acme'],
+      () => ({
+        docs: [
+          {
+            directory: 'src',
+            section: 'acme-map',
+            description: 'Where the code lives.',
+            body: 'Read it here.',
+          },
+        ],
+      }),
+      { questions: [question('scale', 'small')] },
+    ),
+  ]);
+  const DOC = 'src/AGENTS.md';
+  const POINTER = 'src/CLAUDE.md';
+  const GONE = '.claude/skills/acme-gone/SKILL.md';
+  const mapped = registryOf([
+    {
+      origin: pluginOrigin('acme'),
+      verticals: [skeleton, harness, notes, map],
+      stacks: [preset('acme-mapped', ['arch.cli'], [skeleton, harness, map, notes])],
+    },
+  ]);
+  const ALL = [skeleton, harness, map, notes];
+
+  /** `keel add` of `ids` onto what `world` holds, read as its handler reads it, and committed. */
+  async function add(
+    world: World,
+    stored: ManifestV2,
+    ids: readonly string[],
+    placement?: Placement,
+  ): Promise<ManifestV2> {
+    const plan = convergeOf(world.registry, stored, {
+      kind: 'add',
+      verticals: ids,
+      scope: projectScope(world.registry, stored),
+    });
+    if (plan.kind !== 'converges') throw new Error('expected a plan');
+    expect(plan.placement).toEqual({ rows: 'reference', harness: 'reference' });
+    const run = ok(
+      await world.run(stored, placement === undefined ? plan : { ...plan, placement }),
+    );
+    await commitConverged(world.committing(), run);
+    world.keep(run.tree as FakeTree);
+    const manifest = await world.manifests.read(projectScopeRoot(CWD));
+    if (manifest === null) throw new Error('the add recorded no manifest');
+    // The run records its rows as the plan reads them.
+    expect(manifest.verticals.map(({ id }) => id)).toEqual(plan.target.recorded);
+    return manifest;
+  }
+
+  /** The project one run of the whole preset leaves: its files, and its manifest as written. */
+  async function oneRun(): Promise<{ readonly world: World; readonly manifest: ManifestV2 }> {
+    const world = new World(mapped);
+    return { world, manifest: await world.scaffold(ALL) };
+  }
+
+  it('realizes an entry where one run does, by the stage the pass writes its file in and then its contributor’s rank — the harness not re-rendered', async () => {
+    const one = await oneRun();
+    expect(targets(one.manifest)).toEqual([GUIDE, NOTES, DOC, POINTER]);
+
+    const later = new World(mapped);
+    const stored = await later.scaffold([skeleton, harness, map]);
+    expect(targets(stored)).toEqual([GUIDE, DOC, POINTER]);
+    const added = await add(later, stored, ['acme-notes']);
+    // The notes rank after the map, and their skill is still realized before its doc.
+    expect(targets(added)).toEqual([GUIDE, NOTES, DOC, POINTER]);
+    expect(JSON.stringify(added)).toBe(JSON.stringify(one.manifest));
+    expect(later.files).toEqual(one.world.files);
+
+    // Appended, as every caller but growth recorded before S.8: after every entry.
+    const appended = new World(mapped);
+    const base = await appended.scaffold([skeleton, harness, map]);
+    const at = await add(appended, base, ['acme-notes'], { rows: 'append', harness: 'run' });
+    expect(targets(at)).toEqual([GUIDE, DOC, POINTER, NOTES]);
+    expect(appended.files).toEqual(later.files);
+  });
+
+  it('realizes an adopted harness in the reference order, so a doc it shares with a vertical run before it reads as one run writes it', async () => {
+    // A base run before the harness, and the harness, each own a section of one doc.
+    const section = (name: string) => ({
+      directory: 'src',
+      section: name,
+      description: `The ${name} notes.`,
+      body: `Kept by ${name}.`,
+    });
+    const base = vertical('acme-base', [
+      adapter('acme-base', 'main', ['lang.acme'], () => ({ docs: [section('acme-base')] })),
+    ]);
+    const kit = vertical(
+      'agent-harness',
+      [
+        adapter('agent-harness', 'kit', ['lang.acme'], () => ({
+          tagsAdd: [AGENT_HARNESS_TAG],
+          docs: [section('acme-kit')],
+        })),
+      ],
+      { promotes: [AGENT_HARNESS_TAG] },
+    );
+    const shared = registryOf([
+      {
+        origin: pluginOrigin('acme'),
+        verticals: [skeleton, base, kit],
+        stacks: [preset('acme-shared', ['arch.cli'], [skeleton, base, kit])],
+      },
+    ]);
+    const one = new World(shared);
+    const expected = await one.scaffold([skeleton, base, kit]);
+    const doc = one.read(DOC) ?? '';
+    expect(doc.indexOf('Kept by acme-base.')).toBeLessThan(doc.indexOf('Kept by acme-kit.'));
+
+    const later = new World(shared);
+    const stored = await later.scaffold([skeleton, base]);
+    const adopted = await add(later, stored, ['agent-harness']);
+    expect(later.read(DOC)).toBe(doc);
+    expect(JSON.stringify(adopted)).toBe(JSON.stringify(expected));
+    expect(later.files).toEqual(one.files);
+  });
+
+  it('ranks a doc’s pointer by the first contributor of its doc, among pointers the run does not realize', async () => {
+    const documenting = (id: string, directory: string) =>
+      vertical(id, [
+        adapter(id, 'main', ['lang.acme'], () => ({
+          docs: [
+            { directory, section: id, description: `The ${id} notes.`, body: `Kept by ${id}.` },
+          ],
+        })),
+      ]);
+    const lib = documenting('acme-lib', 'lib');
+    const app = documenting('acme-app', 'app');
+    const two = registryOf([
+      {
+        origin: pluginOrigin('acme'),
+        verticals: [skeleton, harness, lib, app],
+        stacks: [preset('acme-two', ['arch.cli'], [skeleton, harness, lib, app])],
+      },
+    ]);
+    const one = new World(two);
+    const expected = await one.scaffold([skeleton, harness, lib, app]);
+    const pointers = ['lib/CLAUDE.md', 'app/CLAUDE.md'];
+    expect(targets(expected).slice(-2)).toEqual(pointers);
+
+    // The lib's doc arrives after the app's, whose pointer this run does not realize.
+    const later = new World(two);
+    const stored = await later.scaffold([skeleton, harness, app]);
+    const added = await add(later, stored, ['acme-lib']);
+    expect(targets(added).slice(-2)).toEqual(pointers);
+    expect(JSON.stringify(added)).toBe(JSON.stringify(expected));
+  });
+
+  it('records a row and its answers key before the first recorded one the reference lists later', async () => {
+    const one = await oneRun();
+    const later = new World(mapped);
+    const stored = await later.scaffold([skeleton, harness, notes]);
+    const added = await add(later, stored, ['acme-map']);
+    expect(ids(added.verticals)).toEqual([
+      'acme-skeleton',
+      'agent-harness',
+      'acme-map',
+      'acme-notes',
+    ]);
+    expect(Object.keys(added.answers)).toEqual([
+      'agent-harness/kit',
+      'acme-map/main',
+      'acme-notes/main',
+    ]);
+    expect(JSON.stringify(added)).toBe(JSON.stringify(one.manifest));
+    expect(later.files).toEqual(one.world.files);
+  });
+
+  it('adopts the harness where one run records it, realized in the reference order', async () => {
+    const one = await oneRun();
+    const later = new World(mapped);
+    const stored = await later.scaffold([skeleton, map, notes]);
+    expect(stored.entries).toEqual([]);
+    const adopted = await add(later, stored, ['agent-harness']);
+    expect(ids(adopted.verticals)).toEqual(ids(one.manifest.verticals));
+    expect(JSON.stringify(adopted)).toBe(JSON.stringify(one.manifest));
+    expect(later.files).toEqual(one.world.files);
+  });
+
+  it('refuses nothing new for a recorded vertical no loaded plugin provides, whose entry ranks nowhere and stays where it is', async () => {
+    const world = new World(mapped);
+    const scaffolded = await world.scaffold([skeleton, harness, map]);
+    const stored: ManifestV2 = {
+      ...scaffolded,
+      verticals: [...scaffolded.verticals, { id: 'acme-gone', installedAt: NOW }],
+      entries: [
+        ...scaffolded.entries,
+        {
+          source: 'acme-gone/main',
+          target: GONE,
+          sha256Shipped: 'gone',
+          sha256Current: 'gone',
+          installedAt: NOW,
+        },
+      ],
+    };
+    await world.manifests.write(projectScopeRoot(CWD), stored);
+
+    // A replay of the project would need it: the harness re-rendered is refused.
+    const rerendered = convergeOf(mapped, stored, {
+      kind: 'reapply',
+      verticals: ['agent-harness'],
+    });
+    if (rerendered.kind !== 'converges') throw new Error('expected a plan');
+    await expect(world.run(stored, rerendered)).rejects.toMatchObject({
+      code: 'keel.missing-harness-contributor',
+    });
+
+    const added = await add(world, stored, ['acme-notes']);
+    expect(ids(added.verticals)).toEqual([
+      'acme-skeleton',
+      'agent-harness',
+      'acme-map',
+      'acme-notes',
+      'acme-gone',
+    ]);
+    expect(targets(added)).toEqual([GUIDE, NOTES, DOC, POINTER, GONE]);
+  });
+
+  it('refuses nothing new for a recorded vertical the tags the run leaves no longer resolve: it ranks nowhere, its refresh proposed as before', async () => {
+    // Its one adapter covers its one dimension, and excludes the tag `final` promotes.
+    const strict = vertical(
+      'acme-strict',
+      [
+        adapter(
+          'acme-strict',
+          'main',
+          ['lang.acme'],
+          () => ({
+            skills: [{ name: 'acme-strict', description: 'Keep it strict.', body: 'No finals.' }],
+          }),
+          { predicate: { requires: ['lang.acme'], excludes: [FINAL] } },
+        ),
+      ],
+      { skills: ['acme-strict'] },
+    );
+    const STRICT = '.claude/skills/acme-strict/SKILL.md';
+    const strictly = registryOf([
+      {
+        origin: pluginOrigin('acme'),
+        verticals: [skeleton, harness, notes, strict, final],
+        stacks: [preset('acme-strict', ['arch.cli'], [skeleton, harness, strict])],
+      },
+    ]);
+    const world = new World(strictly);
+    const stored = await world.scaffold([skeleton, harness, strict]);
+    expect(targets(stored)).toEqual([GUIDE, STRICT]);
+
+    const plan = convergeOf(strictly, stored, {
+      kind: 'add',
+      verticals: ['acme-final'],
+      scope: projectScope(strictly, stored),
+    });
+    if (plan.kind !== 'converges') throw new Error('expected a plan');
+    expect(plan.placement).toEqual({ rows: 'reference', harness: 'reference' });
+    const run = ok(await world.run(stored, plan));
+    expect(run.report.refreshProposals).toEqual([
+      {
+        vertical: 'acme-strict',
+        reads: [],
+        adapters: { before: ['acme-strict/main'], after: [] },
+      },
+    ]);
+    await commitConverged(world.committing(), run);
+    world.keep(run.tree as FakeTree);
+    expect(targets(run.manifest)).toEqual([GUIDE, STRICT]);
+
+    // A project left so takes a later add, and a re-render of what left it so.
+    const added = await add(world, run.manifest, ['acme-notes']);
+    expect(targets(added)).toEqual([GUIDE, STRICT, NOTES]);
+    const reapplied = convergeOf(strictly, added, { kind: 'reapply', verticals: ['acme-final'] });
+    if (reapplied.kind !== 'converges') throw new Error('expected a plan');
+    expect(targets(ok(await world.run(added, reapplied)).manifest)).toEqual(targets(added));
+  });
+
+  it('keeps harness entries an older keel recorded out of the reference order where they are', async () => {
+    const world = new World(mapped);
+    const scaffolded = await world.scaffold([skeleton, harness, map]);
+    const stored: ManifestV2 = {
+      ...scaffolded,
+      entries: [
+        ...scaffolded.entries.filter(({ target }) => target !== GUIDE),
+        ...scaffolded.entries.filter(({ target }) => target === GUIDE),
+      ],
+    };
+    expect(targets(stored)).toEqual([DOC, POINTER, GUIDE]);
+    await world.manifests.write(projectScopeRoot(CWD), stored);
+    const added = await add(world, stored, ['acme-notes']);
+    // The new skill goes before the first recorded entry one run records after it; the guide stays last.
+    expect(targets(added)).toEqual([NOTES, DOC, POINTER, GUIDE]);
+  });
+
+  it('keeps rows an older keel appended where they are, placing only the new one', async () => {
+    const world = new World(mapped);
+    const scaffolded = await world.scaffold([skeleton, harness, map]);
+    // The harness adopted by an older keel, which appended it.
+    const stored: ManifestV2 = {
+      ...scaffolded,
+      verticals: [
+        ...scaffolded.verticals.filter(({ id }) => id !== 'agent-harness'),
+        ...scaffolded.verticals.filter(({ id }) => id === 'agent-harness'),
+      ],
+    };
+    await world.manifests.write(projectScopeRoot(CWD), stored);
+    const added = await add(world, stored, ['acme-notes']);
+    expect(ids(added.verticals)).toEqual([
+      'acme-skeleton',
+      'acme-map',
+      'agent-harness',
+      'acme-notes',
+    ]);
+    expect(Object.keys(added.answers).slice(0, -1)).toEqual(Object.keys(stored.answers));
+    expect(targets(added).filter((target) => targets(stored).includes(target))).toEqual(
+      targets(stored),
+    );
+  });
+
+  it('writes a new row before bounded-context, which stays last', async () => {
+    const world = new World(mapped);
+    const scaffolded = await world.scaffold([skeleton, harness, map]);
+    const stored: ManifestV2 = {
+      ...scaffolded,
+      verticals: [...scaffolded.verticals, { id: 'bounded-context', installedAt: NOW }],
+    };
+    await world.manifests.write(projectScopeRoot(CWD), stored);
+    const added = await add(world, stored, ['acme-notes']);
+    expect(ids(added.verticals)).toEqual([
+      'acme-skeleton',
+      'agent-harness',
+      'acme-map',
+      'acme-notes',
+      'bounded-context',
+    ]);
+  });
+
+  it('ranks a recorded pointer by the first of its doc’s contributors, not the last', async () => {
+    const documenting = (id: string, directory: string) =>
+      vertical(id, [
+        adapter(id, 'main', ['lang.acme'], () => ({
+          docs: [
+            { directory, section: id, description: `The ${id} notes.`, body: `Kept by ${id}.` },
+          ],
+        })),
+      ]);
+    const early = documenting('acme-early', 'app');
+    const lib = documenting('acme-lib', 'lib');
+    const late = documenting('acme-late', 'app');
+    const three = registryOf([
+      {
+        origin: pluginOrigin('acme'),
+        verticals: [skeleton, harness, early, lib, late],
+        stacks: [preset('acme-three', ['arch.cli'], [skeleton, harness, early, lib, late])],
+      },
+    ]);
+    const one = new World(three);
+    const expected = await one.scaffold([skeleton, harness, early, lib, late]);
+    expect(targets(expected).slice(-2)).toEqual(['app/CLAUDE.md', 'lib/CLAUDE.md']);
+
+    // The lib's contributor runs between the app doc's two.
+    const later = new World(three);
+    const stored = await later.scaffold([skeleton, harness, early, late]);
+    const added = await add(later, stored, ['acme-lib']);
+    expect(JSON.stringify(added)).toBe(JSON.stringify(expected));
+  });
+
+  it('adopts a harness with a hook where one run records it: the script whole, then the settings, before any doc', async () => {
+    const hooked = vertical(
+      'agent-harness',
+      [
+        adapter('agent-harness', 'kit', ['lang.acme'], () => ({
+          tagsAdd: [AGENT_HARNESS_TAG],
+          skills: [{ name: 'acme-guide', description: 'Run the acme project.', body: 'Run it.' }],
+          hooks: [
+            {
+              name: 'acme-gate',
+              event: 'PreToolUse',
+              script: '#!/bin/sh\necho gate\n',
+              reminders: [],
+            },
+          ],
+        })),
+      ],
+      { promotes: [AGENT_HARNESS_TAG], skills: ['acme-guide'], hooks: ['acme-gate'] },
+    );
+    const gated = registryOf([
+      {
+        origin: pluginOrigin('acme'),
+        verticals: [skeleton, hooked, map, notes],
+        stacks: [preset('acme-gated', ['arch.cli'], [skeleton, hooked, map, notes])],
+      },
+    ]);
+    const one = new World(gated);
+    const expected = await one.scaffold([skeleton, hooked, map, notes]);
+    expect(targets(expected)).toEqual([
+      GUIDE,
+      '.claude/hooks/acme-gate.sh',
+      NOTES,
+      '.claude/settings.json',
+      DOC,
+      POINTER,
+    ]);
+
+    const later = new World(gated);
+    const stored = await later.scaffold([skeleton, map, notes]);
+    const adopted = await add(later, stored, ['agent-harness']);
+    expect(JSON.stringify(adopted)).toBe(JSON.stringify(expected));
+    expect(later.files).toEqual(one.files);
+  });
+
+  it('records what a re-render newly writes where one run records it', async () => {
+    const section = (directory: string) => ({
+      directory,
+      section: 'acme-map',
+      description: 'Where the code lives.',
+      body: 'Read it here.',
+    });
+    const both = vertical('acme-map', [
+      adapter('acme-map', 'main', ['lang.acme'], () => ({
+        docs: [section('src'), section('lib')],
+      })),
+    ]);
+    const twice = registryOf([
+      {
+        origin: pluginOrigin('acme'),
+        verticals: [skeleton, harness, notes, both],
+        stacks: [preset('acme-mapped', ['arch.cli'], [skeleton, harness, both, notes])],
+      },
+    ]);
+    const one = new World(twice);
+    const expected = await one.scaffold([skeleton, harness, both, notes]);
+    expect(targets(expected)).toEqual([
+      GUIDE,
+      NOTES,
+      DOC,
+      'lib/AGENTS.md',
+      POINTER,
+      'lib/CLAUDE.md',
+    ]);
+
+    // The map's lib doc, recorded by none: the re-render writes it anew.
+    const world = new World(twice);
+    const scaffolded = await world.scaffold([skeleton, harness, both, notes]);
+    const stored: ManifestV2 = {
+      ...scaffolded,
+      entries: scaffolded.entries.filter(({ target }) => !target.startsWith('lib/')),
+    };
+    await world.manifests.write(projectScopeRoot(CWD), stored);
+    world.files.delete('lib/AGENTS.md');
+    world.files.delete('lib/CLAUDE.md');
+    const plan = convergeOf(twice, stored, { kind: 'reapply', verticals: ['acme-map'] });
+    if (plan.kind !== 'converges') throw new Error('expected a plan');
+    expect(plan.placement).toEqual({ rows: 'reference', harness: 'reference' });
+    const run = ok(await world.run(stored, plan));
+    expect(targets(run.manifest)).toEqual(targets(expected));
   });
 });
 

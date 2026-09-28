@@ -3,7 +3,7 @@
  * dispatched through the real mediator, and the ratchet that holds
  * epic Q's invariants over them (`docs/roadmap.md` → "The measure:
  * the composition grid"), epic R's I10 ("The measure", under R), and
- * epic S's I11 ("The measure", under S).
+ * epic S's I11 and I12 ("The measure", under S).
  *
  * **Scenario.** Cells are derived, never listed: stacks and verticals
  * from `keel.catalog`, the extras menu from `keel.dials`, the
@@ -100,6 +100,7 @@ export const INVARIANTS = {
   I9: 'the same body previews and installs (dry run) alike: the same bytes, or the same refusal — the one the preview reports an unread answer with',
   I10: 'keel new X, and on a modulith keel new X with a keel add module history, then keel add entrypoint e leaves the tree, manifest and queued actions (less the repository setup) that keel new of the twin, given the same history, leaves on the same dials — or is refused as growth reads it',
   I11: 'a project re-rendered whole — one keel add --reapply naming every recorded vertical keel add can name, as a dry run — comes back Ok, resolves an adapter of every vertical it names, and stages nothing; and each of those re-rendered alone, by keel add v --reapply or by --refresh v beside an add, comes back Ok and resolves an adapter of it — by --reapply, staging nothing',
+  I12: 'arriving later equals one run: keel new X then keel add y (with the refresh its preview proposes) leaves every file of keel new X --with y, its manifest byte for byte; and keel new X --no-agent-harness, with or without --with y, then keel add agent-harness leaves those of keel new X, with or without --with y',
 } as const;
 
 /** One of {@link INVARIANTS}. */
@@ -124,6 +125,8 @@ export type Invariant = keyof typeof INVARIANTS;
  * later verticals wrote, widened it hard: each vertical re-rendered
  * alone, growth's twins, and the whole menus where the dev environment
  * is an extra.
+ * I12 landed hard with S.8, when every caller came to record what it
+ * adds where one run records it.
  */
 export const HARD: readonly Invariant[] = [
   'I1',
@@ -136,6 +139,7 @@ export const HARD: readonly Invariant[] = [
   'I9',
   'I10',
   'I11',
+  'I12',
 ];
 
 /**

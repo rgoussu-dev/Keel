@@ -25,7 +25,7 @@
  *      reading every path that installs or re-renders verticals is to
  *      make. Under `--reapply`, its `reapply` request: what is named,
  *      and what `--refresh` names beside it, re-rendered in the order
- *      the project installed them. Otherwise its `add` request: the
+ *      the project records them. Otherwise its `add` request: the
  *      named set planned with the planner (`../planner.ts`), the
  *      reading the extras menu, `keel new --with` and this project's
  *      cards share (`../plan-refusal.ts`, `../add-readiness.ts`), on
@@ -41,7 +41,11 @@
  *      one whose place is the repository root, or that needs one,
  *      under `keel.wrong-scope` — one breaking a rule among them, and
  *      a tie between two sets of prerequisites. Either way the run
- *      appends what it records, and realizes the harness in run order.
+ *      records what it adds where one run of `keel new` of the project
+ *      it leaves records it — each row, answers key and harness entry
+ *      at the reference order's rank, nothing recorded moving (roadmap
+ *      S.8) — and realizes the harness in that order; appended, where
+ *      no preset reads back.
  *   5. Refuse a supplied answer for a re-rendered adapter that has
  *      answers recorded — they are frozen — and one no adapter of the
  *      planned verticals could read, before a question is asked.
@@ -90,7 +94,7 @@
  * the working tree), while a patch that would change an
  * already-patched file aborts the whole run with
  * `keel.reapply-conflict`, naming what re-rendered in the order the
- * project installed it, before anything is committed. It runs within
+ * project records it, before anything is committed. It runs within
  * the recorded composition (roadmap S.7): every other recorded
  * vertical's patches, and each added context's wiring, go back onto
  * the whole files the re-render rewrote, and onto no other — one that
@@ -277,7 +281,7 @@ export class AddVerticalHandler implements Handler<AddVerticalCommand> {
 
     // The plan, `convergeOf`'s reading. A reapply re-renders what is
     // there — everything named, and what --refresh names beside it —
-    // in the order the project installed it, so it has nothing to
+    // in the order the project records it, so it has nothing to
     // admit. Otherwise the planner's reading, the one `keel new
     // --with`, the extras menu and this project's cards
     // (`keel.project-status`) share: the named set closed over what it

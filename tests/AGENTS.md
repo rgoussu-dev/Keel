@@ -72,8 +72,8 @@ it guards:
 `domain/core/composition-grid/` sweeps keel's whole composition surface
 through the real mediator, over `support/composition-grid.ts`: the
 measure behind roadmap epic Q, whose invariants (I1–I9) it
-holds, epic R's I10, and epic S's I11. Four suites, split so vitest
-runs them in parallel:
+holds, epic R's I10, and epic S's I11 and I12. Four suites, split so
+vitest runs them in parallel:
 
 - `greenfield` — every stack × every vertical as its one extra, held
   against the `keel.dials` menu (I2 offered ⇒ Ok, I3 accepted ⇒
@@ -188,6 +188,24 @@ runs them in parallel:
   the axis reads no refused cell on keel's presets now, though it
   still reads the growth golden for any.
 
+**I12, arriving later against one run** (roadmap S.8), is held in
+brownfield, hard from the day it landed (`holdArrival`). On each
+preset's opening dials, for each extra its menu offers, the scaffold is
+copied into a directory of its own and `keel add y` run there for real,
+with the refresh the add's preview proposes (read off its `add:` cell),
+against `keel new --with y` in another; and, where `keel.dials` lets
+the harness be left out, `keel new --no-agent-harness` then `keel add
+agent-harness` against the scaffold, and the same after `--with y`
+against `keel new --with y`. Every file must match byte for byte, the
+manifest among them — the pinned clock stamps both sides alike — so a
+row, an answers key or a harness entry recorded anywhere but where one
+run records it fails the grid. The runs go through `Grid.twin` and
+record no verdict, so the golden gains no key; a violation is keyed
+`arrival:<stack>+<y>`, `arrival:<stack>~agent-harness` or
+`arrival:<stack>+<y>~agent-harness`. That is 314 pairs over 628 real
+runs — 143 extras, 28 bare adoptions and 143 after an extra — which
+take brownfield from about 13 s alone to about 50 s.
+
 Cells come from `keel.catalog`, `keel.dials` and `keel.project-status`,
 never from a hand list, so a new preset or vertical is swept without an
 edit. The grid is a **ratchet**: today's violations are on record, and
@@ -210,14 +228,14 @@ the record can only shrink. Beside each suite:
   when a monorepo service came to read what its product gives it and
   what only a repository root may carry, I9 since Q2.1, when the
   preview came to read the answers it is sent as the install does,
-  I10 hard from the day it landed, with R.2b's command, and I11 hard
-  from the day it landed too, with S.1b, on the projects whose recorded
+  I10 hard from the day it landed, with R.2b's command, I11 hard from
+  the day it landed too, with S.1b, on the projects whose recorded
   composition was a fixed point already — widened hard by S.7 to each
   vertical re-rendered alone, growth's twins and the whole menus where
-  the dev environment is an extra. Every
-  known file is empty now but brownfield's I5 key; growth's holds only
-  hard invariants, and is `{}` because `sweepGrid` reads each axis's
-  known file whatever it holds.
+  the dev environment is an extra — and I12 hard from the day it
+  landed, with S.8. Every known file is empty now but brownfield's I5
+  key; growth's holds only hard invariants, and is `{}` because
+  `sweepGrid` reads each axis's known file whatever it holds.
 - brownfield's I5 reads `greenfield.golden.json`, so when a change moves
   both, regenerate greenfield first. Where either side refuses, it
   previews the greenfield twin again (`Grid.twin`, which records
@@ -238,11 +256,12 @@ status read and a dry-run whole re-render on each of the 160 twins for
 I11, some 7 s paired with the axis before it, less than the load swings
 it by; the JVM's are the heaviest), greenfield ~23 s, of which I8's
 orderings are about 3.5 s and I9's bodies — some 260 whole-menu
-dispatches — about 14 s, brownfield about 17 to 21 s alone and about
-28 s in the full suite (1,891 cells, 1,208 of them S.1b's I9 and I11
-cells and 180 S.7's, and 28 real modulith scaffolds and 10 whole-menu
-ones beside the 28 opening ones), and composite about 15 s alone and
-17 to 18 s in the full suite (1,656 cells, 984 of them S.1b's).
+dispatches — about 14 s, brownfield about 53 s alone and 58 s
+in the full suite (1,891 cells, 1,208 of them S.1b's I9 and I11 cells
+and 180 S.7's, 28 real modulith scaffolds and 10 whole-menu ones
+beside the 28 opening ones, and S.8's 628 real I12 runs), and
+composite about 11 to 15 s alone and 13 to 18 s in the full suite
+(1,656 cells, 984 of them S.1b's).
 
 **The weekly sweep beside it.** The grid's preview axes read each
 preset's opening dials only, each extra alone and the whole menu, and
@@ -267,10 +286,13 @@ again with the agent harness left out wherever that is allowed.
   once in one run and once in two runs (`keel new --with x`, then
   `keel add y` with the `--refresh` its preview proposes), and each
   extra on its own the same way (`keel new`, then `keel add y`). The
-  two trees must match, manifests normalised. This is the one
-  comparison an undeclared `Vertical.reads` cannot pass, because the
-  planner sorts a set whatever order it is named in. A pair that
-  differs only as `y` does on its own is said so, under one heading.
+  two trees must match, each manifest with its timestamps normalised
+  and nothing else: since roadmap S.8 every caller records a row where
+  one run records it, so a row out of that order is a finding. This is
+  the one comparison an undeclared `Vertical.reads` cannot pass,
+  because the planner sorts a set whatever order it is named in. A pair
+  that differs only as `y` does on its own is said so, under one
+  heading.
 - `choices` answers every choice of every question asked by the whole
   menu, by no extra, or by any one extra with what it needs, one answer
   per body, then previews it and installs it as a dry run. The whole
@@ -538,9 +560,12 @@ or the target's reference order, each step of the run (`<vertical>
 <posture>`, `+settle` and the adapters where it installs some, the
 posture `replay` where a re-render puts its patches back, S.7, and
 `bounded-context replay <name> <adapters>` for a context it puts
-back), the contexts it wires, and where it records (`append/run`, or
-`twin/twin` for growth). What each cell comes to is held against the verdict its
-paths golden records, code for code, `keel.unknown-answer` apart (an
+back), the contexts it wires, and where it records
+(`reference/reference` for `keel add` and `keel add module` since S.8,
+`append/run` for `keel new` and where no preset reads back, or
+`twin/twin` for growth). What each cell comes to is held against the
+verdict its paths golden records, code for code, `keel.unknown-answer`
+apart (an
 answer is no part of a request). A `keel new` cell is read per scope
 on the seed manifest each starts from, then run, and each manifest it
 leaves is read back through `compositionOf`: the round trip, on every

@@ -30,6 +30,10 @@ is there so a context adapter that declares one is replayed as its
 first install ran it. Repeated-question answers reuse their recorded
 values during adoption; ordinary installs retain their repeat behavior.
 Older module records without a `consumes` field replay without a consumer.
+Adopted later, the harness is recorded where one run records it,
+straight after `walking-skeleton`, and so are its files' entries, so
+the manifest and the navigation index read as `keel new` without
+`--no-agent-harness` leaves them.
 
 Growing an entrypoint re-renders an installed harness without being
 asked: [`keel add entrypoint`](../cli.md#keel-add-entrypoint) renders

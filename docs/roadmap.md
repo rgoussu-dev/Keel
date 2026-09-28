@@ -10773,7 +10773,7 @@ Beyond the text above:
   it (_Times_), and the rest of the axis is what HEAD runs. So no shard
   option landed.
 
-### S.8 — One record order (M)
+### S.8 — One record order (M) ✅
 
 The second behaviour change (DS3). Every caller records a new row
 where one run of the target composition records it, at the reference
@@ -10821,6 +10821,295 @@ reading. A manifest an older keel appended keeps its order, and
 `keel docs check` stays red on a project adopted before S. Reading the index
 in the reference order would change what `keel docs sync` writes on
 every appended manifest, and it waits for a step of its own.
+
+**Landed as one record order**, in one commit. `converge.ts` (875 lines
+to 915) places what its callers record: `convergeOf` hands the plans of
+`add`, `reapply` and `module` to `atReference`, which, where the target
+reads back a preset, places each row the run records anew with `placed`
+against the target's reference order — before the first recorded row
+the reference lists later, so before `bounded-context`, nothing
+recorded moving — reads the target again over those rows, and marks the
+plan `reference/reference`, a third `Placement` beside growth's
+`twin/twin` and `append/run`. Where no preset reads back the plan stays
+appended. `converge-run.ts` (612 lines to 763) ranks by the reference
+as it ranks growth by its twin (`rankingOf`, `twinOrder`): the harness
+buffer is realized in that order, and `atRank` places the rows and the
+answers keys by it. A harness entry is placed by a rank `atRank` is
+handed: growth's by where the pass realized it (`realizedRank`, as
+before); the reference's by `referenceRank`, which replays nothing. It
+reads the stage `realizeHarness` writes the entry's file in — a skill's
+or a hook's file, whole, where its contributor's vertical declares that
+skill or hook; the hook settings; a file a harness patch or a doc
+section lands in; a doc's pointer, ranked by the first contributor of
+its doc; the index — then the contributor's rank in the order, then
+where this run realized it, for one contributor's files. A contributor
+the order ranks nothing of ranks nowhere, and its entry stays where it
+is: a vertical no loaded plugin provides, and one the tags the run
+leaves no longer cover, which `twinOrder` reads with `coverageGap` and
+leaves unranked rather than resolve it and refuse the run. The handlers
+change in a doc comment each, and the doc comments that named the order
+a re-render runs in the install order — `add-vertical.ts`',
+`planner.ts`' and `RefreshGap.verticals` — name the recorded one.
+
+- **The golden moves in the manifest alone.** A script compared every
+  cell of HEAD's goldens with the regenerated ones, field by field
+  (kept outside the repository, re-runnable against any base): no tree
+  digest, verdict or action list moved on any of the 3,436 cells, and
+  `paths-new` and `paths-reapply` are byte-identical. `paths-add` moved
+  on 603 of its 1,326 cells:
+  - 74 single-extra adds, in `manifest.entries` alone: the 37 the
+    research measured, persistence 18 and iac 19, and the same 37 with
+    their questions answered. 24 more are the same adds in product
+    services, in `entries` alone: persistence in each backend under
+    both layouts, and iac in each polyrepo backend and frontend, on
+    the six products;
+  - all 171 harness adoptions, in `manifest.verticals` alone,
+    `agent-harness` recorded third where it was last. On the 18 after
+    `--with persistence`, `keel docs check`'s drift goes from red to 0,
+    as measured; no other cell's drift moves;
+  - 189 of the 265 pair cells, 21 on each of the nine presets that
+    carry both entrypoints. By field, `entries` alone on 43,
+    `verticals` alone on 40, `verticals` and `answers` on 43, all three
+    on 42, and `verticals` and `entries` on 21. Q3.4's second spelling
+    moved too, on its two presets, in `verticals` alone;
+  - all 143 adds after a module history, in `manifest.verticals`, the
+    row before `bounded-context`; the 37 of persistence and iac in
+    `entries` too.
+
+  `paths-grow` moved on the 18 of its 690 cells that adopt the harness
+  and then grow, in `manifest.verticals`, and on nine of them in the
+  report too (below). The converge golden moved in `placement` alone on
+  2,445 cells, `append/run` to `reference/reference`: every `keel add`,
+  `--refresh`, `--reapply` and `keel add module` cell that converges,
+  but the 54 at monorepo product roots, where no preset reads back. The
+  same 18 growth cells moved in `run` alone. `growth.golden.json` (360
+  cells) and the shared-files, agent-harness and run-skill goldens are
+  byte-identical, and so are the grid's four goldens and its known
+  files: brownfield's `{"I5": {}}`, `{}` for the others. I10 and I11
+  hold on every cell.
+
+- **I12 lands hard**, in `INVARIANTS` and `HARD`, held by brownfield
+  (`holdArrival`) on each preset's opening dials: `keel add y` on a copy
+  of the scaffold, with the refresh the `add:` cell's preview proposes,
+  against `keel new --with y`, for each of the 143 extras the menus
+  offer; `keel add agent-harness` on `keel new --no-agent-harness`
+  against the scaffold, on all 28; and the same after `--with y`
+  against `keel new --with y`, 143 more. Every file must match byte for
+  byte, the manifest among them: 314 pairs over 628 real runs, through
+  `Grid.twin`, so no verdict key is added. All 314 hold. The same axis
+  on HEAD's sources breaks it on 208: the 37 single extras (iac 19,
+  persistence 18) and all 171 adoptions.
+- **The weekly sweep, after S.8.** `normalisedManifest` puts the
+  timestamps alone to one value, and keeps key order and every list as
+  written; `machinery.test.ts`' case of it now reads a record in
+  another order as a `record` finding. Filtered as S.7 ran it
+  (`quarkus-cli-rest`, `go-cli-http`, `rust-cli-http`, `ts-cli-http`
+  and `web-components`: 48 dial settings, 1,302 pairs and 288
+  arrivals alone, 918 scaffolds, 1,590 previews and 1,584 adds), the
+  `arrival` suite found 12 findings in 4.7 minutes, all on
+  `quarkus-cli-rest`: Q3.4's second finding on its six Gradle
+  settings, the manifest differing in its tags and answers, and its
+  third on the same six — S.7's 12, line for line, but for the order
+  that line names the two fields in, the manifest's own key order now
+  rather than a sorted one. Run with the same reading on HEAD's
+  sources it found 825 in 4.8 minutes (`go-cli-http` and
+  `rust-cli-http` 105 each, `web-components` 192, `ts-cli-http` 210,
+  `quarkus-cli-rest` 213): besides the 12, a manifest recording the
+  same files otherwise.
+- **The tests.** `converge.test.ts` goes from 32 cases to 37: a new row
+  before the first recorded one the reference lists later, a harness
+  adopted later at its preset's rank, a row before `bounded-context`, a
+  recorded row kept where an older keel put it, and a project no preset
+  reads back appended; the `add`, `reapply` and `module` placements read
+  `reference/reference`. `converge-run.test.ts` goes from 25 to 38, on
+  presets of its own built from the family's pieces, most holding two
+  runs to one byte for byte, manifest included: the notes' skill
+  realized before a map's doc they rank after, and appended after it
+  under `append/run`; a row and its answers key before the first
+  recorded one; the harness adopted, and a harness with a hook, its
+  script whole, then the settings, before any doc; a doc the adopted
+  harness shares with a vertical run before it, in one run's section
+  order; a new doc's pointer before a recorded one the run does not
+  realize, and a recorded pointer ranked by the first of its doc's
+  contributors, not the last; a recorded vertical no loaded plugin
+  provides, whose re-render of the harness is refused as
+  `keel.missing-harness-contributor`, while the add goes on and its
+  entry stays last; a recorded vertical whose one adapter excludes the
+  tag an add promotes, the add going on with its refresh proposed, and a
+  later add and a `--reapply` of the promoting vertical after it;
+  harness entries an older keel recorded out of the reference order, and
+  rows it appended, kept where they are, only the new one placed; a new
+  row before `bounded-context`; and what a `--reapply` newly writes
+  recorded where one run records it. Every add there also holds the rows
+  it wrote to the plan's `target.recorded`, which the run places anew
+  rather than reads. `add-vertical.test.ts`' 36th case now puts the rows
+  back as an older keel appended them before its `--reapply` beside
+  `--refresh` (below).
+
+**The proof**, each tried in a scratch edit of `src/` and undone byte
+for byte, run against `converge-run.test.ts`, `converge.test.ts`,
+`add-vertical.test.ts`, `add-module.test.ts` and the brownfield axis
+(134 tests). Each failed exactly what is named:
+
+- **The rows appended, the harness still realized in the reference
+  order:** I12 on the 208 cells HEAD breaks it on, all thirteen new cases
+  of `converge-run.test.ts`, the three placements of
+  `converge.test.ts` and `add-vertical.test.ts`' 36th.
+- **The entries placed by where the pass realized them**, growth's
+  rule: I12 on the 37 single extras alone, and five cases: the
+  stage's, both pointers', the vertical no plugin provides and the
+  entries an older keel recorded out of the reference order.
+- **No stage for a contributor's file, its rank alone:** I12 on 189,
+  the 171 adoptions and persistence's 18, and seven cases: the
+  stage's, the row's, the adoption's, the hook's, the re-render's, the
+  vertical no plugin provides and the entries an older keel recorded
+  out of the reference order.
+- **A hook's file read as landed, not whole:** I12 on all 208, the
+  kit's hooks then ranking after the settings, beside code-style's
+  format step, and the hook's case.
+- **The hook settings ranked with the index:** I12 on the same 189,
+  and the hook's case.
+- **The harness buffer left in run order:** the case of a doc the
+  harness shares with a vertical run before it, alone. I12 holds on all
+  314 pairs.
+- **A pointer ranked by where the run realized it alone:** the pointer
+  case, alone, which was written for it once nothing else failed.
+- **A recorded pointer ranked by the last contributor of its doc:** the
+  recorded pointer's case, alone.
+- **The reference ranked without `bounded-context`:** the case of a
+  row before it, alone.
+- **Every recorded row put back into the reference order:** the case
+  of rows an older keel appended, alone. I12 holds, since every cell's
+  record is the current keel's, in that order already.
+- **Every recorded entry put back by its rank in the reference
+  order:** the case of entries an older keel recorded out of it,
+  alone, I12 holding for the same reason.
+- **A recorded vertical the run's tags no longer cover resolved, not
+  read with `coverageGap`:** its case, alone, the add refused as
+  `keel.uncoverable-vertical`.
+- **`--reapply` appended:** the re-render's case, and
+  `converge.test.ts`' reapply placement.
+
+**Times**, under `CI=true` on four cores. In one run of
+`CI=true pnpm test` the suite took 400.2 s as vitest reports it (6 min
+41 s wall), with 202 files and 3,268 tests passing, 19 more than S.6's
+3,249, from a load average of 4.7 to 8.9, another checkout's work
+beside it. Beside the rest: brownfield 67.0 s, growth's axis 132.5 s,
+greenfield 40.7 s and composite 20.7 s; the converge golden 69.8 s; the
+paths golden's four 49.8, 62.5, 18.5 and 62.9 s (new, add, reapply,
+grow); `shared-files.golden.test.ts` 50.4 s; `add-vertical.test.ts`
+15.4 s, `converge-run.test.ts` 258 ms and `converge.test.ts` 82 ms. Two
+earlier runs, before the last two cases of `converge-run.test.ts`, had
+brownfield at 74.5 s (load 2.7 to 6.0, the suite 387.6 s) and 64.0 s
+(4.1 to 8.2). I12 is the step's cost: brownfield alone took 51.3 s at a
+load average below 1, and, paired with HEAD's copy of the axis at 4 to
+7, 53.3 s and 47.8 s against 14.9 s and 16.6 s. The measure put it at
+some 330 real runs and about 50 s; it is 628 runs, in that time. It
+stays below growth's axis.
+
+No template changed and no preview moves — a preview stages no
+manifest — so neither the `keel ui` browser suites nor any e2e suite
+was run; the 13 web suites of `tests/application/web` pass, 240
+tests. `pnpm lint` and `pnpm typecheck` pass. Dependency-cruiser
+cruises 306 modules and 1,512 dependencies, four more than S.6's: the
+run imports node's `path` and the doc, hook and skill contracts. The
+CHANGELOG entries are under _Changed_ and _Fixed_.
+`src/domain/core/AGENTS.md` names the placements and how an entry is
+ranked; `tests/AGENTS.md` records I12 and the sweep's reading;
+`docs/composition.md`, `docs/cli.md` (`keel add`, `keel docs`),
+`docs/verticals/agent-harness.md` and `docs/development.md` say where
+a later run records.
+
+Beyond the text above:
+
+- **`keel new` stays `append/run`.** Its run is in the reference order
+  already, which the converge golden's round trip holds on every scope
+  it reads, onto a seed that records nothing; placed at the reference,
+  it would write the same bytes and move 689 cells of the converge
+  golden's `placement`.
+- **`--reapply` and `keel add module` are placed at the reference
+  too.** A re-render records anew only the key of an adapter the
+  vertical newly resolves to, or the entry of a harness file newly
+  written, and `keel add module` records `bounded-context` last the
+  first time, where appending puts it, its `bounded-context` realizing
+  no harness file on keel's presets. No cell reaches a difference, so
+  on every cell each behaves as appended; the re-render's case holds
+  the first.
+- **More single-extra cells move than the 37 measured.** The same 37
+  adds with their questions answered move alike, and so do 24 adds in
+  product services, which the research's 143 pairs did not include:
+  each records its skill's entry where one run of the service records
+  it.
+- **Nine growth reports move.** Growth runs in the order the record
+  keeps, placing what it adds at the twin's rank. After an adoption
+  that recorded the harness last it re-rendered the harness last, and
+  on the nine CLI presets growing HTTP the report listed its adapters
+  so. The harness is recorded third now, so it runs third, and the
+  report is the one growing the scaffold made with the harness gives,
+  on all 18 cells: report, actions, tree and drift alike.
+- **The harness buffer is realized in the reference order**, and on
+  keel's presets nothing tells: no vertical before the harness shares
+  a file with it, as the research found adoptions writing one run's
+  files already. The fixture case holds it.
+- **A pointer ranks by the first contributor of its doc**, since one
+  pass writes the pointers in the order their docs first appear. No
+  add of keel's writes a pointer among recorded ones; two fixture cases
+  hold it.
+- **`add-vertical.test.ts`' 36th case writes the manifest back** as an
+  older keel appended it, distribution before persistence: after two
+  adds, S.8 records persistence first, as the planner orders a
+  `--refresh`, so without it the case could not tell the recorded order
+  from the planner's. It also holds that the adds record persistence
+  first.
+- **The sweep's reading keeps key order too.** It sorted every
+  object's keys, the answers' among them, as well as the lists; it now
+  normalises the timestamps alone, as _The measure_ says.
+- **A recorded vertical the tags no longer cover refuses nothing new
+  either**, beside the one no loaded plugin provides that the text
+  names. Placed at the reference, every `keel add`, `--refresh`,
+  `--reapply` and `keel add module` ranks the recorded verticals, as
+  growth alone did before, and the ranking resolved each on the tags
+  the run leaves. So one whose only adapter excludes a tag the add
+  promotes refused the run as `keel.uncoverable-vertical`, naming a
+  vertical the user never asked about, where HEAD proposed its
+  refresh, and so was every later add, `--reapply` and dry run on the
+  project it left. `twinOrder` now reads each with `coverageGap` first
+  and ranks none of one it finds uncovered: the refusal stays with a
+  run that runs it. No cell reaches it, since among keel's adapters only
+  `quarkus-cli-native` declares `excludes`, and where it is ruled out
+  another adapter of `distribution` covers its dimensions. The fixture
+  case holds it; a probe through the mediator — `keel new` of a plugin
+  preset then `keel add` of the promoting vertical, and the project
+  reached so under the plugin's earlier version, then an add, a
+  `--reapply` and a dry run under the later — was refused four times
+  before and is Ok on all four, as on HEAD.
+- **A re-render after `keel add y` on a module history writes what
+  one run writes.** S.7 replays a context's wiring where it arrived,
+  read off the rows recorded after the `bounded-context` row; this step
+  records `y` before that row, where one run records it, so the
+  re-render replays `y`'s patches first and the contexts' wiring after
+  them, as `keel new --with y` then the same `keel add module` history
+  writes them. Every line of both comes back; only their order moves,
+  onto one run's, and a second re-render stages nothing. The arrival
+  order cannot be read otherwise: timestamps tie under a pinned clock,
+  a re-render restamps what it re-renders, and growth records its rows
+  at rank too while wiring the contexts after them. No golden cell
+  runs that history, so nothing of the goldens moves. S.7's handler
+  case of it now holds the bootstrap re-rendered on a `ts-http`
+  modulith that took persistence after `orders` to the entrypoint
+  `keel new --with persistence` then `keel add module orders` writes,
+  a `modify` of it alone, and a fixed point after. On a manifest an
+  older keel appended, the context's wiring comes back where it
+  arrived, as S.7 has it.
+- **Measured again on S.7's sources**, which this step lands after:
+  regenerated there, the goldens move on the same 621 cells as above
+  and no other (the move script flags none), in the manifest, the
+  drift of the 18 adoptions and the 9 reports alone, and the converge
+  golden's placement on the same 2,445 cells beside S.7's replay steps.
+  `CI=true pnpm test` passes 202 files and 3,325 tests, 19 more than
+  S.7's 3,306; brownfield takes about 53 s alone and 58 s in the full
+  suite. The filtered `arrival` sweep finds the same 12 findings, all
+  on `quarkus-cli-rest`, in 3.8 minutes.
 
 ### S.9 — What a re-render leaves behind is said (S)
 

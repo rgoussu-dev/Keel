@@ -69,6 +69,21 @@ use to keep a long-lived changelog scannable — and the root keeps
   context has any until you write them. `keel add agent-harness
 --reapply` renders it anew on a project already scaffolded.
 
+- **`keel docs check` is no longer red after `keel add agent-harness`
+  on a project that took persistence first.** Adopting the harness on
+  a project scaffolded `--no-agent-harness --with persistence` recorded
+  `agent-harness` after persistence, where a preset records it straight
+  after `walking-skeleton`. The navigation index replays the recorded
+  verticals in that order, and a directory two of them document takes
+  the description of the first it meets, so `keel docs check` reported
+  drift in the index the adoption had just written, and
+  `keel docs sync` rewrote it away from what
+  `keel new --with persistence` writes. The harness is now recorded
+  where one run records it (under _Changed_), and the check passes. A
+  project that adopted the harness with an earlier keel keeps the order
+  it recorded, and with it the drift, until `keel docs sync` rewrites
+  the index in that order.
+
 - **A dev container you customized is refused, not crashed on, when a
   dev environment arrives.** `keel add dev-env` on a project whose
   `.devcontainer/devcontainer.json` no longer carried the image keel
@@ -605,6 +620,27 @@ new` the terminal adds the way past it (move it aside, or start in
   either can no longer alias two distinct regions into a collision.
 
 ### Changed
+
+- **`keel add` records what it adds where `keel new` records it.**
+  `keel add` — with `--refresh` and `--reapply` — and `keel add module`
+  appended what they recorded to the manifest: a new row of `verticals`
+  after every recorded one, a new adapter's `answers` after the others,
+  a new harness file's entry after every entry. So `keel new X` then
+  `keel add y` wrote the files `keel new X --with y` writes and recorded
+  them otherwise: `keel add agent-harness` recorded the harness last,
+  where a preset records it straight after `walking-skeleton`;
+  `keel add persistence` and `keel add iac` recorded their skill's
+  entry after every other, where one run records it among the skills,
+  before the hook settings; and an add after `keel add module` recorded
+  its row after `bounded-context`. Each is now recorded where one run
+  of `keel new` of the project the add leaves records it — the
+  manifests of the two are the same, their timestamps apart — and a row
+  added after `keel add module` goes before `bounded-context`, which
+  stays last. No file changes. Nothing already recorded moves: a
+  manifest an earlier keel appended to keeps its order, and one keel
+  places on no preset — a monorepo product's root, a plugin's preset
+  keel no longer loads, a manifest migrated from v1 — is appended to,
+  as before.
 
 - **A refusal an entrypoint would lift names the command that adds
   it.** `keel add observability` on a CLI project was refused in the

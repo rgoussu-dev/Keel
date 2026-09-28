@@ -726,20 +726,55 @@ describe('keel.add-vertical (keel add)', () => {
       expect(await files(cwd)).toEqual(wired);
     });
 
-    it('re-renders the bootstrap of a modulith that took a vertical after a context, putting the context’s wiring back before that vertical’s lines', async () => {
+    it('re-renders the bootstrap of a modulith that took a vertical after a context as one run writes it, keeping every line of both', async () => {
       // persistence, added after orders, lists its handlers after the
-      // context's in the entrypoint's mediator.
+      // context's in the entrypoint's mediator, and is recorded where one
+      // run records it, before bounded-context (S.8): the re-render
+      // replays it there, and the context's wiring after it, as `keel new
+      // --with persistence` then `keel add module orders` writes them.
+      const main = (dir: string) =>
+        fs.readFile(path.join(dir, 'application/rest/src/main.ts'), 'utf8');
       await withOrders(cwd, 'ts-http');
       expectOk(await add(cwd, ['persistence']));
-      const main = await fs.readFile(path.join(cwd, 'application/rest/src/main.ts'), 'utf8');
-      expect(main.indexOf('createOrdersContextHandler()')).toBeLessThan(
-        main.indexOf('createListGreetingsHandler(greetingLog)'),
+      const arrived = await main(cwd);
+      expect(arrived.indexOf('createOrdersContextHandler()')).toBeLessThan(
+        arrived.indexOf('createListGreetingsHandler(greetingLog)'),
       );
-      const grown = await files(cwd);
+      const twin = path.join(cwd, '..', `${path.basename(cwd)}-twin`);
+      await fs.ensureDir(twin);
+      expectOk(
+        await mediator().dispatch(
+          newProjectCommand({
+            cwd: twin,
+            stack: 'ts-http',
+            moduleLayout: 'modulith',
+            extraVerticals: ['persistence'],
+            answers: {},
+            interactive: false,
+            dryRun: false,
+          }),
+        ),
+      );
+      expectOk(
+        await mediator().dispatch(
+          addModuleCommand({
+            cwd: twin,
+            module: 'orders',
+            consumes: 'greeting',
+            answers: {},
+            interactive: false,
+            dryRun: false,
+          }),
+        ),
+      );
 
       const report = expectOk(await add(cwd, ['walking-skeleton'], { reapply: true }));
-      expect(report.changes).toEqual([]);
-      expect(await files(cwd)).toEqual(grown);
+      expect(report.changes).toEqual([{ kind: 'modify', path: 'application/rest/src/main.ts' }]);
+      expect(await main(cwd)).toBe(await main(twin));
+      const converged = await files(cwd);
+      expect(expectOk(await add(cwd, ['walking-skeleton'], { reapply: true })).changes).toEqual([]);
+      expect(await files(cwd)).toEqual(converged);
+      await fs.remove(twin);
     });
 
     it.each([
@@ -846,10 +881,26 @@ describe('keel.add-vertical (keel add)', () => {
       expect(await fs.readFile(compose, 'utf8')).toBe(pristine);
     });
 
-    it('re-renders what --refresh names beside --reapply, in the order the project installed them', async () => {
+    it('re-renders what --refresh names beside --reapply, in the order the project records them', async () => {
       await scaffold(cwd, 'go-http');
       expectOk(await add(cwd, ['distribution']));
       expectOk(await add(cwd, ['persistence']));
+      // Recorded where one run records it, before distribution, which
+      // reads it (roadmap S.8). An older keel appended it, and nothing
+      // recorded moves: the manifest is put back as one of those left it.
+      const stored = await fsManifestStore.read(projectScopeRoot(cwd));
+      if (stored === null) throw new Error('the adds recorded no manifest');
+      expect(stored.verticals.map(({ id }) => id).slice(-2)).toEqual([
+        'persistence',
+        'distribution',
+      ]);
+      await fsManifestStore.write(projectScopeRoot(cwd), {
+        ...stored,
+        verticals: [
+          ...stored.verticals.filter(({ id }) => id !== 'persistence'),
+          ...stored.verticals.filter(({ id }) => id === 'persistence'),
+        ],
+      });
       const readme = path.join(cwd, 'migrations/README.md');
       const pristine = await fs.readFile(readme, 'utf8');
       await fs.writeFile(readme, 'edited by hand\n');

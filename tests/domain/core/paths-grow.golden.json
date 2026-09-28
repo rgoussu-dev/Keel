@@ -124,11 +124,11 @@
         "updatedAt": "3dbc196b04ae2d08",
         "version": "d4735e3a265e16ee",
         "versions": "44136fa355b3678a",
-        "verticals": "a2a97e7b0eb70d70"
+        "verticals": "a52e9957cf9ef5e4"
       }
     },
     "actions": "90ef7269de9be9c8",
-    "report": "cb2e9649f8f46f33",
+    "report": "f8505aa6afd6090c",
     "docs": 0
   },
   "keel new --stack go-cli --module-layout basic --with ci,dev-env,toolchain && keel add entrypoint http": {
@@ -1330,7 +1330,7 @@
         "updatedAt": "3dbc196b04ae2d08",
         "version": "d4735e3a265e16ee",
         "versions": "44136fa355b3678a",
-        "verticals": "c68d9e417705b8cd"
+        "verticals": "a7c5bd79bf288b98"
       }
     },
     "actions": "90ef7269de9be9c8",
@@ -2064,11 +2064,11 @@
         "updatedAt": "3dbc196b04ae2d08",
         "version": "d4735e3a265e16ee",
         "versions": "44136fa355b3678a",
-        "verticals": "a2a97e7b0eb70d70"
+        "verticals": "a52e9957cf9ef5e4"
       }
     },
     "actions": "8c1b83551699e0af",
-    "report": "bb70f8269b496425",
+    "report": "3e1304dd2f2aef87",
     "docs": 0
   },
   "keel new --stack micronaut-cli --build-system gradle --module-layout basic --with ci,dev-env,toolchain && keel add entrypoint http": {
@@ -3321,11 +3321,11 @@
         "updatedAt": "3dbc196b04ae2d08",
         "version": "d4735e3a265e16ee",
         "versions": "44136fa355b3678a",
-        "verticals": "a2a97e7b0eb70d70"
+        "verticals": "a52e9957cf9ef5e4"
       }
     },
     "actions": "8c1b83551699e0af",
-    "report": "8ed24e37eb11770c",
+    "report": "3f2ee3db02a77ad2",
     "docs": 0
   },
   "keel new --stack micronaut-cli-kotlin --build-system gradle --module-layout basic --with ci,dev-env,toolchain && keel add entrypoint http": {
@@ -6666,7 +6666,7 @@
         "updatedAt": "3dbc196b04ae2d08",
         "version": "d4735e3a265e16ee",
         "versions": "44136fa355b3678a",
-        "verticals": "c68d9e417705b8cd"
+        "verticals": "a7c5bd79bf288b98"
       }
     },
     "actions": "8c1b83551699e0af",
@@ -7952,7 +7952,7 @@
         "updatedAt": "3dbc196b04ae2d08",
         "version": "d4735e3a265e16ee",
         "versions": "44136fa355b3678a",
-        "verticals": "c68d9e417705b8cd"
+        "verticals": "a7c5bd79bf288b98"
       }
     },
     "actions": "8c1b83551699e0af",
@@ -9238,11 +9238,11 @@
         "updatedAt": "3dbc196b04ae2d08",
         "version": "d4735e3a265e16ee",
         "versions": "44136fa355b3678a",
-        "verticals": "a2a97e7b0eb70d70"
+        "verticals": "a52e9957cf9ef5e4"
       }
     },
     "actions": "8c1b83551699e0af",
-    "report": "396ecc8dd69e712b",
+    "report": "9ad03727531deac2",
     "docs": 0
   },
   "keel new --stack quarkus-cli --build-system gradle --module-layout basic --with ci,dev-env,distribution,toolchain && keel add entrypoint http": {
@@ -10495,11 +10495,11 @@
         "updatedAt": "3dbc196b04ae2d08",
         "version": "d4735e3a265e16ee",
         "versions": "44136fa355b3678a",
-        "verticals": "a2a97e7b0eb70d70"
+        "verticals": "a52e9957cf9ef5e4"
       }
     },
     "actions": "8c1b83551699e0af",
-    "report": "008e3e6b209de50f",
+    "report": "ba8be91ece403f59",
     "docs": 0
   },
   "keel new --stack quarkus-cli-kotlin --build-system gradle --module-layout basic --with ci,dev-env,distribution,toolchain && keel add entrypoint http": {
@@ -13840,7 +13840,7 @@
         "updatedAt": "3dbc196b04ae2d08",
         "version": "d4735e3a265e16ee",
         "versions": "44136fa355b3678a",
-        "verticals": "c68d9e417705b8cd"
+        "verticals": "a7c5bd79bf288b98"
       }
     },
     "actions": "8c1b83551699e0af",
@@ -15126,7 +15126,7 @@
         "updatedAt": "3dbc196b04ae2d08",
         "version": "d4735e3a265e16ee",
         "versions": "44136fa355b3678a",
-        "verticals": "c68d9e417705b8cd"
+        "verticals": "a7c5bd79bf288b98"
       }
     },
     "actions": "8c1b83551699e0af",
@@ -16406,11 +16406,11 @@
         "updatedAt": "3dbc196b04ae2d08",
         "version": "d4735e3a265e16ee",
         "versions": "44136fa355b3678a",
-        "verticals": "a2a97e7b0eb70d70"
+        "verticals": "a52e9957cf9ef5e4"
       }
     },
     "actions": "380b05c001b378e2",
-    "report": "56bb56a7a9feb082",
+    "report": "f6ab047d3d44e013",
     "docs": 0
   },
   "keel new --stack rust-cli --module-layout basic --with ci,dev-env,toolchain && keel add entrypoint http": {
@@ -17666,7 +17666,7 @@
         "updatedAt": "3dbc196b04ae2d08",
         "version": "d4735e3a265e16ee",
         "versions": "44136fa355b3678a",
-        "verticals": "c68d9e417705b8cd"
+        "verticals": "a7c5bd79bf288b98"
       }
     },
     "actions": "380b05c001b378e2",
@@ -18427,11 +18427,11 @@
         "updatedAt": "3dbc196b04ae2d08",
         "version": "d4735e3a265e16ee",
         "versions": "44136fa355b3678a",
-        "verticals": "a2a97e7b0eb70d70"
+        "verticals": "a52e9957cf9ef5e4"
       }
     },
     "actions": "8c1b83551699e0af",
-    "report": "27cd7fde5ce71dc0",
+    "report": "843ba8ffd5c14f33",
     "docs": 0
   },
   "keel new --stack spring-cli --build-system gradle --module-layout basic --with ci,dev-env,toolchain && keel add entrypoint http": {
@@ -19684,11 +19684,11 @@
         "updatedAt": "3dbc196b04ae2d08",
         "version": "d4735e3a265e16ee",
         "versions": "44136fa355b3678a",
-        "verticals": "a2a97e7b0eb70d70"
+        "verticals": "a52e9957cf9ef5e4"
       }
     },
     "actions": "8c1b83551699e0af",
-    "report": "d0560b17b911fbc3",
+    "report": "d417047ae39440ad",
     "docs": 0
   },
   "keel new --stack spring-cli-kotlin --build-system gradle --module-layout basic --with ci,dev-env,toolchain && keel add entrypoint http": {
@@ -23029,7 +23029,7 @@
         "updatedAt": "3dbc196b04ae2d08",
         "version": "d4735e3a265e16ee",
         "versions": "44136fa355b3678a",
-        "verticals": "c68d9e417705b8cd"
+        "verticals": "a7c5bd79bf288b98"
       }
     },
     "actions": "8c1b83551699e0af",
@@ -24315,7 +24315,7 @@
         "updatedAt": "3dbc196b04ae2d08",
         "version": "d4735e3a265e16ee",
         "versions": "44136fa355b3678a",
-        "verticals": "c68d9e417705b8cd"
+        "verticals": "a7c5bd79bf288b98"
       }
     },
     "actions": "8c1b83551699e0af",
@@ -25607,11 +25607,11 @@
         "updatedAt": "3dbc196b04ae2d08",
         "version": "d4735e3a265e16ee",
         "versions": "44136fa355b3678a",
-        "verticals": "a2a97e7b0eb70d70"
+        "verticals": "a52e9957cf9ef5e4"
       }
     },
     "actions": "7927b20926109009",
-    "report": "dc271d3916832005",
+    "report": "4262c1e71fb4e95c",
     "docs": 0
   },
   "keel new --stack ts-cli --build-system npm --module-layout basic --with ci,dev-env,toolchain && keel add entrypoint http": {
@@ -28135,7 +28135,7 @@
         "updatedAt": "3dbc196b04ae2d08",
         "version": "d4735e3a265e16ee",
         "versions": "44136fa355b3678a",
-        "verticals": "c68d9e417705b8cd"
+        "verticals": "a7c5bd79bf288b98"
       }
     },
     "actions": "7927b20926109009",

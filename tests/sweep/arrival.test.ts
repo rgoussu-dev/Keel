@@ -18,7 +18,9 @@
  *     add's preview proposes (`--refresh`, the command's `refresh`).
  *
  * and holds the two trees to one another: every file's bytes, and each
- * manifest with its timestamps and arrival order taken out. Each `y`
+ * manifest with its timestamps taken out — not the order it records its
+ * rows in, since every caller records a row where one run records it
+ * (roadmap S.8). Each `y`
  * arrives on its own first — `keel new`, then `keel add y`, against
  * `keel new --with y` — the path a user takes most, and what a pair is
  * read against: a pair that differs in the paths `y` alone differs in,

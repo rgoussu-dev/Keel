@@ -32,13 +32,20 @@
  * with the caller's command line), and the generation is restamped. The
  * buffer is realized once (`finalizeHarness`), in the order the plan's
  * placement says: the twin's, for growth, where each adapter ranks by
- * where it runs in the twin; the run's, for every other caller.
+ * where it runs in the twin; the target's reference order, for `keel
+ * add` and `keel add module` (S.8), ranked the same way; the run's, for
+ * `keel new` — whose run is in that order already — and wherever no
+ * preset reads back.
  *
  * **The record.** What the run records anew goes where the placement
- * puts it: after every recorded row, or, for growth, where the twin
- * records it (roadmap DR4) — each new `verticals` row, `answers` key
- * and harness entry before the first recorded one the twin puts after
- * it, nothing recorded moving.
+ * puts it (roadmap DR4, DS3): where the twin records it, for growth, or
+ * where one run of the target records it, for `keel add` and `keel add
+ * module` — each new `verticals` row, `answers` key and harness entry
+ * before the first recorded one that order puts after it, nothing
+ * recorded moving — or after every recorded row. A harness entry's
+ * place reads the stage the pass realizes its file in and its
+ * contributor's rank, not a replay of the project, so it needs no
+ * render of what the harness does not re-render.
  *
  * **The report.** The caller's notes around the refresh proposals the
  * run makes — the installed verticals it changed the rendering of and
@@ -50,9 +57,20 @@
  * own fixed point among them, since it cannot be put back as it was.
  */
 
+import path from 'node:path';
 import { DomainError, err, ok, type Result } from '../kernel/result.js';
 import type { InstallReport, PresetAnswers, RefreshProposal } from '../contract/commands.js';
-import type { Adapter, Conflict, DeferredAction, Tree, Vertical } from '../contract/composition.js';
+import {
+  ENGINE_CONTRIBUTOR_ID,
+  type Adapter,
+  type Conflict,
+  type DeferredAction,
+  type Tree,
+  type Vertical,
+} from '../contract/composition.js';
+import { DOC_POINTER_FILENAME, docTarget } from '../contract/doc.js';
+import { hookTarget, SETTINGS_TARGET } from '../contract/hook.js';
+import { SKILLS_ROOT } from '../contract/skill.js';
 import {
   effectiveTags,
   HARNESS_GENERATION,
@@ -95,7 +113,7 @@ import { refreshProposals } from './planner.js';
 import { rankedIndex } from './rank.js';
 import { reapplyConflictSentence, refreshProposalNote } from './refusals.js';
 import { installedVertical } from './registry.js';
-import { resolveVertical } from './resolver.js';
+import { coverageGap, resolveVertical } from './resolver.js';
 import { resolvedAdapters } from './supplied-answers.js';
 import { boundedContextVertical } from './verticals/bounded-context.js';
 
@@ -336,14 +354,15 @@ export async function converge(inputs: ConvergeInputs): Promise<Result<Converged
         ...(inputs.retrofit.line === undefined ? {} : { line: inputs.retrofit.line }),
       });
     }
-    const twin =
-      plan.placement.rows === 'twin' || plan.placement.harness === 'twin'
-        ? twinOrder(registry, stored, staged.manifest, twinOf(registry, plan.target))
-        : null;
-    if (twin !== null && plan.placement.harness === 'twin') {
-      // Realized in the order the twin's one run realizes it, so a file
-      // recorded anew can be recorded where the twin records it.
-      harness.sort((a, b) => rankOf(twin.ranks, a.adapter.id) - rankOf(twin.ranks, b.adapter.id));
+    const ranking = rankingOf(registry, plan);
+    const ranked = ranking === null ? null : twinOrder(registry, stored, staged.manifest, ranking);
+    if (ranked !== null && plan.placement.harness !== 'run') {
+      // Realized in the order one run of the twin, or of the target,
+      // realizes it, so a file recorded anew can be recorded where that
+      // run records it.
+      harness.sort(
+        (a, b) => rankOf(ranked.ranks, a.adapter.id) - rankOf(ranked.ranks, b.adapter.id),
+      );
     }
     const finalized = finalizeHarness({
       manifest: staged.manifest,
@@ -359,9 +378,16 @@ export async function converge(inputs: ConvergeInputs): Promise<Result<Converged
       ? { ...finalized.manifest, harnessGeneration: HARNESS_GENERATION }
       : finalized.manifest;
     manifest =
-      twin !== null && plan.placement.rows === 'twin'
-        ? atRank(stored, restamped, twin, finalized.realized)
-        : restamped;
+      ranked === null || plan.placement.rows === 'append'
+        ? restamped
+        : atRank(
+            stored,
+            restamped,
+            ranked,
+            plan.placement.rows === 'twin'
+              ? realizedRank(finalized.realized)
+              : referenceRank(registry, ranked, restamped.entries, finalized.realized),
+          );
     skipped = finalized.skipped;
   } catch (e) {
     if (rerendered.length > 0 && e instanceof ContributionConflictError) {
@@ -525,6 +551,19 @@ function proposalNote(registry: Registry, proposal: RefreshProposal, committed: 
 }
 
 /**
+ * The order the plan's placement ranks by, by vertical id: the twin's,
+ * for a placement at the twin's rank; the target's reference order
+ * ({@link Composition.order}), for one at the reference's (S.8); none
+ * for a run appended and realized as it ran.
+ */
+function rankingOf(registry: Registry, plan: ConvergingPlan): readonly string[] | null {
+  const { rows, harness } = plan.placement;
+  if (rows === 'twin' || harness === 'twin') return twinOf(registry, plan.target);
+  if (rows === 'reference' || harness === 'reference') return plan.target.order;
+  return null;
+}
+
+/**
  * The twin a target placed at its twin's rank is recorded as, by its
  * verticals' ids: the preset the target reads back as — growth's twin,
  * which `growthOf` finds by the same reading of its dials — with the
@@ -539,29 +578,34 @@ function twinOf(registry: Registry, target: Composition): readonly string[] {
 }
 
 /**
- * The grown project's order, as the twin's (roadmap DR4): `verticals`,
- * the rows of the manifest — as the run left it — with each new one
- * before the first recorded one the twin lists later, and `ranks`,
- * each adapter of those verticals by where it runs in that order, as
- * it resolves on the grown tags.
+ * The project's order after the run, as one run of the twin's, or of
+ * the target's reference order, has it (roadmap DR4): `verticals`, the
+ * rows of the manifest — as the run left it — with each new one before
+ * the first recorded one that order lists later, and `ranks`, each
+ * adapter of those verticals by where it runs in that order, as it
+ * resolves on the tags the run leaves — none of a recorded vertical
+ * those tags no longer cover: a run of it refuses it, not this one.
  */
 interface TwinOrder {
   readonly verticals: readonly InstalledVertical[];
   readonly ranks: ReadonlyMap<string, number>;
 }
 
-/** The {@link TwinOrder} of `manifest`, a run over `stored` growing into `twin`. */
+/**
+ * The {@link TwinOrder} of `manifest`, a run over `stored` placed by
+ * `ranking` — the twin's order or the reference's ({@link rankingOf}).
+ */
 function twinOrder(
   registry: Registry,
   stored: ManifestV2,
   manifest: ManifestV2,
-  twin: readonly string[],
+  ranking: readonly string[],
 ): TwinOrder {
   const had = new Set(stored.verticals.map((v) => v.id));
   const order = placed(
     stored.verticals.map((v) => v.id),
     manifest.verticals.map((v) => v.id).filter((id) => !had.has(id)),
-    twin,
+    ranking,
   );
   const rows = new Map(manifest.verticals.map((v) => [v.id, v]));
   const verticals = order.flatMap((id): InstalledVertical[] => {
@@ -574,7 +618,9 @@ function twinOrder(
     // The context vertical `keel add module` records runs after every
     // other, as keel's own (`wireModules`); one a registry lists ranks nothing.
     const vertical = id === boundedContextVertical.id ? null : installedVertical(registry, id);
-    if (vertical === null) return;
+    // One the tags the run leaves no longer cover ranks nothing: ranking
+    // refuses nothing, so its refusal waits for a run that runs it.
+    if (vertical === null || coverageGap(vertical, tags) !== null) return;
     resolveVertical(vertical, tags, registry).forEach((adapter, position) => {
       if (!ranks.has(adapter.id)) ranks.set(adapter.id, index * 1_000 + position);
     });
@@ -582,25 +628,37 @@ function twinOrder(
   return { verticals, ranks };
 }
 
-/** Where `adapter` runs in the twin's order; after every adapter it ranks where none does. */
+/**
+ * Where `adapter` runs in the order `ranks` was read by, the twin's or
+ * the reference's; after every adapter it ranks where none does.
+ */
 function rankOf(ranks: ReadonlyMap<string, number>, adapter: string): number {
   return ranks.get(adapter) ?? Number.MAX_SAFE_INTEGER;
 }
 
+/** A harness entry by what identifies it: its contributor and its file. */
+type EntryKey = Pick<ManifestEntry, 'source' | 'target'>;
+
+/** Where an entry ranks among the others, or undefined where it ranks nowhere. */
+type EntryRank = (entry: EntryKey) => number | undefined;
+
+function entryKey(entry: EntryKey): string {
+  return `${entry.source} ${entry.target}`;
+}
+
 /**
  * `manifest`, as the run left it, with what it recorded anew placed
- * where the twin records it (roadmap DR4): its `verticals` in
- * `order`; each new `answers` key before the first key of an adapter
- * that runs later in it; each new harness entry before the first
- * recorded one the run — realizing the harness in that order —
- * realized later (`realized`). Nothing recorded before moves, and a
- * key or an entry with no rank goes last.
+ * where one run in `order`'s order records it (roadmap DR4): its
+ * `verticals` in `order`; each new `answers` key before the first key
+ * of an adapter that runs later in it; each new harness entry before
+ * the first recorded one `rank` puts after it. Nothing recorded before
+ * moves, and a key or an entry with no rank goes last.
  */
 function atRank(
   stored: ManifestV2,
   manifest: ManifestV2,
   order: TwinOrder,
-  realized: readonly Pick<ManifestEntry, 'source' | 'target'>[],
+  rank: EntryRank,
 ): ManifestV2 {
   const keys = Object.keys(manifest.answers);
   const answers = Object.fromEntries(
@@ -613,19 +671,112 @@ function atRank(
       return value === undefined ? [] : [[key, value] as const];
     }),
   );
-  const entryKey = (entry: Pick<ManifestEntry, 'source' | 'target'>) =>
-    `${entry.source} ${entry.target}`;
-  const realizedAt = new Map<string, number>();
-  realized.forEach((entry, index) => {
-    if (!realizedAt.has(entryKey(entry))) realizedAt.set(entryKey(entry), index);
-  });
   const had = new Set(stored.entries.map(entryKey));
   const entries = inPlace(
     manifest.entries.filter((entry) => had.has(entryKey(entry))),
     manifest.entries.filter((entry) => !had.has(entryKey(entry))),
-    (entry) => realizedAt.get(entryKey(entry)),
+    rank,
   );
   return { ...manifest, verticals: [...order.verticals], answers, entries };
+}
+
+/** Each entry by where the run, realizing the harness in the twin's order, realized it (`realized`). */
+function realizedRank(realized: readonly EntryKey[]): EntryRank {
+  const at = realizedAt(realized);
+  return (entry) => at.get(entryKey(entry));
+}
+
+function realizedAt(realized: readonly EntryKey[]): ReadonlyMap<string, number> {
+  const at = new Map<string, number>();
+  realized.forEach((entry, index) => {
+    if (!at.has(entryKey(entry))) at.set(entryKey(entry), index);
+  });
+  return at;
+}
+
+/**
+ * The stages a pass realizing the harness records its files in
+ * (`./apply.ts` `realizeHarness`): each contributor's skills and hooks,
+ * whole; the hook settings they are wired into; each contributor's
+ * harness patches and doc sections, by the file each lands in; the
+ * pointer beside each doc; the index.
+ */
+const WHOLE = 0;
+const WIRING = 1;
+const LANDED = 2;
+const POINTER = 3;
+const INDEX = 4;
+
+/** Wider than any adapter's rank in {@link TwinOrder}, times {@link SPAN}. */
+const STAGE = 1e12;
+
+/** Wider than any position in a pass's realized order. */
+const SPAN = 1e4;
+
+/**
+ * Where one run of the target, realizing the harness in its reference
+ * order, records each harness entry — found without replaying the
+ * project (roadmap S.8), so a recorded vertical no loaded plugin
+ * provides refuses nothing new: the stage the pass writes the entry's
+ * file in, then its contributor's rank in `order` (an adapter's, or,
+ * for a doc's pointer, the first contributor of that doc's), then
+ * where this run realized it (`realized`), for the files of one
+ * contributor. Every entry of `entries`, the manifest's, recorded or
+ * new, ranks so; one whose contributor ranks nowhere — an adapter the
+ * tags no longer resolve, or a vertical no loaded plugin provides —
+ * ranks nowhere, and a new one goes last.
+ */
+function referenceRank(
+  registry: Registry,
+  order: TwinOrder,
+  entries: readonly ManifestEntry[],
+  realized: readonly EntryKey[],
+): EntryRank {
+  const at = realizedAt(realized);
+  const within = (entry: EntryKey): number => at.get(entryKey(entry)) ?? 0;
+  const owners = new Map<string, Vertical>();
+  for (const { id } of order.verticals) {
+    const vertical = installedVertical(registry, id);
+    if (vertical === null) continue;
+    for (const adapter of vertical.adapters) owners.set(adapter.id, vertical);
+  }
+  const contributed = (entry: EntryKey): number | undefined => {
+    const rank = order.ranks.get(entry.source);
+    return rank === undefined ? undefined : rank * SPAN + within(entry);
+  };
+  return (entry) => {
+    if (entry.source === ENGINE_CONTRIBUTOR_ID) {
+      if (entry.target === SETTINGS_TARGET) return WIRING * STAGE;
+      if (path.posix.basename(entry.target) === DOC_POINTER_FILENAME) {
+        const doc = docTarget(path.posix.dirname(entry.target));
+        const first = Math.min(
+          ...entries.flatMap((each) => {
+            const rank = each.target === doc ? contributed(each) : undefined;
+            return rank === undefined ? [] : [rank];
+          }),
+        );
+        return POINTER * STAGE + (Number.isFinite(first) ? first : within(entry));
+      }
+      return INDEX * STAGE + within(entry);
+    }
+    const vertical = owners.get(entry.source);
+    const own = contributed(entry);
+    if (vertical === undefined || own === undefined) return undefined;
+    return (wholeOf(vertical, entry.target) ? WHOLE : LANDED) * STAGE + own;
+  };
+}
+
+/**
+ * Whether `target` is a file `vertical` stages whole in the harness: a
+ * file of a skill it declares, or the script of a hook it declares —
+ * rather than one a harness patch or a doc section lands in, a hook of
+ * another contributor's among them.
+ */
+function wholeOf(vertical: Vertical, target: string): boolean {
+  return (
+    (vertical.skills ?? []).some((name) => target.startsWith(`${SKILLS_ROOT}/${name}/`)) ||
+    (vertical.hooks ?? []).some((name) => target === hookTarget(name))
+  );
 }
 
 /**

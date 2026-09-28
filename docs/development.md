@@ -297,7 +297,9 @@ whichever of the three is missing.
   scaffolds and in composite's services it holds each `keel add`,
   `--reapply` and `--refresh` (and, on a modulith scaffold,
   `keel add module`) to its dry-run install (I9), and the recorded
-  composition to a fixed point (I11). How to read and
+  composition to a fixed point (I11); on brownfield's opening dials,
+  each extra and the harness arriving later to what one run leaves,
+  every file and the manifest byte for byte (I12). How to read and
   regenerate it is in [`tests/AGENTS.md`](../tests/AGENTS.md). What it
   leaves out to stay fast — every dial setting but a preset's opening
   one where it previews, every extras set, every pair's arrival order,
@@ -617,10 +619,12 @@ too), never listed. Three suites, each a test per preset:
   preview proposes). Each extra also arrives on its own the same way,
   `keel new` then `keel add y` against `keel new --with y`, the path a
   user takes most. The two trees must hold the same bytes, file for
-  file, and each manifest is compared with its timestamps, key order
-  and arrival-ordered lists normalised. The planner sorts whatever set
-  it is given, so no naming order can catch a vertical whose
-  `contribute()` reads another without declaring it
+  file, and each manifest is compared with its timestamps normalised
+  and nothing else: since roadmap S.8 every caller records a row, an
+  answers key and a harness entry where one run records it, so its key
+  order and its lists are compared as written. The planner sorts
+  whatever set it is given, so no naming order can catch a vertical
+  whose `contribute()` reads another without declaring it
   (`Vertical.reads`). Arrival can: the undeclared read writes one thing
   when the other vertical is already there and another when it is not,
   and a refresh does not hide it, since a refresh re-renders only the

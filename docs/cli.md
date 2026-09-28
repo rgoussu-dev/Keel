@@ -524,6 +524,20 @@ is refused (`keel.invalid-verticals`), and so is a tie between two
 verticals that would each supply what one needs
 (`keel.missing-prerequisites`, naming both).
 
+The manifest records what an add brings where one run would have
+recorded it: each row of `verticals`, each adapter's `answers` and
+each harness file's entry where `keel new` of the project the add
+leaves records it. So `keel new --stack=go-http` then `keel add
+persistence` leaves the manifest `keel new --stack=go-http --with
+persistence` leaves, its timestamps apart; `keel add agent-harness` on
+a project scaffolded without it records the harness straight after
+`walking-skeleton`, as a preset does; and an add after `keel add
+module` records its row before `bounded-context`, which stays last.
+A row already recorded never moves, so a manifest an earlier keel
+appended to keeps its order, and a project keel places on no preset —
+a monorepo product's root, or a project on a plugin's preset keel no
+longer loads — is appended to.
+
 A section an add writes into the project's `README.md` goes where one
 run would have put it. keel's sections keep one order — the
 entrypoints, then the dev environment, monitoring and the dev
@@ -1286,6 +1300,15 @@ what it realized over the rows already there — it never saw the
 contributors it did not run — while `sync` recomputes the set
 outright, which is what prunes a row whose subject is gone. `keel new`
 runs every contributor, so the two agree on a fresh scaffold.
+
+Both read the contributors in the order the manifest records them,
+and a directory two of them document takes the description of the
+first. An add records what it brings where one run records it (see
+[`keel add`](#keel-add)), so after it too an install, `sync` and
+`check` read one order. A project that adopted the harness after
+persistence with an earlier keel recorded the harness last: `check`
+reports drift there, and `sync` rewrites the index in the order the
+manifest keeps, which is not the one `keel new` writes.
 
 What is left for the net is a **human or agent** structural edit:
 that is what `check` is for.

@@ -452,7 +452,7 @@ describe('convergeOf', () => {
   const cli = scaffoldOf(CLI);
 
   describe('add', () => {
-    it('admits what is named, closed over its prerequisites, and installs it in plan order, appended', () => {
+    it('admits what is named, closed over its prerequisites, and installs it in plan order, recorded at the reference order’s rank', () => {
       const plan = converged(
         convergeOf(family, cli, {
           kind: 'add',
@@ -461,7 +461,7 @@ describe('convergeOf', () => {
         }),
       );
       expect(runOf(plan)).toEqual(['acme-zimage install', 'acme-ship install']);
-      expect(plan.placement).toEqual({ rows: 'append', harness: 'run' });
+      expect(plan.placement).toEqual({ rows: 'reference', harness: 'reference' });
       expect(plan.target).toMatchObject({
         preset: 'acme-cli',
         extras: ['acme-zimage', 'acme-ship'],
@@ -549,6 +549,101 @@ describe('convergeOf', () => {
       expect(plan.modules).toEqual([]);
     });
 
+    it('records a new row where one run records it, before the first recorded one the reference lists later, nothing recorded moving', () => {
+      // Zeta arrived first; one run of keel new records alpha before it.
+      const manifest = scaffoldOf(CLI, {
+        verticals: [...CLI.verticals.map(({ id }) => id), 'acme-zeta'],
+      });
+      const plan = converged(
+        convergeOf(family, manifest, {
+          kind: 'add',
+          verticals: ['acme-alpha'],
+          scope: projectScope(family, manifest),
+        }),
+      );
+      expect(runOf(plan)).toEqual(['acme-alpha install']);
+      expect(plan.target).toMatchObject({
+        recorded: ['acme-vcs', 'acme-skeleton', 'agent-harness', 'acme-alpha', 'acme-zeta'],
+        extras: ['acme-alpha', 'acme-zeta'],
+      });
+      expect(plan.target.order).toEqual(plan.target.recorded);
+    });
+
+    it('records the harness adopted later at its preset’s rank, before the extras', () => {
+      const manifest = scaffoldOf(CLI, { verticals: ['acme-vcs', 'acme-skeleton', 'acme-alpha'] });
+      const plan = converged(
+        convergeOf(family, manifest, {
+          kind: 'add',
+          verticals: ['agent-harness'],
+          scope: projectScope(family, manifest),
+        }),
+      );
+      expect(plan.target).toMatchObject({
+        harness: true,
+        recorded: ['acme-vcs', 'acme-skeleton', 'agent-harness', 'acme-alpha'],
+      });
+    });
+
+    it('records a new row before bounded-context, which stays last', () => {
+      const manifest = scaffoldOf(CLI, {
+        layout: MODULITH,
+        verticals: [...CLI.verticals.map(({ id }) => id), 'acme-zeta', 'bounded-context'],
+        modules: [SKELETON, ORDERS],
+      });
+      const plan = converged(
+        convergeOf(family, manifest, {
+          kind: 'add',
+          verticals: ['acme-alpha'],
+          scope: projectScope(family, manifest),
+        }),
+      );
+      expect(plan.target.recorded).toEqual([
+        'acme-vcs',
+        'acme-skeleton',
+        'agent-harness',
+        'acme-alpha',
+        'acme-zeta',
+        'bounded-context',
+      ]);
+    });
+
+    it('keeps a recorded row where it is, however far from the reference it was recorded', () => {
+      // An older keel appended the harness; nothing recorded moves (DR4).
+      const manifest = scaffoldOf(CLI, {
+        verticals: ['acme-vcs', 'acme-skeleton', 'acme-zeta', 'agent-harness'],
+      });
+      const plan = converged(
+        convergeOf(family, manifest, {
+          kind: 'add',
+          verticals: ['acme-alpha'],
+          scope: projectScope(family, manifest),
+        }),
+      );
+      expect(plan.target.recorded).toEqual([
+        'acme-vcs',
+        'acme-skeleton',
+        'acme-alpha',
+        'acme-zeta',
+        'agent-harness',
+      ]);
+    });
+
+    it('appends where no preset reads back, as the recorded order stands in for the reference', () => {
+      const manifest: ManifestV2 = {
+        ...scaffoldOf(CLI, { verticals: ['acme-zeta', 'bounded-context'] }),
+        tags: ['lang.acme'],
+      };
+      const plan = converged(
+        convergeOf(family, manifest, {
+          kind: 'add',
+          verticals: ['acme-alpha'],
+          scope: projectScope(family, manifest),
+        }),
+      );
+      expect(plan.placement).toEqual({ rows: 'append', harness: 'run' });
+      expect(plan.target.recorded).toEqual(['acme-zeta', 'bounded-context', 'acme-alpha']);
+    });
+
     it('refuses what the scope cannot carry, as the planner refuses it', () => {
       const plan = convergeOf(family, cli, {
         kind: 'add',
@@ -576,7 +671,7 @@ describe('convergeOf', () => {
       ]);
       expect(plan.modules).toEqual([]);
       expect(plan.target).toEqual(compositionOf(family, cli));
-      expect(plan.placement).toEqual({ rows: 'append', harness: 'run' });
+      expect(plan.placement).toEqual({ rows: 'reference', harness: 'reference' });
     });
 
     it('replays what is recorded before the vertical it re-renders too, in recorded order', () => {
@@ -694,7 +789,7 @@ describe('convergeOf', () => {
         recorded: [...goCli.verticals.map(({ id }) => id), 'bounded-context'],
       });
       expect(plan.target.order.at(-1)).toBe('bounded-context');
-      expect(plan.placement).toEqual({ rows: 'append', harness: 'run' });
+      expect(plan.placement).toEqual({ rows: 'reference', harness: 'reference' });
     });
 
     const ADAPTERS = 'bounded-context/go-context,bounded-context/go-context-cli';

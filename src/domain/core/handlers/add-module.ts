@@ -69,7 +69,8 @@
  * by keel's own `bounded-context`, every adapter of it the tags match,
  * reading the answers supplied in the command's mode — onto one Tree
  * rooted at cwd, one ownership and one harness buffer, finalized once,
- * the vertical's row appended the first time. The handler then records
+ * the vertical's row recorded the first time where the reference order
+ * puts it, last (roadmap S.8). The handler then records
  * the context among the modules, re-indexes the root map and rehashes
  * what that rewrote, and under a real run commits through the run's
  * one commit: the tree, the manifest, then the deferred actions —

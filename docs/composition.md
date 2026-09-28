@@ -1112,6 +1112,30 @@ re-runs the same resolution against the tags and answers recorded at
 bootstrap, so a vertical added months later composes exactly as it
 would have on day one.
 
+It also records in one order. `keel new` records the preset's
+verticals in the preset's order, then the extras in the order the
+planner installs them; `keel add module` records `bounded-context`
+after them. Every later run records what it brings where one run of
+`keel new` of the project it leaves records it — the **reference
+order** — and moves nothing already recorded: `keel add` (with
+`--refresh` and `--reapply`) and `keel add module` put each new row of
+`verticals`, each new adapter's `answers` and each new harness file's
+entry before the first recorded one that order puts after it, a row
+before `bounded-context`, which stays last; `keel add entrypoint` does
+the same by its twin's order. A new harness entry's place is read
+without replaying the project: by the stage the realization pass
+writes its file in (skills and hooks whole, the hook settings, patches
+and doc sections, each doc's pointer, the index), then its
+contributor's rank in that order — so a recorded vertical no loaded
+plugin provides, or one the add's tags no longer cover, refuses
+nothing an add does not ask of it. So `keel
+new X` then `keel add y` records what `keel new X --with y` records,
+and the navigation index, which replays the recorded verticals in
+order, reads what one run wrote. Where the drill-down places no preset
+— a monorepo product's root, a plugin's preset keel no longer loads, a
+manifest migrated from v1 — the recorded order stands in for the
+reference, and new rows are appended.
+
 **A re-render runs within the recorded composition.**
 `keel add v --reapply` — and `--refresh v` beside an add — re-renders
 `v` from its recorded answers, its template-owned files rewritten
@@ -1122,7 +1146,13 @@ the re-render rewrote and onto no other, and each context `keel add
 module` added replays its wiring among them where it arrived: before
 the first vertical a `keel add` recorded after it, and after every
 other — a row growth records at rank among them, since growth wires
-the contexts after its verticals. Several named verticals
+the contexts after its verticals. A `keel add` records its row before
+`bounded-context`, where one run records it, so on a manifest this keel
+wrote the contexts replay after every vertical, as one run writes
+them: a re-render after `keel add y` on a module history writes `y`'s
+lines before the contexts' wiring, keeping every line of both, and is
+a fixed point from then on; on a manifest an older keel appended, each
+context comes back where it arrived. Several named verticals
 re-render each at its own rank among those replays, so what is
 recorded between two of them patches in before the later one, as one
 run has it; and beside an add, a vertical the add installed before the

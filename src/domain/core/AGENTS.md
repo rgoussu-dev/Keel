@@ -304,12 +304,16 @@ growth's refusals), `module`, `new` from a seed manifest, naming the
 product and the service's path where it is one — and returns
 the target composition, the run (each step installed, installed in
 part, re-rendered, replayed onto what a re-render rewrote, or
-settled), the contexts to wire, and the caller's
-placement as it is today: growth's at its twin's rank, every other
-appended, until S.8. Growth's plan is read there with the handler's
-own pure pieces, moved out of `handlers/add-entrypoint.ts` in S.2:
-`placed`, which the run records growth by, and `grownManifest`,
-`admitGrowth` and `incomingOf`, which the handler imports back.
+settled), the contexts to wire, and the caller's placement: growth's at
+its twin's rank; `add`, `reapply` and `module` at the reference order's
+rank since S.8 (`atReference`: each new row before the first recorded
+one the reference lists later, so before `bounded-context`, nothing
+recorded moving), or appended where no preset reads back; `new`
+appended, its run being in that order already. Growth's plan is read
+there with the handler's own pure pieces, moved out of
+`handlers/add-entrypoint.ts` in S.2: `placed`, which the run records
+growth by, and `grownManifest`, `admitGrowth` and `incomingOf`, which
+the handler imports back.
 `tests/domain/core/converge.golden.test.ts` records the reading on
 every cell of the paths golden.
 
@@ -321,18 +325,33 @@ run and before the harness pass, where both install handlers ran it,
 so the same refusal wins; where the harness runs, the retrofit of what
 did not run — under the caller's command line, the contexts `keel add
 module` added replayed, by keel's own `bounded-context`, or none — and
-the restamp; one `finalizeHarness`, the buffer
-realized in the placement's order (the twin's for growth, where each
-adapter ranks by where it runs in the twin, whose preset is the
-target's); the record at the placement (`twinOrder`, `atRank`,
-`inPlace`); a `ContributionConflictError` read as
-`keel.reapply-conflict` over the re-rendered ids, named in the order
-the project records them, where anything re-rendered, and rethrown
-otherwise; the refresh proposals, over the steps it installs in run
-order, each worded as a later run takes it up (`proposeForLater`) or
-as this one could; and the report, the caller's notes before and
-after the proposals, and the diffs where anything re-rendered.
-A re-render runs within the recorded composition (S.7, DS4):
+the restamp; one `finalizeHarness`, the buffer realized in the
+placement's order (the twin's for growth, where each adapter ranks by
+where it runs in the twin, whose preset is the target's; the reference
+order's for `keel add` and `keel add module`, ranked the same way; the
+run's for `keel new`); the record at the placement (`twinOrder`,
+`atRank`, `inPlace`). A new harness entry goes where one run records
+it: for growth, by where the pass realized it (`realizedRank`, every
+entry being realized, since the harness re-renders); for the
+reference, without replaying the project, since the harness need not
+re-render (`referenceRank`) — by the stage the pass writes its file in
+(skills and hooks whole, the hook settings, harness patches and doc
+sections, each doc's pointer, the index; a file is a contributor's
+whole one where its vertical declares that skill or hook), then its
+contributor's rank in the order (a pointer's, the first contributor of
+its doc's), then where this run realized it. So a recorded vertical no
+loaded plugin provides ranks nowhere and refuses nothing, where a
+replay would refuse it as `keel.missing-harness-contributor`; and so
+does one the tags the run leaves no longer cover, which `twinOrder`
+reads with `coverageGap` rather than resolving, where resolving it
+would refuse the run as `keel.uncoverable-vertical`. A
+`ContributionConflictError` read as `keel.reapply-conflict` over the
+re-rendered ids, named in the order the project records them, where
+anything re-rendered, and rethrown otherwise; the refresh proposals,
+over the steps it installs in run order, each worded as a later run
+takes it up (`proposeForLater`) or as this one could; and the report,
+the caller's notes before and after the proposals, and the diffs where
+anything re-rendered. A re-render runs within the recorded composition (S.7, DS4):
 `convergeOf`'s `reapply` plan, and its `add` plan where `--refresh`
 names anything, replays every other vertical the project records
 (`replay` steps) in recorded order after the first re-render, a later
@@ -341,7 +360,9 @@ each context `keel add module` added among them where it arrived — a
 `replay` step of `bounded-context` naming it (`ConvergeStep.context`),
 just before the first vertical recorded after the `bounded-context`
 row that is not older than it, else after them all, never before one
-recorded before it (`contextReplays`); and after the last re-render,
+recorded before it (`contextReplays`) — so, since S.8 records a new
+row before `bounded-context`, after every vertical on a manifest this
+keel wrote, as one run writes them; and after the last re-render,
 what the run installed before it, in run order. Each replays in
 `installVertical`'s `patchesOnto` posture: contributed from what it
 records — the manifest its own step left, where it ran earlier in the
@@ -361,20 +382,22 @@ its own fixed point is a divergence the run refuses as
 `keel.reapply-conflict`; a re-render that rewrites nothing replays onto
 nothing, and contributes nothing. A replayed vertical is not one the
 run ran: the retrofit still replays its harness elements, and a
-refresh proposal still reads it. `commitConverged` is the one commit
-after it: the tree, then the manifest, then the deferred actions.
+refresh proposal still reads it. `commitConverged` is the one commit after it:
+the tree, then the manifest, then the deferred actions.
 `handlers/add-vertical.ts` keeps what is its own — naming the
 verticals, the scope and a product root's reading of its services, the
 generation gate and `bringsHarness`, D4's notes (installed, provided,
-in the services),
-the refusals of a re-render (not installed, or against its own rules)
-and the early answer check — and hands `convergeOf`'s `add` or
-`reapply` plan to the run, appended and realized in run order, the
-recorded contexts replayed where the harness runs, adopted or
-re-rendered, and its admission and D4 notes before the proposals,
-worded as this run could take them up under `--dry-run`
-(`proposeForLater: !dryRun`). `tests/domain/core/converge-run.test.ts`
-holds each part on a fixture family.
+in the services), the refusals of a re-render (not installed, or
+against its own rules) and the early answer check — and hands
+`convergeOf`'s `add` or `reapply` plan to the run, recorded and
+realized in the reference order (S.8: where `keel new` of the target
+records each row, answers key and harness entry — a harness adopted
+later third on keel's presets, as one run records it), the recorded
+contexts replayed where the harness runs, adopted or re-rendered, and
+its admission and D4 notes before the proposals, worded as this run
+could take them up under `--dry-run` (`proposeForLater: !dryRun`).
+`tests/domain/core/converge-run.test.ts` holds each part on a fixture
+family.
 
 `keel add module` is the run's caller since S.5. `handlers/add-module.ts`
 keeps the name, the seven refusals (`moduleRefusal` among them),
@@ -385,19 +408,20 @@ assembly's contexts, wires it too: every adapter of keel's
 (`ConvergeModule.adds` — the manifest records it only after the run),
 consuming what the request names and reading the answers supplied, in
 the command's mode. One Tree, one ownership, one harness buffer,
-finalized once; the vertical's row appended the first time; no
-proposal, since a context installs no vertical and promotes no tag.
-The handler then records the context after the others, re-indexes the
-root map (the full projection, merged, over the manifest the run
-leaves), rehashes what that rewrote, and commits through
-`commitConverged`. `contexts.ts`' `addedContextsOf` is the one reading
-of the added contexts — growth's, the reading's and the harness
-retrofit's: `harness-retrofit.ts` replays each context `keel add
-module` added through keel's own `bounded-context`, never one a
-registry lists, and neither the skeleton nor the peer, whose harness
-elements are `walking-skeleton`'s. No adapter of keel's
-`bounded-context` declares a harness element, so today that replay
-writes nothing and no suite can see it run.
+finalized once; the vertical's row recorded the first time where the
+reference order puts it, last; no proposal, since a context installs
+no vertical and promotes no tag. The handler then records the context
+after the others, re-indexes the root map (the full projection,
+merged, over the manifest the run leaves), rehashes what that rewrote,
+and commits through `commitConverged`. `contexts.ts`'
+`addedContextsOf` is the one reading of the added contexts — growth's,
+the reading's and the harness retrofit's: `harness-retrofit.ts`
+replays each context `keel add module` added through keel's own
+`bounded-context`, never one a registry lists, and neither the
+skeleton nor the peer, whose harness elements are
+`walking-skeleton`'s. No adapter of keel's `bounded-context` declares
+a harness element, so today that replay writes nothing and no suite
+can see it run.
 
 `keel new` is the run's caller since S.6, once per scope, from the
 scope's seed manifest — the empty manifest with the identity no

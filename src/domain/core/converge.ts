@@ -30,7 +30,7 @@
  * product's, then the other extras in `admit`'s, then
  * `bounded-context`, which one run never records and `keel add module`
  * records last. Where no preset reads back, the recorded order stands
- * in for it. Read here; S.8 records by it.
+ * in for it. Every caller onto a project records by it (S.8, DS3).
  *
  * **A request names nothing to take away** (DS5). Each kind adds —
  * verticals, a re-render, an entrypoint, a context, a preset from its
@@ -43,11 +43,13 @@
  * in part, re-rendered, replayed for its patches alone onto what a
  * re-render rewrote — a context `keel add module` added among them —
  * or replayed for its deferred actions alone where the caller settles
- * (DR5, DS7); the contexts to wire; and the caller's placement, as it
- * is today — growth records at its twin's rank and realizes the
- * harness in its twin's order, every other caller appends and
- * realizes it in run order. S.8 moves the second onto the reference
- * order.
+ * (DR5, DS7); the contexts to wire; and the caller's placement —
+ * growth records at its twin's rank and realizes the harness in its
+ * twin's order; `keel add`, with `--refresh` and `--reapply`, and
+ * `keel add module` record at the reference order's rank and realize
+ * it in that order (S.8), nothing recorded moving (DR4) — or append,
+ * where no preset reads back; and `keel new`, whose run is in the
+ * reference order already, appends onto a seed that records nothing.
  *
  * **A re-render keeps what later verticals wrote** (S.7, DS4). `keel
  * add --reapply` and `--refresh` re-render what they name within the
@@ -106,8 +108,8 @@ export interface Composition {
   /**
    * The preset, by id: the one the drill-down places the project on,
    * where the tags record a setting of its dials — null where none
-   * reads back (a plugin's preset off the tree, a manifest migrated
-   * from v1).
+   * reads back (a monorepo product's root, a plugin's preset off the
+   * tree, a manifest migrated from v1).
    */
   readonly preset: string | null;
   /**
@@ -252,17 +254,19 @@ export interface ConvergeStep {
 }
 
 /**
- * Where the caller records a run, as it does today (S.8 moves `append`
- * onto the reference order):
+ * Where the caller records a run:
  *
  * - `rows` — `twin`, each new row of the manifest at its twin's rank
- *   (growth); `append`, after every recorded one;
+ *   (growth); `reference`, at the rank of the target's reference order
+ *   ({@link Composition.order}), where one run of the target records
+ *   it (S.8); `append`, after every recorded one;
  * - `harness` — `twin`, the harness buffer realized in the twin's
- *   order (growth); `run`, in the order the run filled it.
+ *   order (growth); `reference`, in the reference order; `run`, in the
+ *   order the run filled it.
  */
 export interface Placement {
-  readonly rows: 'twin' | 'append';
-  readonly harness: 'twin' | 'run';
+  readonly rows: 'twin' | 'reference' | 'append';
+  readonly harness: 'twin' | 'reference' | 'run';
 }
 
 /**
@@ -313,11 +317,18 @@ export type ConvergePlan =
     }
   | { readonly kind: 'refused'; readonly refusal: ConvergeRefusal };
 
-/** How every caller but growth records, today. */
+/**
+ * How `keel new` records — its run is in the reference order, onto a
+ * seed that records nothing — and how every other caller records where
+ * no preset reads back: appended, realized in run order.
+ */
 const APPENDED: Placement = { rows: 'append', harness: 'run' };
 
 /** How growth records: where its twin records. */
 const AT_TWIN: Placement = { rows: 'twin', harness: 'twin' };
+
+/** How every other caller onto a project records: where one run of its target records (S.8). */
+const AT_REFERENCE: Placement = { rows: 'reference', harness: 'reference' };
 
 /**
  * The composition the project `manifest` records, as `keel new` would
@@ -389,16 +400,41 @@ export function convergeOf(
 ): ConvergePlan {
   switch (request.kind) {
     case 'add':
-      return addOf(registry, manifest, request);
+      return atReference(registry, manifest, addOf(registry, manifest, request));
     case 'reapply':
-      return reapplyOf(registry, manifest, request.verticals);
+      return atReference(registry, manifest, reapplyOf(registry, manifest, request.verticals));
     case 'entrypoint':
       return entrypointOf(registry, manifest, request.word);
     case 'module':
-      return moduleOf(registry, manifest, request);
+      return atReference(registry, manifest, moduleOf(registry, manifest, request));
     case 'new':
       return newOf(registry, manifest, request);
   }
+}
+
+/**
+ * `plan`, over the project `manifest` records, placed where one run of
+ * its target records (roadmap S.8, DS3): each row the run records anew
+ * before the first recorded one the reference order lists later —
+ * before `bounded-context`, which it lists last — nothing recorded
+ * moving (DR4), and the harness realized in that order. Where no
+ * preset reads back, the reference is the recorded order, and `plan`
+ * stays appended, as it was.
+ */
+function atReference(registry: Registry, manifest: ManifestV2, plan: ConvergePlan): ConvergePlan {
+  if (plan.kind !== 'converges' || plan.target.preset === null) return plan;
+  const had = manifest.verticals.map(({ id }) => id);
+  const incoming = plan.target.recorded.filter((id) => !had.includes(id));
+  const target =
+    incoming.length === 0
+      ? plan.target
+      : recording(
+          registry,
+          manifest,
+          placed(had, incoming, plan.target.order),
+          plan.target.contexts,
+        );
+  return { ...plan, target, placement: AT_REFERENCE };
 }
 
 /**
@@ -406,8 +442,10 @@ export function convergeOf(
  * `incoming` placed among them where `twin` lists them: each before
  * the first recorded one the twin lists after it — one the twin does
  * not list takes the place of the next incoming one it does — and
- * after any other. Nothing recorded moves. Growth's order, for its run
- * and for its record (`./converge-run.ts`).
+ * after any other. Nothing recorded moves. Growth's order, by its twin,
+ * for its run and its record; and, by the target's reference order in
+ * place of a twin, the record of every other caller onto a project
+ * ({@link atReference}, `./converge-run.ts`).
  */
 export function placed(
   recorded: readonly string[],
@@ -692,7 +730,8 @@ function refusedByPlan(error: DomainError): ConvergePlan {
  * each installed, or re-rendered where it is refreshed, within the
  * recorded composition, as `--reapply` re-renders, what it installed
  * before the re-render replayed after it ({@link withReplays}) —
- * appended.
+ * appended, which {@link convergeOf} places at the reference order
+ * ({@link atReference}).
  */
 function addOf(
   registry: Registry,
