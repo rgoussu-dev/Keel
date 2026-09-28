@@ -364,6 +364,110 @@ real preset — at the command line, on a card, on the page — scaffolds
 through `support/unsplit-peer.ts`, the shipped registry with Quarkus'
 peer context folded back into the one adapter it was before R.3d.
 
+**The paths golden.** Roadmap epic S moves every path that installs or
+re-renders verticals onto one converge operation, and the paths golden
+pins what each path leaves, absolutely, where every golden above pins
+one facet of it or compares two projects that can move together. It
+landed first, with no `src/` change (S.1a), so that each later step
+proves its paths byte-identical or names the cells it moves. Four
+suites over `support/paths-golden.ts`, one per family, each with its
+JSON beside it, so vitest runs them in parallel workers:
+
+- `domain/core/paths-new.golden.test.ts` — `keel new`: every
+  single-service preset on every setting `harnessSettings` walks (the
+  harness on and off), the whole menu on every setting with the
+  harness, each offered extra alone on the opening dials, the whole
+  menu there under the grid's I9 answer bodies (`answered`, `borrowed`,
+  `twice`), and every product under each repository layout;
+- `paths-add` — `keel add`: each offered extra alone on each preset's
+  opening scaffold, on default answers and with every question its
+  preview asks answered away from its default; each after the module
+  history on the opening modulith setting; `keel add agent-harness` on
+  each `--no-agent-harness` scaffold, bare and with each extra offered
+  there; every ordered pair of extras (`keel new --with a`, then
+  `keel add b` with the refresh its preview proposes taken, and, where
+  it proposes one, without it) on each preset carrying both back
+  entrypoints, so that a proposal is pinned on the install whose report
+  makes it, not only through the cell that takes it; and every vertical
+  at each product's root and in each service, under both layouts;
+- `paths-reapply` — each recorded vertical re-rendered alone, and the
+  whole re-render, on each preset's opening and whole-menu scaffolds
+  and in each product service;
+- `paths-grow` — the module history on every modulith setting, the
+  bootstrap re-rendered alone after it, and the whole re-render; and
+  `keel add entrypoint` on each single-entrypoint backend preset: on
+  its opening scaffold with no extras and with the whole menu, after the
+  history, after `keel add agent-harness` on a `--no-agent-harness`
+  scaffold, and once grown, followed by
+  `keel add dev-container --reapply`.
+
+Cells come from `keel.catalog`, `keel.dials` and `keel.project-status`
+(and a preview's questions and proposals), never from a hand list, but
+for the one family named for what it pins: Q3.4's finding 2, on
+`quarkus-cli-rest` and its Kotlin twin under Gradle —
+`keel new --with distribution`, then `keel add containerization`,
+which proposes the refresh, and
+`keel add containerization --refresh distribution`, which takes it;
+and `keel add containerization`, then `keel add distribution --reapply`.
+The **whole re-render** is one `keel add v1 … vn --reapply` naming
+every recorded vertical `keel add` can name (all but `bounded-context`
+and a product root's `fullstack`), as a dry run. It names them in
+code-unit order: a re-render runs in recorded order whatever order it
+is named in, so a change to the record's order moves the cell rather
+than renaming it. Every other run is real, into one in-memory disk.
+Each `Tree` a run opens is the shipped `FakeTree`, seeded with what the
+disk holds under its root and committing back each file's bytes, so a
+product root and its services see one another's files. It commits each
+file's mode as git stores it, `0o755` where an executable bit is set,
+else `0o644` (`pinnedMode`), since an executable template's other bits
+are what the contributor's umask gave their checkout. It stages the net of its
+writes against the disk, as the filesystem adapter does: the fake
+alone lists a file written back onto its own bytes, and cannot read a
+mode back. The manifests go to the shipped `FakeManifestStore`. Each
+command of a cell runs at its own instant (`instantAt`: `PINNED_NOW`,
+a minute later per position in the chain), so a run that re-stamps
+what an earlier one recorded moves the manifest; the instant is the
+position's, so a cell copied from a scaffold records what the whole
+chain run in it would. The fake process runner answers git's `rev-parse`
+as outside any repository; unscripted, its empty toplevel resolves to
+the test's own directory, and version control's deferred actions would
+name the checkout. Each scaffold is made once and copied into every
+cell that starts from it.
+
+A cell is keyed by its command lines, joined by `&&`
+(`cd <service> && ` first in a service), and records:
+
+- its verdict: `ok`, the code, `thrown:<Error>`, or `stopped:<verdict>`
+  where a command before the last did not come back Ok;
+- a digest of each top-level entry of the tree it leaves (a service's
+  as `<service>/<entry>`), over each file's path, executable bit and
+  bytes;
+- each field of each manifest under it, digested apart, so a move of
+  the manifest alone names its field;
+- the last run's deferred actions, version control's included; a dry
+  run's are the ones its report says it would queue;
+- its report's subject, notes, proposals, changes, diffs (path and
+  hunks), resolved adapters and skipped harness elements, or the
+  sentence it refused in, with the cell's directory read as `<cell>`.
+  The changes and diffs are pinned as sets, in code-unit order, since a
+  `Tree` lists them by `localeCompare`, which follows the machine's
+  locale;
+- `keel docs check`'s drift.
+
+Nothing a cell records depends on where it runs, on the machine's git,
+on the umask its checkout was made under, or on its locale. A failure
+names each moved cell and its fields, the first 50 of them.
+`KEEL_UPDATE_GOLDEN=1 pnpm exec vitest run tests/domain/core/paths-*.golden.test.ts`
+rewrites the four through prettier; it reads no other golden, so the
+order does not matter, and S.2's converge golden is to key on it. About
+35 s, 43 s, 13 s and 42 s alone (new, add, reapply, grow). They run in
+a `beforeAll`, so mutation testing leaves them out.
+`domain/core/paths-machinery.test.ts` holds what the four cannot see
+move, since they compare only what they record: `pinnedMode` across
+umasks, and a re-render's instant apart from its scaffold's, the same
+whether its cell ran the chain or copied the scaffold — in under a
+second, in its tests, so mutation testing keeps it.
+
 **A menu-versus-gate test uses preview or install as its oracle.** A
 test claiming that what a front end offers is what keel accepts — a dial
 menu, the extras list, a brownfield card — dispatches `keel.preview` (or

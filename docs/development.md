@@ -467,7 +467,7 @@ recorded there too:
   stronger check of that declarative surface than a mutant re-running
   the unit suite.
 - **Mutants run against `vitest.stryker.config.ts`**, which is the
-  ordinary config minus six suites — all excluded by construction,
+  ordinary config minus ten suites — all excluded by construction,
   not by environment. `tests/e2e/` decides for itself whether to run,
   and on a box with a JDK on PATH it would happily build a real
   project once per mutant. `tests/version-pins.test.ts` is a text
@@ -494,7 +494,8 @@ recorded there too:
   in a `beforeAll` too, and is left out for the same reason, as are
   the growth golden and its render guard
   (`tests/domain/core/growth.golden.test.ts`,
-  `tests/domain/core/growth-render.test.ts`).
+  `tests/domain/core/growth-render.test.ts`) and the paths golden's
+  four families (`tests/domain/core/paths-*.golden.test.ts`).
 
 Incremental mode is on: `reports/stryker-incremental.json`
 (gitignored) records what was tested against which code, so a re-run
@@ -1079,7 +1080,17 @@ the operator's machine would report it as a harness finding.
   adding an entrypoint reads on each preset; it reads no other golden —
   `KEEL_UPDATE_GOLDEN=1 pnpm exec vitest run tests/domain/core/growth.golden.test.ts`
   — but the grid's growth axis reads it (I10 holds each grown cell to
-  the refusal it records), so regenerate it before the grid.
+  the refusal it records), so regenerate it before the grid. And any
+  change to what a path writes or records — a stack, a dial, a
+  vertical, a template or a pin, a handler's report — moves
+  `tests/domain/core/paths-*.golden.json`, the paths golden: what
+  `keel new`, `keel add` (with `--refresh` and `--reapply`),
+  `keel add module` and `keel add entrypoint` leave, cell by cell,
+  digested per top-level entry and per manifest field. It reads no
+  other golden —
+  `KEEL_UPDATE_GOLDEN=1 pnpm exec vitest run tests/domain/core/paths-*.golden.test.ts`
+  — and its failure names each cell that moved and what moved in it,
+  which is what to check against the change you meant.
 
 See the [composition model](composition.md) for the vocabulary, and
 the [roadmap](roadmap.md) for what's wanted next.

@@ -8463,7 +8463,7 @@ Landed paragraph here. Two more gates apply where they are named:
 
 ### S.1 — Pin every path first
 
-#### S.1a — The paths golden (M)
+#### S.1a — The paths golden (M) ✅
 
 **The golden lands alone**, in a commit with no `src/` change, green on
 today's code: `tests/domain/core/paths-*.golden.test.ts`, four files
@@ -8511,6 +8511,215 @@ CHANGELOG entry: nothing a user sees moves.
 **Leaves out:** `keel toolchain`, `keel link` and `keel docs sync`,
 which S does not make callers (DS6). `keel docs check` is read, as a
 number per cell.
+
+**Landed as the golden alone**, in one commit with no `src/` change.
+`tests/support/paths-golden.ts` holds the Factory, the spelling of
+each command line and the recording; the four suites hold one family
+each, and `paths-machinery.test.ts` the Factory's own pins of a mode
+and an instant (below). They record 3,436 cells, over 4,345
+dispatched runs and 843 scaffolds, each made once and copied into
+every cell that starts from it:
+
+- **`paths-new`, 689 cells:** the 300 settings of the 28
+  single-service presets, the harness on and off; the whole menu on
+  the 150 with it; the 143 offered extras alone; the whole menu on
+  each opening setting under the three answer bodies (84); and the six
+  products under both layouts (12). 661 are Ok, and the 28 `twice`
+  bodies `keel.unknown-answer`, as I9 has them.
+- **`paths-add`, 1,326 cells:** the 143 extras alone on the opening
+  scaffolds, and 98 of them again with their questions answered; the
+  143 after the module history on the 28 opening modulith settings;
+  171 adoptions of the harness (28 bare, 143 after one extra); 245
+  ordered pairs on the nine presets carrying both entrypoints, in 265
+  cells, since the 20 whose preview proposes a refresh are recorded
+  taking it and not (below); Q3.4's second spelling on its two
+  presets; and 504 adds at the product roots (168) and in their
+  services (336). 1,150 are Ok. The rest are the refusals
+  the composite grid records too, 84 `keel.not-initialised` at the
+  polyrepo roots, 54 `keel.wrong-scope` and 36
+  `keel.uncoverable-vertical`, and `keel.needs-refresh` twice:
+  `keel add iac` after `keel new --with distribution` on the two
+  Quarkus CLI-and-REST presets.
+- **`paths-reapply`, 731 cells, all Ok:** 651 verticals re-rendered
+  alone (176 on the opening scaffolds, 319 on the whole-menu ones, 156
+  in the 24 product services) and the 80 whole re-renders.
+- **`paths-grow`, 690 cells, all Ok:** the 200 module histories, the
+  bootstrap re-rendered alone after each and each one's whole
+  re-render; and 90 `keel add entrypoint` cells, five on each of the 18
+  single-entrypoint backend presets.
+
+`keel docs check` finds no drift on any cell but 18, as the research
+found: the harness adopted after `--with persistence`, on the 18
+presets that offer it. The re-renders read as the research measured
+them:
+
+- the whole re-render stages nothing on all 28 opening scaffolds, on
+  all 24 services and on 18 of the 28 whole menus. The other ten are
+  the presets where the dev environment is an extra, and each restages
+  `.devcontainer/devcontainer.json`. After a history it stages nothing
+  on 12 of the 200, Go's, and the bootstrap's files on the other 188;
+- `walking-skeleton` alone stages files on 19 of the 28 opening
+  scaffolds, 19 of the 28 whole menus, all 24 services and 196 of the
+  200 histories. `dev-container` alone does on the same ten whole
+  menus, and `distribution` on Q3.4's two cells. Every other vertical
+  re-rendered alone is a fixed point on every cell.
+
+The files take 35 s, 43 s, 13 s and 42 s alone (new, add, reapply,
+grow), under `CI=true`, and 40 s, 49 s, 14 s and 49 s beside the rest
+of `CI=true pnpm test`, which took 261 s on four cores against 208 s
+and 240 s in two runs without them: some 35 s more. Growth's grid
+axis took 105 s, against 111 s and 118 s. Those are at a load average
+of 2 to 3; at about 7, with the step's other checks beside it, the
+suite took 289 s and 330 s against 212 s, and the files 40 s, 45 s,
+16 s and 48 s alone. The JSON comes to 1.20 MB, 3.59 MB, 1.78 MB and
+1.18 MB.
+
+**The proof**, each tried, then undone byte for byte:
+
+- **An R.1a writer on an append.** Go persistence's README section put
+  back on a plain append moved exactly one cell of the four files, in
+  `tree:README.md` alone. It is the one cell where that section
+  arrives below an existing `### Toolchain`:
+
+  ```sh
+  keel new --stack go-cli-http --module-layout basic --with toolchain && keel add persistence
+  ```
+
+- **Another record order.** `recordVertical` prepending in
+  `install.ts`, which every path records through, moved
+  `manifest.verticals` on every cell with a manifest: 661, 1,326, 731
+  and 690 of them. No tree digest moved on a cell still Ok. The drift
+  `keel docs check` reads moved on 603 of them, since the index
+  replays the recorded order, and `manifest.entries` moved on 18 adds
+  and `answers` on 80 growth cells. The 280 whole re-renders moved
+  under their own keys: `manifest.verticals` and the report on all of
+  them, since a re-render runs in recorded order, and the actions they
+  would queue on 273. The 45 `keel add entrypoint` cells that stopped
+  coming back Ok (10 `keel.path-missing`, 35 thrown) are the only
+  trees that moved. As narrow as the plan words it, `add-vertical.ts`
+  recording what one `keel add` installs in the other order moved 189
+  adds, each one bringing a prerequisite, in `manifest.verticals`
+  alone.
+
+Beyond the text above:
+
+- **Every `Tree` reports the net, as the filesystem adapter does.**
+  The shipped `FakeTree` lists every write as a change. `FsTree` lists
+  the net against the disk. Recorded through the fake as it ships,
+  1,678 reports (523 adds, all 731 re-renders and 424 growth cells)
+  listed files written back onto their own bytes, and every whole
+  re-render seemed to stage something. The suite's `Tree` is a `FakeTree`
+  subclass that reports the net. Between the two readings, no tree,
+  manifest, verdict or drift moved.
+- **File modes are pinned as git stores them.** The fake keeps the
+  mode a write gives but cannot read one back, so the suite's `Tree`
+  notes it and commits it with the bytes, a file written with none
+  keeping the mode it had, as `FsTree` does. What it keeps is `0o755`
+  where any executable bit is set and `0o644` otherwise
+  (`pinnedMode`): an executable template reaches a run with the
+  permission bits of the contributor's checkout, which git writes
+  under their umask. Pinned as full octal, the four executable
+  templates checked out `0o775`, as `umask 0002` leaves them, moved all
+  731 re-render cells; pinned as git stores them, they move no cell
+  of the four files. A file's line in its entry's digest is its path,
+  that mode and its bytes, and an executable bit that moves alone is a
+  `modify`, as `FsTree` stages it. The harness's hooks written `0o644`
+  rather than `0o755` (`apply.ts`) moved `.claude`, or a service's, on
+  every cell whose project carries the harness: 511, 1,326, 731 and 390.
+- **Each command of a cell runs at its own instant**: `PINNED_NOW` for
+  the first, a minute later for each position after it, the same day
+  (`instantAt`), through a mediator wired over the same fakes per
+  position. On one clock every timestamp a manifest records is one
+  instant, whichever run wrote it, so a run that re-stamps what an
+  earlier one recorded is invisible: a harness entry re-stamped on
+  every run (`install.ts`) and a vertical re-stamped by its own
+  `--reapply`, both at once, moved no cell. Per position, the first
+  moves `manifest.entries` on 751 adds, all 651 real re-renders and
+  390 growth cells, and the second `manifest.verticals` on 165 adds,
+  the 651 and all 690 growth cells. The instant is the position's, not
+  the sweep's order, so a cell copied from a scaffold records what the
+  whole chain run in it would. Regenerated so, the golden moved in the
+  manifest alone, `updatedAt` and the rows a later command stamps, on
+  922 adds, 651 re-renders and all 690 growth cells, and on no
+  `keel new` cell, whose one command runs at `PINNED_NOW`.
+- **The report pins more than the plan lists.** Its subject and its
+  skipped harness elements, which the command line and the page print,
+  and each diff's hunks beside its path: a whole re-render is a dry
+  run, so its tree is the base's, and on the 198 that restage files
+  the hunks are what pins the bytes it would write. A skipped count
+  one too high (`install.ts`) moved 250 cells in `report` alone, the
+  150 `--no-agent-harness` scaffolds and the 100 whole re-renders after
+  a history without the harness. The changes and diffs are pinned as
+  sets, in code-unit order: a `Tree` lists them by `localeCompare`,
+  which follows the machine's locale. Listed in the `Tree`'s order,
+  the report moved under `LANG=cs_CZ.UTF-8` on 623 cells (617 of
+  `keel new`, six adds), and nothing else did; as sets, the four files
+  are green there.
+- **A dry run's actions are the ones its report says it would queue**,
+  since it runs none. Version control's are pinned too, on every run.
+  The measure leaves them out because their wording depends on the
+  machine's git; through the fake process runner it depended on the
+  test's own directory instead, which an unscripted `git rev-parse`
+  answers as the repository's toplevel. The fake answers that probe
+  as outside any repository, so git's wording is the same on every
+  machine. A dry run's report names no adapter to leave them out by.
+- **The whole re-render names its verticals in code-unit order.** A
+  re-render runs in recorded order whatever order it is named in, and
+  only the report's subject follows the naming, so the key survives a
+  change to the record's order.
+- **`keel docs check` is read once per state.** A cell that leaves the
+  tree and manifests another left (a refusal, a dry run, a fixed
+  point) reads that one's drift. The check replays every recorded
+  contributor, and without this it was a third of the time: the
+  re-render family took 23.5 s, and the add and growth families 49 s
+  and 51 s.
+- **Q3.4's first spelling is a pair.** The pair rule reaches it: the
+  add's preview proposes `--refresh distribution`. So it is one cell,
+  recorded once, and so is the add that proposes it (below), which the
+  finding's family names too. The second spelling is the one named. A
+  preview that refuses proposes no refresh, so each
+  `keel.needs-refresh` pair is recorded as its add answers.
+- **A proposal is pinned on the install that makes it.** The text
+  takes each proposed refresh, and an add that takes one proposes
+  nothing more. Recorded so, none of the 1,306 add cells carried a
+  proposal in its report: a change to what an install proposes moved
+  no add cell unless the preview's moved with it, and S.4 re-plumbs
+  exactly these, `--refresh` becoming a converge caller. The 20 pairs
+  whose preview proposes a refresh are recorded again without it, 20
+  cells, all Ok and with no drift, and each report carries its
+  proposal: 18 `keel add persistence` on a project made with
+  distribution, which reads persistence, and Q3.4's
+  `keel add containerization` on its two presets, whose proposal moves
+  distribution from `quarkus-cli-native` to `jvm-container`. Logged
+  from `reportOf`, the add file's 1,326 reports carry those 20
+  proposals and no other. They cost the add file some 2 s over the
+  times above: back to back, under a load average of 4 to 8, its tests
+  took 43.5 s and 43.3 s with them and 41.4 s and 41.9 s without.
+- **The golden is not small.** A cell holds 12 to 34 top-level
+  entries on a single project and 42 to 57 on a product, and 14
+  fields per manifest, 15 where it records a toolchain: about 1.7 kB
+  on a single project and 4 kB on a product. The four files come to
+  7.7 MB, more than the 6 MB the plan put on per-file hashes. The same
+  digests recur across cells, so they compress 29-fold (269 kB under
+  `gzip -9` file by file, 294 kB under its default). A change reads
+  through the failure's list of moved cells and fields, not the JSON's
+  diff.
+- **A cell's directory is named by the digest of its key**, under a
+  fake root that no byte depends on. A refusal is recorded by its
+  sentence, and the 84 `keel.not-initialised` at the polyrepo roots
+  name where they looked, so the sentence reads the cell's directory
+  as `<cell>`. All four families re-run under another root, with other
+  directory names, recorded the same golden. Four presets sweep at
+  once (`eachStack`), and the record is the same in any order.
+- **`stopped:<verdict>`** marks a cell whose chain stopped before its
+  last command, as `&&` does. No cell carries it today.
+
+`tests/AGENTS.md` records the golden beside the shared-files and
+growth goldens, and `docs/development.md` names the command that
+regenerates it. `vitest.stryker.config.ts` leaves the four out, and
+keeps `paths-machinery.test.ts`, whose cells run in its tests, in
+under a second. No existing golden or known file moved. No CHANGELOG
+entry: nothing a user sees moves.
 
 #### S.1b — I9 on every install target, and I11 where it holds (S)
 
