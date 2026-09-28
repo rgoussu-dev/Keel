@@ -274,8 +274,8 @@ every path that installs or re-renders verticals is to call (roadmap
 S): pure as `planner.ts` and `growth.ts` are. Its reading
 (`compositionOf`, `referenceOrder`, `convergeOf`) is
 `keel add entrypoint`'s since S.3, `keel add`'s — `--refresh` and
-`--reapply` with it — since S.4, and `keel add module`'s since S.5, run
-by `converge-run.ts` (below); S.6 makes `keel new` its caller.
+`--reapply` with it — since S.4, `keel add module`'s since S.5 and
+`keel new`'s since S.6, run by `converge-run.ts` (below).
 `compositionOf` reads
 what a manifest already says `keel new` was given, with no field
 recorded for it (DS2): the preset the drill-down places it on, on the
@@ -339,9 +339,8 @@ and the early answer check — and hands `convergeOf`'s `add` or
 recorded contexts replayed where the harness runs, adopted or
 re-rendered, and its admission and D4 notes before the proposals,
 worded as this run could take them up under `--dry-run`
-(`proposeForLater: !dryRun`). `keel new` keeps its own tail until S.6
-makes it a caller. `tests/domain/core/converge-run.test.ts` holds each
-part on a fixture family.
+(`proposeForLater: !dryRun`). `tests/domain/core/converge-run.test.ts`
+holds each part on a fixture family.
 
 `keel add module` is the run's caller since S.5. `handlers/add-module.ts`
 keeps the name, the seven refusals (`moduleRefusal` among them),
@@ -365,6 +364,24 @@ registry lists, and neither the skeleton nor the peer, whose harness
 elements are `walking-skeleton`'s. No adapter of keel's
 `bounded-context` declares a harness element, so today that replay
 writes nothing and no suite can see it run.
+
+`keel new` is the run's caller since S.6, once per scope, from the
+scope's seed manifest — the empty manifest with the identity no
+vertical makes: the preset's and the dials' tags, `projects`, `peers`,
+`services`, the scaffolded modules and the harness generation — and
+`convergeOf`'s `new` request: the preset's verticals in its order,
+never admitted, then what a product gives its service, then the extras
+the handler admitted, less what a monorepo service's product root
+carries. The run takes the `scaffold` posture (`apply`), the preset's
+own rules (`rules`) and the handler's ownership (`owners`), and
+realizes the harness once, where the engine used to realize its own
+buffer. `handlers/new-project.ts` keeps what is `keel new`'s: the
+drill-down and the review, the dials and their gates, D13's adoption,
+the directory gates, a product's scopes and the routing of its extras,
+the supplied answers held across every scope at once (each run's
+`adapters` and `reads`), `crossScopeWrite` (each run's `owners`),
+`underService`, and the commit across scopes — every tree, then every
+manifest, then each scope's deferred actions.
 
 **The stack presets are data.** `stack-presets.json`, because nothing in
 a `Stack` is code — `tags` and `projects` are strings and every other

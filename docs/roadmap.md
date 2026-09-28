@@ -9957,7 +9957,7 @@ Beyond the text above:
   retrofit that replays no recorded context passes it, as S.4 says it
   would where no context declares a harness element.
 
-### S.6 — `keel new`, a caller from its seed manifest (L)
+### S.6 — `keel new`, a caller from its seed manifest (L) ✅
 
 `stageStack` hands `converge` a scope's seed and its request:
 
@@ -9999,6 +9999,247 @@ No byte of a scaffold moves, so no e2e suite runs. No CHANGELOG entry.
 **Leaves out:** a converge of a product's root or across scopes (U),
 and `keel new` in a directory holding a project, which stays
 `keel.already-initialised` (DS1).
+
+**Landed as the run's fourth caller**, in one commit, with no golden
+moved. `stageStack` in `handlers/new-project.ts` builds each scope's
+seed as it built its manifest before, reads its plan with
+`convergeOf(…, { kind: 'new', … })` and hands it to `converge`, where
+it called `installVerticals` and the engine realized its own harness
+buffer. The request names the preset, the harness dial, the extras
+the handler admitted on the scope in the order they install, whether
+the scope is a monorepo service, and, for a product's service, the
+product and the service's path, which say what the product gives it.
+The handler's own placement filter goes, since the reading applies it
+(`presetServiceVerticals`). The handler goes from 2,125 lines to
+2,159, its doc comments most of the difference. The run takes three
+inputs it did not take before, each optional and absent for the other
+callers:
+
+- `apply`, the posture its steps install in: `scaffold` here, and
+  `install` where it is absent;
+- `rules`, the preset's own (`stack.conflicts`), held with the run's
+  after every step, as `installVerticals` holds them;
+- `owners`, the handler's ownership, which `crossScopeWrite` reads
+  back to name who wrote a file two scopes stage.
+
+`Converged` carries two fields more, `adapters` and `reads`: what the
+run resolved and the supplied answers it read. The handler holds those
+answers across every scope at once, after the last is staged, as
+before. `converge-run.ts` goes from 566 lines to 612; `converge.ts`
+changes in its module's doc comment and in `serviceAt` (below), 871
+lines to 875; `install.ts` in two doc comments alone, 825 lines to
+829; and `apply.ts` does not change. What the handler keeps is the
+text's list, with the answer check across its scopes, `underService`
+and `commitScopes`: every tree, then every manifest, then each scope's
+deferred actions.
+
+- **Held byte for byte**, each suite against its committed JSON under
+  `CI=true`, and `git diff --exit-code` over every golden and known
+  file after:
+  - the four paths goldens (689, 1,326, 731 and 690 cells): the 689
+    `keel new` cells, the answered bodies among them, and every
+    scaffold the other three run their commands on;
+  - `converge.golden.json` (3,436 cells, 707 `keel new` scopes in
+    its 689 `keel new` cells), whose round trip reads back 673 of those
+    scopes (the product roots stay U's), and 24 more in the product
+    menus it records nowhere: 697, each now converged by the handler;
+  - the grid's greenfield (1,335 cells) and composite (1,656) goldens,
+    and brownfield's and growth's;
+  - `shared-files.golden.json` (498), the agent-harness golden (28
+    presets), the run-skill golden (5 families) and
+    `growth.golden.json` (360).
+
+  The grid's four axes pass, with every invariant the greenfield and
+  composite axes hold, and growth's I10 on all 320 cells. The known
+  files are as they were: brownfield's `{"I5": {}}`, and `{}` for the
+  others.
+
+- **The handler's suites pass**, unchanged but for a case each in two
+  of them: `new-project.test.ts`, 98 cases to 99,
+  `composite-scope.test.ts`, 36 to 37, `new-project-adoption.test.ts`'
+  15, and the 13 web suites of `tests/application/web` (240 tests).
+  The two cases:
+  - `new-project.test.ts`' `fullstack` under the monorepo layout, on a
+    clock a second later at every read: each of its three manifests
+    records every timestamp at the one instant, the manifest's, its
+    verticals', modules' and entries'. Handed the deps' clock instead
+    of the command's instant, each scope's verticals are stamped at a
+    later instant than its manifest, and the case fails where every
+    other suite, on a pinned clock, passes; HEAD passes it;
+  - `composite-scope.test.ts`' plugin product listing two services at
+    one path, `go-http` and `web-components` at `app/`, refused under
+    the polyrepo layout as `keel.cross-scope-write` in HEAD's
+    sentence, which a `serviceAt` that matches the path alone turns
+    into a plain throw (below).
+- **`converge-run.test.ts` gains four cases**, from 21 to 25, on the
+  family's CLI preset:
+  - the `new` reading of a seed, with the harness and without it, with
+    two extras, run in the `scaffold` posture, stages what
+    `installVerticals` stages from the same seed when it realizes its
+    own buffer: every file's bytes, the deferred actions, the adapters,
+    the count of skipped elements, and the manifest compared as JSON,
+    so key order too. What the research measured on 4 of 4 real
+    cells is held as a case, on the fixture family; on the shipped
+    presets the goldens above hold it;
+  - the posture: the log's patch writes into a user's `log.txt` under
+    `install`, and is refused as `keel.path-conflict` under
+    `scaffold`;
+  - the caller's rules: a rule of the preset's on the tag a step
+    promotes refuses that step as `keel.incompatible`, naming the rule,
+    and the same run without it is Ok;
+  - the caller's ownership, read back for who wrote `cli.txt`, and the
+    adapters and supplied answers the run returns.
+
+**The proof** that the suites catch the handler's part. Each edit was
+tried in a scratch copy of `stageStack` and undone byte for byte, then
+run against the handler suites `keel new` reaches most (the two
+`new-project` suites, `assembly-rules`, `composite-scope`, the six
+`fullstack` suites, `supplied-answers` and `preview-answers`),
+`converge-run.test.ts`, and the greenfield and composite axes: 15
+files, 276 tests. Each failed exactly the cases named:
+
+- **The run in the `install` posture.** The greenfield axis's golden
+  moves, and I1, which is hard, breaks on 31 cells. Four of
+  `new-project.test.ts`' cases fail: the refusals of ts-http over the
+  user's `package.json`, of quarkus-rest over their
+  `settings.gradle.kts`, and of go-cli over their `.gitattributes` and
+  `.claude/settings.json`, each a patch that merges into the user's
+  file where the scaffold posture refuses it.
+- **The preset's rules not handed to the run.** `assembly-rules.test.ts`'
+  case of a preset's own rule over the tags its verticals fold in, and
+  no other.
+- **The run's own ownership, not the handler's.** `composite-scope.test.ts`'
+  case of a product two of whose scopes write one file, whose sentence
+  names each writer, and no other.
+
+The same three edits made in `converge-run.ts` instead, so that the
+run ignores `apply`, `rules` or `owners`, each fail one case of
+`converge-run.test.ts`, its own, and none of the three other handler
+suites that call the run (`add-vertical`, `add-entrypoint` and
+`add-module`, 122 tests with it). The byte-identity case passes under
+the run's `install` posture too: on an empty tree the two postures
+write the same, as the research found.
+
+**Times**, under `CI=true` on four cores, as vitest reports a file's
+tests. Seven files carry most of `keel new`'s dispatches: the two
+`new-project` suites, `composite-scope.test.ts`, `paths-new`, the
+converge golden and the greenfield and composite axes (175 tests).
+They were run together four times, alternating this step's sources
+with HEAD's, at a load average of 3 to 11 from other work on the box:
+
+- this step's two runs took 74.1 s and 81.8 s: the converge golden
+  62.5 s and 68.9 s, `paths-new` 42.9 s and 39.9 s, greenfield 41.4 s
+  and 41.0 s, composite 17.0 s and 20.8 s, and `new-project.test.ts`
+  14.2 s and 19.9 s;
+- HEAD's took 89.0 s and 68.4 s, in the same order 76.8 s and 58.4 s,
+  43.6 s and 37.1 s, 46.1 s and 37.3 s, 23.2 s and 16.4 s, and 20.2 s
+  and 15.1 s.
+
+The reading of each scope's seed shows no cost that stands out from
+the load. In one run of `CI=true pnpm test` the suite took 360.3 s as
+vitest reports it (6 min 1 s wall), with 202 files and 3,247 tests
+passing, four more than HEAD's 3,243, against 316.8 s (5 min 18 s
+wall) for HEAD, run on the same box just before it. HEAD's run started
+at a load average of 0.3 and ended at 5.8; this one started at 0.8 and
+ended at 6.0, and collecting the files alone took it 26 s longer
+(166.7 s against 140.7 s), which nothing this step changes reaches.
+Beside the rest, with HEAD's in brackets:
+
+- the converge golden took 72.8 s (59.9 s);
+- the paths golden's four 39.6, 51.7, 16.2 and 49.1 s (39.3, 50.7,
+  16.4 and 50.7 s; new, add, reapply, grow);
+- greenfield 42.2 s (35.5 s), composite 15.8 s (17.9 s), brownfield
+  21.5 s (17.7 s) and growth's axis 121.5 s (118.8 s);
+- `shared-files.golden.test.ts` 42.4 s (42.0 s) and
+  `new-project.test.ts` 16.9 s (14.1 s).
+
+`converge-run.test.ts` takes 85 ms alone. A last run, on the finished
+tree with its docs, took 372.8 s (6 min 13 s wall) from a load average
+of 2.5 to 5.8, with 202 files and 3,247 tests passing: the converge
+golden 71.4 s, the paths goldens 39.5, 50.4, 15.4 and 48.7 s,
+greenfield 43.8 s and growth's axis 144.3 s. `git diff --exit-code`
+over every golden and known file, 19 of them, was clean after it. After
+review, with the two handler cases above, `serviceAt`'s match on the
+preset and the doc comments, a run took 348.3 s (5 min 49 s wall) from
+a load average of 1.9 to 6.0, with 202 files and 3,249 tests passing:
+the converge golden 69.2 s, the paths goldens 38.8, 50.7, 17.0 and
+49.4 s, greenfield 43.5 s and growth's axis 138.3 s. The goldens and
+known files were clean after it too.
+
+No byte of a scaffold moves and no preview changes, so neither the
+`keel ui` browser suites nor any e2e suite was run. There is no
+CHANGELOG entry, since nothing a user sees moves. `pnpm lint` and
+`pnpm typecheck` pass. Dependency-cruiser, part of `pnpm lint`,
+cruises 306 modules and 1,508 dependencies, two more than HEAD's
+1,506: the handler imports `converge.ts` and `converge-run.ts` where
+it imported `install.ts`, and the run imports `answers.ts` for the
+type of what it read. `src/domain/core/AGENTS.md` names `keel new`
+among the run's callers, and says what its handler keeps and what it
+tells the run.
+
+Beyond the text above:
+
+- **The extras are admitted twice**, as `keel add` admits its set
+  twice. The handler admits them before a question is asked, for its
+  refusals and its notes. The reading admits that set, already closed,
+  again, on the scope `keel new` plans it on (`presetScope`, or
+  `presetServiceScope` for a service), which is the handler's. So it
+  cannot refuse, and where it would, the handler throws. The converge
+  golden's round trip already held the `new` reading's run to the
+  order `keel new` records, on all 673 of the scopes it records, and
+  the menus' 24.
+- **The run's refusals cannot reach `keel new`.** The handler hands the
+  run no `check`, since it holds the supplied answers across every
+  scope at once, after the last is staged, as before; and nothing
+  re-renders. Where `converge` returned a refusal, the handler throws.
+  Every throw of an install or of the harness pass reaches the handler
+  as before, with a service's paths moved under it (`underService`),
+  since the run rethrows what it does not read as a re-render's
+  conflict.
+- **One instant for the command.** The handler reads the clock once,
+  as before, and hands each scope's run a clock that stays at that
+  instant, as `keel add module` does. A product's root and services
+  share their timestamps, which `new-project.test.ts`' case on a
+  ticking clock holds (above), as `add-module.test.ts` holds
+  `keel add module`'s.
+- **The reading finds a service by its preset too.** S.2's
+  `serviceAt` took the first service a product lists at the request's
+  path, and nothing in the registry stops a plugin's product listing
+  a path twice: on one listing `go-http` and `web-components` at
+  `app/`, the `web-components` scope's reading would throw a plain
+  `Error` under the polyrepo layout, where HEAD's install refuses the
+  product as `keel.cross-scope-write`. `serviceAt` now matches the
+  path and the preset. On that product, and on one listing `go-http`
+  twice at `app/`, the first with persistence of its own, both layouts
+  come back as HEAD's do: `keel.cross-scope-write` in HEAD's sentence,
+  or, under the monorepo layout with two presets, the product glue's
+  `ContributionConflictError`, thrown on HEAD too. Two services on one
+  preset at one path read the first one's extras, and meet the same
+  refusal. Refusing such a product at registration would be a new
+  refusal, and is left alone.
+- **What the run adds is a no-op on a seed.** `emptyManifestV2` stamps
+  this keel's generation, so where the harness runs, the restamp writes
+  the same value onto the key already there, and a
+  `--no-agent-harness` project keeps it, as before. The retrofit
+  replays nothing, since everything recorded ran and a seed records no
+  added context (`retrofit.contexts` false). No refresh can be
+  proposed, since a seed records no vertical.
+- **A monorepo product's root runs through the same call.** Its plan
+  is the product's verticals in the product's order, which the
+  handler installed before. Its round trip, and a converge of a root
+  that exists, stay U's.
+- **The report stays the handler's.** A product's report spans its
+  scopes, so the handler still builds it from each scope's tree,
+  deferred actions and skipped count. Of the run's own report it reads
+  the count alone.
+- **The engine keeps its own finalize**, which no command reaches now.
+  `installVerticals` still realizes its buffer where it is handed none,
+  as `install-verticals.test.ts` holds, and `converge-run.test.ts`'
+  first new case holds the run's finalize to it on a seed. Its module
+  comment and TSDoc say
+  so now: both front doors reach it through `converge`, which always
+  hands it the buffer. Taking the finalize out is left to a step that
+  changes `install.ts` anyway.
 
 ### S.7 — A re-render keeps what later verticals wrote (L)
 

@@ -1,9 +1,10 @@
 /**
  * The converge run (`src/domain/core/converge-run.ts`): a plan
  * `convergeOf` read, staged onto a Tree and reported, committing
- * nothing — and the one commit after it. `keel add entrypoint` is its
- * caller, and the growth grid holds that caller to its twin byte for
- * byte (I10); this holds each part of the run on a family small enough
+ * nothing — and the one commit after it. Its callers are `keel add
+ * entrypoint`, which the growth grid holds to its twin byte for byte
+ * (I10), `keel add`, `keel add module` and, since S.6, `keel new`;
+ * this holds each part of the run on a family small enough
  * to read: each posture, both placements, the harness realized in each
  * order, an element the twin ranks nothing of, the retrofit with and
  * without the recorded contexts — which never replays the family's
@@ -11,7 +12,11 @@
  * what re-rendered in the order the project records it, the caller's
  * answer check, the
  * refresh proposals — what they read, over what, in the caller's
- * words — and the commit, its deferred actions run for real.
+ * words — `keel new`'s part as a caller from a seed manifest (the
+ * scaffold posture, the preset's rules, the ownership it reads back,
+ * what the run resolved and read, and its reading of a seed staged as
+ * the engine realizing its own buffer stages it) — and the commit, its
+ * deferred actions run for real.
  *
  * **Scenario.** The `acme` family: a skeleton with one bootstrap per
  * entrypoint, an agent harness whose guide speaks of the entrypoints,
@@ -32,7 +37,9 @@
  * actions recorded and never run, but for a probe of the commit's own
  * case, run through `runActions`.
  *
- * **Port.** `converge` and `commitConverged`.
+ * **Port.** `converge` and `commitConverged` — and, for the case of a
+ * seed staged byte for byte, `installVerticals` realizing its own
+ * buffer, the engine `keel new` staged through before S.6.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -50,8 +57,9 @@ import {
   type ManifestV2,
 } from '../../../src/domain/contract/manifest.js';
 import type { ManifestStore } from '../../../src/domain/contract/ports/manifest-store.js';
+import { PathConflictError, RefusalError } from '../../../src/domain/contract/refusal.js';
 import type { Stack } from '../../../src/domain/contract/stack.js';
-import { ContributionConflictError } from '../../../src/domain/core/apply.js';
+import { ContributionConflictError, newOwnership } from '../../../src/domain/core/apply.js';
 import {
   compositionOf,
   convergeOf,
@@ -71,6 +79,7 @@ import {
 } from '../../../src/domain/core/converge-run.js';
 import { addedContext, CONTEXT_TAG } from '../../../src/domain/core/adapters/added-context.js';
 import { growthOf } from '../../../src/domain/core/growth.js';
+import { installVerticals } from '../../../src/domain/core/install.js';
 import { pluginOrigin, registryOf } from '../../../src/domain/core/registry.js';
 import { DomainError, type Result } from '../../../src/domain/kernel/result.js';
 import { FakeClock } from '../../../src/infrastructure/commons/fake-clock.js';
@@ -839,6 +848,127 @@ describe('converge: refresh proposals', () => {
     const run = ok(await world.run(stored, planOf(stored, [rerender(metrics)])));
     expect(run.report.refreshProposals).toBeUndefined();
     expect(run.report.notes).toBeUndefined();
+  });
+});
+
+describe('converge: `keel new`, a caller from a seed manifest', () => {
+  /** The manifest `keel new` starts a scope from: empty, on `tags`, this keel's generation stamped. */
+  const fresh = (tags: readonly Tag[] = CLI): ManifestV2 => ({
+    ...emptyManifestV2(NOW, '0.5.0-alpha'),
+    tags: [...tags],
+  });
+
+  it('stages the `new` reading of a seed in the scaffold posture as the engine realizing its own buffer stages it: every file, the actions and the manifest, byte for byte', async () => {
+    for (const withHarness of [true, false]) {
+      const stored = fresh();
+      const plan = convergeOf(family, stored, {
+        kind: 'new',
+        stack: 'acme-cli',
+        harness: withHarness,
+        extras: ['acme-metrics', 'acme-log'],
+        member: false,
+      });
+      if (plan.kind !== 'converges') throw new Error('expected a plan');
+      expect(plan.run.map((step) => `${step.vertical.id} ${step.posture}`)).toEqual([
+        'acme-skeleton install',
+        ...(withHarness ? ['agent-harness install'] : []),
+        'acme-notes install',
+        'acme-log install',
+        'acme-metrics install',
+      ]);
+      const world = new World();
+      const run = ok(
+        await world.run(stored, plan, {
+          apply: 'scaffold',
+          retrofit: { contexts: false },
+          proposeForLater: true,
+        }),
+      );
+
+      const tree = world.open();
+      const engine = await installVerticals({
+        verticals: plan.run.map(({ vertical: v }) => v),
+        manifest: fresh(),
+        supplied: {},
+        tree,
+        apply: 'scaffold',
+        mode: 'non-interactive',
+        prompt: rejectingPrompt,
+        logger: new FakeLogger(),
+        cwd: CWD,
+        templates: new FakeTemplateSource(),
+        processes: new FakeProcessRunner(),
+        now: () => NOW,
+        registry: family,
+      });
+
+      expect(JSON.stringify(run.manifest)).toBe(JSON.stringify(engine.manifest));
+      expect(run.tree.changes()).toEqual(tree.changes());
+      for (const { path } of tree.changes()) expect(run.tree.read(path)).toEqual(tree.read(path));
+      expect(run.actions.map((a) => a.description)).toEqual(
+        engine.applyResult.actions.map((a) => a.description),
+      );
+      expect(ids(run.adapters)).toEqual(ids(engine.adapters));
+      expect(run.report.skippedHarnessElements).toBe(engine.applyResult.skippedHarnessElements);
+      expect(run.manifest.harnessGeneration).toBe(HARNESS_GENERATION);
+    }
+  });
+
+  it('installs in the caller’s posture: under `scaffold` a file of the user’s a patch would merge into is refused, where under `install` the patch writes into it', async () => {
+    const world = new World();
+    world.files.set('log.txt', Buffer.from('mine\n'));
+    const stored = fresh();
+    const plan = planOf(stored, [skeleton, log].map(install));
+
+    const installed = ok(await world.run(stored, plan));
+    expect(installed.tree.read('log.txt')?.toString('utf8')).toBe('mine\nlogged\n');
+
+    const failure = await world.run(stored, plan, { apply: 'scaffold' }).then(
+      () => null,
+      (e: unknown) => e,
+    );
+    expect(failure).toBeInstanceOf(PathConflictError);
+    expect((failure as PathConflictError).path).toBe('log.txt');
+  });
+
+  it('holds the caller’s rules with the run’s after every step, refusing the step whose tags break one, naming the rule', async () => {
+    const stored = fresh();
+    const plan = planOf(stored, [skeleton, final].map(install));
+    const rules = [
+      { id: 'acme-cli/never-final', when: [FINAL], reason: 'the CLI preset is never final' },
+    ];
+
+    ok(await new World().run(stored, plan));
+    const failure = await new World().run(stored, plan, { rules }).then(
+      () => null,
+      (e: unknown) => e,
+    );
+    expect(failure).toBeInstanceOf(RefusalError);
+    expect((failure as RefusalError).code).toBe('keel.incompatible');
+    expect((failure as RefusalError).message).toBe(
+      "Acme final cannot be installed here: the CLI preset is never final (rule 'acme-cli/never-final')",
+    );
+  });
+
+  it('records who wrote each file in the ownership the caller hands it, and returns what it resolved and each supplied answer it read', async () => {
+    const owners = newOwnership();
+    const stored = fresh();
+    const run = ok(
+      await new World().run(stored, planOf(stored, [skeleton, harness, notes].map(install)), {
+        owners,
+        answers: { 'acme-notes/main': { depth: 'deep' } },
+      }),
+    );
+
+    expect(owners.writers.get('cli.txt')).toBe('acme-skeleton/cli');
+    expect(ids(run.adapters)).toEqual([
+      'acme-skeleton/cli',
+      'agent-harness/kit',
+      'acme-notes/main',
+    ]);
+    expect(run.reads).toEqual([
+      { adapter: 'acme-notes/main', question: 'depth', key: 'acme-notes/main' },
+    ]);
   });
 });
 

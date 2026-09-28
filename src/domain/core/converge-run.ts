@@ -6,8 +6,9 @@
  * module` each wrote out for themselves, and {@link commitConverged}
  * the one commit after it. `keel add entrypoint` is its first caller
  * (S.3), `keel add` — `--refresh` and `--reapply` with it — its second
- * (S.4), and `keel add module` its third (S.5); `keel new` becomes a
- * caller in S.6.
+ * (S.4), `keel add module` its third (S.5), and `keel new` its fourth
+ * (S.6): one run per scope, from the scope's seed manifest, in the
+ * `scaffold` posture (`apply`), under the preset's own rules (`rules`).
  *
  * **The run.** One `installVerticals` pass over the plan's steps, each
  * in its posture — installed whole, installed in part (`only`),
@@ -46,7 +47,7 @@
 
 import { DomainError, err, ok, type Result } from '../kernel/result.js';
 import type { InstallReport, PresetAnswers, RefreshProposal } from '../contract/commands.js';
-import type { DeferredAction, Tree, Vertical } from '../contract/composition.js';
+import type { Adapter, Conflict, DeferredAction, Tree, Vertical } from '../contract/composition.js';
 import {
   effectiveTags,
   HARNESS_GENERATION,
@@ -65,7 +66,14 @@ import type { TemplateSource } from '../contract/ports/template-source.js';
 import type { TreeFactory } from '../contract/ports/tree.js';
 import { runActions, type RunActionsInputs } from './actions.js';
 import { addModuleInputs, CONTEXT_TAG, withoutAddModuleInputs } from './adapters/added-context.js';
-import { ContributionConflictError, newOwnership, type HarnessContribution } from './apply.js';
+import type { AnswerRead } from './answers.js';
+import {
+  ContributionConflictError,
+  newOwnership,
+  type ApplyMode,
+  type HarnessContribution,
+  type Ownership,
+} from './apply.js';
 import { placed, type Composition, type ConvergeModule, type ConvergePlan } from './converge.js';
 import { withoutHarness } from './dials.js';
 import { workingTreeDiffs } from './diff.js';
@@ -127,6 +135,27 @@ export interface ConvergeInputs extends ConvergeDeps {
   readonly answers: PresetAnswers;
   /** Whether a question the recorded answers leave open is asked, or answered by its default. */
   readonly interactive: boolean;
+  /**
+   * The posture the steps install in (`./apply.ts` `ApplyMode`):
+   * `install`, the brownfield one, absent; or `scaffold`, `keel new`'s,
+   * where no project was there before. A step that re-renders does so
+   * in the `reapply` posture whatever this says.
+   */
+  readonly apply?: Exclude<ApplyMode, 'reapply'>;
+  /**
+   * Rules of pieces around the run that are none of its verticals —
+   * `keel new` passes its preset's own — held with theirs and the
+   * recorded verticals' after every step (`./install.ts`
+   * `installVerticals`). Absent, none.
+   */
+  readonly rules?: readonly Conflict[];
+  /**
+   * The run's ownership memory, which records who wrote each file
+   * (`Ownership.writers`), for a caller that reads it back — `keel new`
+   * names the writers of a file two of its scopes stage. Absent, the
+   * run's own.
+   */
+  readonly owners?: Ownership;
   /** Whether the report says nothing was committed ({@link InstallReport.committed}). */
   readonly dryRun: boolean;
   /** What the report names as installed ({@link InstallReport.subject}). */
@@ -170,6 +199,14 @@ export interface Converged {
   readonly actions: readonly DeferredAction[];
   readonly tree: Tree;
   readonly cwd: string;
+  /**
+   * Every adapter the run resolved, in the order it ran — the steps',
+   * then the contexts' — for a caller holding the supplied answers
+   * across several runs (`keel new`, a product's scopes).
+   */
+  readonly adapters: readonly Adapter[];
+  /** Every supplied answer the run read, in the order it read them. */
+  readonly reads: readonly AnswerRead[];
 }
 
 /** The ports the commit after a run takes. */
@@ -200,7 +237,7 @@ export interface CommitDeps {
 export async function converge(inputs: ConvergeInputs): Promise<Result<Converged>> {
   const { plan, stored, tree, cwd, registry } = inputs;
   const now = inputs.clock.nowIso();
-  const owners = newOwnership();
+  const owners = inputs.owners ?? newOwnership();
   const harness: HarnessContribution[] = [];
   const rerendered = plan.run.filter((s) => s.posture === 'rerender').map((s) => s.vertical.id);
   const ran = new Set(plan.run.filter((s) => s.posture !== 'settle').map((s) => s.vertical.id));
@@ -236,7 +273,8 @@ export async function converge(inputs: ConvergeInputs): Promise<Result<Converged
       mode: inputs.interactive ? 'interactive' : 'non-interactive',
       cwd,
       now: () => now,
-      apply: 'install',
+      apply: inputs.apply ?? 'install',
+      rules: inputs.rules ?? [],
     });
     staged = await wireModules(
       run,
@@ -340,7 +378,15 @@ export async function converge(inputs: ConvergeInputs): Promise<Result<Converged
     ...(skipped > 0 ? { skippedHarnessElements: skipped } : {}),
     ...(rerendered.length > 0 ? { diffs: workingTreeDiffs(inputs.trees, cwd, tree) } : {}),
   };
-  return ok({ report, manifest, actions, tree, cwd });
+  return ok({
+    report,
+    manifest,
+    actions,
+    tree,
+    cwd,
+    adapters: staged.adapters,
+    reads: staged.reads,
+  });
 }
 
 /**

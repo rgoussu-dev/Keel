@@ -2,14 +2,16 @@
  * The top-level orchestrator: install verticals against a manifest and
  * a Tree.
  *
- * `installVerticals` is the run both front doors install through —
- * `keel new` with a scope's stack verticals and extras, `keel add` with
- * the verticals it planned, and the ones it re-renders beside them
- * (`rerender`). It installs each vertical in the order given onto one
- * Tree, each against the manifest the ones before it produced, under
- * one ownership memory and one harness buffer, then realizes the
- * run's harness declarations once — unless the caller supplied the
- * buffer, and finalizes it itself.
+ * `installVerticals` is the run both front doors install through, by
+ * way of `./converge-run.ts`' `converge` — `keel new` with a scope's
+ * stack verticals and extras, `keel add` with the verticals it planned,
+ * and the ones it re-renders beside them (`rerender`). It installs each
+ * vertical in the order given onto one Tree, each against the manifest
+ * the ones before it produced, under one ownership memory and one
+ * harness buffer, then realizes the run's harness declarations once —
+ * unless the caller supplied the buffer, and finalizes it itself, as
+ * `converge` always does: since roadmap S.6 no command reaches the
+ * run's own finalize.
  *
  * After each vertical it holds the run to the assembly rules: every
  * rule the pieces coming together declare — the verticals it installs,
@@ -242,17 +244,19 @@ export interface InstallVerticalsInputs extends Omit<
 /**
  * Installs `verticals` in order onto one Tree — the loop `keel new`
  * runs over a scope's stack verticals and extras, and `keel add` over
- * the ones it planned and the ones it re-renders.
+ * the ones it planned and the ones it re-renders, each by way of
+ * `./converge-run.ts`' `converge`.
  *
  * The run is one scope: the running manifest threads from each
  * vertical into the next, and one {@link Ownership} and one harness
  * buffer serve every vertical, so a skill name or a region two
  * verticals both claim collides here, not only when both come from
  * one vertical. With no `harness` supplied the run realizes its
- * declarations itself once the last vertical has installed; with one,
- * the caller finalizes, having first added what else the run needs in
- * that buffer (`keel add agent-harness` replays the project's earlier
- * contributors into it). Nothing is committed.
+ * declarations itself once the last vertical has installed, which no
+ * command reaches since roadmap S.6; with one, as `converge` always
+ * supplies, the caller finalizes, having first added what else the run
+ * needs in that buffer (`keel add agent-harness` replays the project's
+ * earlier contributors into it). Nothing is committed.
  */
 export async function installVerticals(
   inputs: InstallVerticalsInputs,

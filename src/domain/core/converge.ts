@@ -9,11 +9,10 @@
  * This is its reading, pure as `./planner.ts` and `./growth.ts` are:
  * nothing here runs, reads a file or is worded; `./converge-run.ts`
  * runs it. `keel add entrypoint` is its first caller (S.3), `keel add`,
- * with `--refresh` and `--reapply`, its second (S.4), and `keel add
- * module` its third (S.5); until `keel new` is (S.6), it is the reading
- * its handler makes today, and
- * `tests/domain/core/converge.golden.test.ts` records it on every cell
- * of the paths golden.
+ * with `--refresh` and `--reapply`, its second (S.4), `keel add module`
+ * its third (S.5), and `keel new`, from each scope's seed manifest, its
+ * fourth (S.6); `tests/domain/core/converge.golden.test.ts` records it
+ * on every cell of the paths golden.
  *
  * **The composition needs no new record** (DS2). A manifest already
  * says what `keel new` was given ({@link compositionOf}): the preset the
@@ -858,11 +857,16 @@ function serviceAt(
   preset: string,
 ): ProductService {
   const product = registry.stack(place.product);
+  // Matched on the preset too: nothing stops a plugin's product listing
+  // two services at one path, and the scope `keel new` staged there is
+  // on this one, for `crossScopeWrite` to refuse as on any other product.
   const service =
     product === null
       ? undefined
-      : presetServicesOf(registry, product).find(({ path: at }) => at === place.path);
-  if (product === null || service?.stack.id !== preset) {
+      : presetServicesOf(registry, product).find(
+          ({ path: at, stack }) => at === place.path && stack.id === preset,
+        );
+  if (product === null || service === undefined) {
     throw new Error(
       `convergeOf: no product '${place.product}' has a '${preset}' service at '${place.path}'`,
     );
