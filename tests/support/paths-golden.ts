@@ -8,15 +8,16 @@
  * two projects that can move together; this one records each cell on
  * its own.
  *
- * **Scenario.** Cells are derived by the four suites beside
- * `domain/core/paths-*.golden.test.ts`, one per family of paths, from
- * `keel.catalog`, `keel.dials` and `keel.project-status` — and from
- * `keel.preview`, where a question or a proposal is what a cell takes
- * up — never from a hand list, but for the one pair Q3.4's finding 2
- * names. A cell is keyed by the command lines that make it, joined by
- * ` && `, spelled here ({@link newProjectCommandLine},
- * {@link addCommandLine}) rather than by the page's own `command.js`, so
- * a change to how the page prints a command moves no key.
+ * **Scenario.** Cells are derived by the four families of paths in
+ * `./paths-families.ts`, one sweep each, which the four suites
+ * `domain/core/paths-*.golden.test.ts` record and the converge golden
+ * reads, from `keel.catalog`, `keel.dials` and `keel.project-status` —
+ * and from `keel.preview`, where a question or a proposal is what a
+ * cell takes up — never from a hand list, but for the one pair Q3.4's
+ * finding 2 names. A cell is keyed by the command lines that make it,
+ * joined by ` && `, spelled here ({@link newProjectCommandLine},
+ * {@link addCommandLine}) rather than by the page's own `command.js`,
+ * so a change to how the page prints a command moves no key.
  *
  * **Factory.** {@link installMediator} over the real templates, with a
  * {@link FakeProcessRunner} whose git answers as outside any repository
@@ -37,6 +38,11 @@
  * directory of its own ({@link PathsSweep.cell}).
  *
  * **Port.** `Mediator.dispatch`, for the runs and for every reading.
+ *
+ * A {@link PathsSweep} records every cell, or, given a
+ * {@link PathsReader}, reads each in place of recording it: every
+ * scaffold and every command before a cell's last run for real, and the
+ * last only where the reader asks.
  *
  * What a cell records is a {@link PathsCell}: its verdict, a digest of
  * each top-level entry of the tree it leaves, each field of each
@@ -70,6 +76,7 @@ import {
   type RepoLayout,
 } from '../../src/domain/contract/commands.js';
 import { projectScopeRoot, type ManifestV2 } from '../../src/domain/contract/manifest.js';
+import type { ManifestStore } from '../../src/domain/contract/ports/manifest-store.js';
 import type { Tree, TreeChange } from '../../src/domain/contract/ports/tree.js';
 import {
   catalogQuery,
@@ -185,6 +192,43 @@ export interface Step {
   readonly answers: PresetAnswers;
   readonly dryRun: boolean;
 }
+
+/**
+ * A cell as a reading of the paths golden's cells sees it, before its
+ * last command runs — the converge golden's (roadmap S.2), which reads
+ * what each cell's last command converges rather than what it leaves.
+ */
+export interface CellReading {
+  /** The cell's key, as the golden keys it. */
+  readonly key: string;
+  /** The directory the project the last command runs on is in; its `at` is from here. */
+  readonly dir: string;
+  /** The last command. */
+  readonly step: Step;
+  /** `stopped:<verdict>` where a command before the last did not come back Ok; else null. */
+  readonly stopped: string | null;
+  /** The manifests every run wrote, behind the port a reading of where a directory sits walks. */
+  readonly manifests: ManifestStore;
+  /**
+   * Runs the last command, once, at its instant, and returns its verdict,
+   * each manifest it leaves under the cell's directory, by its scope's
+   * path from it (`''` for the directory's own), and its report — null
+   * where it did not come back Ok, and for a scaffold another cell ran.
+   */
+  readonly run: () => Promise<{
+    readonly verdict: string;
+    readonly manifests: ReadonlyMap<string, ManifestV2>;
+    readonly report: InstallReport | null;
+  }>;
+}
+
+/**
+ * Reads each cell before its last command, in place of recording what
+ * it leaves: a {@link PathsSweep} given one runs every scaffold and
+ * every command before a cell's last, and the last only where the
+ * reading asks.
+ */
+export type PathsReader = (cell: CellReading) => Promise<void>;
 
 /**
  * A directory the commands that make it have run in, once, for cells to
@@ -577,8 +621,14 @@ export class PathsSweep {
   /** `keel docs check`'s answer, by the state a cell leaves: its tree and manifests. */
   private readonly checked = new Map<string, Promise<number | string>>();
   private catalogRead: Promise<Catalog> | null = null;
+  private readonly dialsRead = new Map<string, Promise<DialOptions>>();
 
-  constructor() {
+  /**
+   * @param reader where given, reads each cell before its last command
+   *   in place of recording it ({@link PathsReader}); the sweep then
+   *   records no cell, and {@link swept} is empty.
+   */
+  constructor(private readonly reader: PathsReader | null = null) {
     this.mediator = this.mediatorAt(0);
   }
 
@@ -596,9 +646,15 @@ export class PathsSweep {
     return this.catalogRead;
   }
 
-  /** `keel.dials` of `target`. */
+  /**
+   * `keel.dials` of `target`, read once per target: a reading of the
+   * registry alone, which every family asks again of the same settings.
+   */
   dials(target: NewProjectTarget): Promise<DialOptions> {
-    return this.read(dialsQuery({ target }));
+    const key = JSON.stringify(target);
+    const read = this.dialsRead.get(key) ?? this.read(dialsQuery({ target }));
+    this.dialsRead.set(key, read);
+    return read;
   }
 
   /**
@@ -671,7 +727,9 @@ export class PathsSweep {
    * Runs `steps` once, in a directory of their own — after copying
    * `from` into it, where given — for cells to copy; and, where
    * `record` says so, records the cell they make there too. Made once
-   * per line of commands, however many cells ask for it.
+   * per line of commands, however many cells ask for it — twice where
+   * one asks for it recorded after one made it without, since what a
+   * base leaves is no record of the run that made it.
    */
   extend(
     from: Base | null,
@@ -680,18 +738,29 @@ export class PathsSweep {
   ): Promise<Base> {
     const lines = [...(from?.lines ?? []), ...steps.map((step) => step.line)];
     const key = lines.join(' && ');
-    const made = this.bases.get(key);
+    const recorded = `${key} (recorded)`;
+    const made =
+      options.record === true
+        ? this.bases.get(recorded)
+        : (this.bases.get(key) ?? this.bases.get(recorded));
     if (made !== undefined) return made;
+    const named = options.record === true ? recorded : key;
     const making = (async (): Promise<Base> => {
-      const dir = path.join(PATHS_ROOT, `base-${digest(key)}`);
-      await this.copy(from, dir);
-      const ran = await this.run(dir, from, steps, options.record === true);
-      if (options.record === true) await this.record(key, dir, ran);
-      if (ran.verdict === OK) return { dir, lines, stopped: null };
-      const stopped = ran.verdict.startsWith(STOPPED) ? ran.verdict : `${STOPPED}${ran.verdict}`;
+      const dir = path.join(PATHS_ROOT, `base-${digest(named)}`);
+      let verdict: string;
+      if (this.reader !== null && options.record === true) {
+        verdict = await this.readCell(key, dir, from, steps, true);
+      } else {
+        await this.copy(from, dir);
+        const ran = await this.run(dir, from, steps, options.record === true);
+        if (options.record === true) await this.record(key, dir, ran);
+        verdict = ran.verdict;
+      }
+      if (verdict === OK) return { dir, lines, stopped: null };
+      const stopped = verdict.startsWith(STOPPED) ? verdict : `${STOPPED}${verdict}`;
       return { dir, lines, stopped };
     })();
-    this.bases.set(key, making);
+    this.bases.set(named, making);
     return making;
   }
 
@@ -707,8 +776,16 @@ export class PathsSweep {
     if (swept !== undefined) return swept;
     const sweeping = (async (): Promise<void> => {
       const dir = path.join(PATHS_ROOT, `cell-${digest(key)}`);
-      await this.copy(from, dir);
-      await this.record(key, dir, await this.run(dir, from, steps, true));
+      const [only] = steps;
+      const made = from === null && steps.length === 1 ? this.bases.get(key) : undefined;
+      if (this.reader !== null && made !== undefined && only !== undefined) {
+        await this.readScaffold(key, dir, only, await made);
+      } else if (this.reader !== null) {
+        await this.readCell(key, dir, from, steps, false);
+      } else {
+        await this.copy(from, dir);
+        await this.record(key, dir, await this.run(dir, from, steps, true));
+      }
       this.disk.drop(dir);
     })();
     this.cells.set(key, sweeping);
@@ -794,6 +871,89 @@ export class PathsSweep {
       }
     }
     throw new Error(`${dir}: a cell is made by at least one command`);
+  }
+
+  /**
+   * The reader's turn at the cell `key` of one command, `step`, which a
+   * scaffold made already, in `base`: read before it in `dir`, where
+   * nothing is, and run as the scaffold ran it — at the same instant,
+   * into the same fakes — so what it leaves is read off the scaffold
+   * rather than run again.
+   */
+  private async readScaffold(key: string, dir: string, step: Step, base: Base): Promise<void> {
+    const reader = this.reader;
+    if (reader === null) throw new Error(`${key}: nothing to read`);
+    await reader({
+      key,
+      dir,
+      step,
+      stopped: null,
+      manifests: this.manifests,
+      run: async () => ({
+        verdict: base.stopped === null ? OK : base.stopped.slice(STOPPED.length),
+        manifests: await this.manifests.under(base.dir),
+        report: null,
+      }),
+    });
+  }
+
+  /**
+   * The reader's turn at the cell `key`, in place of recording it: the
+   * commands before the last run in `dir`, after `from` is copied there;
+   * the reader reads the cell before the last, which runs where the
+   * reader asks, or where `always` — a scaffold's must. A cell of one
+   * command from a scaffold is read in the scaffold's directory, and
+   * copied only where its command runs. Returns the chain's verdict, as
+   * {@link run} does: `ok` for a last command that did not run.
+   */
+  private async readCell(
+    key: string,
+    dir: string,
+    from: Base | null,
+    steps: readonly Step[],
+    always: boolean,
+  ): Promise<string> {
+    const reader = this.reader;
+    const last = steps[steps.length - 1];
+    if (reader === null || last === undefined) throw new Error(`${key}: nothing to read`);
+    const prefix = steps.slice(0, -1);
+    let copied = false;
+    const copyOnce = async (): Promise<void> => {
+      if (!copied) await this.copy(from, dir);
+      copied = true;
+    };
+    let before = from;
+    let stopped = from?.stopped ?? null;
+    if (stopped === null && prefix.length > 0) {
+      await copyOnce();
+      const ran = await this.run(dir, from, prefix, false);
+      if (ran.verdict !== OK) {
+        stopped = ran.verdict.startsWith(STOPPED) ? ran.verdict : `${STOPPED}${ran.verdict}`;
+      }
+      before = { dir, lines: [...(from?.lines ?? []), ...prefix.map((s) => s.line)], stopped };
+    }
+    let verdict: string | null = null;
+    let report: InstallReport | null = null;
+    const runLast = async () => {
+      if (verdict === null) {
+        await copyOnce();
+        const ran = await this.run(dir, before, [last], false);
+        verdict = ran.verdict;
+        report = ran.outcome?.value ?? null;
+      }
+      return { verdict, manifests: await this.manifests.under(dir), report };
+    };
+    await reader({
+      key,
+      dir: before?.dir ?? dir,
+      step: last,
+      stopped,
+      manifests: this.manifests,
+      run: runLast,
+    });
+    if (stopped !== null) return stopped;
+    if (always) await runLast();
+    return verdict ?? OK;
   }
 
   private defer(cwd: string, actions: readonly DeferredAction[]): void {

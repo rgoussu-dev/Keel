@@ -105,6 +105,7 @@ import { NOT_INITIALISED_CODE, notInitialisedSentence } from '../../contract/nea
 import { runActions } from '../actions.js';
 import { addModuleInputs, CONTEXT_TAG, withoutAddModuleInputs } from '../adapters/added-context.js';
 import { ContributionConflictError, newOwnership, type HarnessContribution } from '../apply.js';
+import { admitGrowth, grownManifest, incomingOf, placed } from '../converge.js';
 import { withoutHarness } from '../dials.js';
 import { workingTreeDiffs } from '../diff.js';
 import { growthOf, type GrowthModule, type GrowthPlan, type GrowthRefusal } from '../growth.js';
@@ -118,7 +119,7 @@ import {
   type InstallVerticalInputs,
   type InstallVerticalResult,
 } from '../install.js';
-import { admissionNotes, admit, type AdmittedSet } from '../plan-refusal.js';
+import { admissionNotes, type AdmittedSet } from '../plan-refusal.js';
 import { reachableAdapters, refreshProposals } from '../planner.js';
 import { rankedIndex } from '../rank.js';
 import {
@@ -141,7 +142,6 @@ import {
   enclosingProduct,
   nearbyProjects,
   productPlaceOf,
-  projectScope,
   scopeOf,
   type DirectoryScope,
 } from '../scope.js';
@@ -684,48 +684,6 @@ async function wireModules(
   };
 }
 
-/** The project `stored` records, with the tags and `projects` `growth` folds in. */
-function grownManifest(stored: ManifestV2, growth: GrowthPlan): ManifestV2 {
-  return { ...stored, tags: growth.tags, projects: growth.projects };
-}
-
-/** The verticals growth installs, registered, in the twin's order. */
-function lackingOf(registry: Registry, growth: GrowthPlan): readonly Vertical[] {
-  return growth.verticals.flatMap((id) => registry.vertical(id) ?? []);
-}
-
-/**
- * What a run growth plans installs: what the planner adds for what the
- * twin names, then that, in the twin's order.
- */
-function incomingOf(
-  registry: Registry,
-  growth: GrowthPlan,
-  admitted: AdmittedSet,
-): readonly Vertical[] {
-  return [
-    ...admitted.order.filter((v) => !growth.verticals.includes(v.id)),
-    ...lackingOf(registry, growth),
-  ];
-}
-
-/**
- * The verticals growth installs, admitted on `grown` — the harness it
- * re-renders planned as if it were not there yet, as `keel add --refresh`
- * plans one — closed over their prerequisites, or refused.
- */
-function admitGrowth(
-  registry: Registry,
-  grown: ManifestV2,
-  growth: GrowthPlan,
-): Result<AdmittedSet> {
-  return admit(
-    registry,
-    projectScope(registry, grown, growth.rerender),
-    lackingOf(registry, growth),
-  );
-}
-
 /**
  * One vertical of the run: installed or re-rendered whole; installing
  * `only` the adapters that newly match; and, where it `settles`,
@@ -735,40 +693,6 @@ interface RunStep {
   readonly vertical: Vertical;
   readonly only?: ReadonlySet<string>;
   readonly settles: boolean;
-}
-
-/**
- * `recorded`, the verticals a project records in its order, with
- * `incoming` placed among them where `twin` lists them: each before
- * the first recorded one the twin lists after it — one the twin does
- * not list takes the place of the next incoming one it does — and
- * after any other. Nothing recorded moves.
- */
-function placed(
-  recorded: readonly string[],
-  incoming: readonly string[],
-  twin: readonly string[],
-): readonly string[] {
-  const rankFrom = (from: number): number | undefined => {
-    for (const next of incoming.slice(from)) {
-      const rank = twin.indexOf(next);
-      if (rank !== -1) return rank;
-    }
-    return undefined;
-  };
-  const rows = [...recorded];
-  incoming.forEach((id, index) => {
-    const own = rankFrom(index);
-    const at =
-      own === undefined
-        ? -1
-        : rankedIndex(
-            rows.map((row) => (twin.includes(row) ? twin.indexOf(row) : undefined)),
-            own,
-          );
-    rows.splice(at === -1 ? rows.length : at, 0, id);
-  });
-  return rows;
 }
 
 /**

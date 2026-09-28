@@ -18,7 +18,9 @@
  * system only), the composition grid's growth axis
  * (`domain/core/composition-grid/growth.test.ts`), and the paths golden
  * (`domain/core/paths-*.golden.test.ts`, over `support/paths-golden.ts`)
- * over the mediator.
+ * and the converge golden (`domain/core/converge.golden.test.ts`), which
+ * reads the same cells through the paths golden's sweeps
+ * (`support/paths-families.ts`), over the mediator.
  * None keeps a list of settings: what a preset offers is whatever the
  * replies offer, so a dial or a rule registered tomorrow is walked
  * without an edit. The first two then

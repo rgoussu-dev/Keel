@@ -18,6 +18,9 @@
  * The re-renders after a module history are the `keel add module`
  * family's (`paths-grow.golden.test.ts`), which makes those histories.
  *
+ * The sweep that derives them is `support/paths-families.ts`' `PATHS_REAPPLY`,
+ * which the converge golden (`converge.golden.test.ts`) reads too.
+ *
  * **Factory** and **port**: the paths golden's (`PathsSweep`); each
  * scaffold is made once, and copied into every cell that starts from it.
  *
@@ -26,58 +29,9 @@
  */
 
 import { describe } from 'vitest';
-import type { NewProjectTarget } from '../../../src/domain/contract/commands.js';
-import { eachStack } from '../../support/composition-grid.js';
-import {
-  menuOf,
-  newStep,
-  pathsGolden,
-  reapplyStep,
-  wholeRerenderStep,
-  type Base,
-  type PathsSweep,
-} from '../../support/paths-golden.js';
+import { PATHS_REAPPLY } from '../../support/paths-families.js';
+import { pathsGolden } from '../../support/paths-golden.js';
 
 describe('paths golden: --reapply', () => {
-  pathsGolden({
-    name: 'paths-reapply',
-    here: import.meta.url,
-    sweep: async (paths) => {
-      const { stacks } = await paths.catalog();
-      await eachStack(
-        stacks.filter((stack) => stack.services.length === 0),
-        async (stack) => {
-          const opening = await paths.dials({ kind: 'new-project', stack: stack.id });
-          const target = opening.target as NewProjectTarget;
-          await rerender(paths, await paths.extend(null, [newStep(target)]));
-          const menu = menuOf(opening);
-          if (menu.length === 0) return;
-          const whole = await paths.snapped(target, menu);
-          await rerender(paths, await paths.extend(null, [newStep(whole)]));
-        },
-      );
-      await eachStack(
-        stacks.filter((stack) => stack.services.length > 0),
-        async (stack) => {
-          for (const layout of await paths.layouts(stack.id)) {
-            const settled = await paths.dials({ kind: 'new-project', stack: stack.id, layout });
-            const product = await paths.extend(null, [newStep(settled.target as NewProjectTarget)]);
-            for (const service of stack.services) await rerender(paths, product, service.path);
-          }
-        },
-      );
-    },
-  });
+  pathsGolden({ ...PATHS_REAPPLY, here: import.meta.url });
 });
-
-/**
- * Each vertical `base` records, in its service `at` where given,
- * re-rendered alone; then all of them at once, as a dry run.
- */
-async function rerender(paths: PathsSweep, base: Base, at = ''): Promise<void> {
-  const recorded = await paths.reapplicable(base, at);
-  for (const vertical of recorded) {
-    await paths.cell(base, [reapplyStep([vertical], at)]);
-  }
-  if (recorded.length > 0) await paths.cell(base, [wholeRerenderStep(recorded, at)]);
-}

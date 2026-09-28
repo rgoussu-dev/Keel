@@ -22,6 +22,9 @@
  * - every product under each repository layout its preview offers, with
  *   no extras.
  *
+ * The sweep that derives them is `support/paths-families.ts`' `PATHS_NEW`,
+ * which the converge golden (`converge.golden.test.ts`) reads too.
+ *
  * **Factory** and **port**: the paths golden's (`PathsSweep`), each cell
  * a real run into an empty directory of the in-memory disk.
  *
@@ -30,53 +33,9 @@
  */
 
 import { describe } from 'vitest';
-import type { NewProjectTarget } from '../../../src/domain/contract/commands.js';
-import { shippedRegistry } from '../../../src/domain/core/registry.js';
-import { answerBodies, eachStack } from '../../support/composition-grid.js';
-import { menuOf, newStep, pathsGolden, type PathsSweep } from '../../support/paths-golden.js';
+import { PATHS_NEW } from '../../support/paths-families.js';
+import { pathsGolden } from '../../support/paths-golden.js';
 
 describe('paths golden: keel new', () => {
-  pathsGolden({
-    name: 'paths-new',
-    here: import.meta.url,
-    sweep: async (paths) => {
-      const { stacks } = await paths.catalog();
-      await eachStack(
-        stacks.filter((stack) => stack.services.length === 0),
-        (stack) => sweepPreset(paths, stack.id),
-      );
-      await eachStack(
-        stacks.filter((stack) => stack.services.length > 0),
-        async (stack) => {
-          for (const layout of await paths.layouts(stack.id)) {
-            const settled = await paths.dials({ kind: 'new-project', stack: stack.id, layout });
-            await paths.cell(null, [newStep(settled.target as NewProjectTarget)]);
-          }
-        },
-      );
-    },
-  });
+  pathsGolden({ ...PATHS_NEW, here: import.meta.url });
 });
-
-/** Every `keel new` cell of the single-service preset `stack`. */
-async function sweepPreset(paths: PathsSweep, stack: string): Promise<void> {
-  for (const setting of await paths.settings(stack)) {
-    await paths.cell(null, [newStep(setting)]);
-    if (setting.agentHarness === false) continue;
-    const menu = menuOf(await paths.dials(setting));
-    if (menu.length > 0) await paths.cell(null, [newStep(await paths.snapped(setting, menu))]);
-  }
-
-  const opening = await paths.dials({ kind: 'new-project', stack });
-  const target = opening.target as NewProjectTarget;
-  const menu = menuOf(opening);
-  for (const extra of menu) {
-    await paths.cell(null, [newStep(await paths.snapped(target, [extra]))]);
-  }
-  const whole = await paths.snapped(target, menu);
-  const questions = (await paths.preview(null, whole))?.questions ?? [];
-  for (const body of answerBodies(shippedRegistry, questions)) {
-    if (Object.keys(body.answers).length === 0) continue;
-    await paths.cell(null, [newStep(whole, body.answers)]);
-  }
-}

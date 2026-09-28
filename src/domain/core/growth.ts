@@ -57,8 +57,9 @@ import type { Registry } from '../contract/ports/registry.js';
 import type { Stack } from '../contract/stack.js';
 import { CONTEXT_TAG } from './adapters/added-context.js';
 import { emitsFor } from './adapters/context-support.js';
-import { PEER_CONTEXT_TAG, PEER_MODULE } from './adapters/module-layout.js';
+import { PEER_CONTEXT_TAG } from './adapters/module-layout.js';
 import { assemblyRefusal, conflictsOf, wouldViolate } from './compatibility.js';
+import { contextsOf, type RecordedContext } from './contexts.js';
 import { harnessActivatedBy, peerContextOffered, piecesOf, withoutHarness } from './dials.js';
 import { acquirableIn, matchingIds, plan, tagsAfter, type PlanScope } from './planner.js';
 import type { UncoverableEntrypointReason } from './refusals.js';
@@ -80,11 +81,21 @@ export interface GrowthAdapters {
 /**
  * A bounded context growth would have to rewire: its name, and the
  * marker tag that selects its adapters — `modules.peer-context` for the
- * peer, `modules.context` for one `keel add module` added.
+ * peer, `modules.context` for one `keel add module` added — as
+ * `./contexts.ts` reads every context a project records.
  */
-export interface GrowthContext {
-  readonly name: string;
-  readonly marker: Tag;
+export type GrowthContext = RecordedContext;
+
+/**
+ * The setting of a preset's dials a project's tags record, as `keel
+ * new` folded it in: the build system's tag and the module layout's —
+ * null where the preset offers no choice of it — and whether the peer
+ * context is on.
+ */
+export interface PresetSetting {
+  readonly build: Tag | null;
+  readonly layout: Tag | null;
+  readonly peer: boolean;
 }
 
 /**
@@ -367,12 +378,7 @@ function twinOf(
 
 /**
  * Whether `keel new` of `stack` records the grown project: on a
- * setting of its build system and module layout its rules admit, the
- * tags it seeds are all among `tags`, and each tag of `identity` is
- * one of them — the peer context's marker too, where the project has
- * it and that setting offers it. The harness is a dial as well: where
- * the project has none (`harness` false), `stack` must be one that
- * `keel new --no-agent-harness` takes.
+ * setting of its dials ({@link settingOf}).
  */
 function scaffoldsAs(
   stack: Stack,
@@ -380,22 +386,47 @@ function scaffoldsAs(
   tags: readonly Tag[],
   harness: boolean,
 ): boolean {
+  return settingOf(stack, identity, tags, harness) !== null;
+}
+
+/**
+ * The setting of `stack`'s dials on which `keel new` of it records a
+ * project with `tags` — `identity` those of them no vertical can add —
+ * or null where there is none: a setting of its build system and
+ * module layout its rules admit, whose seeded tags are all among
+ * `tags`, and each tag of `identity` one of them — the peer context's
+ * marker too, where the project has it and that setting offers it —
+ * the first such, build systems then layouts in the order the preset
+ * offers them. The harness is a dial as well: where the project has
+ * none (`harness` false), `stack` must be one that `keel new
+ * --no-agent-harness` takes. How growth reads a twin, and how the
+ * converge reading reads a project's own preset (`./converge.ts`).
+ */
+export function settingOf(
+  stack: Stack,
+  identity: readonly Tag[],
+  tags: readonly Tag[],
+  harness: boolean,
+): PresetSetting | null {
   const dialed = harness ? stack : withoutHarness(stack);
-  if (!harness && harnessActivatedBy(dialed)) return false;
+  if (!harness && harnessActivatedBy(dialed)) return null;
   const peer = identity.includes(PEER_CONTEXT_TAG);
   const builds = stack.buildSystems?.map((option) => option.tag) ?? [null];
   const layouts = stack.moduleLayouts?.map((option) => option.tag) ?? [null];
-  return builds.some((build) =>
-    layouts.some((layout) => {
+  for (const build of builds) {
+    for (const layout of layouts) {
       const seeded = [...stackTagsFor(stack, build, layout), ...(peer ? [PEER_CONTEXT_TAG] : [])];
-      return (
+      if (
         seeded.every((tag) => tags.includes(tag)) &&
         identity.every((tag) => seeded.includes(tag)) &&
         assemblyRefusal(piecesOf(dialed), seeded) === null &&
         (!peer || peerContextOffered(dialed, build, layout))
-      );
-    }),
-  );
+      ) {
+        return { build, layout, peer };
+      }
+    }
+  }
+  return null;
 }
 
 /**
@@ -425,21 +456,4 @@ function unwired(
   return contextsOf(manifest).filter(
     ({ marker }) => !emitsFor(marker === PEER_CONTEXT_TAG ? peers : added, marker, grown),
   );
-}
-
-/**
- * The contexts a project records after its skeleton, each with the
- * marker that selects its adapters: the peer — the context recorded
- * without a seam of its own, or by name where the marker is on and no
- * record says so — by `modules.peer-context`, every other by
- * `modules.context`.
- */
-function contextsOf(manifest: ManifestV2): readonly GrowthContext[] {
-  const peer = manifest.tags.includes(PEER_CONTEXT_TAG);
-  const contexts = manifest.modules.slice(1).map((module) => ({
-    name: module.name,
-    marker: peer && !module.seam ? PEER_CONTEXT_TAG : CONTEXT_TAG,
-  }));
-  if (!peer || contexts.some(({ marker }) => marker === PEER_CONTEXT_TAG)) return contexts;
-  return [{ name: PEER_MODULE, marker: PEER_CONTEXT_TAG }, ...contexts];
 }

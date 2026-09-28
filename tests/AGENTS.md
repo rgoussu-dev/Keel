@@ -404,7 +404,9 @@ one facet of it or compares two projects that can move together. It
 landed first, with no `src/` change (S.1a), so that each later step
 proves its paths byte-identical or names the cells it moves. Four
 suites over `support/paths-golden.ts`, one per family, each with its
-JSON beside it, so vitest runs them in parallel workers:
+JSON beside it, so vitest runs them in parallel workers; each family's
+sweep, which derives its cells, is `support/paths-families.ts`', so
+the converge golden (below) enumerates the same cells:
 
 - `domain/core/paths-new.golden.test.ts` — `keel new`: every
   single-service preset on every setting `harnessSettings` walks (the
@@ -491,15 +493,55 @@ Nothing a cell records depends on where it runs, on the machine's git,
 on the umask its checkout was made under, or on its locale. A failure
 names each moved cell and its fields, the first 50 of them.
 `KEEL_UPDATE_GOLDEN=1 pnpm exec vitest run tests/domain/core/paths-*.golden.test.ts`
-rewrites the four through prettier; it reads no other golden, so the
-order does not matter, and S.2's converge golden is to key on it. About
-35 s, 43 s, 13 s and 42 s alone (new, add, reapply, grow). They run in
-a `beforeAll`, so mutation testing leaves them out.
-`domain/core/paths-machinery.test.ts` holds what the four cannot see
-move, since they compare only what they record: `pinnedMode` across
-umasks, and a re-render's instant apart from its scaffold's, the same
-whether its cell ran the chain or copied the scaffold — in under a
-second, in its tests, so mutation testing keeps it.
+rewrites the four through prettier; it reads no other golden, and the
+converge golden keys on it. About 35 s, 43 s, 13 s and 42 s alone (new,
+add, reapply, grow). They run in a `beforeAll`, so mutation testing
+leaves them out. `domain/core/paths-machinery.test.ts` holds what the
+four cannot see move, since they compare only what they record:
+`pinnedMode` across umasks, and a re-render's instant apart from its
+scaffold's, the same whether its cell ran the chain or copied the
+scaffold — in under a second, in its tests, so mutation testing keeps
+it.
+
+**The converge golden.** `domain/core/converge.golden.json` records
+`src/domain/core/converge.ts`' reading (roadmap S.2) on every cell the
+paths golden keys, and no other — its first test reads the four
+paths goldens for their keys. Each cell is read on the manifest its
+last command runs on, with the request that command makes, as its
+handler makes it before it plans: the handler's gates first (no
+project, a vertical a product root cannot carry, a re-render of one
+not installed, `keel add entrypoint` in a monorepo product, `keel add
+module` where no context goes), each recorded by its code (`gate`);
+then `convergeOf`'s refusal (`refused`, with the planner's sentence),
+or the target's reference order, each step of the run (`<vertical>
+<posture>`, `+settle` and the adapters where it installs some), the
+contexts it wires and where it records (`append/run`, or `twin/twin`
+for growth). What each cell comes to is held against the verdict its
+paths golden records, code for code, `keel.unknown-answer` apart (an
+answer is no part of a request). A `keel new` cell is read per scope
+on the seed manifest each starts from, then run, and each manifest it
+leaves is read back through `compositionOf`: the round trip, on every
+single-service cell and in each product's services, must name the
+preset, the dials, the harness, what a product gives its service and
+the extras `keel new` was given, and its reference order must be the
+order the manifest records. The paths golden names no extra of a
+product's service, so the round trip also runs, recorded nowhere, on
+each product under each layout with every service naming its whole
+menu. A `keel add module` or `keel add entrypoint` cell that converges
+is run as well, and the verticals and contexts it records held against
+the reading's target, and a module's `bounded-context` adapters
+against those the reading wires. It runs the four families in one
+`PathsSweep` in its reading mode (`PathsReader`): every scaffold once,
+every command before a cell's last for real, and the last only where
+the reading runs it; `keel new` cells a scaffold of another family made
+are read off it — `keel new` sweeps last for that. About 44 s alone.
+The later steps of epic S make each path a caller, and their diffs are
+reviewed against it, as Q1.3's were against the readiness golden.
+Regenerate in this order: the paths golden, then
+`KEEL_UPDATE_GOLDEN=1 pnpm exec vitest run tests/domain/core/converge.golden.test.ts`,
+then the growth golden, then the grid. It runs in a `beforeAll`, so
+mutation testing leaves it out; `domain/core/converge.test.ts` holds
+each rule of the reading on a fixture family.
 
 **A menu-versus-gate test uses preview or install as its oracle.** A
 test claiming that what a front end offers is what keel accepts — a dial

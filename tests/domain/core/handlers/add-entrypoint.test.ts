@@ -1513,7 +1513,7 @@ describe('growthRefusalError', () => {
       ],
       [
         'keel.uncoverable-entrypoint',
-        'CLI cannot be added here: part of Walking skeleton and Observability would stop applying to this project, and keel removes nothing it installed',
+        'CLI cannot be added here: part of Walking skeleton and Observability would stop applying to this project, and keel removes nothing it installed — without a recorded base, it cannot tell what it wrote from what you changed since',
       ],
       [
         'keel.incompatible',

@@ -24,6 +24,7 @@ import {
   relinkNote,
   ruleRefusal,
   unbuiltInServiceNote,
+  uncoverableEntrypointSentence,
   uncoveredRefusal,
   unavailableRefusal,
   WRONG_SCOPE_CODE,
@@ -715,6 +716,19 @@ describe('the notes of an entrypoint added', () => {
     expect(relinkNote('server-http', ['../front', '../admin'])).toBe(
       "the projects linked at ../front and ../admin still record what this one offered them before its HTTP server — 'keel link ../front' and 'keel link ../admin' bring those records up to date",
     );
+  });
+});
+
+describe('an entrypoint whose adding would stop an adapter applying', () => {
+  it('names the verticals by their titles, and why keel takes none of it away, never a tag', () => {
+    const sentence = uncoverableEntrypointSentence('cli', 'drops', [
+      vertical('walking-skeleton', 'Walking skeleton'),
+      vertical('observability', 'Observability'),
+    ]);
+    expect(sentence).toBe(
+      'CLI cannot be added here: part of Walking skeleton and Observability would stop applying to this project, and keel removes nothing it installed — without a recorded base, it cannot tell what it wrote from what you changed since',
+    );
+    expect(sentence).not.toMatch(/arch\.|--with|keel add|roadmap/);
   });
 });
 

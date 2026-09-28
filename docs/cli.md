@@ -1063,7 +1063,9 @@ already. It is refused, before a file moves, when:
   such as `web-components`; a plugin's preset with no twin on the
   project's build system and module layout; verticals the project has
   part of which would stop applying, since keel removes nothing it
-  installed;
+  installed: without a recorded base, it cannot tell what it wrote
+  from what you changed since (the reason `--reapply` refuses a patch
+  that keeps changing);
 - the entrypoint would break a rule a vertical the project has
   declares (`keel.incompatible`, the rule's own sentence and id), as
   `keel new` of the twin with that vertical is refused — no shipped

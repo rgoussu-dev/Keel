@@ -1234,7 +1234,11 @@ entrypoint http` on a CLI project, or `keel add entrypoint cli` on an
   none has the command), in a product's root or monorepo service
   (`keel.wrong-scope`), for a word naming no entrypoint
   (`keel.unknown-entrypoint`), for a front end or a project
-  no preset grows into (`keel.uncoverable-entrypoint`), where the
+  no preset grows into, or where the entrypoint would stop part of a
+  vertical the project has from applying, which only a plugin's family
+  reaches — keel removes nothing it installed, since without a recorded
+  base it cannot tell what it wrote from what you changed since
+  (`keel.uncoverable-entrypoint`), where the
   entrypoint would break a plugin vertical's rule, as `keel new` of
   the twin with that vertical is (`keel.incompatible`), and on a
   modulith of a plugin's family whose peer context is wired into its

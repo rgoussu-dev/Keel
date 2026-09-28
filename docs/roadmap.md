@@ -8949,7 +8949,7 @@ Beyond the text above:
   other vertical re-rendered alone stages nothing there. Every
   `module:` and `refresh:` pair stages at least one file on both sides.
 
-### S.2 — The reading: one composition, planned against the manifest (M)
+### S.2 — The reading: one composition, planned against the manifest (M) ✅
 
 `src/domain/core/converge.ts` is pure, as `planner.ts` and `growth.ts`
 are. It imports `growth.ts`, never the reverse. `contextsOf` moves out
@@ -9045,6 +9045,165 @@ out. CHANGELOG, under _Changed_: the `drops` sentence, which a
 plugin's family can reach.
 
 **Leaves out:** every caller, and every placement change.
+
+**Landed as the reading alone**, in one commit, called by no handler.
+`src/domain/core/converge.ts` holds `compositionOf`, `referenceOrder`
+and `convergeOf` over five request kinds (`add`, `reapply`,
+`entrypoint`, `module`, `new`), and `src/domain/core/contexts.ts`
+holds `contextsOf`, moved out of `growth.ts` unchanged, which both
+import. `growth.ts` exports `settingOf`, the dial reading its
+`scaffoldsAs` was, now `settingOf(…) !== null`, and `GrowthContext`
+is `contexts.ts`' `RecordedContext`. `refusals.ts` rewords the `drops`
+sentence. `tests/domain/core/converge.test.ts` holds 32 cases on the
+`acme` family, a product of two of its presets, and keel's Go CLI, and
+`tests/domain/core/converge.golden.test.ts` the golden:
+
+- **3,436 cells**, every key of the four paths goldens and no other;
+  its first test reads their keys. The 689 `keel new` cells read 707
+  scopes: 677 single projects, 6 monorepo product roots and 24
+  services. Of the other 2,747, 2,499 converge appended and 72 at the
+  twin's rank: the 90 `keel add entrypoint` cells less the 18 whose
+  last command is the dev container's re-render. 114 stop at the
+  handler's gates, each read through the function the handler reads
+  it with: 84 `keel.not-initialised` at the polyrepo roots, and at the
+  monorepo roots 18 `keel.wrong-scope` and 12
+  `keel.uncoverable-vertical` (`productRootReading`). 62 are the
+  planner's refusals, recorded with their sentence: 36
+  `keel.wrong-scope` in the monorepo services, 24
+  `keel.uncoverable-vertical` and the two `keel.needs-refresh`; 12 of
+  the sentences name a sibling service, which the `add` request's
+  siblings give them. A test holds every cell against the verdict its
+  paths golden records, code for code: every refusal it records is
+  read, and every Ok is a plan, but for the 28 `keel.unknown-answer`
+  bodies, which read as plans, since an answer is no part of a
+  request. The runs hold 6,960 installs, 2,770 re-renders, 225 settles
+  and 72 partial installs that settle the rest; 218 cells wire
+  contexts, the 200 module adds and the 18 growths after a history.
+- **The round trip holds on 697 of 697 scopes**: every single-service
+  `keel new` cell that comes back Ok (the 300 settings, the 150 whole
+  menus, the 143 single extras and the 56 answered bodies; the 28
+  `twice` bodies refuse), the 24 services, and 24 more beyond the
+  paths golden, which names no extra of a product's service: each of
+  the 6 products under each layout, every service naming its whole
+  menu, recorded nowhere. On each, the manifest it leaves reads back
+  as the preset, the dials, the harness, what the product gave the
+  service and the extras it was given, as a monorepo service or not
+  as it is, with a reference order equal to the order it records, and
+  the `new` reading's run in that order too. A test holds that every
+  Ok cell is read back in each scope it writes, a monorepo product's
+  root apart. The research measured 443; the whole menus, the
+  answered bodies and the services are new ground.
+- **The record each run leaves is held against the reading** on the
+  272 cells whose last command is `keel add module` (200) or a
+  converging `keel add entrypoint` (72): each is run, and the
+  verticals it records, in their order, and the contexts it records
+  are the target's, on 272 of 272; on the 200 module adds, the
+  `bounded-context` adapters its report resolves are the ones the
+  reading wires.
+- **Held byte for byte**: `growth.golden.json` (360 cells) and the four
+  paths goldens, each regenerated with `KEEL_UPDATE_GOLDEN=1` and
+  diffed against HEAD. The grid passes, and its four known files are
+  as they were. The render guard passes as it is.
+
+The golden takes about 44 s alone under `CI=true` (43.4, 43.9 and
+44.3 s in three runs, as vitest reports the file's tests), and
+`converge.test.ts` 52 to 69 ms. The
+golden makes 1,410 real runs (844 `keel new`, 456 `keel add module`,
+90 `keel add entrypoint` and 20 `keel add`) and 1,789 readings (840
+`keel.dials`, 440 previews, 508 statuses and the catalog), against the
+4,345 runs the paths golden dispatches. It comes to 1.62 MB, 46 kB
+under `gzip -9`. In one run of `CI=true pnpm test` on four cores it
+took 56.1 s beside the rest, and `converge.test.ts` 54 ms. The suite
+took 294 s, with 201 files and 3,213 tests passing, against 261 s,
+with 199 files and 3,174 tests, for HEAD (S.1a and S.1b) run on the
+same box just before it: 33 s more. Growth's grid axis took 105.0 s,
+and the paths golden's four 33.1, 41.6, 15.1 and 43.9 s (new, add,
+reapply, grow).
+
+`tests/AGENTS.md`, `src/domain/core/AGENTS.md` and
+`docs/development.md` record the golden and the regeneration order,
+`vitest.stryker.config.ts` leaves it out, and `tests/support/dial-walk.ts`
+lists it among the walk's consumers. The CHANGELOG entry is under
+_Added_ (below). No template changed, and no shipped cell reaches the
+new sentence, so no preview moves: neither the `keel ui` browser
+suites nor any e2e suite was run. `pnpm lint`, dependency-cruiser's
+`no-circular` among it, and `pnpm typecheck` pass.
+
+Beyond the text above:
+
+- **The families' sweeps moved to `tests/support/paths-families.ts`**,
+  so one enumeration serves both goldens; each paths suite is its
+  family and `pathsGolden`. `PathsSweep` gains a reading mode
+  (`PathsReader`): every scaffold and every command before a cell's
+  last run for real, and the last only where the reading runs it —
+  the `keel new`, `keel add module` and `keel add entrypoint` cells,
+  whose records it is held against. `keel new` sweeps last, and 350 of
+  its cells are read off the scaffold another family made of the same
+  line rather than run again. Two things fell out of sharing one
+  sweep. A scaffold asked for as a recorded cell after one family made
+  it unrecorded (the opening modulith's history, in `keel add` and in
+  growth) was never recorded, so `extend` keeps the two apart. And
+  `keel.dials` is read once per target, which every family asked
+  again: 3,906 reads fell to 828 over the paths golden's cells, and
+  the golden from 51.6 s to about 43 s before the runs it is held
+  against were added. Neither moved a cell of the paths golden.
+- **A composition carries three fields the text does not list.**
+  `recorded` is the record in its order, which the reference falls
+  back on where no preset reads back and which a target carries with
+  its new rows where its caller places them. `member` is read off the
+  record rather than handed in, since no caller has it to hand: a
+  preset listing verticals a repository root carries, of which the
+  project records none. Only `new`, whose seed records nothing, takes
+  it in its request. `given` is what a product installs in its
+  service of its own accord (`StackService.extraVerticals`, `gateway`
+  on every shipped product), read where the project links each other
+  service of a registered product with a service on its preset, at the
+  path `keel new` of the product links it, and records all of it.
+  Products that place a service alike read alike: a `web-components`
+  frontend reads the same under each of the six.
+- **What a product gives its service comes before the user's
+  extras.** `keel new` installs it straight after the preset's
+  verticals, in the product's order and never admitted, then admits
+  the extras the user names on a scope that has it
+  (`presetServiceScope`, with what a monorepo product root gives the
+  service). The `new` request names the product and the service's
+  path for that, and the reference order places `given` so. It moves
+  the order of 60 cells from a first reading that admitted `gateway`
+  with the extras, which sorted it after any extra whose id sorts
+  before it: `keel add` of ci, containerization, dev-env, distribution
+  or iac in a polyrepo service, and of dev-env in a monorepo
+  frontend, 6 products each. The paths golden names no extra of a
+  product's service, so the round trip is also held on each product's
+  services naming their whole menu, which fails on 24 of 24 scopes
+  under that first reading.
+- **A step can install in part and settle.** Growth installs the
+  newly matching adapters of a vertical of its twin and replays the
+  rest for their actions, on all 72 cells, so an `only` step carries
+  `settles`. A `present` entrypoint converges with an empty run,
+  appended.
+- **Growth's pure pieces moved into `converge.ts`**, since the reading
+  needs them now: `placed`, `grownManifest`, `admitGrowth` and
+  `incomingOf`. `add-entrypoint.ts` imports them back, which is all
+  a handler changes; no handler calls the reading. S.3's `placed` has
+  moved already.
+- **The extras' scope.** `admit` orders the extras on the scope
+  `keel new` plans them on, over the preset's tags, the dials and what
+  linked projects project there (the effective tags no vertical can
+  add). An extra no registered vertical is any more comes after the
+  others, which `admit` still orders; extras it refuses together keep
+  their recorded order.
+- **The `drops` sentence cites L's reason in words of its own**, not
+  by name: _… and keel removes nothing it installed — without a
+  recorded base, it cannot tell what it wrote from what you changed
+  since_. The missing recorded base is the reason `docs/cli.md` gives
+  for `--reapply`; the second half is new, and `docs/cli.md` now says
+  it of the entrypoint too. `refusals.test.ts` holds it, and
+  `add-entrypoint.test.ts`' table of growth's refusals moves with it.
+- **The CHANGELOG entry is under _Added_, not _Changed_.** The command
+  itself, `keel add entrypoint`, is unreleased, under _Added_, so the
+  reason is folded into that entry's `keel.uncoverable-entrypoint`
+  clause, which did not name this case before; no released refusal
+  changed.
 
 ### S.3 — The run, and `keel add entrypoint` its first caller (L)
 

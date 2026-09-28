@@ -3,7 +3,7 @@
 <!-- keel:purpose: the engine, the composition adapters and verticals, the stack presets, the handlers -->
 
 What lives here: the engine (`predicate`, `resolver`, `refusals`,
-`nearest-id`, `compatibility`, `planner`, `plan-refusal`, `scope`, `add-readiness`, `profile`, `growth`, `dials`, `answers`,
+`nearest-id`, `compatibility`, `planner`, `plan-refusal`, `scope`, `add-readiness`, `profile`, `growth`, `contexts`, `converge`, `dials`, `answers`,
 `supplied-answers`, `apply`, `install`, `actions`, `docs-index`, `hook-settings`, `rank`), the composition
 `adapters/` and `verticals/`, the stack presets as data (`stack-presets.json`) with
 the schema and id resolution over them (`stacks.ts`), `handlers/` (new-project,
@@ -263,6 +263,42 @@ dependency-cruiser refuses. The status's `entrypoints` reads the
 command's own answer, what it would install or why it would refuse
 (`handlers/add-entrypoint.ts`' `entrypointReading`). See `docs/cli.md`
 → Finding a stack, and → `keel add entrypoint`.
+
+`converge.ts` reads the drill-down once more, for the one operation
+every path that installs or re-renders verticals is to call (roadmap
+S): pure as `planner.ts` and `growth.ts` are. Its reading
+(`compositionOf`, `referenceOrder`, `convergeOf`) is called by no
+handler yet (S.3 to S.6 make each its caller). `compositionOf` reads
+what a manifest already says `keel new` was given, with no field
+recorded for it (DS2): the preset the drill-down places it on, on the
+setting of its dials the tags record — `growth.ts`' `settingOf`, how
+growth reads a twin — the harness by whether it is recorded, the
+extras as what is recorded beyond the preset, and the contexts
+`keel add module` added (`contexts.ts`' `contextsOf`, the one reading
+of them, a leaf both modules import, since `converge.ts` imports
+`growth.ts` and never the reverse). A monorepo service is read by its
+preset's repository-placed verticals it does not record; a product's
+service by the links `keel new` of the product made (`peers`, by path)
+and what the product gives it of its own accord (`given`,
+`StackService.extraVerticals`), which it records. `referenceOrder` is
+the order one run of `keel new` of it records — the preset's
+verticals, then what the product gives the service in the product's
+order, then the other extras in `admit`'s order on the scope `keel new`
+plans them on (`presetScope`, or `scope.ts`' `presetServiceScope` for
+a service), then `bounded-context` — or the recorded one where no
+preset reads back. `convergeOf` takes a request that can
+name nothing to take away (DS5) — `add` with the scope and siblings
+the caller plans on, `reapply`, `entrypoint` (growth's reading, and
+growth's refusals), `module`, `new` from a seed manifest, naming the
+product and the service's path where it is one — and returns
+the target composition, the run (each step installed, installed in
+part, re-rendered or settled), the contexts to wire, and the caller's
+placement as it is today: growth's at its twin's rank, every other
+appended, until S.8. Growth's plan is read there with the handler's
+own pure pieces, moved out of `handlers/add-entrypoint.ts`, which
+imports them back: `placed`, `grownManifest`, `admitGrowth` and
+`incomingOf`. `tests/domain/core/converge.golden.test.ts` records the
+reading on every cell of the paths golden.
 
 **The stack presets are data.** `stack-presets.json`, because nothing in
 a `Stack` is code — `tags` and `projects` are strings and every other

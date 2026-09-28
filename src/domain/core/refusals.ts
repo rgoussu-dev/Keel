@@ -822,7 +822,9 @@ export function unknownEntrypointSentence(word: string): string {
  * - `no-twin` — no stack keel offers is this project with the
  *   entrypoint as well, on its build system and module layout;
  * - `drops` — adding it would stop adapters of verticals the project
- *   has from applying, and keel removes nothing it installed.
+ *   has from applying, and keel removes nothing it installed: without
+ *   a recorded base it cannot tell what it wrote from what was changed
+ *   since (roadmap L, DS5).
  */
 export type UncoverableEntrypointReason = 'front-end' | 'no-twin' | 'drops';
 
@@ -830,7 +832,10 @@ export type UncoverableEntrypointReason = 'front-end' | 'no-twin' | 'drops';
  * The sentence adding the entrypoint `entrypoint` (an {@link ENTRYPOINTS}
  * id) is refused with when no stack is the project with it, for
  * `reason`; under `drops`, `dropping` are the verticals whose adapters
- * would stop applying, named by their titles.
+ * would stop applying, named by their titles, and the sentence says
+ * why keel does not take them away: it keeps no base of what it wrote
+ * to tell its own lines from the user's, which is also why `--reapply`
+ * refuses a patch that keeps changing.
  */
 export function uncoverableEntrypointSentence(
   entrypoint: string,
@@ -847,7 +852,7 @@ export function uncoverableEntrypointSentence(
     case 'no-twin':
       return `${lead}: no stack keel offers is this project with it as well, on its build system and module layout`;
     case 'drops':
-      return `${lead}: part of ${listed(dropping.map(verticalTitle))} would stop applying to this project, and keel removes nothing it installed`;
+      return `${lead}: part of ${listed(dropping.map(verticalTitle))} would stop applying to this project, and keel removes nothing it installed — without a recorded base, it cannot tell what it wrote from what you changed since`;
   }
 }
 

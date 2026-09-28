@@ -471,7 +471,7 @@ recorded there too:
   stronger check of that declarative surface than a mutant re-running
   the unit suite.
 - **Mutants run against `vitest.stryker.config.ts`**, which is the
-  ordinary config minus ten suites — all excluded by construction,
+  ordinary config minus eleven suites — all excluded by construction,
   not by environment. `tests/e2e/` decides for itself whether to run,
   and on a box with a JDK on PATH it would happily build a real
   project once per mutant. `tests/version-pins.test.ts` is a text
@@ -498,8 +498,9 @@ recorded there too:
   in a `beforeAll` too, and is left out for the same reason, as are
   the growth golden and its render guard
   (`tests/domain/core/growth.golden.test.ts`,
-  `tests/domain/core/growth-render.test.ts`) and the paths golden's
-  four families (`tests/domain/core/paths-*.golden.test.ts`).
+  `tests/domain/core/growth-render.test.ts`), the paths golden's
+  four families (`tests/domain/core/paths-*.golden.test.ts`) and the
+  converge golden (`tests/domain/core/converge.golden.test.ts`).
 
 Incremental mode is on: `reports/stryker-incremental.json`
 (gitignored) records what was tested against which code, so a re-run
@@ -1094,7 +1095,16 @@ the operator's machine would report it as a harness finding.
   other golden —
   `KEEL_UPDATE_GOLDEN=1 pnpm exec vitest run tests/domain/core/paths-*.golden.test.ts`
   — and its failure names each cell that moved and what moved in it,
-  which is what to check against the change you meant.
+  which is what to check against the change you meant. The converge
+  golden, `tests/domain/core/converge.golden.json`, records the one
+  operation's reading (`src/domain/core/converge.ts`) on every cell the
+  paths golden keys — the target's order, each step of the run, the
+  contexts it wires, where it records, or the refusal — and reads the
+  paths golden's keys, so a change to a path's plan, or a new cell,
+  moves it too. Regenerate in this order: the paths golden, then the
+  converge golden —
+  `KEEL_UPDATE_GOLDEN=1 pnpm exec vitest run tests/domain/core/converge.golden.test.ts`
+  — then the growth golden, then the grid.
 
 See the [composition model](composition.md) for the vocabulary, and
 the [roadmap](roadmap.md) for what's wanted next.
