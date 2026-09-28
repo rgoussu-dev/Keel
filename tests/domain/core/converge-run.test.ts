@@ -16,7 +16,9 @@
  * `bounded-context` — a re-render within the recorded composition,
  * which puts back what the rest patched into the files it rewrites, a
  * conflict read as a refused re-render naming what re-rendered in the
- * order the project records it, the caller's
+ * order the project records it, what a re-render moved a vertical off
+ * and leaves in place (S.9: an adapter that ran by its answers or a tag
+ * it promoted, the files it wrote the project still holds), the caller's
  * answer check, the
  * refresh proposals — what they read, over what, in the caller's
  * words — `keel new`'s part as a caller from a seed manifest (the
@@ -1368,6 +1370,521 @@ describe('converge: a re-render within the recorded composition', () => {
     const run = ok(await world.run(stored, reapplying(stored, ['agent-harness'])));
     expect(changed(run.report)).toEqual([]);
     expect(run.tree.read('cli.txt')?.toString('utf8')).toBe('cli\ntail\n');
+  });
+});
+
+describe('converge: what a re-render moved off, and leaves in place (S.9)', () => {
+  const IMAGE: Tag = 'acme.image';
+  const NATIVE: Tag = 'acme.native';
+  const SIGNED: Tag = 'acme.signed';
+
+  /** Promotes the image a later ship adapter releases. */
+  const imaging = vertical(
+    'acme-image',
+    [adapter('acme-image', 'main', ['lang.acme'], () => ({ tagsAdd: [IMAGE] }))],
+    { promotes: [IMAGE] },
+  );
+
+  /** What the binary adapter records of itself, and whether it renders only where no image is. */
+  interface Binary {
+    readonly asks: boolean;
+    readonly promotes: boolean;
+    readonly strict?: boolean;
+  }
+
+  /**
+   * How a case bends the ship vertical, each part absent as the cases
+   * before it ship it: its id (`acme-ship`, whose files are under
+   * `ship/`); the tags its binary adapter promotes where it promotes
+   * (`[NATIVE]`); the share that adapter declares (those tags, or none
+   * where it promotes none) and the image adapter's (none), or `union`,
+   * declaring none and so promoting the vertical's; that union
+   * (`[NATIVE]`); and the paths the binary adapter writes.
+   */
+  interface Shape {
+    readonly id?: string;
+    readonly tags?: readonly Tag[];
+    readonly share?: readonly Tag[] | 'union';
+    readonly imageShare?: readonly Tag[] | 'union';
+    readonly union?: readonly Tag[];
+    readonly paths?: readonly string[];
+  }
+
+  const declared = (share: readonly Tag[] | 'union') =>
+    share === 'union' ? {} : { promotes: share };
+
+  /**
+   * Ships binaries until an image arrives, then the image: the binary
+   * adapter writes two files, one of which the image's writes too, and
+   * records what `binary` says of it — an answer, a promoted tag, both
+   * or neither.
+   */
+  function shipping(binary: Binary, shape: Shape = {}): Vertical {
+    const id = shape.id ?? 'acme-ship';
+    const dir = id.replace(/^acme-/, '');
+    const tags = binary.promotes ? (shape.tags ?? [NATIVE]) : [];
+    return vertical(
+      id,
+      [
+        adapter(
+          id,
+          'binary',
+          ['lang.acme'],
+          (ctx) => {
+            if (binary.strict === true && ctx.manifest.tags.includes(IMAGE)) {
+              throw new Error(`${id}/binary: an image ships this project`);
+            }
+            return {
+              files: (shape.paths ?? [`${dir}/binary.txt`, `${dir}/release.txt`]).map((path) => ({
+                path,
+                content: path.endsWith('release.txt') ? 'release binary\n' : 'binary\n',
+              })),
+              ...(tags.length > 0 ? { tagsAdd: tags } : {}),
+            };
+          },
+          {
+            predicate: { requires: ['lang.acme'], excludes: [IMAGE] },
+            ...declared(shape.share ?? tags),
+            ...(binary.asks ? { questions: [question('targets', 'all')] } : {}),
+          },
+        ),
+        adapter(
+          id,
+          'image',
+          ['lang.acme', IMAGE],
+          () => ({
+            files: [
+              { path: `${dir}/image.txt`, content: 'image\n' },
+              { path: `${dir}/release.txt`, content: 'release image\n' },
+            ],
+          }),
+          declared(shape.imageShare ?? []),
+        ),
+      ],
+      { promotes: shape.union ?? [NATIVE] },
+    );
+  }
+
+  /**
+   * A project of the skeleton and `scaffolded` on `tags`, installed by
+   * one run and committed, over the skeleton and `registered`; and
+   * `plan`, which plans `steps` on a manifest of it.
+   */
+  async function projectOf(
+    registered: readonly Vertical[],
+    scaffolded: readonly Vertical[],
+    tags: readonly Tag[] = CLI,
+  ) {
+    const registry = registryOf([
+      { origin: pluginOrigin('acme'), verticals: [skeleton, ...registered], stacks: [] },
+    ]);
+    const world = new World(registry);
+    const stored = await world.scaffold([skeleton, ...scaffolded], tags);
+    const plan = (on: ManifestV2, steps: readonly ConvergeStep[]) =>
+      planOf(on, steps, APPENDED, compositionOf(registry, on));
+    return { world, stored, plan };
+  }
+
+  /**
+   * A project that shipped binaries, `prepare`d, then taking the image
+   * — `imaging`'s, or the one `image` names — with its ship re-rendered
+   * in one run, as `keel add image --refresh ship` does — or, `later`,
+   * taking it in a run of its own, then re-rendering its ship, as `keel
+   * add ship --reapply` does — the caller saying `notes` around the
+   * re-render.
+   */
+  async function moved(
+    binary: Binary,
+    options: {
+      readonly shape?: Shape;
+      readonly image?: Vertical;
+      readonly prepare?: (world: World) => void;
+      readonly notes?: ConvergeInputs['notes'];
+      readonly later?: boolean;
+    } = {},
+  ): Promise<{ readonly stored: ManifestV2; readonly run: Converged }> {
+    const ship = shipping(binary, options.shape);
+    const image = options.image ?? imaging;
+    const project = await projectOf([ship, image], [ship]);
+    const { world, plan } = project;
+    let { stored } = project;
+    options.prepare?.(world);
+    if (options.later === true) {
+      const added = ok(await world.run(stored, plan(stored, [install(image)])));
+      await commitConverged(world.committing(), added);
+      world.keep(added.tree as FakeTree);
+      stored = added.manifest;
+    }
+    const steps = options.later === true ? [rerender(ship)] : [install(image), rerender(ship)];
+    const notes = options.notes ?? { before: [], after: [] };
+    return { stored, run: ok(await world.run(stored, plan(stored, steps), { notes })) };
+  }
+
+  const REASON =
+    'keel removes nothing it installed — without a recorded base, it cannot tell what it wrote from what you changed since';
+  const LEAD = `Acme ship no longer renders through acme-ship/binary, and ${REASON} — so`;
+
+  it('names the adapter it moved off, the files it wrote that the run left alone, and its record, which stays — between the caller’s notes — changing none of it', async () => {
+    const { stored, run } = await moved(
+      { asks: true, promotes: true },
+      { notes: { before: ['before'], after: ['after'] } },
+    );
+
+    expect(run.report.notes).toEqual([
+      'before',
+      `${LEAD} ship/binary.txt, which that adapter wrote, is yours to delete, and its answers and the tag it promoted stay in the manifest`,
+      'after',
+    ]);
+    expect(run.report.resolvedAdapters?.map(({ id }) => id)).toEqual([
+      'acme-image/main',
+      'acme-ship/image',
+    ]);
+    // The file the image's adapter writes as well is its own now, and
+    // not named; the one it does not write is as the binaries left it.
+    expect(run.tree.read('ship/release.txt')?.toString('utf8')).toBe('release image\n');
+    expect(run.tree.read('ship/binary.txt')?.toString('utf8')).toBe('binary\n');
+    expect(changed(run.report)).toEqual(['create ship/image.txt', 'modify ship/release.txt']);
+    expect(run.manifest.answers['acme-ship/binary']).toEqual(stored.answers['acme-ship/binary']);
+    expect(run.manifest.tags).toContain(NATIVE);
+  });
+
+  it('reads that the adapter ran off its answers or off a tag it promoted, and names none that recorded neither', async () => {
+    const said = async (binary: Binary) => (await moved(binary)).run.report.notes;
+    const lead = `${LEAD} ship/binary.txt, which that adapter wrote, is yours to delete, and`;
+
+    expect(await said({ asks: false, promotes: true })).toEqual([
+      `${lead} the tag it promoted stays in the manifest`,
+    ]);
+    expect(await said({ asks: true, promotes: false })).toEqual([
+      `${lead} its answers stay in the manifest`,
+    ]);
+    // It left no trace in the manifest, so nothing reads that it ran.
+    expect(await said({ asks: false, promotes: false })).toBeUndefined();
+  });
+
+  it('counts the tags it promoted', async () => {
+    const { run } = await moved(
+      { asks: false, promotes: true },
+      { shape: { tags: [NATIVE, SIGNED], union: [NATIVE, SIGNED] } },
+    );
+    expect(run.report.notes).toEqual([
+      `${LEAD} ship/binary.txt, which that adapter wrote, is yours to delete, and the tags it promoted stay in the manifest`,
+    ]);
+  });
+
+  it('reads an adapter that declares no share as promoting its vertical’s, on either side of the move', async () => {
+    const union = [NATIVE, SIGNED];
+    // The one it moved off may promote the whole union, the tag it
+    // promoted among it, and the image's share holds the other.
+    const off = await moved(
+      { asks: false, promotes: true },
+      { shape: { share: 'union', imageShare: [SIGNED], union } },
+    );
+    expect(off.run.report.notes).toEqual([
+      `${LEAD} ship/binary.txt, which that adapter wrote, is yours to delete, and the tag it promoted stays in the manifest`,
+    ]);
+    // The one it moved onto may promote it too, so the tag reads as no
+    // sign that the binaries ran.
+    const onto = await moved(
+      { asks: false, promotes: true },
+      { shape: { imageShare: 'union', union } },
+    );
+    expect(onto.run.report.notes).toBeUndefined();
+  });
+
+  it('reads a tag as no sign an adapter of the vertical ran where the recorded tags never held what it requires', async () => {
+    // Another family's adapter, whose share — its own, or the
+    // vertical's — holds the tag the binaries promoted: the project
+    // never held its language, so it never ran, and the file at its
+    // path is the user's.
+    for (const share of [{ promotes: [NATIVE] }, {}]) {
+      const base = shipping({ asks: false, promotes: true });
+      const other = adapter(
+        'acme-ship',
+        'other',
+        ['lang.other'],
+        () => ({ files: [{ path: 'ship/other.txt', content: 'other\n' }], tagsAdd: [NATIVE] }),
+        share,
+      );
+      const ship: Vertical = { ...base, adapters: [...base.adapters, other] };
+      const { world, stored, plan } = await projectOf([ship, imaging], [ship]);
+      world.files.set('ship/other.txt', Buffer.from('mine\n'));
+
+      const run = ok(await world.run(stored, plan(stored, [install(imaging), rerender(ship)])));
+      expect(run.report.notes).toEqual([
+        `${LEAD} ship/binary.txt, which that adapter wrote, is yours to delete, and the tag it promoted stays in the manifest`,
+      ]);
+    }
+  });
+
+  it('reads an adapter that ran on a peer’s tag, which relinking withdrew, by its answers alone', async () => {
+    const PEER: Tag = 'peer.acme';
+    /** Links while a peer projects its tag, and ships plain once none does. */
+    const linking = (asks: boolean) =>
+      vertical(
+        'acme-link',
+        [
+          adapter(
+            'acme-link',
+            'peered',
+            ['lang.acme', PEER],
+            () => ({
+              files: [{ path: 'link/peered.txt', content: 'peered\n' }],
+              tagsAdd: [NATIVE],
+            }),
+            { promotes: [NATIVE], ...(asks ? { questions: [question('targets', 'all')] } : {}) },
+          ),
+          adapter(
+            'acme-link',
+            'plain',
+            ['lang.acme'],
+            () => ({ files: [{ path: 'link/plain.txt', content: 'plain\n' }] }),
+            { predicate: { requires: ['lang.acme'], excludes: [PEER] }, promotes: [] },
+          ),
+        ],
+        { promotes: [NATIVE] },
+      );
+    const said = async (asks: boolean) => {
+      const link = linking(asks);
+      const { world, stored, plan } = await projectOf([link], [link], [...CLI, PEER]);
+      expect(stored.tags).toContain(NATIVE);
+      // The peer's tag as a link projected it, since relinked to a
+      // project that no longer does.
+      const relinked: ManifestV2 = {
+        ...stored,
+        tags: stored.tags.filter((tag) => tag !== PEER),
+        peers: [{ ref: '../api', tags: [] }],
+      };
+      const run = ok(await world.run(relinked, plan(relinked, [rerender(link)])));
+      expect(run.tree.read('link/peered.txt')?.toString('utf8')).toBe('peered\n');
+      return run.report.notes;
+    };
+
+    expect(await said(true)).toEqual([
+      `Acme link no longer renders through acme-link/peered, and ${REASON} — so link/peered.txt, which that adapter wrote, is yours to delete, and its answers stay in the manifest`,
+    ]);
+    expect(await said(false)).toBeUndefined();
+  });
+
+  it('leaves out a file the user already deleted', async () => {
+    const { run } = await moved(
+      { asks: true, promotes: true },
+      { prepare: (world) => world.files.delete('ship/binary.txt') },
+    );
+
+    expect(run.report.notes).toEqual([
+      `${LEAD} that adapter's answers and the tag it promoted stay in the manifest`,
+    ]);
+    expect(run.tree.exists('ship/binary.txt')).toBe(false);
+  });
+
+  it('names a file by the path the project holds, and none the run wrote whole under another spelling', async () => {
+    const { run } = await moved(
+      { asks: true, promotes: true },
+      { shape: { paths: ['./ship/binary.txt', './ship/release.txt'] } },
+    );
+    expect(run.report.notes).toEqual([
+      `${LEAD} ship/binary.txt, which that adapter wrote, is yours to delete, and its answers and the tag it promoted stay in the manifest`,
+    ]);
+  });
+
+  it('names a file another vertical of the run only patched, as a run of its own does', async () => {
+    /** Promotes the image, and marks the ship's binary imaged: a patch, its own fixed point. */
+    const marking = vertical(
+      'acme-image',
+      [
+        adapter('acme-image', 'main', ['lang.acme'], () => ({
+          tagsAdd: [IMAGE],
+          patches: [
+            {
+              target: 'ship/binary.txt',
+              apply: (text: string) => (text.includes('imaged') ? text : `${text}imaged\n`),
+            },
+          ],
+        })),
+      ],
+      { promotes: [IMAGE] },
+    );
+    const said = [
+      `${LEAD} ship/binary.txt, which that adapter wrote, is yours to delete, and its answers and the tag it promoted stay in the manifest`,
+    ];
+
+    const one = await moved({ asks: true, promotes: true }, { image: marking });
+    expect(one.run.report.notes).toEqual(said);
+    expect(one.run.tree.read('ship/binary.txt')?.toString('utf8')).toBe('binary\nimaged\n');
+    const later = await moved({ asks: true, promotes: true }, { image: marking, later: true });
+    expect(later.run.report.notes).toEqual(said);
+  });
+
+  it('names no file of an adapter that no longer renders on the recorded manifest, and refuses nothing for it', async () => {
+    // Re-rendered after a run of its own took the image, the binary
+    // adapter refuses to render on the manifest it is contributed from.
+    const strict = await moved({ asks: true, promotes: true, strict: true }, { later: true });
+    expect(strict.run.report.notes).toEqual([
+      `${LEAD} that adapter's answers and the tag it promoted stay in the manifest`,
+    ]);
+    expect(strict.run.tree.read('ship/binary.txt')?.toString('utf8')).toBe('binary\n');
+    // One that renders there names its file, as in one run.
+    const lenient = await moved({ asks: true, promotes: true }, { later: true });
+    expect(lenient.run.report.notes).toEqual([
+      `${LEAD} ship/binary.txt, which that adapter wrote, is yours to delete, and its answers and the tag it promoted stay in the manifest`,
+    ]);
+  });
+
+  describe('a tag another vertical the project records promotes', () => {
+    /**
+     * Promotes the image, or on `flavor: native` the tag the binaries
+     * promote — as containerization's image does distribution's native
+     * release's — its question defaulting to `flavor`, which the
+     * project then records; `strict`, refusing to render where the
+     * image is already there.
+     */
+    function flavoured(flavor: 'jvm' | 'native', strict = false): Vertical {
+      return vertical(
+        'acme-flavour',
+        [
+          adapter(
+            'acme-flavour',
+            'main',
+            ['lang.acme'],
+            (ctx) => {
+              if (strict && ctx.manifest.tags.includes(IMAGE)) {
+                throw new Error('acme-flavour/main: an image is here already');
+              }
+              return { tagsAdd: ctx.answer('flavor') === 'native' ? [NATIVE] : [IMAGE] };
+            },
+            { questions: [question('flavor', flavor)] },
+          ),
+        ],
+        { promotes: [IMAGE, NATIVE] },
+      );
+    }
+
+    it('reads it as no sign an adapter ran, where that vertical promotes it on what it recorded', async () => {
+      // The binaries never ran: the image was there first. The file at
+      // their path is the user's.
+      const ship = shipping({ asks: false, promotes: true });
+      const flavour = flavoured('native');
+      const { world, stored, plan } = await projectOf(
+        [ship, flavour, imaging],
+        [flavour, imaging, ship],
+      );
+      world.files.set('ship/binary.txt', Buffer.from('mine\n'));
+      expect(stored.tags).toContain(NATIVE);
+
+      const run = ok(await world.run(stored, plan(stored, [rerender(ship)])));
+      expect(run.report.notes).toBeUndefined();
+    });
+
+    it('reads it as the adapter’s where that vertical, rendered on what it recorded, promotes another', async () => {
+      const { run } = await moved(
+        { asks: false, promotes: true },
+        { image: flavoured('jvm'), later: true },
+      );
+      expect(run.report.notes).toEqual([
+        `${LEAD} ship/binary.txt, which that adapter wrote, is yours to delete, and the tag it promoted stays in the manifest`,
+      ]);
+    });
+
+    it('reads it as no sign an adapter ran where that vertical no longer renders on what it recorded, since it may promote it', async () => {
+      const { run } = await moved(
+        { asks: false, promotes: true },
+        { image: flavoured('jvm', true), later: true },
+      );
+      expect(run.report.notes).toBeUndefined();
+    });
+
+    it('reads it as no sign an adapter ran where that vertical promoted it before a tag it excludes arrived', async () => {
+      const FINAL: Tag = 'acme.final';
+      // The binaries never ran: the image was there first, and the
+      // native tag is this vertical's, which a later tag rules out.
+      const ship = shipping({ asks: false, promotes: true });
+      const flavour = vertical(
+        'acme-flavour',
+        [
+          adapter('acme-flavour', 'main', ['lang.acme'], () => ({ tagsAdd: [NATIVE] }), {
+            predicate: { requires: ['lang.acme'], excludes: [FINAL] },
+          }),
+        ],
+        { promotes: [NATIVE] },
+      );
+      const finishing = vertical(
+        'acme-finish',
+        [adapter('acme-finish', 'main', ['lang.acme'], () => ({ tagsAdd: [FINAL] }))],
+        { promotes: [FINAL] },
+      );
+      const { world, stored, plan } = await projectOf(
+        [ship, flavour, imaging, finishing],
+        [flavour, imaging, ship],
+      );
+      world.files.set('ship/binary.txt', Buffer.from('mine\n'));
+      const finished = ok(await world.run(stored, plan(stored, [install(finishing)])));
+      await commitConverged(world.committing(), finished);
+      world.keep(finished.tree as FakeTree);
+      expect(finished.manifest.tags).toEqual(expect.arrayContaining([NATIVE, FINAL]));
+
+      const on = finished.manifest;
+      const run = ok(await world.run(on, plan(on, [rerender(ship)])));
+      expect(run.report.notes).toBeUndefined();
+    });
+
+    it('reads it as the adapter’s where only an adapter of that vertical the recorded tags never matched promotes it', async () => {
+      // The other adapter would promote it on the answer it defaults
+      // to, but the project never held its language, so it never ran.
+      const flavour = vertical(
+        'acme-flavour',
+        [
+          adapter('acme-flavour', 'main', ['lang.acme'], () => ({ tagsAdd: [IMAGE] }), {
+            promotes: [IMAGE],
+          }),
+          adapter(
+            'acme-flavour',
+            'other',
+            ['lang.other'],
+            (ctx) => ({ tagsAdd: ctx.answer('flavor') === 'native' ? [NATIVE] : [] }),
+            { questions: [question('flavor', 'native')] },
+          ),
+        ],
+        { promotes: [IMAGE, NATIVE] },
+      );
+      const { run } = await moved({ asks: false, promotes: true }, { image: flavour, later: true });
+      expect(run.report.notes).toEqual([
+        `${LEAD} ship/binary.txt, which that adapter wrote, is yours to delete, and the tag it promoted stays in the manifest`,
+      ]);
+    });
+  });
+
+  it('says what it leaves before the refresh it proposes, between the caller’s notes', async () => {
+    const ship = shipping({ asks: true, promotes: true });
+    const { world, stored, plan } = await projectOf(
+      [ship, imaging, metrics, deploy],
+      [deploy, ship],
+    );
+    const run = ok(
+      await world.run(stored, plan(stored, [install(metrics), install(imaging), rerender(ship)]), {
+        notes: { before: ['before'], after: ['after'] },
+      }),
+    );
+    expect(run.report.notes).toEqual([
+      'before',
+      `${LEAD} ship/binary.txt, which that adapter wrote, is yours to delete, and its answers and the tag it promoted stay in the manifest`,
+      "refresh proposed: Acme deploy reads Acme metrics, which it was rendered without — re-render it in this run with --refresh acme-deploy, or afterwards with 'keel add acme-deploy --reapply'",
+      'after',
+    ]);
+  });
+
+  it('says what each vertical it moved leaves in the order the project records them, whatever order they re-rendered in', async () => {
+    const ship = shipping({ asks: true, promotes: true });
+    const pack = shipping({ asks: true, promotes: true }, { id: 'acme-pack' });
+    const { world, stored, plan } = await projectOf([ship, pack, imaging], [ship, pack]);
+    const run = ok(
+      await world.run(stored, plan(stored, [install(imaging), rerender(pack), rerender(ship)])),
+    );
+    expect(run.report.notes?.map((note) => note.split(' no longer')[0])).toEqual([
+      'Acme ship',
+      'Acme pack',
+    ]);
+    expect(run.report.notes?.[1]).toContain('pack/binary.txt, which that adapter wrote');
   });
 });
 

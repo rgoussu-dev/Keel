@@ -486,7 +486,9 @@ for the one family named for what it pins: Q3.4's finding 2, on
 `keel new --with distribution`, then `keel add containerization`,
 which proposes the refresh, and
 `keel add containerization --refresh distribution`, which takes it;
-and `keel add containerization`, then `keel add distribution --reapply`.
+and `keel add containerization`, then `keel add distribution --reapply`
+— the two re-renders whose report names what the native release leaves
+in place (roadmap S.9), and the only cells of the four files that do.
 The **whole re-render** is one `keel add v1 … vn --reapply` naming
 every recorded vertical `keel add` can name (all but `bounded-context`
 and a product root's `fullstack`), as a dry run. It names them in

@@ -351,7 +351,32 @@ anything re-rendered, and rethrown otherwise; the refresh proposals,
 over the steps it installs in run order, each worded as a later run
 takes it up (`proposeForLater`) or as this one could; and the report,
 the caller's notes before and after the proposals, and the diffs where
-anything re-rendered. A re-render runs within the recorded composition (S.7, DS4):
+anything re-rendered. Where a re-render moved a vertical off an adapter
+that ran — read off the record, never a comparison of tags: answers
+under its id, or a tag it may promote (`planner.ts`' `adapterPromotes`)
+that the manifest holds, that none of the adapters the re-render
+resolved may promote, and that no adapter of another recorded vertical
+whose every required tag the recorded tags hold promotes on its record,
+or throws there (`unaccounted`: containerization's image on `flavor:
+native` promotes the native release's tag; its excludes go unread, as
+one that promoted the tag before a tag it excludes arrived ran all the
+same), read only where the recorded tags, a peer's among them, hold
+every tag the adapter requires (a project's own tags only accrue, so an
+adapter of another family whose share holds the tag never ran; one that
+ran on a peer's tag a relink withdrew is read by its answers alone) —
+the report says what it leaves (S.9, DS5), the verticals in recorded
+order, between the caller's notes that go before the proposals and the
+proposals (`leftBehind`, worded by `refusals.ts`'
+`leftBehindNote`, which names no tag): the files the adapter writes
+whole on its recorded answers, whatever its predicate now says
+(`install.ts`' `recordedContribution`), that the Tree still holds and
+no contribution of the run wrote whole (`Ownership.wroteWhole`; a patch
+leaves the file the adapter's) — not its skills' or hooks' files, the
+harness's, whose entries, index rows and wiring stay; none where that
+render throws, since a note changes no verdict — and its answers and
+tags, which stay. An adapter that recorded no answer and promoted no
+tag leaves nothing to read, and no note.
+A re-render runs within the recorded composition (S.7, DS4):
 `convergeOf`'s `reapply` plan, and its `add` plan where `--refresh`
 names anything, replays every other vertical the project records
 (`replay` steps) in recorded order after the first re-render, a later

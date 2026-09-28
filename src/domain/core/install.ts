@@ -597,9 +597,15 @@ export async function contributedPaths(
 
 /**
  * `adapter`'s contribution on `manifest`, its questions answered from
- * what the manifest records, or their defaults, asking nothing.
+ * what the manifest records, or their defaults, asking nothing, whatever
+ * its predicate says of the manifest's tags — with nothing applied,
+ * recorded or collected. Also what a run reads around a re-render that
+ * moved its vertical off an adapter (`./converge-run.ts`, roadmap S.9):
+ * the files that adapter wrote, on the answers it recorded, and the
+ * tags an adapter of another vertical the project records promotes on
+ * what it recorded.
  */
-async function recordedContribution(
+export async function recordedContribution(
   adapter: Adapter,
   manifest: ManifestV2,
   inputs: Pick<InstallVerticalInputs, 'prompt' | 'logger' | 'cwd' | 'templates' | 'processes'>,

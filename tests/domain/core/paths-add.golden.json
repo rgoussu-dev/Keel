@@ -66022,7 +66022,7 @@
       }
     },
     "actions": "4f53cda18c2baa0c",
-    "report": "5f1dab0658a1e450",
+    "report": "cac1fa55282c30e2",
     "docs": 0
   },
   "keel new --stack quarkus-cli-rest --build-system gradle --module-layout basic --with distribution && keel add containerization --refresh distribution": {
@@ -66073,7 +66073,7 @@
       }
     },
     "actions": "4f53cda18c2baa0c",
-    "report": "260e0dfe0ef9c28a",
+    "report": "32d2db2be8809e36",
     "docs": 0
   },
   "keel new --stack quarkus-cli-rest --build-system gradle --module-layout basic --with distribution && keel add iac": {
@@ -68801,7 +68801,7 @@
       }
     },
     "actions": "4f53cda18c2baa0c",
-    "report": "5f1dab0658a1e450",
+    "report": "cac1fa55282c30e2",
     "docs": 0
   },
   "keel new --stack quarkus-cli-rest-kotlin --build-system gradle --module-layout basic --with distribution && keel add containerization --refresh distribution": {
@@ -68852,7 +68852,7 @@
       }
     },
     "actions": "4f53cda18c2baa0c",
-    "report": "260e0dfe0ef9c28a",
+    "report": "32d2db2be8809e36",
     "docs": 0
   },
   "keel new --stack quarkus-cli-rest-kotlin --build-system gradle --module-layout basic --with distribution && keel add iac": {

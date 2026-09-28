@@ -722,13 +722,41 @@ refuses the run). Its recorded
 answers are frozen, but an adapter it now resolves to has none — the
 container image's release pipeline above — so that adapter's questions
 are asked (and shown in `keel ui`'s preview), and `--set` reaches it.
+Refreshing a vertical that is not installed is refused as
+`keel.vertical-not-installed`.
+
 A re-render onto another adapter writes the new adapter's files and
 removes none of the old one's: on `quarkus-cli-rest`, the native
 release's `native-build.yml` and `release.yml` stay beside the image
 pipeline — its `release.yml` releasing on each `v*` tag as the image's
 does — until you delete them ([distribution](verticals/distribution.md)).
-Refreshing a vertical that is not installed is refused as
-`keel.vertical-not-installed`.
+The report says so, in a note naming the adapter it moved off, the
+files that adapter wrote that the project still holds — one you
+deleted already is left out — and what the manifest keeps of it:
+
+```
+$ keel add containerization --refresh distribution
+keel add containerization: planned changes
+  note: Distribution no longer renders through distribution/quarkus-cli-native, and keel removes nothing it installed — without a recorded base, it cannot tell what it wrote from what you changed since — so .github/workflows/native-build.yml and .github/workflows/release.yml, which that adapter wrote, are yours to delete, and its answers and the tag it promoted stay in the manifest
+  …
+```
+
+`keel add distribution --reapply` after `keel add containerization` says
+the same, and so does every later re-render of distribution while the
+manifest records the native release: its answers, or the tag it
+promoted, are how the run knows the adapter ran — the tag only where the
+project has all the adapter needs and nothing else it records promotes
+the tag, as a JVM image built native (`flavor: native`) does, so a
+server whose native release never ran is told nothing. Saying so writes
+and removes nothing: the files stay, the manifest keeps the native
+release's answers and tag, and the run succeeds or is refused as it
+would be anyway. The preview (`--dry-run`, and `keel ui`'s) carries the
+note too. A skill or a hook of the adapter's is not named: the harness
+records and wires it, and it stays with that record. An adapter that
+recorded no answer and promoted no tag leaves nothing in the manifest to
+read, so no note can name what it wrote; among keel's, only the
+gateway's adapters could be moved off so, by relinking a project that no
+longer projects what they need.
 
 Where an installed vertical, as it was rendered, is all that stands in
 the way of one you ask for, the add is refused as `keel.needs-refresh`,

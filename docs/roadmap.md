@@ -31,9 +31,13 @@ the weekly composition sweep its measure had planned. Its successors —
 grow) has landed too, one commit per step, R.1a to R.3d, as its own
 section below records: every single-entrypoint backend preset grows
 the other entrypoint into its twin, byte for byte, on every dial
-setting, with its bounded contexts. **S** (one converge operation) is
-sliced in its own section below, from thirteen research passes over
-R's merge, S.1a to S.9, one commit per step. **T** and **U** wait on
+setting, with its bounded contexts. **S** (one converge operation)
+has landed as well, S.1a to S.9, one commit per step, as its own
+section below records: `keel new`, `keel add` with `--refresh` and
+`--reapply`, `keel add entrypoint` and `keel add module` are callers of
+one operation, which keeps what later verticals wrote through a
+re-render, records where one run records, and says what a re-render
+leaves. **T** and **U** wait on
 decisions of their own and are not yet sliced into issues or ordered
 against the backlog.
 
@@ -4036,6 +4040,9 @@ containerization` then proposes `--refresh distribution`, which
    the first adapter wrote: that is L's missing merge base. Until then,
    `docs/verticals/distribution.md` and `docs/cli.md` → `--refresh` say
    so, and that the native `release.yml` still runs on each `v*` tag.
+   Still open; since S.9 the run's report, and its preview, names the
+   adapter it moved off, the files it wrote that the project still
+   holds, and its record, which stays.
 3. **An add refused where one run is Ok.** On the same presets, `keel
 add iac` after `keel new --with distribution` is refused as
    `keel.needs-refresh` (_Infrastructure as code needs Container image,
@@ -4374,9 +4381,9 @@ Each taken as the audit recommended; the step that carries it is named.
   _R — Entrypoints can grow_, below, records it.
 - **S — One converge operation (additive).** A desired state planned
   against disk; `new` and `add` become aliases; removal refused,
-  citing L's missing merge base. Sliced in its own section,
-  _S — One converge operation_, below; what "aliases" means is its
-  DS1.
+  citing L's missing merge base. Landed; its own section,
+  _S — One converge operation_, below, records it; what "aliases"
+  means is its DS1.
 - **T — Facets over presets.** Presets generated from a platform ×
   entrypoint table with ids kept as aliases (all 34 regenerate
   exactly); products as per-service selections. Only with a data
@@ -7922,10 +7929,12 @@ agent-harness --reapply`.
 
 ---
 
-## S — One converge operation
+## S — One converge operation ✅
 
 **Proposed 2026-09-27 from thirteen research passes over `babae29`**
-(R's merge). None of the passes edited the repository. Q's
+(R's merge), **and landed**: S.1a to S.9 below, one commit per step,
+every decision taken as recommended (_Decisions on record_). None of
+the passes edited the repository. Q's
 _Successors_ named this epic, and R's _Not in scope_ left converge to
 it. S adds no command, no flag and no manifest field. Every path that
 installs or re-renders verticals becomes a caller of one operation:
@@ -8461,7 +8470,7 @@ Landed paragraph here. Two more gates apply where they are named:
 - where a template or a re-render changes what a toolchain builds, the
   e2e suites that build it.
 
-### S.1 — Pin every path first
+### S.1 — Pin every path first ✅
 
 #### S.1a — The paths golden (M) ✅
 
@@ -11111,7 +11120,7 @@ Beyond the text above:
   suite. The filtered `arrival` sweep finds the same 12 findings, all
   on `quarkus-cli-rest`, in 3.8 minutes.
 
-### S.9 — What a re-render leaves behind is said (S)
+### S.9 — What a re-render leaves behind is said (S) ✅
 
 keel removes nothing, and a re-render now says what it leaves. Where
 a re-render moves a vertical off an adapter that ran, the report
@@ -11157,6 +11166,375 @@ already deleted, which the note leaves out.
 **Leaves out:** deleting anything; and the weekly finding (2), which
 stays open, now said by the command itself.
 
+**Landed as the last behaviour change**, in one commit.
+`converge-run.ts` (799 lines to 945) reads what the run's re-renders
+leave (`leftBehind`) once the run is staged, for every `rerender` step,
+the verticals in the order the project records them: each adapter of the
+vertical that the run did not resolve and that ran by the record —
+answers under its id, or a tag of its share (`planner.ts`'
+`adapterPromotes`: `Adapter.promotes`, else the vertical's union) that
+the manifest holds, that no adapter the re-render resolved may promote,
+and that nothing else the project records accounts for (`unaccounted`):
+no adapter of another recorded vertical whose every required tag the
+recorded tags hold promotes it when contributed on what the project
+records, nor throws there, since one that throws may; its excludes go
+unread, as one that promoted the tag before a tag it excludes arrived
+ran all the same. The tag is read only for an adapter whose every
+required tag the recorded tags hold, a peer's among them
+(`effectiveTags`), since a project's own tags only accrue. For each, it
+names the files the adapter writes whole, contributed from the manifest
+the run starts from, asking nothing, whatever its predicate says
+(`install.ts`' `recordedContribution`, now exported), that the Tree
+still holds and no contribution of the run wrote whole (`leftFiles`,
+over `Ownership.wroteWhole`, a set `apply.ts` now keeps beside
+`writers`: each path a contribution of the run wrote whole — a file, a
+skill's file or a hook script — and none it only patched). `refusals.ts`
+words the note (`leftBehindNote`), which counts the tags and names none,
+as the module prints no tag. The reason it gives is the `drops`
+sentence's, now one constant both read (`REMOVES_NOTHING`), so that
+sentence is unchanged. The note goes after the caller's notes that come
+before the proposals, and before the proposals. `add-vertical.ts`,
+`commands.ts`' `InstallReport.notes` and `queries.ts`'
+`InstallPreview.notes` change in a doc comment each. Nothing else of a
+run moves: no file is written or removed, the manifest keeps the
+adapter's answers and tags, and no verdict changes.
+
+- **The golden moves in notes alone**, on the four cells the text
+  names and no other. The paths golden was regenerated with
+  `KEEL_UPDATE_GOLDEN=1` and compared with HEAD's by a script, cell by
+  cell and field by field (kept outside the repository, re-runnable
+  against any base). `paths-add` moved on 4 of its 1,326 cells, each in
+  `report` alone:
+
+  ```sh
+  keel new --stack quarkus-cli-rest --build-system gradle --module-layout basic --with distribution && keel add containerization --refresh distribution
+  keel new --stack quarkus-cli-rest --build-system gradle --module-layout basic --with distribution && keel add containerization && keel add distribution --reapply
+  ```
+
+  and the same two on `quarkus-cli-rest-kotlin`. Each report's one
+  note names both of the native release's files: _Distribution no
+  longer renders through distribution/quarkus-cli-native, and keel
+  removes nothing it installed — without a recorded base, it cannot
+  tell what it wrote from what you changed since — so
+  .github/workflows/native-build.yml and .github/workflows/release.yml,
+  which that adapter wrote, are yours to delete, and its answers and
+  the tag it promoted stay in the manifest_. With that note taken out of what a
+  cell records, in a scratch edit of `tests/support/paths-golden.ts`
+  undone after, `paths-add` passes against HEAD's JSON: the note is
+  all that moved. `paths-new`, `paths-reapply` and `paths-grow`
+  regenerate byte-identical, and so do `converge.golden.json` (3,436
+  cells: it records the reading, which holds no report), and
+  `growth.golden.json` (360); the shared-files, agent-harness,
+  run-skill, planner-readiness and stack-registry goldens pass as they
+  are. The grid's four axes pass, their goldens byte-identical, and
+  the known files are as they were: brownfield's `{"I5": {}}`, `{}` for
+  the others. I10 and I11 hold on every cell, and the compatibility
+  matrix does not move (`generated-docs.test.ts`). Regenerated again
+  after each review, the third time on the tree this step lands with,
+  `paths-add`, `paths-reapply` and `paths-grow` are byte-identical to
+  the golden above, and every other golden and grid axis passes as it
+  is.
+
+- **Which of keel's adapters a re-render can move off**, measured over
+  the registry: 167 adapters, the 136 of its 14 verticals, the 3 of
+  `fullstack`, which only a product preset carries and `keel add`
+  cannot name, and the 28 of keel's own `bounded-context`. A project's
+  own tags only accrue — no command takes one away — so an adapter
+  stops matching only where it excludes a tag that arrives, or requires
+  one that leaves the set it resolves against: a peer's, which
+  `keel link` replaces with what the project at that path projects now,
+  or the context marker `keel add module` seeds and strips.
+  - One excludes a tag: `distribution/quarkus-cli-native`
+    (`runtime.jvm-image`). It records its `targets` and promotes
+    `runtime.graalvm-native`, so either reading finds it, and on
+    Q3.4's cells both do (_The proof_, below).
+  - Nine require a peer's tag, all of them `gateway`'s: `wc-gateway-rest`
+    a REST back end's (`peer.api.rest`), and `rest-api-contract` and
+    the seven CORS adapters (Quarkus, Spring in Java and in Kotlin,
+    Micronaut, Go, Rust and TypeScript) a single-page front end's
+    (`peer.ui.spa`). None asks a question or promotes a tag, so these
+    are the adapters a re-render can move off with no trace: relinked
+    at the same path to a project that no longer projects the tag,
+    `keel add gateway --reapply` leaves what they wrote, and no note
+    names it. No golden or grid cell relinks.
+  - The 28 context adapters require the marker, and are
+    `bounded-context`'s, which no re-render names; a replay is no
+    re-render. The 28 peer-context adapters of `walking-skeleton`
+    require `modules.peer-context`, a tag the project keeps.
+
+  Two tags of an adapter's share are also in another vertical's
+  adapter's, and no preset seeds a tag of any share. One is
+  `runtime.graalvm-native`, the native release's, which
+  containerization's JVM images for Quarkus, Spring and Micronaut
+  promote on `flavor: native`: on Q3.4's cells the image is the JVM
+  flavor, and its render promotes `runtime.jvm-image`, so the tag stays
+  the native release's; on a server whose image is built native, where
+  the native release never resolves, the image accounts for it. The
+  other, `agentic.harness`, is the six harness kits' and, by its union,
+  `fullstack`'s, none of which a re-render moves off.
+
+- **The tests.** `add-vertical.test.ts` goes from 48 cases to 51. On
+  `quarkus-cli-rest` under Gradle with distribution, one case takes
+  both spellings: `keel add containerization --refresh distribution`,
+  planned and then written, and on a copy `keel add containerization`,
+  which proposes the refresh and says nothing of what stays, then
+  `keel add distribution --reapply`; each says the note, the
+  native release's two files are byte for byte as it wrote them, its
+  answers and tag are recorded still, and the two spellings leave the
+  same files. Another deletes `release.yml` before the re-render and
+  is named `native-build.yml` alone, then deletes that too and is named
+  no file, the manifest's record alone, with nothing staged. The third
+  is `quarkus-rest` under Gradle, its image built native and the
+  native release never resolved there, with a `release.yml` of the
+  user's: the re-render, planned and written, and
+  `keel add iac --refresh distribution` note nothing, and the file is
+  as the user wrote it. Two cases change, each now also holding the
+  note: the `iac` add that takes `--refresh distribution` after the
+  image noted nothing, and the one before the image, as a dry run,
+  noted the image it added alone. `converge-run.test.ts` goes from 42
+  cases to 59, on a ship vertical of the `acme` family whose binary
+  adapter excludes the tag an image vertical promotes, and writes two
+  files, one of which the image's adapter writes too: the note between
+  the caller's notes, naming the file the image does not write and not
+  the one it rewrote, the answers and the tag kept; each reading alone
+  (the tag, then the answers), and no note for an adapter that recorded
+  neither; two tags, counted; a share read as the vertical's union where
+  an adapter declares none, on the adapter moved off and on the one
+  moved onto; a third adapter of the ship, of a language the project
+  never had, whose share — its own, then the union — holds the tag the
+  binaries promoted, not named, the file of the user's at its path left
+  out of the note; an adapter that ran on a peer's tag a relink since
+  withdrew named by its answers alone, and not at all where it asked
+  nothing; a file the user deleted left out; a file named by the path
+  the project holds where the adapter spells it `./`; a file another
+  vertical of the run only patched still named, in one run as in two;
+  re-rendered after a run of its own took the image, an adapter that
+  throws on the manifest it is contributed from named by its record
+  alone, the run Ok, where one that renders there is named with its
+  file; a tag another recorded vertical promotes on its recorded answer
+  read as no sign the binaries ran, the file at their path the user's,
+  one that vertical's render does not promote read as theirs, one
+  whose render throws read as no sign, one it promoted before a tag its
+  adapter excludes arrived read as no sign, and one only an adapter of
+  it the project never matched would promote read as theirs; the note
+  before the refresh the run proposes; and two verticals it moved said in the order the project
+  records them, whatever order they re-rendered in.
+  `refusals.test.ts` goes from 58 cases to 59, the note's wording: one
+  file or two, or none; its answers, the tag it promoted, or both; and
+  two tags, counted.
+
+**The proof**, each tried in a scratch edit of `converge-run.ts` and
+undone byte for byte, run against `converge-run.test.ts`,
+`add-vertical.test.ts` and the paths golden's add, re-render and
+growth files (116 tests), cells counted by regenerating the three and
+comparing them with the step's own:
+
+- **No note** fails the fourteen fixture cases that say one, the four
+  handler cases that say it, and `paths-add` on exactly the four cells.
+- **The answers reading dropped** fails nine fixture cases, **the tag
+  reading dropped** twelve; each fails the four handler cases and the
+  four cells, whose note loses that half of its record.
+- **A file the user deleted named** fails the two cases that delete
+  one. **A file the run wrote whole named** fails thirteen fixture
+  cases, the image's adapter rewriting `ship/release.txt`, and no
+  handler case or cell: no adapter of keel's that a re-render moves
+  onto writes a moved-off one's file. **Any file the run wrote read
+  as written whole**, a patch among them (`Ownership.writers`, as the
+  step first read it), fails the case whose file another vertical only
+  patched, and nothing else.
+- **The render's refusal let through** fails the case of the adapter
+  that throws, and nothing else.
+- **The note placed after the proposals** fails the case that has one
+  of each; **after the caller's closing notes**, that case and the
+  first. **The verticals said in the order they re-rendered** fails the
+  case of the two moved; **one tag counted however many**, the case of
+  two; **the path as the adapter spells it**, the `./` case. Each fails
+  that case alone: keel moves one vertical off one adapter that
+  promotes one tag, spelled as the project holds it.
+- **The requirements dropped**, a tag read for an adapter whose
+  required tags the project never held (_Beyond the text above_),
+  fails the two cases that hold it — the adapter of a language the
+  project never had, and the one that ran on a peer's tag — and
+  nothing else; **a peer's tag left out of what it requires**, the
+  peer's case alone. Each of the next three, tried with the
+  requirements dropped as well, fails what it failed before them, and
+  their two cases besides.
+- **The union dropped**, an adapter that declares no share read as
+  promoting nothing on both sides of the move, fails the share case,
+  and no cell: every adapter of keel's that declares a share requires
+  its family's tags. With the requirements dropped too, it moves 24
+  cells of `paths-reapply`, 12 whole re-renders and 12 of
+  containerization re-rendered alone, no verdict among them.
+- **Every tag of an unresolved adapter's share read**, not only those
+  no resolved adapter may promote, fails the share case, and no
+  handler case or cell. With the requirements dropped too, the
+  adapters of a vertical's other families, whose share holds the tag
+  the one that ran promoted, are named on a re-render of it: four
+  handler cases, the one on `quarkus-rest` among them, and 710 cells,
+  16 of `paths-add`, 404 of `paths-reapply` and 290 of `paths-grow`,
+  each in `report` alone — the 280 whole re-renders, `dev-container`
+  re-rendered alone (98), `agent-harness` and `code-style` (80 each),
+  `ci` (28), `containerization` and `distribution` (19 each) and
+  `persistence` (18), 16 pairs taking `--refresh distribution`, and the
+  72 `keel add entrypoint` cells, whose run re-renders the harness.
+  With the render's refusal let through as well, 294 of those 710 come
+  back `thrown:Error`, an adapter rendering on a manifest of another
+  family's.
+- **Every held tag read as the adapter's**, no other vertical asked,
+  fails the three fixture cases that read it as no sign, and no handler
+  case or cell; with the requirements dropped too, the handler case on
+  `quarkus-rest` as well, which either reading answers alone. **The
+  other vertical read by its share, not its render**, fails the fixture
+  case that reads the tag as the binaries', the three handler cases
+  that re-render distribution after the image, and `paths-add` on the
+  two `keel add distribution --reapply` cells, whose note loses the
+  tag: the JVM image there may promote it, and does not. **A render
+  that throws read as promoting nothing** fails the case of the one
+  that throws. **The other vertical's adapters asked by their whole
+  predicate**, as the first review's fix read them, fails the case of
+  the one that promoted the tag before a tag it excludes arrived;
+  **asked whatever they require**, the case where only one the project
+  never matched would promote it. Each fails that case alone, and no
+  handler case or cell.
+- **Every unresolved adapter named**, whether or not it recorded
+  anything, fails seven fixture cases, seven handler cases and 1,098
+  cells (22, 586 and 490), no verdict among them.
+
+**Runs.** The four `keel ui` browser suites passed, 44 tests, in 67 s
+wall and again in 60.5 s before review, in 66 s after the first, 66.5 s
+after the second, and 64 s on the tree this step lands with, rebuilt. No suite of theirs
+reaches Q3.4's cells; the note reaches the page as every preview note
+does, through `keel.preview`'s `notes`, and the handler's case holds the
+dry run's note equal to the written run's. No template changed and
+nothing a toolchain builds moved, so no other e2e suite was run.
+
+**The weekly sweep, after S.9.** Filtered as S.7 and S.8 ran it
+(`quarkus-cli-rest`, `go-cli-http`, `rust-cli-http`, `ts-cli-http` and
+`web-components`: 48 dial settings, 1,302 pairs and 288 arrivals alone,
+918 scaffolds, 1,590 previews and 1,584 adds), the `arrival` suite
+found 12 findings in 3.1 minutes on the tree this step lands with, as
+after the first review and in 3.8 minutes after the second, its log the
+same but for times, all on
+`quarkus-cli-rest`: Q3.4's second finding on its six Gradle
+settings, the two native workflows only in two runs and the manifest
+differing in its tags and answers, and its third on the same six —
+S.8's 12, line for line. The sweep compares what two runs leave, and
+the note leaves nothing, so the finding stays open, as the text has
+it, now said by the command.
+
+**Times**, under `CI=true` on four cores. The run of
+`CI=true pnpm test` this step lands with took 312.8 s as vitest reports
+it (5 min 14 s wall), with 202 files and 3,346 tests passing,
+twenty-one more than S.8's 3,325, at a load average rising from 2.1 to
+5.1. Beside the rest: the paths golden's four 34.6, 48.1, 12.8 and
+51.5 s (new, add, reapply, grow), the converge golden 55.8 s, growth's
+grid axis 116.6 s, brownfield 51.7 s, greenfield 35.2 s and composite
+15.6 s, `add-vertical.test.ts` 12.5 s and `converge-run.test.ts`
+216 ms. The reading runs where something re-renders, renders an
+adapter only where one ran and moved off, and renders another
+vertical's only where a tag the manifest holds might be that one's:
+paired alone at a load average of 2 to 4, `paths-reapply` took 15.0
+and 16.9 s before review against HEAD's 15.1 and 14.2 s, 14.5 and
+14.6 s alone at 1.5 to 1.6 after the first review, 15.5 and 15.1 s
+alone at 2.5 to 2.9 after the second, and 15.1 and 15.9 s alone at 2.8
+to 3.7 on the tree this step lands with, within the box's swing. `pnpm lint`, dependency-cruiser among it (306 modules,
+1,513 dependencies, one more than at S.8: `converge-run.ts` reads
+`predicate.ts`' `matches`), and `pnpm typecheck` pass. The CHANGELOG
+entry is the one under _Changed_ the text gives. `docs/cli.md` →
+`--refresh` shows the note and says it repeats while the record holds,
+what it reads no native release into, and which of keel's adapters
+leave no trace; `docs/verticals/distribution.md` says what the refresh
+now reports.
+
+Beyond the text above:
+
+- **What the re-render promotes is its adapters' shares.** The text
+  compares the manifest's tags with what the re-render promotes; the
+  run reads the tags the adapters it resolved may promote, by the
+  planner's own `adapterPromotes`, not what their contributions
+  returned, which the run holds only for the whole run. Since a share
+  is read as the union where an adapter declares none, a plugin's
+  vertical whose adapters declare none is read by their answers alone.
+- **A tag another recorded vertical promotes is no sign.** The text
+  reads a promoted tag the manifest holds as the adapter's; a tag two
+  verticals' adapters may promote is read so only where the other does
+  not account for it, contributed on what the project records, and one
+  whose render throws there is taken to promote every tag it may, since
+  naming an adapter that never ran would hand the user a file of their
+  own. Review found it: on `quarkus-rest` and `spring-rest`, and on
+  `quarkus-cli-rest` under Maven, with the image built native, every
+  re-render of distribution named the native release, which never ran
+  there, and where the user kept a `release.yml`, called it the
+  release's to delete. No golden or grid cell builds the image native
+  beside distribution, so none moved. The requirements (next) now
+  answer those three first, since none holds all the native release
+  requires (`framework.quarkus`, `arch.cli` and `pkg.gradle`), and
+  either reading alone answers the handler's case on `quarkus-rest`;
+  this one is held by the fixture's cases, where the tag lands on a
+  project the adapter could have run on. The other vertical's adapters
+  are asked by their requirements alone, as the adapter moved off is
+  (next): a third review found one that promoted the tag before a tag
+  it excludes arrived left unasked, on the fixture, the tag read as the
+  binaries' though they never ran, and a file of the user's at their
+  path called theirs to delete. Of keel's adapters only the native
+  release excludes a tag, and no cell moved.
+- **A tag is read only for an adapter the recorded tags could have
+  matched.** The text reads a promoted tag the manifest holds as the
+  adapter's, and one vertical can hold a tag in the shares of several
+  adapters, one per family. A second review found every unresolved one
+  named beside the one that ran, on the fixture — one of a language the
+  project never had among them, and a file of the user's at its path
+  called that adapter's to delete. The tag is read only where the
+  recorded tags, a peer's among them, hold every tag the adapter
+  requires: a project's own tags only accrue, so an adapter they never
+  matched never ran. One that ran on a peer's tag a relink since
+  withdrew is read by its answers alone, its tag unsaid, and goes
+  unnamed where it asked nothing; none of keel's nine that require a
+  peer's tag asks or promotes. Measured over the registry, 160 pairs of
+  adapters of one of keel's verticals share a tag: 132 by their
+  vertical's union, which the adapter the re-render resolves there may
+  promote too; 12 a JVM image's union and another family's image's own
+  `deploy.container-image`; and 16 two declared shares, one tag per
+  family — containerization's images' `deploy.container-image` and
+  distribution's container releases' `dist.container-image`. Every
+  adapter of those 28 pairs requires its family's `lang.*`,
+  `framework.*` or `runtime.*` tag, and the native release's
+  `runtime.graalvm-native` is in no other distribution adapter's share,
+  so no cell moved: keel's shipped registry never reached it. Without
+  the requirements, a second native release — a Spring CLI one
+  promoting the same tag — would be named beside the Quarkus one on
+  Q3.4's cells.
+- **A file the run wrote whole is not left behind.** Where the adapter
+  the vertical moves onto writes a path the one it left wrote, the file
+  is the new adapter's, so the note leaves it out, read off what the
+  run wrote whole (`Ownership.wroteWhole`). A patch of the run leaves
+  it the old adapter's, so a vertical installed in the same run that
+  patches it does not hide it, and the two spellings say the same. No
+  cell reaches either: the image's pipeline writes `release-image.yml`,
+  the native release `release.yml`, and nothing patches them.
+- **A skill or a hook is not named.** The text names the files the
+  adapter wrote; the note names those it writes whole. A skill's files
+  and a hook's script are the harness's: recorded in the manifest's
+  entries under the adapter, a skill listed in the root index and a
+  hook wired into `.claude/settings.json`, all of which stay, so a note
+  calling the file the user's to delete would leave them naming
+  nothing. No adapter of keel's a re-render moves off stages either.
+- **A render that throws names no file.** An adapter moved off may
+  not render on the manifest it is contributed from once its predicate
+  no longer holds; the text has the note change no verdict, so the
+  note then names the adapter and its record alone. keel's one adapter
+  a re-render moves off by the record, `quarkus-cli-native`, renders
+  on each of Q3.4's manifests.
+- **The note repeats.** The adapter's answers and tag stay, so every
+  later re-render of the vertical says it again, with the files the
+  project still holds, while the manifest records them; `docs/cli.md`
+  says so.
+- **More docs than the text lists**: `docs/composition.md` says what a
+  re-render leaves beside what it is, `src/domain/core/AGENTS.md` names
+  the reading in the run's paragraph, `tests/AGENTS.md` names the four
+  cells beside the family that pins them, and Q3.4's finding 2 says the
+  command now names what it leaves.
+
 ### Decisions on record
 
 Where a decision is genuinely open, the options are listed with a
@@ -11178,8 +11556,11 @@ recommendation.
   - (c) Two pipelines, as today.
 
   **Recommend (a).** It is what both of Q's sentences say at once, and
-  what the research measured: `keel new`, run as `keel add` runs,
-  writes the same bytes. (b) would need the user's word first.
+  what the research measured: `keel new`, run as `keel add` runs, writes
+  the same bytes. (b) would need the user's word first. Taken in S.3 to
+  S.6: `keel new`, `keel add` with its flags, `keel add entrypoint` and
+  `keel add module` each keep their surface and refusals, and each hands
+  its request to the one run.
 
 - **DS2 — Where the target composition comes from.**
   - (a) Read off the manifest and the request, with no new field. The
@@ -11193,8 +11574,10 @@ recommendation.
     a preset id (Q's and R's _Deliberately kept_).
   - (c) A schema version bump, which every older keel fails to read.
 
-  **Recommend (a).** (b) and (c) are the manifest changes the user
-  asked to be consulted on, and (a) needs neither.
+  **Recommend (a).** (b) and (c) are the manifest changes the user asked
+  to be consulted on, and (a) needs neither. Taken in S.2:
+  `compositionOf` reads it off the manifest with no field added, and the
+  round trip holds on 697 of 697 scopes.
 
 - **DS3 — One order for the record.**
   - (a) The reference order: the one `keel new` of the target
@@ -11210,8 +11593,9 @@ recommendation.
   - (c) Re-sort the whole manifest on every write. This moves recorded
     rows, which DR4 rules out.
 
-  **Recommend (a).** It moves `keel add`'s manifest and no project
-  file, and S.8 names every cell it moves.
+  **Recommend (a).** It moves `keel add`'s manifest and no project file,
+  and S.8 names every cell it moves. Taken in S.8: every caller records
+  a new row at the reference order's rank, and I12 lands hard.
 
 - **DS4 — What a re-render is.**
   - (a) `v` re-rendered within the recorded composition. Every other
@@ -11241,7 +11625,9 @@ recommendation.
   - (c) Silent, as today.
 
   **Recommend (b).** keel removes nothing it wrote, no command can ask
-  it to, and it says what it leaves.
+  it to, and it says what it leaves. Taken in S.2 and S.9: no request
+  can name a removal, and a re-render that moves a vertical off an
+  adapter that ran names what that adapter left.
 
 - **DS6 — Which paths are callers.** The user's request names
   `keel toolchain` and the planner's closure among the callers. The roadmap
@@ -11267,9 +11653,10 @@ recommendation.
   - (c) Move the provisioning context into core, which N's seam rules
     out.
 
-  **Recommend (a).** It departs from the user's list for the
-  toolchain engine. The Backlog entry records the engine's
-  divergences, and (b) is the route it names for them.
+  **Recommend (a).** It departs from the user's list for the toolchain
+  engine. The Backlog entry records the engine's divergences, and (b) is
+  the route it names for them. Taken in S.3 to S.6: the four front doors
+  are the operation's callers, and `keel toolchain` is not.
 
 - **DS7 — Settling.**
   - (a) A caller settles only where the project's identity changes, as
@@ -11281,8 +11668,10 @@ recommendation.
   - (c) (a), plus `keel add module` replaying the family's formatter
     (the Backlog's _A JVM context lands formatted_).
 
-  **Recommend (a).** (c) is the Backlog entry's, and it can land on
-  the operation once S has.
+  **Recommend (a).** (c) is the Backlog entry's, and it can land on the
+  operation once S has. Taken in S.2 and S.3: growth's plan alone
+  settles (`settle`, and `settles` beside a partial install); `keel add`
+  and `keel add module` queue their own adapters' actions.
 
 - **DS8 — A re-render that changes nothing.**
   - (a) As today: it queues its adapters' actions and records
@@ -11291,6 +11680,9 @@ recommendation.
   - (b) Queue nothing and write nothing where nothing was staged.
 
   **Recommend (a).** (b) is an output change with no defect behind it.
+  Taken as it stands: no step changes it. A re-render that stages
+  nothing still queues its adapters' actions and records `updatedAt`,
+  and the replays S.7 adds queue none.
 
 - **DS9 — Where I11 and I12 live.**
   - (a) In the axes that already write projects. I11 goes in
@@ -11305,8 +11697,11 @@ recommendation.
   - (b) A fifth axis, with a known file of its own. The user asked for
     the four to stay as they are, so a fifth would need their word.
 
-  **Recommend (a).** If growth outgrows its budget, the shard option
-  in _The measure_ splits it with no new known file.
+  **Recommend (a).** If growth outgrows its budget, the shard option in
+  _The measure_ splits it with no new known file. Taken in S.1b, S.7 and
+  S.8: I11 lands in brownfield and composite and widens to growth's
+  twins, I12 lands in brownfield, both hard, no known file moves, and no
+  shard option was needed.
 
 - **DS10 — The contexts on a re-render.**
   - (a) An added context comes back with the vertical whose files it
@@ -11319,7 +11714,10 @@ recommendation.
 
   **Recommend (a).** It needs no new surface, and the history cells
   measured it. Replaying the contexts' wiring after the verticals is a
-  fixed point on every family.
+  fixed point on every family. Taken in S.7: a context's wiring replays
+  with the verticals whose files it patches, and `bounded-context` stays
+  one no command names. S.8's Landed paragraph says what recording at
+  rank changes in where it replays.
 
 - **DS11 — What "planned against disk" means.**
   - (a) The target comes from the manifest and the request. The plan is
@@ -11334,8 +11732,9 @@ recommendation.
     and a base to tell a deletion from a file never written, which is
     L's missing merge base.
 
-  **Recommend (a).** It is what every path does today, and what
-  growth's old-manifest check reads files for.
+  **Recommend (a).** It is what every path does today, and what growth's
+  old-manifest check reads files for. Taken throughout: every plan is
+  staged against the Tree, and S.9 names only files still there.
 
 ### Not in scope for S
 

@@ -8,7 +8,8 @@
  * so, and the safeguards (unknown id, missing project, a file of the
  * user's in the way or gone) surface as domain errors. Then several
  * verticals at once, with what they need and what is there already,
- * and the installed ones a run re-renders (`--refresh`) or proposes.
+ * the installed ones a run re-renders (`--refresh`) or proposes, and
+ * what a re-render onto another adapter says it leaves in place.
  * Last, on a plugin's family, two refusals the converge run words for
  * it: a refused refresh, naming what it re-rendered in the order the
  * project installed it, and the harness retrofit's, naming
@@ -554,6 +555,24 @@ describe('keel.add-vertical (keel add)', () => {
       const { [MANIFEST]: _, ...rest } = await snapshot(dir);
       return rest;
     };
+    /** What a native-only distribution on `quarkus-cli-rest` writes, which no image pipeline does. */
+    const NATIVE_FILES = [
+      '.github/workflows/native-build.yml',
+      '.github/workflows/release.yml',
+    ] as const;
+    /**
+     * The note a re-render of that distribution onto the image's pipeline
+     * gives, naming `left`, the native release's files the project still
+     * holds (roadmap S.9).
+     */
+    const leftOfNative = (left: readonly string[]) => {
+      const kept =
+        left.length === 0
+          ? ''
+          : `${left.join(' and ')}, which that adapter wrote, ${left.length === 1 ? 'is' : 'are'} yours to delete, and `;
+      const answers = left.length === 0 ? "that adapter's answers" : 'its answers';
+      return `Distribution no longer renders through distribution/quarkus-cli-native, and keel removes nothing it installed — without a recorded base, it cannot tell what it wrote from what you changed since — so ${kept}${answers} and the tag it promoted stay in the manifest`;
+    };
 
     let twin: string;
     beforeEach(async () => {
@@ -1032,9 +1051,11 @@ describe('keel.add-vertical (keel add)', () => {
         refresh: { verticals: ['distribution'], prerequisites: [] },
       });
 
-      // `--refresh` names no order, so going first is no move to report.
+      // `--refresh` names no order, so going first is no move to report:
+      // what the run says is what its re-render leaves of the native
+      // release.
       const report = expectOk(await add(cwd, ['iac'], { refresh: ['distribution'] }));
-      expect(report.notes).toBeUndefined();
+      expect(report.notes).toEqual([leftOfNative(NATIVE_FILES)]);
       expect(await fs.pathExists(path.join(cwd, 'deploy/compose.yaml'))).toBe(true);
     });
 
@@ -1057,9 +1078,108 @@ describe('keel.add-vertical (keel add)', () => {
       expect((named as RefusalError).refusal).toMatchObject({
         refresh: { verticals: ['distribution'], prerequisites: [] },
       });
-      // And the re-render it names is what installs it, the image first.
+      // And the re-render it names is what installs it, the image first,
+      // leaving what the native release wrote.
       const report = expectOk(await add(cwd, ['iac'], { refresh: ['distribution'], dryRun: true }));
-      expect(report.notes).toEqual(['added Container image — needed by Distribution']);
+      expect(report.notes).toEqual([
+        'added Container image — needed by Distribution',
+        leftOfNative(NATIVE_FILES),
+      ]);
+    });
+
+    it('says what moving onto the image’s pipeline leaves of the native release, and moves nothing of it, in both spellings', async () => {
+      await scaffold(cwd, 'quarkus-cli-rest', 'gradle');
+      expectOk(await add(cwd, ['distribution']));
+      const native = async (dir: string) =>
+        Object.fromEntries(
+          await Promise.all(
+            NATIVE_FILES.map(
+              async (file) => [file, await fs.readFile(path.join(dir, file), 'utf8')] as const,
+            ),
+          ),
+        );
+      const written = await native(cwd);
+      await fs.copy(cwd, twin);
+
+      // Taken with the add: planned, then written, it names the native
+      // release's two workflows and what the manifest keeps of it.
+      const planned = expectOk(
+        await add(cwd, ['containerization'], { refresh: ['distribution'], dryRun: true }),
+      );
+      expect(planned.notes).toEqual([leftOfNative(NATIVE_FILES)]);
+      const refreshed = expectOk(
+        await add(cwd, ['containerization'], { refresh: ['distribution'] }),
+      );
+      expect(refreshed.notes).toEqual(planned.notes);
+      expect(refreshed.resolvedAdapters?.map(({ id }) => id)).toEqual([
+        'containerization/quarkus-rest-image',
+        'distribution/jvm-container',
+      ]);
+
+      // Taken afterwards: the add proposes it and says nothing of what
+      // stays, since nothing moved yet; the re-render says the same.
+      const later = expectOk(await add(twin, ['containerization']));
+      expect(later.notes).toEqual([
+        "refresh proposed: Distribution renders differently with what this adds — re-render it with 'keel add distribution --reapply'",
+      ]);
+      const reapplied = expectOk(await add(twin, ['distribution'], { reapply: true }));
+      expect(reapplied.notes).toEqual([leftOfNative(NATIVE_FILES)]);
+
+      // Nothing of the native release moved: its files, its answers and
+      // its tag are as it left them, and the two spellings leave one
+      // project.
+      for (const dir of [cwd, twin]) {
+        expect(await native(dir)).toEqual(written);
+        const manifest = await fsManifestStore.read(projectScopeRoot(dir));
+        expect(manifest?.answers).toHaveProperty(['distribution/quarkus-cli-native']);
+        expect(manifest?.tags).toContain('runtime.graalvm-native');
+      }
+      expect(await files(twin)).toEqual(await files(cwd));
+    });
+
+    it('leaves a file of the native release the user already deleted out of what it names', async () => {
+      await scaffold(cwd, 'quarkus-cli-rest', 'gradle');
+      expectOk(await add(cwd, ['distribution']));
+      expectOk(await add(cwd, ['containerization']));
+      const [build, release] = NATIVE_FILES;
+      await fs.remove(path.join(cwd, release));
+
+      const one = expectOk(await add(cwd, ['distribution'], { reapply: true }));
+      expect(one.notes).toEqual([leftOfNative([build])]);
+      expect(await fs.pathExists(path.join(cwd, release))).toBe(false);
+
+      // Both gone, what stays is the manifest's record alone.
+      await fs.remove(path.join(cwd, build));
+      const none = expectOk(await add(cwd, ['distribution'], { reapply: true }));
+      expect(none.notes).toEqual([leftOfNative([])]);
+      expect(none.changes).toEqual([]);
+    });
+
+    it('reads no native release into the tag a native image promotes, and names none, whatever file the project keeps at its path', async () => {
+      // On quarkus-rest the native release never resolves; the JVM
+      // image, built native, promotes the tag it would have, and the
+      // release.yml there is the user's own.
+      await scaffold(cwd, 'quarkus-rest', 'gradle');
+      expectOk(
+        await add(cwd, ['containerization'], {
+          answers: { 'containerization/quarkus-rest-image': { flavor: 'native' } },
+        }),
+      );
+      expectOk(await add(cwd, ['distribution']));
+      const [, release] = NATIVE_FILES;
+      await fs.outputFile(path.join(cwd, release), 'name: my own release\n');
+      const manifest = await fsManifestStore.read(projectScopeRoot(cwd));
+      expect(manifest?.tags).toContain('runtime.graalvm-native');
+      expect(manifest?.answers).not.toHaveProperty(['distribution/quarkus-cli-native']);
+
+      const planned = expectOk(await add(cwd, ['distribution'], { reapply: true, dryRun: true }));
+      expect(planned.resolvedAdapters?.map(({ id }) => id)).toEqual(['distribution/jvm-container']);
+      expect(planned.notes).toBeUndefined();
+      expect(expectOk(await add(cwd, ['distribution'], { reapply: true })).notes).toBeUndefined();
+      expect(
+        expectOk(await add(cwd, ['iac'], { refresh: ['distribution'] })).notes,
+      ).toBeUndefined();
+      expect(await fs.readFile(path.join(cwd, release), 'utf8')).toBe('name: my own release\n');
     });
 
     it('releases the JVM image a refreshed distribution now ships, not the native binaries it shipped', async () => {

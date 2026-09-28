@@ -1178,6 +1178,25 @@ re-rendered alone, and the whole re-render, to staging nothing on
 brownfield's scaffolds and in composite's services, and the whole
 re-render on growth's twins.
 
+**A re-render says what it leaves.** A project's own tags only
+accrue, so a re-render moves a vertical off an adapter where a tag
+arrived that the adapter excludes — `distribution/quarkus-cli-native`
+once a JVM image is there — or where relinking a peer withdrew a peer
+tag it needs. keel removes nothing it wrote: without a recorded base it
+cannot tell its lines from yours (roadmap L). So the report names the
+adapter, where the manifest records that it ran — answers under its
+id, or, where the project's tags hold all the adapter requires, a tag
+it may promote that none of the re-render's adapters may promote and
+that no other vertical the project records promotes on its own answers
+(containerization's image, built native, promotes the native
+release's) — with the files it writes whole, on those answers,
+that the project still holds and the run did not write whole, as the
+user's to delete, and its answers and tags, which stay. Its skills and
+hooks are the harness's, recorded and wired, and stay with that record
+unnamed. An adapter that recorded neither leaves no trace to read, and
+no note. Saying so writes and removes nothing, and the run succeeds or
+is refused as it would be anyway.
+
 ## Peer tags and products
 
 Two more primitives compose services into **products**:

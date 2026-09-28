@@ -621,6 +621,30 @@ new` the terminal adds the way past it (move it aside, or start in
 
 ### Changed
 
+- **A re-render that moves a vertical onto another adapter names the
+  files the first one wrote, which keel leaves in place.** On
+  `quarkus-cli-rest` and its Kotlin twin under Gradle, distribution
+  ships native binaries until a JVM image arrives, and
+  `keel add containerization --refresh distribution` — or
+  `keel add distribution --reapply` after the image — moves it onto the
+  image's pipeline. The native release's
+  `.github/workflows/native-build.yml` and `release.yml` stayed, with
+  its answers and its runtime tag in the manifest, and the report said
+  nothing of them. It now carries a note, in the preview too:
+  _Distribution no longer renders through
+  distribution/quarkus-cli-native, and keel removes nothing it
+  installed — without a recorded base, it cannot tell what it wrote
+  from what you changed since — so .github/workflows/native-build.yml
+  and .github/workflows/release.yml, which that adapter wrote, are
+  yours to delete, and its answers and the tag it promoted stay in the
+  manifest_. A file you deleted already is left out. The run reads
+  that the adapter ran off the manifest — answers under its id, or,
+  where the project has all the adapter needs, a tag it promotes that
+  neither the re-render's adapters nor another installed vertical
+  promotes, as a JVM image built native does — so one that recorded
+  neither goes unnamed. Nothing else changes: no file, no manifest
+  field, no verdict.
+
 - **`keel add` records what it adds where `keel new` records it.**
   `keel add` — with `--refresh` and `--reapply` — and `keel add module`
   appended what they recorded to the manifest: a new row of `verticals`

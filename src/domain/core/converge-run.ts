@@ -47,10 +47,15 @@
  * contributor's rank, not a replay of the project, so it needs no
  * render of what the harness does not re-render.
  *
- * **The report.** The caller's notes around the refresh proposals the
- * run makes — the installed verticals it changed the rendering of and
- * did not re-render, proposed, never done — each worded as a later run
- * takes it up, or as this one could; the diffs of what re-rendered; and
+ * **The report.** The caller's notes around the run's own: what its
+ * re-renders moved a vertical off and keel leaves in place (S.9, DS5) —
+ * an adapter that ran, by the answers the manifest records of it or a
+ * tag it promoted that nothing else recorded accounts for, the files it
+ * wrote whole that the project still holds, its record, which stays —
+ * then the refresh proposals it makes — the installed verticals it
+ * changed the rendering of and did not re-render, proposed, never done
+ * — each worded as a later run takes it up, or as this one could; the
+ * diffs of what re-rendered; and
  * where anything re-rendered, a conflict a contribution cannot settle
  * read as `keel.reapply-conflict`, naming the re-render it stopped in
  * the order the project records it — a replayed patch that is not its
@@ -65,6 +70,7 @@ import {
   type Adapter,
   type Conflict,
   type DeferredAction,
+  type Tag,
   type Tree,
   type Vertical,
 } from '../contract/composition.js';
@@ -91,6 +97,7 @@ import { runActions, type RunActionsInputs } from './actions.js';
 import { addModuleInputs, CONTEXT_TAG, withoutAddModuleInputs } from './adapters/added-context.js';
 import type { AnswerRead } from './answers.js';
 import {
+  canonicalTarget,
   ContributionConflictError,
   newOwnership,
   type ApplyMode,
@@ -105,13 +112,15 @@ import {
   finalizeHarness,
   installVertical,
   installVerticals,
+  recordedContribution,
   type InstallVerticalInputs,
   type InstallVerticalResult,
   type ReplayAt,
 } from './install.js';
-import { refreshProposals } from './planner.js';
+import { adapterPromotes, refreshProposals } from './planner.js';
+import { matches } from './predicate.js';
 import { rankedIndex } from './rank.js';
-import { reapplyConflictSentence, refreshProposalNote } from './refusals.js';
+import { leftBehindNote, reapplyConflictSentence, refreshProposalNote } from './refusals.js';
 import { installedVertical } from './registry.js';
 import { coverageGap, resolveVertical } from './resolver.js';
 import { resolvedAdapters } from './supplied-answers.js';
@@ -210,7 +219,11 @@ export interface ConvergeInputs extends ConvergeDeps {
    * run or not; `keel add` passes `!dryRun`, as it has always worded them.
    */
   readonly proposeForLater: boolean;
-  /** The caller's notes, in its order: those before the refresh proposals', and those after. */
+  /**
+   * The caller's notes, in its order: those before the run's own —
+   * what its re-renders leave in place, then its refresh proposals —
+   * and those after.
+   */
   readonly notes: { readonly before: readonly string[]; readonly after: readonly string[] };
 }
 
@@ -246,8 +259,9 @@ export interface CommitDeps {
  * Runs `inputs.plan` onto `inputs.tree` and reports it, committing
  * nothing: the steps and the contexts, the caller's answer check, the
  * harness retrofit and restamp where the harness runs, the buffer
- * realized in the placement's order, the record at the placement, and
- * the refresh proposals. Refused where the caller's check refuses, and
+ * realized in the placement's order, the record at the placement, what
+ * its re-renders moved a vertical off and leave in place, and the
+ * refresh proposals. Refused where the caller's check refuses, and
  * as `keel.reapply-conflict` where a contribution meets a conflict it
  * cannot settle and anything re-rendered.
  *
@@ -410,6 +424,7 @@ export async function converge(inputs: ConvergeInputs): Promise<Result<Converged
   );
   const notes = [
     ...inputs.notes.before,
+    ...(await leftBehind(inputs, staged.adapters, owners)),
     ...proposals.map((proposal) => proposalNote(registry, proposal, inputs.proposeForLater)),
     ...inputs.notes.after,
   ];
@@ -530,6 +545,137 @@ function contextReplayed(recorded: ManifestV2, name: string): ManifestV2 {
 function recordedFirst(stored: ManifestV2, ids: readonly string[]): readonly string[] {
   const recorded = stored.verticals.map(({ id }) => id).filter((id) => ids.includes(id));
   return [...recorded, ...ids.filter((id) => !recorded.includes(id))];
+}
+
+/**
+ * What the run's re-renders moved their verticals off and keel leaves in
+ * place (roadmap S.9, DS5), a {@link leftBehindNote} each, the verticals
+ * in the order the project records them: every adapter of a re-rendered
+ * vertical that the re-render did not resolve (`resolved`, what the run
+ * resolved) and that ran, by the record — the manifest holds answers
+ * under its id, or a tag it may promote that none of the adapters the
+ * re-render resolved may promote and nothing else the project records
+ * accounts for ({@link unaccounted}), read only where the tags the
+ * project records, its peers' among them, hold every tag the adapter
+ * requires: a project's own tags only accrue, so an adapter they never
+ * matched never ran, whatever tag its share holds — and one that ran on
+ * a peer's tag relinking since withdrew is read by its answers alone.
+ * Each names the files the adapter writes whole, contributed on the
+ * answers it recorded whatever its predicate now says, that the Tree
+ * still holds and the run did not write whole ({@link leftFiles}): one
+ * the user deleted is gone, and one the run wrote whole — the adapter it
+ * moved onto writing the same path — is not left behind. An adapter that
+ * recorded no answer and promoted no tag left nothing in the manifest to
+ * read, and goes unnamed.
+ */
+async function leftBehind(
+  inputs: ConvergeInputs,
+  resolved: readonly Adapter[],
+  owners: Ownership,
+): Promise<readonly string[]> {
+  const { plan, stored } = inputs;
+  const rerendered = plan.run.flatMap((step) =>
+    step.posture === 'rerender' ? [step.vertical] : [],
+  );
+  const ran = new Set(resolved.map(({ id }) => id));
+  const recorded = new Set(effectiveTags(stored));
+  const notes: string[] = [];
+  for (const id of recordedFirst(
+    stored,
+    rerendered.map((vertical) => vertical.id),
+  )) {
+    const vertical = rerendered.find((each) => each.id === id);
+    if (vertical === undefined) continue;
+    const promoted = new Set(
+      vertical.adapters
+        .filter(({ id }) => ran.has(id))
+        .flatMap((adapter) => adapterPromotes(vertical, adapter)),
+    );
+    for (const adapter of vertical.adapters) {
+      if (ran.has(adapter.id)) continue;
+      const answers = Object.keys(stored.answers[adapter.id] ?? {}).length > 0;
+      const could = matches({ requires: adapter.predicate.requires ?? [] }, recorded);
+      const held = could
+        ? adapterPromotes(vertical, adapter).filter(
+            (tag) => stored.tags.includes(tag) && !promoted.has(tag),
+          )
+        : [];
+      const tags = held.length === 0 ? held : await unaccounted(held, vertical, inputs);
+      if (!answers && tags.length === 0) continue;
+      const files = await leftFiles(adapter, inputs, owners);
+      notes.push(leftBehindNote(vertical, adapter.id, files, { answers, tags: tags.length }));
+    }
+  }
+  return notes;
+}
+
+/**
+ * The tags of `held` — tags the manifest holds that an adapter of
+ * `vertical` a re-render moved off may have promoted — that no other
+ * vertical the project records accounts for: no adapter of one whose
+ * every required tag the recorded tags hold promotes it, contributed on
+ * what the project records — as containerization's image, on `flavor:
+ * native`, promotes the tag distribution's native release does. Each is
+ * asked by its requirements alone, as {@link leftBehind} reads the
+ * adapter moved off: tags only accrue, so one that promoted the tag
+ * before a tag it excludes arrived ran all the same. One whose
+ * contribution throws there is taken to promote every tag it may: the
+ * run cannot tell, and naming an adapter that never ran would hand the
+ * user a file of their own to delete.
+ */
+async function unaccounted(
+  held: readonly Tag[],
+  vertical: Vertical,
+  inputs: ConvergeInputs,
+): Promise<readonly Tag[]> {
+  const { registry, stored } = inputs;
+  const tags = new Set(effectiveTags(stored));
+  let left = held;
+  for (const { id } of stored.verticals) {
+    const other = id === vertical.id ? null : installedVertical(registry, id);
+    if (other === null) continue;
+    for (const adapter of other.adapters) {
+      const may = adapterPromotes(other, adapter).filter((tag) => left.includes(tag));
+      if (may.length === 0 || !matches({ requires: adapter.predicate.requires ?? [] }, tags)) {
+        continue;
+      }
+      const promotes = await recordedContribution(adapter, stored, inputs).then(
+        (contribution) => contribution.tagsAdd ?? [],
+        () => may,
+      );
+      left = left.filter((tag) => !promotes.includes(tag));
+    }
+  }
+  return left;
+}
+
+/**
+ * The files `adapter` writes whole, contributed on the answers the
+ * project records, that the Tree still holds and the run did not write
+ * whole — a patch of the run leaves the file the adapter's. Not its
+ * skills' files or its hooks' scripts: those are the harness's, each
+ * recorded in the manifest's entries and a skill listed in the index, a
+ * hook wired into the settings, which all stay, so deleting the file
+ * alone would leave them naming nothing. None where that contribution
+ * throws: an adapter a re-render moved off may not render on a manifest
+ * its predicate no longer matches, and what a run says of it changes no
+ * verdict.
+ */
+async function leftFiles(
+  adapter: Adapter,
+  inputs: ConvergeInputs,
+  owners: Ownership,
+): Promise<readonly string[]> {
+  let paths: readonly string[];
+  try {
+    const contribution = await recordedContribution(adapter, inputs.stored, inputs);
+    paths = (contribution.files ?? []).map((file) => canonicalTarget(file.path));
+  } catch {
+    return [];
+  }
+  return [...new Set(paths)].filter(
+    (file) => inputs.tree.exists(file) && !owners.wroteWhole.has(file),
+  );
 }
 
 /** {@link refreshProposalNote} for one proposal, its ids resolved in `registry`. */

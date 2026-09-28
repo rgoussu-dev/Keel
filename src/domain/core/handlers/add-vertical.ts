@@ -100,7 +100,11 @@
  * the whole files the re-render rewrote, and onto no other — one that
  * cannot be put back as it was refuses the run the same way. Tags the
  * previous apply promoted re-fold through set semantics, so they never
- * double; the vertical keeps its original `installedAt`.
+ * double; the vertical keeps its original `installedAt`. A re-render
+ * that moves the vertical off an adapter that ran — a native release,
+ * once a JVM image is there — removes nothing of it: the run's report
+ * names the files it wrote that the project still holds, and its
+ * answers and tags, which stay (roadmap S.9).
  */
 
 import type { Action } from '../../kernel/action.js';

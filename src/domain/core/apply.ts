@@ -244,6 +244,15 @@ export interface Ownership {
    */
   readonly writers: Map<string, string>;
   /**
+   * Canonical paths a contribution of the run wrote whole — a file, a
+   * skill's file or a hook script, byte-identical to what was there or
+   * not — and not by a patch alone. A re-render's note of what an
+   * adapter it moved off left behind names none of these, since each
+   * now belongs to an adapter that ran (`./converge-run.ts`, roadmap
+   * S.9).
+   */
+  readonly wroteWhole: Set<string>;
+  /**
    * The engine's pre-owned region keys it has not yet re-rendered
    * this run: its one claim on each goes through, a second is a
    * region declared twice like any adapter's.
@@ -282,6 +291,7 @@ export function newOwnership(): Ownership {
     hooks: new Map(),
     regions,
     writers: new Map(),
+    wroteWhole: new Set(),
     engineSlots: new Set(regions.keys()),
     rewritten: new Set(),
   };
@@ -500,6 +510,7 @@ export function realizeHarness(
     for (const hook of contribution.hooks) {
       const staged = stageHook(contribution.adapter, hook, tree, contribution.mode, owners.hooks);
       owners.writers.set(staged.path, staged.adapterId);
+      owners.wroteWhole.add(staged.path);
       files.push(staged);
     }
   }
@@ -759,6 +770,7 @@ export function applyContribution(
   for (const f of contribution.files ?? []) {
     const rewrote = writeWholeFile(adapter, tree, mode, f.path, f.content, f.mode);
     owners.writers.set(canonicalTarget(f.path), adapter.id);
+    owners.wroteWhole.add(canonicalTarget(f.path));
     if (rewrote && mode === 'reapply') owners.rewritten.add(canonicalTarget(f.path));
   }
   for (const p of contribution.patches ?? []) {
@@ -807,7 +819,10 @@ export function applyContribution(
   const staged: StagedSkill[] = [];
   for (const raw of contribution.skills ?? []) {
     const skill = stageSkill(adapter, raw, tree, mode, owners.skills);
-    for (const file of skill.files) owners.writers.set(canonicalTarget(file.path), adapter.id);
+    for (const file of skill.files) {
+      owners.writers.set(canonicalTarget(file.path), adapter.id);
+      owners.wroteWhole.add(canonicalTarget(file.path));
+    }
     staged.push(skill);
   }
   return staged;

@@ -694,8 +694,9 @@ export interface InstallPreview {
    * sentence each — the install report's own notes
    * (`InstallReport.notes`): the prerequisites it adds and what needs
    * them, the order it installs in when the one named could not be
-   * kept, a vertical already there, each re-render it proposes. Absent
-   * when there is nothing to say.
+   * kept, a vertical already there, what a re-render moved a vertical
+   * off and leaves in place, each re-render it proposes. Absent when
+   * there is nothing to say.
    */
   readonly notes?: readonly string[];
   /**
