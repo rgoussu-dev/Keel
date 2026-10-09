@@ -1,0 +1,4 @@
+# Recorded test output, regenerated with KEEL_UPDATE_GOLDEN=1 (tests/AGENTS.md):
+# GitHub collapses these in a pull request's diff and leaves them out of the
+# repository's language statistics.
+*.golden.json linguist-generated=true

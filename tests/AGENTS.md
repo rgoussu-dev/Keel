@@ -30,6 +30,11 @@ sweep (`sweep/`).
 - Every public API change is accompanied by a test change.
 - Test files mirror the `src/` structure. `pnpm test` runs everything
   here; `tests/e2e/` self-skips unless `KEEL_RUN_E2E=1`.
+- A `*.golden.json` is recorded output, rewritten by its suite under
+  `KEEL_UPDATE_GOLDEN=1`; a change to one is read through the failing
+  suite's report, not through the JSON's diff. The root `.gitattributes`
+  marks every one `linguist-generated`, so GitHub collapses it in a
+  pull request's diff.
 
 ## The guard tests
 
