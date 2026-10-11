@@ -57,6 +57,19 @@ post-merge, not a restatement of the changes.
   alone). Each shard provisions only what its suites probe for. Between
   the two jobs, nothing in the suite is skipped for want of a tool.
 
+Docker is the runner's own daemon, on every shard whether its `tools:`
+names it or not, so a Testcontainers case runs wherever its build does:
+`rust` and the shards carrying the JVM persistence cells pull a database
+without naming `docker`. The `e2e` job's first step after checkout
+therefore points that daemon at `mirror.gcr.io`, Google's pull-through
+cache of Docker Hub, on every shard, and fails the shard if the daemon
+does not answer or does not take the setting. Docker Hub limits
+anonymous pulls per address, the hosted runners share theirs, and an
+exhausted quota (`toomanyrequests`) failed shards with nothing in the
+change at fault. Every pull the suites make goes through the daemon, so
+its `registry-mirrors` setting covers them all; a pull the mirror cannot
+serve still falls back to Docker Hub, and to its quota.
+
 The shard matrix names its files explicitly, and that is a hazard with a
 guard: a suite in no shard never runs, which looks exactly like a suite
 that passed. `tests/ci-workflow.test.ts` parses the workflow and fails

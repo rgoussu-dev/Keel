@@ -352,6 +352,13 @@ volume mount made PostgreSQL 18 refuse to start. A unit test reads
 the YAML; only `docker compose up --wait` reads it the way a user
 does.
 
+On CI every shard's Docker daemon asks `mirror.gcr.io`, Google's
+pull-through cache of Docker Hub, before Docker Hub itself, so the
+hosted runners' shared anonymous quota no longer fails a shard; only a
+pull the mirror cannot serve falls back to Docker Hub and counts
+against it. A local run pulls from Docker Hub directly, and the same
+limit can stop it with `toomanyrequests`; `docker login` raises it.
+
 `keel add module` populates that same 24-cell grid a second time, and
 there the split goes all the way down: **one cell, one file, one
 shard**, named `e2e (jvm-add-module-<stack>-<build>)`. Typology is a

@@ -9,10 +9,12 @@
  * mariadb-java-client, org.testcontainers:mariadb) and the
  * engine-conditional template branches — the `Timestamp`-based JDBC
  * time mapping, the MariaDbTestFixture-free Quarkus shape, the
- * contract test's MariaDBContainer — compile. Per I.5 the shard runs
- * no Docker daemon, so the emitted Docker-bound tests are excluded
- * and the cell asserts compilation and wiring, exactly like its
- * postgres sibling.
+ * contract test's MariaDBContainer — compile. Its shard names no
+ * `docker`, but the hosted runner's daemon answers there, so the
+ * emitted Docker-bound tests run too, against a `mariadb:12` from
+ * Testcontainers. Where no daemon answers they are excluded and the
+ * cell asserts compilation and wiring, exactly like its postgres
+ * sibling.
  *
  * Not a cell of the modulith grid but a vertical layered onto one —
  * sibling of `modulith-persistence.test.ts`; its own file because a
