@@ -42,9 +42,10 @@
  * after the dev container, it keeps the shape that order has always
  * written. The definition's own attached render is ranked the same way
  * (roadmap S.7): the template's on `arch.server-http`, and elsewhere the
- * standalone definition as that upgrade attaches it, so re-rendering
- * the dev container after the dev environment writes what one run
- * wrote.
+ * standalone definition as that upgrade attaches it, the compose
+ * overlay the seeded patch it adds ({@link devContainerOverlayPatch}),
+ * so re-rendering the dev container after the dev environment writes
+ * what one run wrote.
  */
 
 import { PathConflictError } from '../../contract/refusal.js';
@@ -55,6 +56,7 @@ import type {
   Adapter,
   Contribution,
   ContributionFile,
+  ContributionPatch,
   Ctx,
   ManifestV2,
   Tag,
@@ -123,9 +125,14 @@ export interface DevContainerFamily {
  * else the dev environment is an extra, installed after the dev
  * container, which it attached in place: there the attached render is
  * the standalone definition, attached as the dev environment attaches
- * it — `"name"` above the note, the docker feature first. No `keel new`
- * renders that branch, since there the dev container always comes
- * first; a re-render after the dev environment does.
+ * it — `"name"` above the note, the docker feature first — and the
+ * compose overlay the seeded patch the dev environment adds
+ * ({@link devContainerOverlayPatch}), not a whole file: put back where
+ * it is gone, and never rewritten over what the user wrote into it. No
+ * `keel new` renders that branch, since there the dev container always
+ * comes first; a re-render after the dev environment does, and so does
+ * `keel add dev-container` on a project that records the dev
+ * environment without it.
  */
 export async function devContainerDefinition(
   ctx: Ctx,
@@ -146,24 +153,21 @@ export async function devContainerDefinition(
     features,
     postCreateCommand: family.postCreateCommand ?? '',
   });
-  const files = attachDevEnv
-    ? rendered.map((file) =>
-        inPlace && file.path === DEV_CONTAINER_TARGET
-          ? {
-              ...file,
-              content: attachDevContainerToDevEnv(
-                file.content.toString(),
-                projectName,
-                ctx.manifest.tags,
-                by,
-              ),
-            }
-          : file,
-      )
-    : rendered.filter((f) => f.path !== DEV_CONTAINER_COMPOSE_TARGET);
+  const files = rendered.flatMap((file) => {
+    if (file.path === DEV_CONTAINER_COMPOSE_TARGET) return templated ? [file] : [];
+    if (!inPlace || file.path !== DEV_CONTAINER_TARGET) return [file];
+    const content = attachDevContainerToDevEnv(
+      file.content.toString(),
+      projectName,
+      ctx.manifest.tags,
+      by,
+    );
+    return [{ ...file, content }];
+  });
   return {
     files,
     patches: [
+      ...(inPlace ? [await devContainerOverlayPatch(ctx)] : []),
       {
         target: 'README.md',
         apply: eolAware((existing) => {
@@ -349,6 +353,19 @@ export async function renderDevContainerOverlay(ctx: Ctx): Promise<ContributionF
     throw new Error(`dev-container: template did not render ${DEV_CONTAINER_COMPOSE_TARGET}`);
   }
   return overlay;
+}
+
+/**
+ * The compose overlay ({@link DEV_CONTAINER_COMPOSE_TARGET}) as a
+ * seeded patch: written where the project holds none, and left as it is
+ * where it holds one. The dev environment adds it so to a dev container
+ * installed before it, and the definition's own in-place render (S.7)
+ * adds it the same way, so whichever writes it, it is the one file, and
+ * a re-render puts it back when it is gone but never rewrites it whole.
+ */
+export async function devContainerOverlayPatch(ctx: Ctx): Promise<ContributionPatch> {
+  const overlay = await renderDevContainerOverlay(ctx);
+  return { target: overlay.path, seed: overlay.content.toString(), apply: (existing) => existing };
 }
 
 /**

@@ -708,6 +708,36 @@ describe('keel.add-vertical (keel add)', () => {
       expect(await files(cwd)).toEqual(scaffolded);
     });
 
+    it('re-renders the dev container after a dev environment added as an extra, leaving the compose overlay the user edited, and putting it back once gone', async () => {
+      await scaffold(cwd, 'go-cli');
+      expectOk(await add(cwd, ['dev-env']));
+      const overlay = path.join(cwd, '.devcontainer/compose.yaml');
+      const pristine = await fs.readFile(overlay, 'utf8');
+      const edited = `${pristine}    environment:\n      GREETING: hello\n`;
+      await fs.writeFile(overlay, edited);
+
+      const kept = expectOk(await add(cwd, ['dev-container'], { reapply: true }));
+      expect(kept.changes).toEqual([]);
+      expect(await fs.readFile(overlay, 'utf8')).toBe(edited);
+
+      await fs.remove(overlay);
+      const restored = expectOk(await add(cwd, ['dev-container'], { reapply: true }));
+      expect(restored.changes).toEqual([{ kind: 'create', path: '.devcontainer/compose.yaml' }]);
+      expect(await fs.readFile(overlay, 'utf8')).toBe(pristine);
+    });
+
+    it('re-renders the dev container on an HTTP project back to the compose overlay it writes whole: a hand edit goes', async () => {
+      await scaffold(cwd, 'go-http');
+      const overlay = path.join(cwd, '.devcontainer/compose.yaml');
+      const pristine = await fs.readFile(overlay, 'utf8');
+      await fs.writeFile(overlay, `${pristine}    environment:\n      GREETING: hello\n`);
+
+      const report = expectOk(await add(cwd, ['dev-container'], { reapply: true }));
+      expect(report.changes).toEqual([{ kind: 'modify', path: '.devcontainer/compose.yaml' }]);
+      expect(report.diffs?.[0]?.diff).toContain('-      GREETING: hello');
+      expect(await fs.readFile(overlay, 'utf8')).toBe(pristine);
+    });
+
     /** `stack` scaffolded as a modulith in `dir`, then `keel add module orders --consumes greeting`. */
     const withOrders = async (dir: string, stack: string) => {
       expectOk(

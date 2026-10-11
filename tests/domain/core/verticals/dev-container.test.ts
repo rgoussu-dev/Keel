@@ -17,7 +17,10 @@
  * the way, before anything is written. The definition's own attached
  * render is ranked the same way (roadmap S.7): without a server, for
  * every family, it is what the upgrade writes, so a re-render after the
- * dev environment rewrites nothing, with the tag or without. The
+ * dev environment rewrites nothing, with the tag or without; and there
+ * the compose overlay is the dev environment's seeded patch, so a
+ * re-render keeps an edit to it and puts it back once deleted, where on
+ * a server it writes the overlay back whole, as it renders it. The
  * resolution block proves
  * every non-composite stack's tag set covers the vertical, so no
  * stack can silently lose its dev container.
@@ -178,6 +181,35 @@ function manifestOf(project: FamilyProject, devEnv: boolean): ManifestV2 {
     verticals: devEnv ? [{ id: 'dev-env', installedAt: '2026-08-18T00:00:00Z' }] : [],
   };
 }
+
+/**
+ * Re-renders the dev container over `tree`, as `keel add dev-container
+ * --reapply` does on `project` once it records the dev environment too.
+ */
+async function rerender(tree: FsTree, project: FamilyProject): Promise<void> {
+  await installVertical({
+    vertical: devContainerVertical,
+    manifest: {
+      ...manifestOf(project, true),
+      verticals: [
+        { id: 'dev-container', installedAt: '2026-08-18T12:00:00Z' },
+        { id: 'dev-env', installedAt: '2026-08-18T13:00:00Z' },
+      ],
+    },
+    tree,
+    mode: 'non-interactive',
+    prompt: rejectingPrompt,
+    logger: new FakeLogger(),
+    cwd: '/unused',
+    templates: ejsTemplateSource,
+    processes: new FakeProcessRunner(),
+    now: () => '2026-08-18T14:00:00Z',
+    apply: 'reapply',
+  });
+}
+
+/** What a user adds to the overlay's `workspace` service. */
+const OVERLAY_EDIT = '    environment:\n      GREETING: hello\n';
 
 function devcontainerOf(tree: FsTree): string {
   return tree.read('.devcontainer/devcontainer.json')?.toString() ?? '';
@@ -720,28 +752,37 @@ describe('dev-env installed after dev-container (order independence)', () => {
     async (_, project) => {
       const attached = await installDevEnv(await install(manifestOf(project, false)));
       const before = [devcontainerOf(attached), attached.read(DEV_CONTAINER_COMPOSE_TARGET)];
-      await installVertical({
-        vertical: devContainerVertical,
-        manifest: {
-          ...manifestOf(project, true),
-          verticals: [
-            { id: 'dev-container', installedAt: '2026-08-18T12:00:00Z' },
-            { id: 'dev-env', installedAt: '2026-08-18T13:00:00Z' },
-          ],
-        },
-        tree: attached,
-        mode: 'non-interactive',
-        prompt: rejectingPrompt,
-        logger: new FakeLogger(),
-        cwd: '/unused',
-        templates: ejsTemplateSource,
-        processes: new FakeProcessRunner(),
-        now: () => '2026-08-18T14:00:00Z',
-        apply: 'reapply',
-      });
+      await rerender(attached, project);
       expect([devcontainerOf(attached), attached.read(DEV_CONTAINER_COMPOSE_TARGET)]).toEqual(
         before,
       );
+    },
+  );
+
+  it.each(SERVERLESS_PROJECTS.map((project) => [project.family, project] as const))(
+    'without a server, re-rendered after the dev environment, keeps what the user wrote into the compose overlay, and puts it back when it is gone (%s)',
+    async (_, project) => {
+      const attached = await installDevEnv(await install(manifestOf(project, false)));
+      const pristine = attached.read(DEV_CONTAINER_COMPOSE_TARGET)?.toString() ?? '';
+      const edited = `${pristine}${OVERLAY_EDIT}`;
+      attached.write(DEV_CONTAINER_COMPOSE_TARGET, edited);
+      await rerender(attached, project);
+      expect(attached.read(DEV_CONTAINER_COMPOSE_TARGET)?.toString()).toBe(edited);
+
+      attached.delete(DEV_CONTAINER_COMPOSE_TARGET);
+      await rerender(attached, project);
+      expect(attached.read(DEV_CONTAINER_COMPOSE_TARGET)?.toString()).toBe(pristine);
+    },
+  );
+
+  it.each(HTTP_PROJECTS.map((project) => [project.family, project] as const))(
+    'on an HTTP project, re-rendered, writes the compose overlay back whole, as it renders it (%s)',
+    async (_, project) => {
+      const { tree } = await install(manifestOf(project, true));
+      const pristine = tree.read(DEV_CONTAINER_COMPOSE_TARGET)?.toString() ?? '';
+      tree.write(DEV_CONTAINER_COMPOSE_TARGET, `${pristine}${OVERLAY_EDIT}`);
+      await rerender(tree, project);
+      expect(tree.read(DEV_CONTAINER_COMPOSE_TARGET)?.toString()).toBe(pristine);
     },
   );
 

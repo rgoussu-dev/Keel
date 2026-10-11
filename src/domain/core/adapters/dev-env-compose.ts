@@ -35,7 +35,7 @@ import {
   DEV_CONTAINER_TARGET,
   attachReadmeSection,
   devContainerInstalled,
-  renderDevContainerOverlay,
+  devContainerOverlayPatch,
 } from './dev-container.js';
 import type { Adapter, Contribution, Ctx } from '../../contract/composition.js';
 
@@ -105,7 +105,6 @@ export const devEnvComposeAdapter: Adapter = {
     // decides *when* it applies.
     if (!devContainerInstalled(ctx.manifest)) return base;
     const projectName = anyProjectName(ctx.manifest);
-    const overlay = await renderDevContainerOverlay(ctx);
     return {
       patches: [
         ...(base.patches ?? []),
@@ -120,11 +119,7 @@ export const devEnvComposeAdapter: Adapter = {
             ),
           ),
         },
-        {
-          target: overlay.path,
-          seed: overlay.content.toString(),
-          apply: (existing) => existing,
-        },
+        await devContainerOverlayPatch(ctx),
         {
           target: 'README.md',
           apply: eolAware(attachReadmeSection),

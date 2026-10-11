@@ -51,9 +51,11 @@ wrote into the file stays. A re-render keeps the same shape
 render is ranked by the same tags, so on a CLI or SPA project that
 took the dev environment as an extra it renders the standalone
 definition attached in place, as the project holds it, and rewrites
-nothing there; a CLI project that has since grown an HTTP server
-takes the template's shape, which a project scaffolded with both
-entrypoints has. The one exception is a definition you have
+nothing there — the compose overlay the dev environment added stays
+yours, as it does when the dev environment is re-rendered: put back if
+you delete it, never rewritten over your edits; a CLI project that has
+since grown an HTTP server takes the template's shape, which a project
+scaffolded with both entrypoints has. The one exception is a definition you have
 customized away from the scaffolded shape (e.g. a different base
 image): the upgrade then refuses to rewrite it rather than silently
 lose your changes — `keel.path-conflict`, before anything is written,

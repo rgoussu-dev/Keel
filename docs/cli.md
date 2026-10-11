@@ -869,7 +869,9 @@ deliberately conservative:
   does; none of keel's own is. The dev container's definition
   re-renders in the shape the project holds: attached to a dev
   environment added as an extra, on a project without an HTTP server,
-  it keeps the attachment the dev environment made in place.
+  it keeps the attachment the dev environment made in place, and the
+  compose overlay that attachment added stays a patched file: put back
+  when it is gone, never rewritten whole.
 - **Answers are frozen.** An adapter the manifest records answers for
   resolves from them without asking; a `--set` for one errors with
   `keel.reapply-frozen-answers`. A question the vertical grew since

@@ -80,9 +80,12 @@ the shipped source, every refusal naming its origin) and
   `arch.server-http`, the shape an extra dev environment has always
   written elsewhere — and so is the definition's own attached render
   (S.7), the standalone definition attached in place where the tag is
-  missing, so a re-render after the dev environment writes what one
-  run wrote. The template's shape lists the docker feature
-  last, so the entry before it takes a comma: the features are read
+  missing, its compose overlay the seeded patch the dev environment
+  adds (`devContainerOverlayPatch`), never a whole file, so a re-render
+  after the dev environment writes what one run wrote and keeps an
+  edit to the overlay, as re-rendering the dev environment does. The
+  template's shape lists the docker feature last, so the entry before
+  it takes a comma: the features are read
   through `codeOnly`, the comma goes where that entry's code ends,
   ahead of a comment trailing it, which JSONC allows, and the feature
   on the first line after it that no comment holds, so a block comment
