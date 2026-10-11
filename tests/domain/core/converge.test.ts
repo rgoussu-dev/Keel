@@ -714,6 +714,26 @@ describe('convergeOf', () => {
       );
       expect(whole.run.every((step) => step.posture === 'rerender')).toBe(true);
     });
+
+    it('replays a recorded vertical the tags no longer cover, whose replay puts back what of it still renders', () => {
+      // No adapter of it matches an acme project: its own re-render is
+      // refused, and replaying it refuses nothing.
+      const manifest = scaffoldOf(CLI, {
+        verticals: [...CLI.verticals.map(({ id }) => id), 'acme-elsewhere'],
+      });
+      expect(
+        runOf(
+          converged(
+            convergeOf(family, manifest, { kind: 'reapply', verticals: ['acme-skeleton'] }),
+          ),
+        ),
+      ).toEqual([
+        'acme-skeleton rerender',
+        'acme-vcs replay',
+        'agent-harness replay',
+        'acme-elsewhere replay',
+      ]);
+    });
   });
 
   describe('entrypoint', () => {

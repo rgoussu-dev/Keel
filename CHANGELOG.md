@@ -39,7 +39,12 @@ use to keep a long-lived changelog scannable — and the root keeps
   the re-render comes back too, and for every vertical re-rendered,
   alone, several together or all at once. Nothing else of those
   verticals is written: a whole file another vertical owns stays as
-  you left it, and only what you name re-renders.
+  you left it, and only what you name re-renders. A vertical the
+  project records that its tags no longer fully cover — one a later
+  vertical's tag rules an adapter of out, or a plugin's that grew a
+  part the project has no adapter for — refuses no re-render of
+  another: what of it still renders comes back, and what no longer
+  renders is not put back, which the diff shows.
 
 - **`keel add dev-container --reapply` after a dev environment added
   as an extra keeps the definition's shape.** On a CLI or front-end

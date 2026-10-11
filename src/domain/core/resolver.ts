@@ -24,7 +24,9 @@
  * Step 3 is also askable ahead of time, and answered rather than
  * thrown: `coversFor` for a yes/no (what a menu prunes with) and
  * `coverageGap` for the same answer with the missing dimensions and
- * the tags that would cover them attached.
+ * the tags that would cover them attached. Steps 1 and 2 alone are
+ * `matchingAdapters`: what a replay renders, which installs nothing
+ * and so has no coverage to hold.
  */
 
 import { DomainError } from '../kernel/result.js';
@@ -84,6 +86,26 @@ export function resolveVertical(
   if (gap !== null) throw uncoveredRefusal(vertical, gap.enablers, names);
 
   return topoSort(matched, vertical.id);
+}
+
+/**
+ * The adapters of `vertical` whose predicate `tags` match, in execution
+ * order: {@link resolveVertical} without its coverage check. What a
+ * replay renders (`./install.ts`' `patchesOnto`, roadmap S.7) — it puts
+ * back what each adapter that still renders patched, and installs
+ * nothing, so a dimension the tags no longer cover is no refusal of
+ * its: that refusal is an install's, and a re-render's of the vertical
+ * itself.
+ *
+ * @throws ResolutionError where the matching adapters' `after` graph
+ *   has a cycle
+ */
+export function matchingAdapters(vertical: Vertical, tags: Iterable<Tag>): readonly Adapter[] {
+  const tagSet: ReadonlySet<Tag> = tags instanceof Set ? tags : new Set(tags);
+  return topoSort(
+    vertical.adapters.filter((a) => matches(a.predicate, tagSet)),
+    vertical.id,
+  );
 }
 
 /**

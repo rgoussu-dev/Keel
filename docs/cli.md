@@ -866,7 +866,12 @@ deliberately conservative:
   or harness elements, and nothing is recorded for them — name one to
   re-render it. A patch put back that is not its own fixed point
   refuses the run with `keel.reapply-conflict`, as a re-rendered one
-  does; none of keel's own is. The dev container's definition
+  does; none of keel's own is. A vertical the project records that
+  its tags no longer fully cover — one a later vertical's tag rules an
+  adapter of out, or a plugin's that grew a part this project has no
+  adapter for — refuses nothing here: what of it still renders comes
+  back, and what no longer does is not written back, which the diff
+  shows. Naming it is refused, as before. The dev container's definition
   re-renders in the shape the project holds: attached to a dev
   environment added as an extra, on a project without an HTTP server,
   it keeps the attachment the dev environment made in place, and the

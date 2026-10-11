@@ -333,6 +333,11 @@ const tail = vertical('acme-tail', [
   })),
 ]);
 
+/** `text` with `line` appended where it is not there yet: its own fixed point. */
+function guarded(text: string, line: string): string {
+  return text.includes(`${line}\n`) ? text : `${text}${line}\n`;
+}
+
 /** Writes a file of its own whole, rendered with the vertical that owns a region of it. */
 const yfile = vertical(
   'acme-yfile',
@@ -1361,6 +1366,61 @@ describe('converge: a re-render within the recorded composition', () => {
     );
     expect(run.tree.read('y.txt')?.toString('utf8')).toContain('zreg\n');
     expect(changed(run.report)).toEqual(changed(alone.report));
+  });
+
+  it('puts back what a recorded vertical the tags no longer cover still renders, and refuses nothing for it — what they rule out stays out', async () => {
+    // Its wiring patches the CLI bootstrap's file on any acme CLI; its
+    // gate, the one adapter covering its other dimension, does too, and
+    // excludes the tag `final` promotes.
+    const pair = vertical(
+      'acme-pair',
+      [
+        adapter('acme-pair', 'wire', ['lang.acme', 'arch.cli'], () => ({
+          patches: [{ target: 'cli.txt', apply: (text: string) => guarded(text, 'paired') }],
+        })),
+        adapter(
+          'acme-pair',
+          'gate',
+          ['lang.acme'],
+          () => ({
+            patches: [{ target: 'cli.txt', apply: (text: string) => guarded(text, 'gated') }],
+          }),
+          { covers: ['gate'], predicate: { requires: ['lang.acme'], excludes: [FINAL] } },
+        ),
+      ],
+      { dimensions: ['only', 'gate'] },
+    );
+    const paired = registryOf([
+      {
+        origin: pluginOrigin('acme'),
+        verticals: [skeleton, harness, notes, pair, final],
+        stacks: [preset('acme-cli', ['arch.cli'], [skeleton, harness, notes])],
+      },
+    ]);
+    const world = new World(paired);
+    const scaffolded = await world.scaffold([skeleton, harness, notes, pair]);
+    expect(world.read('cli.txt')).toBe('cli\ngated\npaired\n');
+    const finalized = ok(
+      await world.run(
+        scaffolded,
+        planOf(scaffolded, [install(final)], APPENDED, compositionOf(paired, scaffolded)),
+      ),
+    );
+    await commitConverged(world.committing(), finalized);
+    world.keep(finalized.tree as FakeTree);
+    const stored = finalized.manifest;
+    expect(stored.tags).toContain(FINAL);
+
+    const plan = convergeOf(paired, stored, { kind: 'reapply', verticals: ['acme-skeleton'] });
+    if (plan.kind !== 'converges') throw new Error('the re-render was refused');
+    expect(plan.run.map(({ vertical, posture }) => `${vertical.id} ${posture}`)).toContain(
+      'acme-pair replay',
+    );
+    const run = ok(await world.run(stored, plan));
+
+    expect(run.tree.read('cli.txt')?.toString('utf8')).toBe('cli\npaired\n');
+    expect(run.report.diffs?.[0]?.diff).toContain('-gated');
+    expect(run.report.diffs?.[0]?.diff).not.toContain('-paired');
   });
 
   it('replays onto nothing where the re-render rewrites no whole file, so such a patch is never reached', async () => {

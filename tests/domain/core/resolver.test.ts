@@ -3,6 +3,7 @@ import {
   ResolutionError,
   coverageGap,
   coversFor,
+  matchingAdapters,
   resolveVertical,
 } from '../../../src/domain/core/resolver.js';
 import { uncoveredRefusal } from '../../../src/domain/core/refusals.js';
@@ -239,6 +240,53 @@ describe('resolveVertical', () => {
       ],
     };
     expect(resolveVertical(v, []).map((a) => a.id)).toEqual(['alpha', 'mid', 'zeta']);
+  });
+});
+
+/**
+ * Steps 1 and 2 without the coverage check: what a replay renders
+ * (roadmap S.7), which installs nothing, so a recorded vertical the
+ * tags no longer cover puts back what still renders and refuses no
+ * re-render of another.
+ */
+describe('matchingAdapters', () => {
+  const pair: Vertical = {
+    id: 'pair',
+    description: '',
+    dimensions: ['wire', 'gate'],
+    adapters: [
+      stub({ id: 'wire', covers: ['wire'], predicate: { requires: ['lang.x'] }, after: ['gate'] }),
+      stub({
+        id: 'gate',
+        covers: ['gate'],
+        predicate: { requires: ['lang.x'], excludes: ['ruled.out'] },
+      }),
+    ],
+  };
+
+  it('is what resolveVertical returns, in its order, where every dimension is covered', () => {
+    expect(matchingAdapters(pair, ['lang.x']).map((a) => a.id)).toEqual(['gate', 'wire']);
+    expect(matchingAdapters(pair, ['lang.x'])).toEqual(resolveVertical(pair, ['lang.x']));
+  });
+
+  it('refuses no dimension the tags leave uncovered: what still matches, and none where nothing does', () => {
+    const tags = ['lang.x', 'ruled.out'];
+    expect(() => resolveVertical(pair, tags)).toThrow(RefusalError);
+    expect(matchingAdapters(pair, tags).map((a) => a.id)).toEqual(['wire']);
+    expect(matchingAdapters(pair, ['lang.y'])).toEqual([]);
+  });
+
+  it('hard-fails on a cycle in `after` among what matches, as resolveVertical does', () => {
+    const cycle: Vertical = {
+      id: 'cycle',
+      description: '',
+      dimensions: ['x'],
+      adapters: [
+        stub({ id: 'a', covers: [], predicate: {}, after: ['b'] }),
+        stub({ id: 'b', covers: [], predicate: {}, after: ['a'] }),
+      ],
+    };
+    expect(() => matchingAdapters(cycle, [])).toThrow(ResolutionError);
   });
 });
 

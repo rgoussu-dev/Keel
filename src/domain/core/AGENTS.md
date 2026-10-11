@@ -408,7 +408,15 @@ whole file, harness element, action, reported adapter or record. So a
 guarded patch comes back as it was, and one that is not
 its own fixed point is a divergence the run refuses as
 `keel.reapply-conflict`; a re-render that rewrites nothing replays onto
-nothing, and contributes nothing. A replayed vertical is not one the
+nothing, and contributes nothing. A replay renders each adapter whose
+predicate the tags match, whether or not they still cover every
+dimension of its vertical (`resolver.ts`' `matchingAdapters`), since
+it installs nothing: a recorded vertical the tags no longer cover
+refuses no re-render of another, as it ranks nowhere in `twinOrder` —
+what of it still renders comes back, and what they rule out does not,
+as on a vertical the run names; its own re-render, and the harness
+retrofit's replay of it, still refuse it as
+`keel.uncoverable-vertical`. A replayed vertical is not one the
 run ran: the retrofit still replays its harness elements, and a
 refresh proposal still reads it. `commitConverged` is the one commit after it:
 the tree, then the manifest, then the deferred actions.

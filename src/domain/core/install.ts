@@ -86,7 +86,7 @@ import {
 import { conflictsOf, violatedBy } from './compatibility.js';
 import { brokenRulesRefusal, type RefusalNames } from './refusals.js';
 import { installedVertical } from './registry.js';
-import { resolveVertical } from './resolver.js';
+import { matchingAdapters, resolveVertical } from './resolver.js';
 import type {
   Adapter,
   Conflict,
@@ -183,19 +183,21 @@ export interface InstallVerticalInputs {
    * Replay the vertical's patches onto these paths alone — a re-render
    * within the recorded composition (roadmap S.7, DS4): the files a
    * re-render rewrote, where this vertical may have patched in what a
-   * pristine render drops. Each adapter the vertical resolves to on
-   * {@link manifest} — each of {@link only}, where set — is contributed
-   * from what the manifest records, asking nothing and reading no
-   * supplied answer, and of what it contributes only the patches whose
-   * target is one of these paths apply, in the `reapply` posture, a
-   * region its adapter claimed earlier in the run its own to claim once
-   * more (`applyContribution`'s `replaying`): a guarded patch is its
-   * own fixed point, so what it wrote comes back as it was, and one
-   * that is not refuses as a divergence
-   * (`ContributionConflictError`). It writes no whole file, collects no
-   * harness element, queues no action and records nothing — no answer,
-   * tag, toolchain need or row — and reports no resolved adapter, since
-   * it reads no answer. Empty, it contributes nothing at all.
+   * pristine render drops. Each adapter of the vertical whose predicate
+   * the tags of {@link manifest} match — each of {@link only}, where
+   * set — whether or not they still cover every dimension of it, since
+   * a replay installs nothing, is contributed from what the manifest
+   * records, asking nothing and reading no supplied answer, and of
+   * what it contributes only the patches whose target is one of these
+   * paths apply, in the `reapply` posture, a region its adapter claimed
+   * earlier in the run its own to claim once more
+   * (`applyContribution`'s `replaying`): a guarded patch is its own
+   * fixed point, so what it wrote comes back as it was, and one that is
+   * not refuses as a divergence (`ContributionConflictError`). It
+   * writes no whole file, collects no harness element, queues no action
+   * and records nothing — no answer, tag, toolchain need or row — and
+   * reports no resolved adapter, since it reads no answer. Empty, it
+   * contributes nothing at all.
    */
   readonly patchesOnto?: ReadonlySet<string>;
   /**
@@ -543,10 +545,15 @@ export async function installVertical(
 
 /**
  * `inputs.vertical`'s patches onto `onto`, and onto no other file
- * ({@link InstallVerticalInputs.patchesOnto}): each adapter it resolves
- * to on the manifest, contributed from what that records, its patches
- * on those paths applied in the `reapply` posture, as a replay, and
- * nothing else of it. The manifest comes back as it was handed in.
+ * ({@link InstallVerticalInputs.patchesOnto}): each adapter whose
+ * predicate the manifest's tags match, contributed from what that
+ * records, its patches on those paths applied in the `reapply` posture,
+ * as a replay, and nothing else of it. The manifest comes back as it
+ * was handed in. Matched, not resolved (`./resolver.ts`
+ * `matchingAdapters`): a replay installs nothing, so a recorded vertical
+ * whose dimensions the tags no longer all cover refuses no re-render of
+ * another — what of it still renders comes back, and what does not is
+ * not written.
  */
 async function replayPatches(
   inputs: InstallVerticalInputs,
@@ -555,7 +562,7 @@ async function replayPatches(
   if (onto.size > 0) {
     const owners = inputs.owners ?? newOwnership();
     const tags = effectiveTags(inputs.manifest);
-    for (const adapter of resolveVertical(inputs.vertical, tags, inputs.registry)) {
+    for (const adapter of matchingAdapters(inputs.vertical, tags)) {
       if (inputs.only !== undefined && !inputs.only.has(adapter.id)) continue;
       const contribution = await recordedContribution(adapter, inputs.manifest, inputs);
       const patches = (contribution.patches ?? []).filter((patch) =>
