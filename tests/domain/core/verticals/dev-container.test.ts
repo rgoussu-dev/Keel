@@ -63,11 +63,15 @@ afterEach(async () => {
   await Promise.all(cwds.map((c) => fs.remove(c)));
 });
 
-async function install(manifest: ManifestV2): Promise<{ tree: FsTree; manifest: ManifestV2 }> {
+async function install(
+  manifest: ManifestV2,
+  held: Readonly<Record<string, string>> = {},
+): Promise<{ tree: FsTree; manifest: ManifestV2 }> {
   const cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-dev-container-'));
   cwds.push(cwd);
   const tree = new FsTree(cwd);
   tree.write('README.md', '# demo\n');
+  for (const [file, content] of Object.entries(held)) tree.write(file, content);
   const result = await installVertical({
     vertical: devContainerVertical,
     manifest,
@@ -783,6 +787,29 @@ describe('dev-env installed after dev-container (order independence)', () => {
       tree.write(DEV_CONTAINER_COMPOSE_TARGET, `${pristine}${OVERLAY_EDIT}`);
       await rerender(tree, project);
       expect(tree.read(DEV_CONTAINER_COMPOSE_TARGET)?.toString()).toBe(pristine);
+    },
+  );
+
+  it.each(SERVERLESS_PROJECTS.map((project) => [project.family, project] as const))(
+    'without a server, installed after the dev environment, keeps a compose overlay the project already holds, as the dev environment does (%s)',
+    async (_, project) => {
+      const ours = 'services:\n  workspace:\n    image: ours\n';
+      const { tree } = await install(manifestOf(project, true), {
+        [DEV_CONTAINER_COMPOSE_TARGET]: ours,
+      });
+      expect(tree.read(DEV_CONTAINER_COMPOSE_TARGET)?.toString()).toBe(ours);
+      expect(devcontainerOf(tree)).toContain('"service": "workspace"');
+    },
+  );
+
+  it.each(HTTP_PROJECTS.map((project) => [project.family, project] as const))(
+    'on an HTTP project, installed after the dev environment, refuses a compose overlay the project already holds (%s)',
+    async (_, project) => {
+      await expect(
+        install(manifestOf(project, true), {
+          [DEV_CONTAINER_COMPOSE_TARGET]: 'services:\n  workspace:\n    image: ours\n',
+        }),
+      ).rejects.toThrow(DEV_CONTAINER_COMPOSE_TARGET);
     },
   );
 

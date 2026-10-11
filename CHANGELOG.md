@@ -58,15 +58,20 @@ use to keep a long-lived changelog scannable — and the root keeps
   shape, the one a project scaffolded with both has.
 
 - **`keel add dev-container --reapply` keeps your edits to
-  `.devcontainer/compose.yaml` where a dev environment added it.** On
-  a CLI or front-end project the dev environment adds the compose
+  `.devcontainer/compose.yaml` on a project without an HTTP server.**
+  On a CLI or front-end project the dev environment adds the compose
   overlay as a patched file, and re-rendering the dev environment
   leaves it as you wrote it; re-rendering the dev container wrote it
   back whole, so an edit there went, with a diff. The dev container now
   adds it the way the dev environment does: put back when it is gone,
-  left as it is otherwise. On a project with an HTTP server, where the
-  dev container writes the overlay itself, a re-render writes it back
-  as rendered, as before.
+  left as it is otherwise. So `keel add dev-container` on a project
+  that records the dev environment without it now keeps a
+  `.devcontainer/compose.yaml` already there, as `keel add dev-env`
+  does, where it refused it as already existing. On a project with an
+  HTTP server the dev container writes the overlay whole, as
+  `keel new` renders it there, and a re-render writes it back as
+  rendered, as before — a CLI project that has since grown an HTTP
+  server included, though the dev environment added it there.
 
 - **A JVM modulith's runbook no longer gives every context a REST or
   CLI adapter.** The layout map in the root `AGENTS.md` of a Quarkus,

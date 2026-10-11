@@ -34,7 +34,10 @@ vertical is on the manifest:
   toolchain still comes from features.
 
 **Install order does not matter brownfield**: installed after
-`dev-env`, the definition lands attached; installed before it,
+`dev-env`, the definition lands attached (on a CLI or SPA project, a
+`.devcontainer/compose.yaml` already there is kept, as the dev
+environment keeps it — it must declare the `workspace` service the
+definition names); installed before it,
 [`dev-env`](dev-env.md) upgrades the standalone definition to the
 attached shape when it arrives (adding the compose overlay and the
 `docker-outside-of-docker` feature). On a project with an HTTP
@@ -53,9 +56,10 @@ took the dev environment as an extra it renders the standalone
 definition attached in place, as the project holds it, and rewrites
 nothing there — the compose overlay the dev environment added stays
 yours, as it does when the dev environment is re-rendered: put back if
-you delete it, never rewritten over your edits; a CLI project that has
+you delete it, never rewritten over your edits. A CLI project that has
 since grown an HTTP server takes the template's shape, which a project
-scaffolded with both entrypoints has. The one exception is a definition you have
+scaffolded with both entrypoints has, and there the overlay is written
+back as rendered. The one exception is a definition you have
 customized away from the scaffolded shape (e.g. a different base
 image): the upgrade then refuses to rewrite it rather than silently
 lose your changes — `keel.path-conflict`, before anything is written,

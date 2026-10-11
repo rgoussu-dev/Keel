@@ -85,17 +85,17 @@ the shipped source, every refusal naming its origin) and
   after the dev environment writes what one run wrote and keeps an
   edit to the overlay, as re-rendering the dev environment does. The
   template's shape lists the docker feature last, so the entry before
-  it takes a comma: the features are read
-  through `codeOnly`, the comma goes where that entry's code ends,
-  ahead of a comment trailing it, which JSONC allows, and the feature
-  on the first line after it that no comment holds, so a block comment
-  the entry's line opens stays whole. The object ends at the brace
-  that matches its opener, counted over that code, never at the next
-  `  }` line: a features object that closes anywhere else would hand
-  its feature to the object after it, a multi-line `"customizations"`,
-  and the file would still parse. `shared-files.golden.test.ts`
-  holds every scaffold to it; `rank-arrival.test.ts` and each writer's
-  own suite hold the writers to going through the rule.
+  it takes a comma: the features are read through `codeOnly`, the comma
+  goes where that entry's code ends, ahead of a comment trailing it,
+  which JSONC allows, and the feature on the first line after it that
+  no comment holds, so a block comment the entry's line opens stays
+  whole. The object ends at the brace that matches its opener, counted
+  over that code, never at the next `  }` line: a features object that
+  closes anywhere else would hand its feature to the object after it, a
+  multi-line `"customizations"`, and the file would still parse.
+  `shared-files.golden.test.ts` holds every scaffold to it;
+  `rank-arrival.test.ts` and each writer's own suite hold the writers to
+  going through the rule.
 - A patch that adds to a list in source another command may have grown
   — a composition root's handlers — reads the list as it finds it, its
   brackets and commas found in `util.ts`'s `codeOnly` (comments and

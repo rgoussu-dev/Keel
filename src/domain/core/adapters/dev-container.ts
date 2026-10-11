@@ -33,7 +33,7 @@
  * arrives *after* the dev container, its adapter upgrades the
  * standalone definition to the attached shape through the helpers
  * this module exports ({@link attachDevContainerToDevEnv},
- * {@link renderDevContainerOverlay}, {@link attachReadmeSection}) —
+ * {@link devContainerOverlayPatch}, {@link attachReadmeSection}) —
  * so the attachment knowledge lives here either way. The upgrade is
  * ranked by the tags, as the README section is (`rank.ts`): on a
  * project carrying `arch.server-http`, where every preset installs the
@@ -129,10 +129,11 @@ export interface DevContainerFamily {
  * compose overlay the seeded patch the dev environment adds
  * ({@link devContainerOverlayPatch}), not a whole file: put back where
  * it is gone, and never rewritten over what the user wrote into it. No
- * `keel new` renders that branch, since there the dev container always
- * comes first; a re-render after the dev environment does, and so does
- * `keel add dev-container` on a project that records the dev
- * environment without it.
+ * preset keel ships renders that branch under `keel new`, since there
+ * the dev container always comes first; a plugin's stack that installs
+ * the dev environment before it does, as does a re-render after the dev
+ * environment and `keel add dev-container` on a project that records
+ * the dev environment without it.
  */
 export async function devContainerDefinition(
   ctx: Ctx,
@@ -337,9 +338,10 @@ function firstLiveLine(lines: readonly string[], from: number, to: number): numb
 
 /**
  * Renders the attached shape's compose overlay
- * ({@link DEV_CONTAINER_COMPOSE_TARGET}) on its own — the file the
- * dev-env vertical contributes when it upgrades an existing
- * standalone definition.
+ * ({@link DEV_CONTAINER_COMPOSE_TARGET}) on its own — the seed of
+ * {@link devContainerOverlayPatch}, which the dev environment adds when
+ * it upgrades an existing standalone definition, and the definition's
+ * own in-place render adds alike.
  */
 export async function renderDevContainerOverlay(ctx: Ctx): Promise<ContributionFile> {
   const rendered = await ctx.templates.render(TEMPLATE_ID, '', {
@@ -357,11 +359,13 @@ export async function renderDevContainerOverlay(ctx: Ctx): Promise<ContributionF
 
 /**
  * The compose overlay ({@link DEV_CONTAINER_COMPOSE_TARGET}) as a
- * seeded patch: written where the project holds none, and left as it is
- * where it holds one. The dev environment adds it so to a dev container
- * installed before it, and the definition's own in-place render (S.7)
- * adds it the same way, so whichever writes it, it is the one file, and
- * a re-render puts it back when it is gone but never rewrites it whole.
+ * seeded patch: written where the project holds none, and left as it
+ * is where it holds one. The dev environment adds it this way when it
+ * attaches a dev container installed before it, and the definition's
+ * own in-place render (a re-render, S.7, or `keel add dev-container`
+ * after the dev environment) adds it the same way, so whichever runs
+ * first writes the same bytes, and a re-render puts it back when it is
+ * gone but never rewrites it whole.
  */
 export async function devContainerOverlayPatch(ctx: Ctx): Promise<ContributionPatch> {
   const overlay = await renderDevContainerOverlay(ctx);
