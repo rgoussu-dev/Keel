@@ -39,7 +39,7 @@ jobs:
       # version, and the reproducible part is what mise.toml resolves,
       # not the resolver.
       - name: Setup toolchain (node ${{ matrix.node }}, pnpm)
-        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
         with:
           install_args: node pnpm
 
@@ -718,7 +718,7 @@ jobs:
       # PATH for every later step. Nothing here is pinned to a
       # distro path — the same file provisions a workstation.
       - name: Setup toolchain (${{ steps.toolchain.outputs.list }})
-        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
         with:
           install_args: ${{ steps.toolchain.outputs.list }}
 
