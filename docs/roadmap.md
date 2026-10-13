@@ -31,7 +31,13 @@ the weekly composition sweep its measure had planned. Its successors —
 grow) has landed too, one commit per step, R.1a to R.3d, as its own
 section below records: every single-entrypoint backend preset grows
 the other entrypoint into its twin, byte for byte, on every dial
-setting, with its bounded contexts. **S**, **T** and **U** wait on
+setting, with its bounded contexts. **S** (one converge operation)
+has landed as well, S.1a to S.9, one commit per step, as its own
+section below records: `keel new`, `keel add` with `--refresh` and
+`--reapply`, `keel add entrypoint` and `keel add module` are callers of
+one operation, which keeps what later verticals wrote through a
+re-render, records where one run records, and says what a re-render
+leaves. **T** and **U** wait on
 decisions of their own and are not yet sliced into issues or ordered
 against the backlog.
 
@@ -4034,6 +4040,9 @@ containerization` then proposes `--refresh distribution`, which
    the first adapter wrote: that is L's missing merge base. Until then,
    `docs/verticals/distribution.md` and `docs/cli.md` → `--refresh` say
    so, and that the native `release.yml` still runs on each `v*` tag.
+   Still open; since S.9 the run's report, and its preview, names the
+   adapter it moved off, the files it wrote that the project still
+   holds, and its record, which stays.
 3. **An add refused where one run is Ok.** On the same presets, `keel
 add iac` after `keel new --with distribution` is refused as
    `keel.needs-refresh` (_Infrastructure as code needs Container image,
@@ -4372,7 +4381,9 @@ Each taken as the audit recommended; the step that carries it is named.
   _R — Entrypoints can grow_, below, records it.
 - **S — One converge operation (additive).** A desired state planned
   against disk; `new` and `add` become aliases; removal refused,
-  citing L's missing merge base.
+  citing L's missing merge base. Landed; its own section,
+  _S — One converge operation_, below, records it; what "aliases"
+  means is its DS1.
 - **T — Facets over presets.** Presets generated from a platform ×
   entrypoint table with ids kept as aliases (all 34 regenerate
   exactly); products as per-service selections. Only with a data
@@ -7918,6 +7929,3866 @@ agent-harness --reapply`.
 
 ---
 
+## S — One converge operation ✅
+
+**Proposed 2026-09-27 from thirteen research passes over `babae29`**
+(R's merge), **and landed**: S.1a to S.9 below, one commit per step,
+every decision taken as recommended (_Decisions on record_). None of
+the passes edited the repository. Q's
+_Successors_ named this epic, and R's _Not in scope_ left converge to
+it. S adds no command, no flag and no manifest field. Every path that
+installs or re-renders verticals becomes a caller of one operation:
+`keel new`, `keel add` (with `--refresh` and `--reapply`),
+`keel add entrypoint` and `keel add module`. `keel toolchain`,
+`keel link` and `keel docs sync` stay commands of their own (DS6).
+The three things
+that operation makes true, which no path makes true today, each land
+as a step of their own, with its golden naming the cells it moves:
+
+- a re-render keeps what later verticals wrote into the files it
+  rewrites;
+- one order for what the manifest records;
+- a leftover is said, not silently kept.
+
+**Goal.** One operation reads the manifest and computes the
+composition the project is to have: what the manifest records, plus
+what the command asks for. It then converges the project onto that
+composition:
+
+- it installs what the composition lacks;
+- it re-renders what the command names;
+- it records what is new where one run of `keel new` records it;
+- it takes nothing away: no command can ask it to, and where
+  reaching the composition would need a removal, it refuses or says
+  what it leaves, citing L's missing merge base (DS5).
+
+Its callers keep their surface, their gates and their words.
+`keel new` is the operation run from a seed manifest, so `new` and `add`
+become two front doors of one operation (DS1, recommended).
+
+Today `keel add walking-skeleton --reapply` on a Go HTTP project
+rewrites `cmd/http/main.go` to the pristine template and drops
+observability's wiring. That is R's blocker 8, which R worked around
+and did not fix. After S the bootstrap re-renders within the recorded
+composition: every other vertical's patches are replayed onto the
+files the bootstrap rewrote, and onto no other, so observability's
+lines come back (DS4).
+
+### How the research was run
+
+**Setup.** Every run went through `babae29`, from a `dist/` built from
+it or from its sources under vitest, wired the way
+`tests/support/factory.ts` wires the grid: real
+templates, filesystem or in-memory Trees, `FakeProcessRunner`, a
+pinned `FakeClock`, and deferred actions recorded rather than run.
+Every figure is measured unless it is marked _(inference)_.
+
+**Thirteen passes.** There was one reader per path that changes a
+project, and one each for the engine, the grid and the schema:
+
+- `keel add`;
+- `--reapply` and `--refresh`;
+- `keel add entrypoint`;
+- `keel add module`;
+- `keel toolchain`;
+- the planner's closure;
+- `keel new`;
+- the install engine every path calls;
+- the other writers: `keel link`, `keel docs sync` and the harness
+  retrofit;
+- `keel ui` and the preview;
+- the grid and its goldens;
+- the manifest's schema.
+
+A thirteenth pass measured the paths against one another.
+
+**What was measured.**
+
+- **Rebuilt from the manifest.** 443 scaffolds: every single-service
+  preset on every dial setting, harness on and off (300), and every
+  offered extra alone on the opening dials (143). Each was rebuilt
+  into a second directory from a `keel new` command derived from its
+  manifest alone, and compared byte for byte, manifest included.
+- **Implied against ran.** For 231 `keel new` cells and 143 `keel new`
+  then `keel add` cells, the adapters each recorded vertical resolves
+  to on the recorded tags were compared with the adapters the runs
+  reported.
+- **Fixed points.** 830 cells:
+  - every dial setting with no extras and with the whole menu;
+  - every modulith setting after a module history;
+  - every product under both layouts, at the root and in each service.
+
+  Each was re-rendered whole: once with `--reapply` naming every
+  recorded vertical, and once naming only those `keel add` can name.
+  Separately, 500 cells (the 300 settings, and the 200 modulith
+  settings after a history) re-rendered each vertical alone.
+
+- **Mixed projects.** 94 projects over seven presets, built from
+  `keel new`, `--with`, `keel add`, `keel add entrypoint` and
+  `keel add module`. For each, the adapters the manifest implies were
+  compared with the adapters that ran.
+
+- **Arrival.** Three comparisons:
+  - `keel new --with y` against `keel new` then `keel add y`: 143
+    pairs;
+  - `keel new --with a,b` against `keel new --with a` then
+    `keel add b`: 636 ordered pairs;
+    - `keel new --no-agent-harness` then `keel add agent-harness`,
+      against `keel new`: 56 cells, and again after one offered extra:
+      143 cells, each also run through `keel docs check`.
+
+  Each compared the whole tree and the raw manifest.
+
+- **Order.** Whether the planner reproduces a preset's order (28
+  presets), and whether it reproduces `keel new`'s order with the
+  extras (171 cells). What installing a preset in the planner's order
+  does (28), and what reordering a preset's own verticals moves (6
+  presets, 3 orders each).
+- **The schema.** What a keel reading this manifest does with a field
+  it does not know, with `version: 3`, and with a toolchain block
+  `schemaVersion` of 2.
+
+### The finding that shaped it
+
+**The manifest already is the project. The paths disagree only about
+how to say so.**
+
+1. **The composition needs no new record.**
+   - On all 300 dial settings, the drill-down places the project back
+     on its own preset, with no collision. The recorded verticals equal
+     that preset's on its dials, in order.
+   - All 443 rebuilds are byte-identical, manifest included. The
+     command they were rebuilt from reads:
+     - the preset off the tags (`profile.ts` `projectProfile`);
+     - the build system and layout off their tags;
+     - the peer context off `modules.peer-context`;
+     - the harness off whether `agent-harness` is recorded;
+     - the extras as the recorded verticals less the preset's;
+     - the answers as recorded.
+   - Resolving each recorded vertical on the recorded tags gives
+     exactly the adapters that ran, in order: 231 of 231, and 143 of 143.
+   - Across 94 mixed projects, no adapter matches without having run.
+     The only adapters that ran and no longer match are the added
+     contexts', whose marker `keel add module` strips.
+
+   What cannot be derived is where the drill-down places nothing: a
+   plugin preset off the tree, a manifest migrated from v1, and a
+   product root, which records its services by preset
+   (`services[].stack`).
+
+2. **Re-rendered whole, the composition is a fixed point almost
+   everywhere.** On all 300 dial settings with no history, one
+   `--reapply` run naming every recorded vertical stages nothing. The
+   manifest moves `updatedAt` alone. Of the 830 cells, 516 are fixed
+   points. The other 314 are exactly the three places where a path's
+   reading of the project is narrower than the manifest:
+   - **200 module histories.** `keel add module` records a
+     `bounded-context` row that `--reapply` cannot name, so naming
+     every recorded vertical is refused as `keel.unknown-vertical` on
+     all 200. Naming only those `keel add` can name, the bootstrap's
+     re-render loses each context's wiring, for good, on 188 of the
+     200 (JVM 144, Rust 12, TypeScript 24, `web-components` 8). Go's
+     12 wire their contexts into files the bootstrap does not write.
+   - **108 cells with a dev environment taken as an extra** on a CLI or
+     SPA preset. `dev-container` reads, inside `contribute()`, whether
+     `dev-env` is recorded (`devEnvInstalled`), and `dev-env` reads
+     whether `dev-container` is. Neither declares it: a mutual
+     `Vertical.reads` is refused as a cycle. Re-rendered after the dev
+     environment, the definition comes out as the attached template.
+     One run wrote the standalone definition, which `dev-env` then
+     attached in place (R.1b), with the docker feature first and
+     `"name"` above the note. The other two reads of the vertical list,
+     persistence's of observability and distribution's of both, are
+     declared. They are what `--refresh` exists for (D12), and they
+     make no cell off here.
+   - **6 monorepo product roots.** Their glue row, `fullstack`, cannot
+     be named either. The product root is U's.
+
+   One vertical re-rendered alone is not a converge.
+   `walking-skeleton` alone changes files on 19 of the 28 presets on
+   their opening dials, and on 400 of the 500 cells. It rewrites its
+   whole files and drops what later verticals patched into them:
+   - observability and persistence on every HTTP preset;
+   - code-style on `web-components`;
+   - the gateway in a product's front end;
+   - each context's wiring.
+
+   On the 300 settings with no extras, every other vertical
+   re-rendered alone is a fixed point. So
+   `keel add walking-skeleton --reapply` is still R's blocker 8.
+
+3. **Files converge; the record's order does not.**
+   - **143 single-extra pairs.** Every file is identical, and so is the
+     action queue. The manifest is identical in 106. In the other 37 it
+     differs only in the order of `entries`: 18 of them are
+     persistence and 19 are iac. The add appends its new harness entry,
+     where one run realizes it in place.
+   - **636 ordered pairs.**
+     - 167 are identical.
+     - 431 differ only in the manifest's order: `verticals` rows,
+       `answers` keys and `entries`.
+     - 36 differ in files. Each of those carries the refresh the later
+       add proposed (D12): distribution reads persistence.
+     - 2 are refused on one side only (Q3.4's finding 3).
+   - **56 harness adoptions.** Every file and every entry is
+     identical. `agent-harness` is recorded last instead of third.
+
+   That last difference is not cosmetic. The navigation index replays
+   the verticals in recorded order, and a directory takes the first
+   description it meets (`dedupeDocs`). So on 18 of the 143 projects
+   that adopted the harness after one extra (every stack with
+   persistence), `keel docs check` is red, and `keel docs sync` then
+   moves `AGENTS.md` away from what one run writes.
+
+   A new row lands in one of three places today:
+   - `keel new`: the preset's order, then the extras in `admit`'s
+     order;
+   - `keel add` and `keel add module`: appended;
+   - `keel add entrypoint`: at the twin's rank (`placed`, `atRank`),
+     which I10 holds byte for byte.
+
+   The planner cannot supply a target order. It returns the delta
+   alone:
+   - handed a preset sorted by id, as `admit` hands it, it reproduces
+     none of the 28 presets' orders;
+   - installed in that order, every one of the 28 throws on a patch
+     target not yet written;
+   - named preset first, then the extras it planned, it reproduces
+     `keel new`'s order on 171 of 171.
+
+   Reordering a preset's own verticals, where the run still installs,
+   moved no file on the six HTTP presets measured, since R.1's ranks
+   see to that. It did move the manifest and the action queue.
+
+4. **Every path is one engine with a different mix of switches.**
+   - `keel new`: the `scaffold` posture, and the engine finalizes the
+     harness.
+   - `keel add`: the `install` posture, the handler's harness buffer,
+     the retrofit, the restamp and the proposals. `--refresh` and
+     `--reapply` add the `reapply` posture per vertical.
+   - `keel add entrypoint`: `only`, `actionsOnly`, the context replay,
+     the buffer sorted to the twin's rank, and `atRank`.
+   - `keel add module`: one `installVertical` of keel's
+     `bounded-context`. The engine finalizes, then the handler
+     re-indexes the root map and rehashes its entry.
+
+   The tail is copied nearly line for line between `add-vertical.ts`
+   and `add-entrypoint.ts`: the retrofit, the finalize, the restamp,
+   the `keel.reapply-conflict` mapping, the proposals and the commit
+   order. So is `proposalNote`.
+
+   `keel new` is already converge-shaped. Run the way `keel add` runs
+   it, with a caller's harness buffer and `finalizeHarness`, on the
+   same seed and order, it writes the same bytes, manifest included,
+   on 4 of 4 cells. It does so under the `install` posture too, on an
+   empty directory.
+
+   Only `keel add entrypoint` computes a target and makes the project
+   equal to it. It is the prototype, and its general half is the
+   operation:
+   - adapters newly matching, before and after;
+   - recording at rank;
+   - settling;
+   - the harness re-rendered and realized in the target's order.
+
+**Three further facts set S's scope.**
+
+- **Nothing is ever removed, and nothing says so.** No domain code
+  deletes a file. On `quarkus-cli-rest` under Gradle, distribution
+  resolves to the native binary until a container image arrives.
+  `--refresh distribution` then moves it onto the image's pipeline,
+  and leaves behind:
+  - `.github/workflows/native-build.yml` and `release.yml`;
+  - the answers key `distribution/quarkus-cli-native`;
+  - the tag `runtime.graalvm-native`.
+
+  One run never writes them. The report says nothing: no diff and no
+  note. This is Q3.4's finding 2, still open. The weekly `arrival`
+  suite, filtered to that preset, finds exactly its 12 findings, all
+  of them this one and finding 3.
+
+- **The toolchain engine converges something else.**
+  `keel toolchain install|check` renders the block onto the managers'
+  own files and the machine. Its desired state reads the manifest's
+  toolchain block, the lockfiles on disk and the managers' answers,
+  and its verdict includes which tools are installed. dependency-cruiser holds it apart both ways.
+  The block's needs are composition state already, written by the
+  `toolchain` vertical through `foldToolchain`. Growing an entrypoint
+  on a project with the toolchain wrote the twin's bytes on four
+  families.
+- **An older keel strips a field it does not know.** The schema's
+  objects are zod's default strip objects, so an older keel reads an
+  unknown key, at the top level or in any row, and drops it on its
+  next write. Six commands write the manifest. `version: 3` is
+  unreadable, and so is a toolchain block with a `schemaVersion` of 2:
+  both throw a raw `ZodError` off the `Err` rail. Reordering rows is
+  readable by every keel. So S records nothing new (DS2). It needs
+  nothing new, by (1).
+
+### What stands in the way
+
+The passes found each of these, and each is resolved by the step
+named.
+
+1. **No composition exists as a value.** Each handler assembles its
+   own `installVerticals` call and copies the same tail. Resolved by
+   S.2 and S.3.
+2. **Three placement rules, and no target order.** The planner closes
+   and orders the delta. Nothing orders the whole. `keel new` takes
+   the preset's array as data, `keel add` appends, and growth ranks
+   by its twin. `mergedById` assumes a request sorted by id: named in
+   preset order, with its prerequisites left to the planner, a
+   container image lands before `vcs` on 36 of 36 cells. S.2 names
+   one reference order, the one `keel new` of the composition
+   records. S.3 to S.6 keep each caller's placement as it is, and S.8
+   moves `keel add` onto the reference.
+3. **Contexts live outside the vertical list.**
+   - `keel add module` records a `bounded-context` row that no
+     re-render can name.
+   - It installs every matching context adapter, while growth
+     installs the newly matching ones.
+   - It finalizes the harness per context, while growth shares one
+     buffer. Two contexts finalized on one ownership collide on the
+     map region.
+   - The harness retrofit replays every recorded module, the skeleton
+     and the peer included. Growth's `contextsOf` reads the added ones
+     alone. Replaying the skeleton or the peer through
+     `bounded-context` for their files is refused as a path conflict,
+     or stages 8 to 12 foreign changes.
+
+   Resolved by S.5 (one reading, one buffer, the retrofit) and by S.7
+   (the contexts come back with the vertical whose files they patch,
+   DS10).
+
+4. **A re-render of one vertical drops what later verticals wrote into
+   its files.** This is R's blocker 8, and it is still open. Resolved
+   by S.7.
+5. **The dev container's two shapes are chosen by arrival.** In one
+   run the definition is attached by whichever of `dev-container` and
+   `dev-env` comes second. On an HTTP preset, the template renders it
+   attached. Where the dev environment is an extra, `dev-env` attaches
+   it in place. A re-render of the definition after the dev
+   environment writes the template's shape, whatever wrote the one on
+   disk. R ranked this by the tags (DR1, DR2). S.7 finishes the same
+   closed form: without `arch.server-http`, `dev-container` renders
+   what the in-place attach leaves. No greenfield cell renders that
+   branch, since on those presets the dev container always comes
+   first.
+6. **What a re-render leaves behind is not said.** Resolved by S.9.
+7. **The manifest takes no field an older keel keeps.** Resolved by
+   DS2: S records nothing new, and (1) says it need not.
+8. **`keel new` spans scopes.** A product stages several Trees and
+   refuses a path two of them write (`crossScopeWrite`). Its order is
+   the preset's data, which `admit`, sorting a request by id, does not
+   reproduce. S.6 makes each scope a converge from its seed manifest
+   and leaves the product's orchestration where it is. Product roots
+   stay U's.
+9. **Nothing pins what S would move.**
+   - No golden records a manifest's bytes. The agent-harness golden
+     leaves the manifest out, shared-files hashes six root files
+     and the assembly files, and I8
+     and I9 compare staged Trees, which hold no manifest. I10 compares
+     a grown project with its twin, and the two can move together.
+   - The grid never dispatches `--reapply`, `--refresh` or
+     `keel add module` as a target of its own.
+   - I9 is held on `keel new` and `keel add entrypoint` alone. It was
+     measured on `keel add` on 319 of 319 cells, but nothing holds it.
+
+   Resolved by S.1a and S.1b, before any code moves.
+
+10. **The toolchain engine sits behind the dependency-cruiser wall.**
+    It may import only the kernel and the contract, and `domain/core`
+    may not import it. Resolved by DS6: it stays a command of its own.
+    The `toolchain` vertical is a caller, through `keel add`.
+
+### The measure
+
+- **The paths golden (S.1a), hard from the day it lands.** It pins
+  every path's output absolutely, where every other golden pins one
+  facet of it or compares two projects that can move together. Its
+  cells come from `keel.catalog`, `keel.dials` and
+  `keel.project-status`. The one exception is the Q3.4 pair below,
+  named for the finding it pins.
+  - **`keel new`:**
+    - every single-service preset on every dial setting
+      `harnessSettings` walks, with no extras;
+    - the whole menu on every setting with the harness;
+    - each offered extra alone on the opening dials;
+    - the whole menu on the opening dials under each of the grid's
+      I9 answer bodies (`answerBodies`: every question answered away
+      from its default, the same keyed to the sibling its asker
+      borrows from, and one question answered twice), so that answer
+      folding is pinned where the e2e suites' non-default answers
+      reach it;
+    - every product under each repository layout.
+  - **`keel add y`:**
+    - every offered extra alone on each preset's opening scaffold, on
+      default answers and with every question its preview asks
+      answered away from its default;
+    - the same after the module history on each preset's modulith
+      setting;
+    - at each product root and in each service, under both layouts.
+  - **`keel add agent-harness`:** on each preset's opening scaffold
+    made with `--no-agent-harness`, and on each such scaffold made
+    with each offered extra alone.
+  - **`keel add b` after `keel new --with a`:** every ordered pair of
+    offered extras on the opening dials of each preset that carries
+    both entrypoints (read off `keel.catalog`'s tags), with the
+    refresh each add proposes taken. Q3.4's finding 2 is pinned
+    by name, since no pair rule reaches it: on `quarkus-cli-rest` and
+    its Kotlin twin under Gradle, `keel new --with distribution`, then
+    `keel add containerization --refresh distribution`, and the same
+    with `keel add containerization`, then
+    `keel add distribution --reapply`.
+    - **`--reapply`:**
+    - each recorded vertical alone, then the whole re-render (below),
+      on each preset's opening scaffold and on its whole-menu
+      scaffold, and in each service of every product under both
+      layouts;
+    - `walking-skeleton` alone, then the whole re-render, after the
+      module history on each modulith setting. Every other vertical
+      re-rendered alone there was measured a fixed point.
+  - **`keel add module`:** the module history on every modulith
+    setting.
+  - **`keel add entrypoint`:** each single-entrypoint backend preset,
+    both ways:
+    - on its opening scaffold, with no extras and with the whole
+      menu;
+    - after the module history on its modulith setting;
+    - on its opening scaffold made with `--no-agent-harness`, after
+      `keel add agent-harness`;
+    - once grown, followed by `keel add dev-container --reapply`.
+
+  **What each cell records:**
+  - its verdict: `ok`, the refusal's code, or `thrown:<Name>`;
+  - a digest of each top-level entry of the tree it leaves;
+  - the manifest, apart from the tree, digested per field, so that a
+    move of the manifest alone reads as one and names its field;
+  - the descriptions of the deferred actions, less version control's,
+    whose wording depends on the machine's git;
+  - the report's notes, proposals, changes (kind and path), diff paths
+    and resolved adapters;
+  - `keel docs check`'s drift count on the project it leaves.
+
+  A cell is keyed by its command lines, joined by `&&`. A failure
+  names the cell and what moved in it. The golden reads no other
+  golden, and the converge golden (S.2) keys on it.
+
+- **The whole re-render.** The measure's name for one `--reapply` run
+  naming every recorded vertical that `keel add` can name, as a dry
+  run. Those are all of them but `bounded-context`, which
+  `keel add module` records, and a product root's `fullstack`. An added
+  context's wiring comes back with the vertical whose files it
+  patches (S.7, DS10).
+- **I9 on every install target (S.1b).** Today the grid holds only
+  `keel new` and `keel add entrypoint` to I9, a preview against a
+  dry-run install. S.1b adds:
+  - `keel add` of every card, and `--reapply` of every installed
+    vertical, in the brownfield and composite axes;
+  - `--refresh` of each installed vertical beside the add of the
+    project's first `ready` card, in brownfield;
+  - `keel add module orders` on each preset's modulith setting, where
+    brownfield gains one scaffold per preset for it.
+
+  I9 is hard already, so no known file moves. It was measured on 319
+  of 319 `keel add` cells, and on 73 refusals.
+
+- **I11: the recorded composition is a fixed point (S.1b, widened by
+  S.7, hard).** A project's whole re-render stages nothing.
+  - **Lands in S.1b** on the cells where it holds today: brownfield's
+    scaffolds and each composite service. A product root is left out:
+    its glue is U's.
+  - **S.7 adds cells:** growth's twins, module histories included
+    (I10 makes each grown project its twin's bytes, so the twin
+    carries the grown cell), and brownfield's whole-menu scaffolds of
+    the ten presets where the dev environment is an extra.
+  - **S.7 adds a reading:** each recorded vertical re-rendered alone
+    stages nothing, on brownfield and composite.
+- **I12: arriving later equals one run (S.8, hard).** In the brownfield
+  axis, on each preset's opening dials, the three pairs below leave
+  the same project, every file and the manifest byte for byte:
+  - `keel new X`, then `keel add y`, against `keel new X --with y`,
+    for each offered extra;
+  - `keel new X --no-agent-harness`, then `keel add agent-harness`,
+    against `keel new X`;
+  - `keel new X --no-agent-harness --with y`, then
+    `keel add agent-harness`, against `keel new X --with y`.
+
+  Pairs stay in the paths golden and the weekly lane. From S.8 the
+  `arrival` suite normalises the manifest's timestamps alone, not its
+  order.
+
+- **I10 stays hard, and the four known files stay as they are**:
+  brownfield `{"I5": {}}`, and greenfield, composite and growth `{}`.
+  I11 and I12 land hard with no violation, so neither adds a key.
+- **The converge golden (S.2).** `converge.golden.json` records the
+  operation's reading on every cell the paths golden keys:
+  - the target composition's order;
+  - what each vertical of the run does;
+  - the contexts it wires;
+  - where it records;
+  - or the refusal.
+
+  R.2a's `growth.golden.json` regenerates from it byte-identical. It
+  also holds the round trip: on every single-service `keel new` cell,
+  and on each product's services, the reading names the preset, the
+  dials and the extras that wrote the manifest.
+
+- **The weekly sweep.** The `arrival` suite runs filtered, one preset
+  per family, before S.7, after S.8 and after S.9. Each of those
+  steps' Landed paragraph says what it found.
+
+**Budget.** Today `CI=true pnpm test` takes about 225 s on four cores.
+The grid's axes run in parallel workers, and growth, the longest, took
+124 s of its 180 s `beforeAll` budget in that run. It takes about 77 s
+alone. Three rules keep that in hand:
+
+- The paths golden is some 2,500 real in-memory dispatches
+  _(inference)_. The in-memory growth golden runs about 650
+  dispatches in 17 s. So the paths golden is split by path into four
+  files (`keel new`; adds and pairs; re-renders; modules and growth),
+  each under about 60 s alone, each in a worker of its own.
+- Brownfield takes about 5 s today. S.1b adds some 900 dispatches to
+  it, S.7 ten real scaffolds, and S.8's I12 some 330 real runs,
+  measured at about 50 s. It stays well below growth.
+- Growth takes I11 on its 160 twins alone. If S.7 finds growth past
+  about 150 s under `CI=true pnpm test`, it first lands, in a commit
+  with no `src/` change, a shard option for `sweepGrid`. Each shard
+  then writes a golden of its own, and all of them read the axis's
+  one known file and never write it. No known file is added or moved.
+
+Each step's Landed paragraph says what it added, file by file, under
+`CI=true pnpm test`.
+
+**Each step lands as** one commit that passes `pnpm lint`,
+`pnpm typecheck` and `CI=true pnpm test`. The same commit carries its
+docs, its CHANGELOG entry where a user can see the change, and its
+Landed paragraph here. Two more gates apply where they are named:
+
+- where a step changes what the page's previews show, the keel ui
+  browser suites with `KEEL_RUN_E2E=1`;
+- where a template or a re-render changes what a toolchain builds, the
+  e2e suites that build it.
+
+### S.1 — Pin every path first ✅
+
+#### S.1a — The paths golden (M) ✅
+
+**The golden lands alone**, in a commit with no `src/` change, green on
+today's code: `tests/domain/core/paths-*.golden.test.ts`, four files
+with their JSON, over one helper in `tests/support/`.
+
+- **Cells:** as _The measure_ lists them.
+- **Factory:** the grid's `installMediator`, with a fake process runner
+  and deferred actions recorded, not run. Every run is real, into the
+  shipped in-memory `FakeTree` and `FakeManifestStore`. A dry run
+  stages no manifest, and a manifest is what S moves. One in-memory
+  disk, a map by absolute path, serves every scope:
+  - each `Tree` a run opens is a `FakeTree` seeded with what the disk
+    holds under its root, and commits back into the disk;
+  - a product root and its services therefore see one another's
+    files, which R.2a's per-directory map does not do;
+  - a cell that starts from a scaffold copies the scaffold's files and
+    manifest into a directory of its own.
+- **Port:** `Mediator.dispatch`.
+- **Updating:** `KEEL_UPDATE_GOLDEN=1`, written as `prettier --check`
+  holds it, as the growth golden is.
+
+Per-file hashes for every cell would come to some 6 MB. A digest per
+top-level entry and per manifest field keeps the golden small and
+still names what moved. Where a later step needs the file, it re-runs
+the cell's command lines.
+
+**Holds green:** itself, on today's code. Every other golden, the grid
+and the known files are untouched.
+
+**The proof** that it catches what it is for, in the Landed paragraph:
+
+- one R.1a writer put back on an append moves the cells that reach it;
+- two verticals of `keel add` recorded in the other order move those
+  cells' `verticals` field, and no tree digest.
+
+Both are tried and undone. The Landed paragraph also gives each
+file's time.
+
+`tests/AGENTS.md` records the golden beside the shared-files and
+growth goldens. `docs/development.md` names the command that
+regenerates it. `vitest.stryker.config.ts` leaves it out, as it leaves
+out the grid and the other goldens that run in a `beforeAll`. No
+CHANGELOG entry: nothing a user sees moves.
+
+**Leaves out:** `keel toolchain`, `keel link` and `keel docs sync`,
+which S does not make callers (DS6). `keel docs check` is read, as a
+number per cell.
+
+**Landed as the golden alone**, in one commit with no `src/` change.
+`tests/support/paths-golden.ts` holds the Factory, the spelling of
+each command line and the recording; the four suites hold one family
+each, and `paths-machinery.test.ts` the Factory's own pins of a mode
+and an instant (below). They record 3,436 cells, over 4,345
+dispatched runs and 843 scaffolds, each made once and copied into
+every cell that starts from it:
+
+- **`paths-new`, 689 cells:** the 300 settings of the 28
+  single-service presets, the harness on and off; the whole menu on
+  the 150 with it; the 143 offered extras alone; the whole menu on
+  each opening setting under the three answer bodies (84); and the six
+  products under both layouts (12). 661 are Ok, and the 28 `twice`
+  bodies `keel.unknown-answer`, as I9 has them.
+- **`paths-add`, 1,326 cells:** the 143 extras alone on the opening
+  scaffolds, and 98 of them again with their questions answered; the
+  143 after the module history on the 28 opening modulith settings;
+  171 adoptions of the harness (28 bare, 143 after one extra); 245
+  ordered pairs on the nine presets carrying both entrypoints, in 265
+  cells, since the 20 whose preview proposes a refresh are recorded
+  taking it and not (below); Q3.4's second spelling on its two
+  presets; and 504 adds at the product roots (168) and in their
+  services (336). 1,150 are Ok. The rest are the refusals
+  the composite grid records too, 84 `keel.not-initialised` at the
+  polyrepo roots, 54 `keel.wrong-scope` and 36
+  `keel.uncoverable-vertical`, and `keel.needs-refresh` twice:
+  `keel add iac` after `keel new --with distribution` on the two
+  Quarkus CLI-and-REST presets.
+- **`paths-reapply`, 731 cells, all Ok:** 651 verticals re-rendered
+  alone (176 on the opening scaffolds, 319 on the whole-menu ones, 156
+  in the 24 product services) and the 80 whole re-renders.
+- **`paths-grow`, 690 cells, all Ok:** the 200 module histories, the
+  bootstrap re-rendered alone after each and each one's whole
+  re-render; and 90 `keel add entrypoint` cells, five on each of the 18
+  single-entrypoint backend presets.
+
+`keel docs check` finds no drift on any cell but 18, as the research
+found: the harness adopted after `--with persistence`, on the 18
+presets that offer it. The re-renders read as the research measured
+them:
+
+- the whole re-render stages nothing on all 28 opening scaffolds, on
+  all 24 services and on 18 of the 28 whole menus. The other ten are
+  the presets where the dev environment is an extra, and each restages
+  `.devcontainer/devcontainer.json`. After a history it stages nothing
+  on 12 of the 200, Go's, and the bootstrap's files on the other 188;
+- `walking-skeleton` alone stages files on 19 of the 28 opening
+  scaffolds, 19 of the 28 whole menus, all 24 services and 196 of the
+  200 histories. `dev-container` alone does on the same ten whole
+  menus, and `distribution` on Q3.4's two cells. Every other vertical
+  re-rendered alone is a fixed point on every cell.
+
+The files take 35 s, 43 s, 13 s and 42 s alone (new, add, reapply,
+grow), under `CI=true`, and 40 s, 49 s, 14 s and 49 s beside the rest
+of `CI=true pnpm test`, which took 261 s on four cores against 208 s
+and 240 s in two runs without them: some 35 s more. Growth's grid
+axis took 105 s, against 111 s and 118 s. Those are at a load average
+of 2 to 3; at about 7, with the step's other checks beside it, the
+suite took 289 s and 330 s against 212 s, and the files 40 s, 45 s,
+16 s and 48 s alone. The JSON comes to 1.20 MB, 3.59 MB, 1.78 MB and
+1.18 MB.
+
+**The proof**, each tried, then undone byte for byte:
+
+- **An R.1a writer on an append.** Go persistence's README section put
+  back on a plain append moved exactly one cell of the four files, in
+  `tree:README.md` alone. It is the one cell where that section
+  arrives below an existing `### Toolchain`:
+
+  ```sh
+  keel new --stack go-cli-http --module-layout basic --with toolchain && keel add persistence
+  ```
+
+- **Another record order.** `recordVertical` prepending in
+  `install.ts`, which every path records through, moved
+  `manifest.verticals` on every cell with a manifest: 661, 1,326, 731
+  and 690 of them. No tree digest moved on a cell still Ok. The drift
+  `keel docs check` reads moved on 603 of them, since the index
+  replays the recorded order, and `manifest.entries` moved on 18 adds
+  and `answers` on 80 growth cells. The 280 whole re-renders moved
+  under their own keys: `manifest.verticals` and the report on all of
+  them, since a re-render runs in recorded order, and the actions they
+  would queue on 273. The 45 `keel add entrypoint` cells that stopped
+  coming back Ok (10 `keel.path-missing`, 35 thrown) are the only
+  trees that moved. As narrow as the plan words it, `add-vertical.ts`
+  recording what one `keel add` installs in the other order moved 189
+  adds, each one bringing a prerequisite, in `manifest.verticals`
+  alone.
+
+Beyond the text above:
+
+- **Every `Tree` reports the net, as the filesystem adapter does.**
+  The shipped `FakeTree` lists every write as a change. `FsTree` lists
+  the net against the disk. Recorded through the fake as it ships,
+  1,678 reports (523 adds, all 731 re-renders and 424 growth cells)
+  listed files written back onto their own bytes, and every whole
+  re-render seemed to stage something. The suite's `Tree` is a `FakeTree`
+  subclass that reports the net. Between the two readings, no tree,
+  manifest, verdict or drift moved.
+- **File modes are pinned as git stores them.** The fake keeps the
+  mode a write gives but cannot read one back, so the suite's `Tree`
+  notes it and commits it with the bytes, a file written with none
+  keeping the mode it had, as `FsTree` does. What it keeps is `0o755`
+  where any executable bit is set and `0o644` otherwise
+  (`pinnedMode`): an executable template reaches a run with the
+  permission bits of the contributor's checkout, which git writes
+  under their umask. Pinned as full octal, the four executable
+  templates checked out `0o775`, as `umask 0002` leaves them, moved all
+  731 re-render cells; pinned as git stores them, they move no cell
+  of the four files. A file's line in its entry's digest is its path,
+  that mode and its bytes, and an executable bit that moves alone is a
+  `modify`, as `FsTree` stages it. The harness's hooks written `0o644`
+  rather than `0o755` (`apply.ts`) moved `.claude`, or a service's, on
+  every cell whose project carries the harness: 511, 1,326, 731 and 390.
+- **Each command of a cell runs at its own instant**: `PINNED_NOW` for
+  the first, a minute later for each position after it, the same day
+  (`instantAt`), through a mediator wired over the same fakes per
+  position. On one clock every timestamp a manifest records is one
+  instant, whichever run wrote it, so a run that re-stamps what an
+  earlier one recorded is invisible: a harness entry re-stamped on
+  every run (`install.ts`) and a vertical re-stamped by its own
+  `--reapply`, both at once, moved no cell. Per position, the first
+  moves `manifest.entries` on 751 adds, all 651 real re-renders and
+  390 growth cells, and the second `manifest.verticals` on 165 adds,
+  the 651 and all 690 growth cells. The instant is the position's, not
+  the sweep's order, so a cell copied from a scaffold records what the
+  whole chain run in it would. Regenerated so, the golden moved in the
+  manifest alone, `updatedAt` and the rows a later command stamps, on
+  922 adds, 651 re-renders and all 690 growth cells, and on no
+  `keel new` cell, whose one command runs at `PINNED_NOW`.
+- **The report pins more than the plan lists.** Its subject and its
+  skipped harness elements, which the command line and the page print,
+  and each diff's hunks beside its path: a whole re-render is a dry
+  run, so its tree is the base's, and on the 198 that restage files
+  the hunks are what pins the bytes it would write. A skipped count
+  one too high (`install.ts`) moved 250 cells in `report` alone, the
+  150 `--no-agent-harness` scaffolds and the 100 whole re-renders after
+  a history without the harness. The changes and diffs are pinned as
+  sets, in code-unit order: a `Tree` lists them by `localeCompare`,
+  which follows the machine's locale. Listed in the `Tree`'s order,
+  the report moved under `LANG=cs_CZ.UTF-8` on 623 cells (617 of
+  `keel new`, six adds), and nothing else did; as sets, the four files
+  are green there.
+- **A dry run's actions are the ones its report says it would queue**,
+  since it runs none. Version control's are pinned too, on every run.
+  The measure leaves them out because their wording depends on the
+  machine's git; through the fake process runner it depended on the
+  test's own directory instead, which an unscripted `git rev-parse`
+  answers as the repository's toplevel. The fake answers that probe
+  as outside any repository, so git's wording is the same on every
+  machine. A dry run's report names no adapter to leave them out by.
+- **The whole re-render names its verticals in code-unit order.** A
+  re-render runs in recorded order whatever order it is named in, and
+  only the report's subject follows the naming, so the key survives a
+  change to the record's order.
+- **`keel docs check` is read once per state.** A cell that leaves the
+  tree and manifests another left (a refusal, a dry run, a fixed
+  point) reads that one's drift. The check replays every recorded
+  contributor, and without this it was a third of the time: the
+  re-render family took 23.5 s, and the add and growth families 49 s
+  and 51 s.
+- **Q3.4's first spelling is a pair.** The pair rule reaches it: the
+  add's preview proposes `--refresh distribution`. So it is one cell,
+  recorded once, and so is the add that proposes it (below), which the
+  finding's family names too. The second spelling is the one named. A
+  preview that refuses proposes no refresh, so each
+  `keel.needs-refresh` pair is recorded as its add answers.
+- **A proposal is pinned on the install that makes it.** The text
+  takes each proposed refresh, and an add that takes one proposes
+  nothing more. Recorded so, none of the 1,306 add cells carried a
+  proposal in its report: a change to what an install proposes moved
+  no add cell unless the preview's moved with it, and S.4 re-plumbs
+  exactly these, `--refresh` becoming a converge caller. The 20 pairs
+  whose preview proposes a refresh are recorded again without it, 20
+  cells, all Ok and with no drift, and each report carries its
+  proposal: 18 `keel add persistence` on a project made with
+  distribution, which reads persistence, and Q3.4's
+  `keel add containerization` on its two presets, whose proposal moves
+  distribution from `quarkus-cli-native` to `jvm-container`. Logged
+  from `reportOf`, the add file's 1,326 reports carry those 20
+  proposals and no other. They cost the add file some 2 s over the
+  times above: back to back, under a load average of 4 to 8, its tests
+  took 43.5 s and 43.3 s with them and 41.4 s and 41.9 s without.
+- **The golden is not small.** A cell holds 12 to 34 top-level
+  entries on a single project and 42 to 57 on a product, and 14
+  fields per manifest, 15 where it records a toolchain: about 1.7 kB
+  on a single project and 4 kB on a product. The four files come to
+  7.7 MB, more than the 6 MB the plan put on per-file hashes. The same
+  digests recur across cells, so they compress 29-fold (269 kB under
+  `gzip -9` file by file, 294 kB under its default). A change reads
+  through the failure's list of moved cells and fields, not the JSON's
+  diff.
+- **A cell's directory is named by the digest of its key**, under a
+  fake root that no byte depends on. A refusal is recorded by its
+  sentence, and the 84 `keel.not-initialised` at the polyrepo roots
+  name where they looked, so the sentence reads the cell's directory
+  as `<cell>`. All four families re-run under another root, with other
+  directory names, recorded the same golden. Four presets sweep at
+  once (`eachStack`), and the record is the same in any order.
+- **`stopped:<verdict>`** marks a cell whose chain stopped before its
+  last command, as `&&` does. No cell carries it today.
+
+`tests/AGENTS.md` records the golden beside the shared-files and
+growth goldens, and `docs/development.md` names the command that
+regenerates it. `vitest.stryker.config.ts` leaves the four out, and
+keeps `paths-machinery.test.ts`, whose cells run in its tests, in
+under a second. No existing golden or known file moved. No CHANGELOG
+entry: nothing a user sees moves.
+
+#### S.1b — I9 on every install target, and I11 where it holds (S) ✅
+
+`support/composition-grid.ts`' `holdParity` is generic over the install
+target already, and I9 is hard. These cells are held to it:
+
+- **Brownfield**, on each preset's opening scaffold:
+  - a dry-run install beside each card's preview;
+  - `--reapply` of each installed vertical;
+  - `--refresh` of each installed vertical, beside the add of the
+    project's first `ready` card.
+- **Brownfield**, on one new modulith scaffold per preset:
+  `keel add module orders`.
+- **Composite**, in each service: the same as brownfield's opening
+  scaffold.
+
+The new cells are keyed `install:`, `reapply:`, `refresh:` and
+`module:`, never `add:`. That keeps them out of the compatibility
+matrix, which reads the brownfield and composite goldens by the
+`add:` prefix (D8). `generated-docs.test.ts` passes as it is.
+
+`INVARIANTS` and `HARD` gain I11, the whole re-render staging nothing.
+It is held on brownfield's scaffolds and on each composite service.
+Both are fixed points today: 300 of 300 dial settings were measured,
+and every service under both layouts.
+
+**Holds green:**
+
+- the known files, unchanged;
+- the brownfield and composite goldens: they gain keys, each the
+  verdict its preview records, and no existing key moves.
+
+No `src/` change. `tests/AGENTS.md`'s grid section says what each axis
+now holds, adds I11 to the hard invariants and their steps, and gives
+brownfield's new time.
+
+**Leaves out:**
+
+- a product root's re-render, refused as `keel.unknown-vertical` today,
+  which is U's;
+- the cells I11 cannot hold before S.7: module histories, and a dev
+  environment taken as an extra.
+
+**Landed as tests alone**, in one commit with no `src/` change, and no
+existing verdict moved. `support/composition-grid.ts` gains I11 in
+`INVARIANTS` and in `HARD`, and three helpers:
+
+- `nameableOf`: the recorded verticals `keel.catalog` lists, in
+  recorded order. What it leaves out is derived, never listed. It
+  drops nothing on the 80 projects whose whole re-render is held. At
+  each of the six monorepo product roots, composite throws unless it
+  drops `fullstack` and nothing else, so the filter is seen dropping
+  the row it is for. `bounded-context`, the other, is recorded only by
+  a module history, which S.7 brings.
+- `holdFixedPoint`: the whole re-render as one dry run
+  (`installCommandFor` of `add-vertical` with `reapply`), read back
+  through `Grid.staged`, so bytes are compared rather than the report.
+  I11 is recorded where it is not Ok, where it stages anything, or
+  where its report's `resolvedAdapters` holds no adapter of a vertical
+  it names.
+- `holdRerenders`: `reapply:`, `refresh:` and `fixed:` on one project,
+  shared by both axes. Each `reapply:` and `refresh:` pair is held to
+  I11 as well, under its own key: its install is Ok, and its
+  `resolvedAdapters` hold an adapter of the vertical the key names.
+  That is the reading `holdFixedPoint` makes of the whole re-render,
+  one private helper (`reachesAll`) shared by both.
+
+`holdParity` also takes its two cells by name (`ParityCells`), so a
+card's preview keeps its `add:` key and its install goes under
+`install:`. Called with one id, as greenfield and growth call it, it
+names the install `<id>!install` as before, and both axes pass against
+their goldens untouched. It now returns the install's outcome, which
+`holdRerenders` reads, and its other callers ignore.
+
+The goldens gained keys and nothing else:
+
+- **`brownfield.golden.json`**, from 503 verdicts to 1,711. It gained
+  1,208:
+  - 392 `install:` cells beside the 392 `add:` previews: 319 `ok` and 73
+    `keel.uncoverable-vertical`, each its preview's verdict. These are
+    the 319 and 73 the research measured;
+  - 176 `reapply:` pairs (352 verdicts), all `ok`: five verticals on
+    each of the ten CLI and front-end presets, and seven on each of the
+    other eighteen, which add `dev-env` and `observability`;
+  - 176 `refresh:` pairs (352), all `ok`. Each is beside `keel add ci`,
+    the first `ready` card on all 28 presets;
+  - 56 `fixed:` cells, all `ok`, each staging nothing: 28 on the
+    opening scaffolds, and 28 `fixed:<stack>/modulith` on the modulith
+    scaffolds, held before any context is added;
+  - 28 `module:` pairs (56), all `ok`. All 28 presets offer the
+    modulith on their opening dials, and every modulith scaffold takes
+    a context.
+- **`composite.golden.json`**, from 672 verdicts to 1,656. It gained
+  984, in the 24 services (six products, two services each, under both
+  layouts):
+  - 336 `install:` cells: 276 `ok`, 36 `keel.wrong-scope` (`ci`,
+    `distribution` and `iac` in each monorepo service) and 24
+    `keel.uncoverable-vertical` (`observability` and `persistence` in
+    each front end);
+  - 156 `reapply:` pairs and 156 `refresh:` pairs, 312 verdicts each,
+    all `ok`. The first `ready` card is `ci` in a polyrepo service,
+    `persistence` in a monorepo back end and `dev-env` in a monorepo
+    front end;
+  - 24 `fixed:` cells, all `ok`.
+- **Nothing else moved.** A script compared every key of HEAD's two
+  goldens with the new ones: none lost, none changed, and no `add:` key
+  gained. The greenfield and growth goldens are untouched and hold.
+  The four known files are as they were: brownfield's `{"I5": {}}`,
+  and `{}` for the others. `generated-docs.test.ts` passes unchanged.
+
+I9 and I11 hold on every cell, so neither adds a known key.
+
+**The proof** that each new family catches what it is for, each tried
+in a scratch edit under `src/` and undone. A dry run is told apart from
+a preview by `interactive`, which the preview sets:
+
+- **I9 on `add:`.** A non-interactive dry run of `keel add ci`, without
+  `--refresh`, wrote one extra file. I9 failed on exactly 40 cells:
+  `add:<stack>+ci` on all 28 presets, and in the 12 polyrepo services.
+  The monorepo services refuse `ci` as `keel.wrong-scope` on both
+  sides. Nothing else failed.
+- **I9 on `reapply:` and `refresh:`.** The same extra file, written by
+  any non-interactive dry run that re-renders exactly one vertical. I9
+  failed on exactly 352 brownfield cells (176 `reapply:` and 176
+  `refresh:`) and 312 composite ones (156 and 156), and nothing else.
+- **I9 on `module:`.** The same extra file, written by a non-interactive
+  dry run of `keel add module`. I9 failed on exactly the 28 `module:`
+  cells, and nothing else.
+- **I11 on bytes.** `code-style/editor-baseline` added a line to its
+  `.editorconfig` region whenever `dev-container` was already recorded.
+  That render is not its own fixed point, since a scaffold records the
+  dev container after code style. I11 failed on all 56 `fixed:` cells
+  of brownfield and in all 24 services. I9 held, since the preview and
+  the install both staged the line. The extra file written by a dry
+  run re-rendering more than one vertical fails the same 80 cells, and
+  only them.
+- **I11 on what re-renders.** A `--reapply` naming more than one
+  vertical re-rendered only `vcs` and `agent-harness`, and skipped the
+  rest. What is skipped stages nothing, so the bytes alone let it
+  through: without the `resolvedAdapters` reading, both axes passed,
+  18 tests of 18. With it, I11 failed on the same 80 cells, and only
+  them.
+- **I11 on the pairs.** Without the reading on each pair, three edits
+  passed both axes, 18 tests of 18, every pair reading `ok` with
+  parity intact. With it, each failed I11 alone:
+  - `--refresh` made a no-op, dropped from the re-render and from the
+    admitted set, in the preview and the install alike: exactly the
+    176 brownfield `refresh:` cells and the 156 composite ones;
+  - a `--reapply` naming one vertical cut short to the empty plan:
+    exactly the 176 `reapply:` cells and the 156. I9 held even where
+    `walking-skeleton` stages files re-rendered alone, since both sides
+    then staged nothing;
+  - in the test, not under `src/`, the bodies stripped of `reapply`
+    and of `refresh`, so each pair ran a plain add: all 352 brownfield
+    pairs and all 312 composite ones.
+
+**Times**, under `CI=true` on four cores, as vitest reports a file's
+tests: the sweep's `beforeAll` and the assertions. Each axis was timed
+six times, three of them paired with HEAD's copy of it, at a load
+average of 2 to 3:
+
+- brownfield alone takes about 13 s (12.3 to 13.9), up from about
+  3.7 s (3.4 to 3.9);
+- composite alone takes about 11.3 s (10.9 to 12.9), up from about
+  6 s (5.4 to 6.4).
+
+In two runs of `CI=true pnpm test`, brownfield took 19.8 and 16.9 s,
+and composite 13.1 and 15.5 s. Greenfield took 35.7 and 34.3 s, and
+growth 113.9 and 107.9 s. The suite took 260 and 256 s, with 194 files
+and 3,162 tests passing each time. Both axes stay well below growth.
+
+Beyond the text above:
+
+- **The keys.** The cells are keyed `<family>:<scope>…`, with the
+  scope as `add:` spells it: the preset, or
+  `<product>/<layout>/<service>`. A card's install is
+  `install:<scope>+<v>`. A re-render is
+  `reapply:<scope>+<v>` or `refresh:<scope>+<card>~<v>`, and the
+  module add is `module:<stack>`, each with its install under the same
+  key plus `!install`. The whole re-render is one cell, `fixed:<scope>`,
+  a family the text above does not name, and `fixed:<stack>/modulith`
+  on the modulith scaffold. An I9 disagreement is recorded under the
+  preview's cell, `add:` included, as it always was.
+- **The modulith scaffold is a setting, not a cell.** Each preset is
+  settled again with `moduleLayout: 'modulith'` (`settle`), and
+  `keel.dials` settles every other dial as the opening dials have it,
+  on all 28. The scaffold is dispatched through `Grid.read`, which
+  fails the sweep if it is refused and records no verdict, so the
+  golden gains only the cells measured. The add is
+  `keel add module orders`, with no `--consumes`.
+- **The modulith scaffold is held to I11 too.** _The measure_ lands I11
+  on "brownfield's scaffolds", and this one has no module history when
+  it is held, so it is one of the 300 dial settings measured as fixed
+  points. Held here, the modulith layout's whole re-render is guarded
+  now, rather than from S.7, when growth's twins bring it.
+- **I11 reads what re-renders, not only what it stages.** The text
+  above has the whole re-render stage nothing. A re-render that skips
+  a vertical stages nothing too, so the cell also requires the
+  report's `resolvedAdapters` to hold an adapter of every vertical it
+  names. It held on all 80 cells today.
+- **I11 reads each pair too.** _The measure_ brings a vertical
+  re-rendered alone under I11 at S.7, and then for what it stages.
+  Held to I9 alone, a `reapply:` or `refresh:` pair whose body or
+  engine re-rendered nothing still reads `ok`, and measures only what
+  the `add:` and `install:` cells measure. So each pair is also
+  recorded under I11, on its own key, where its install is refused or
+  resolves no adapter of the vertical it names, and `INVARIANTS`' I11
+  says so. It held on all 352 brownfield pairs and 312 composite ones
+  today. It adds no dispatch: in paired runs at a load average of 3
+  to 4.5, brownfield took 14.2 and 15.9 s with it and 13.5 and 15.1 s
+  without, and composite 11.5 s twice with it and 12.7 and 13.8 s
+  without.
+- **Composite takes the `refresh:` cells too**, as the step text says,
+  although _The measure_ names brownfield alone for them.
+- **One copy of `runIn`.** The real run the axes scaffold with moves
+  into `support/composition-grid.ts`. Growth imports it in place of
+  its own copy, and composite in place of an inline one. Nothing else
+  in growth moves.
+- **The cost is higher than the estimate.** _The measure_ put S.1b at
+  some 900 dispatches. It is 1,208 in brownfield, plus 28 real
+  scaffolds, and 984 in composite.
+- **What a re-render stages.** I9 compares bytes, not emptiness, so a
+  `reapply:` cell that stages files still agrees. A scratch dispatch
+  of every such re-render, not kept, found one vertical that stages
+  anything re-rendered alone: `walking-skeleton`, on the 19 presets
+  _The finding that shaped it_ counts, and in all 24 services. Every
+  other vertical re-rendered alone stages nothing there. Every
+  `module:` and `refresh:` pair stages at least one file on both sides.
+
+### S.2 — The reading: one composition, planned against the manifest (M) ✅
+
+`src/domain/core/converge.ts` is pure, as `planner.ts` and `growth.ts`
+are. It imports `growth.ts`, never the reverse. `contextsOf` moves out
+of `growth.ts` into a leaf module that both import, so no cycle forms
+(dependency-cruiser's `no-circular`).
+
+- **`compositionOf(registry, manifest)`** reads what the manifest
+  records as `keel new` would have written it:
+  - the preset the drill-down places the project on
+    (`projectProfile`), with its dials read off the tags;
+  - the harness dial: whether `agent-harness` is recorded;
+  - the extras: the recorded verticals less the preset's;
+  - the added contexts: the recorded modules after the skeleton, the
+    peer apart (`contextsOf`);
+  - the tags and `projects`, as recorded.
+- **The reference order** is the one `keel new` of that composition
+  records:
+  - the preset's verticals in the preset's order, less the harness
+    where the project has none, and less what a monorepo service's
+    placement leaves to the root;
+  - then the extras in `admit`'s order on the preset's scope;
+  - then `bounded-context`, which one run never records and
+    `keel add module` records last.
+
+  Where the drill-down places no preset (a plugin preset off the tree,
+  a manifest migrated from v1), the reference is the recorded order.
+  S.2 reads the reference order. S.8 is the step that records by it.
+
+- **A request** is what a command asks for:
+  - verticals to add, closed over their prerequisites through `admit`
+    (D1, D9). The caller hands in the `PlanScope` and the siblings it
+    builds today (`addScopeOf`, `siblingsOf`), since a manifest alone
+    does not say where a monorepo service sits;
+  - verticals to re-render (`--refresh`, `--reapply`);
+  - an entrypoint, read by `growthOf` as today: the tag, the twin's
+    `projects`, the twin as the preset;
+  - a context to add, with the answers the user supplied;
+  - or, from a seed manifest, a preset on its dials with its extras.
+
+  A request has no field that takes anything away. Removal is refused
+  by construction: no command can ask for it (DS5).
+
+- **`convergeOf(registry, manifest, request)`** returns the plan or a
+  refusal. The plan holds:
+  - the target composition;
+  - the run, one step per vertical in run order. A step installs the
+    vertical whole; installs only the adapters the target's tags newly
+    match (`matchingIds` before and after); re-renders it; or replays
+    it for its deferred actions alone (`actionsOnly`), where the
+    caller settles (DR5, DS7);
+  - the contexts to wire, and with which adapters;
+  - the caller's placement, as today:
+    - growth: `twinOrder`, the recorded rows in their order with new
+      ones at the twin's rank, and the harness realized in that order;
+    - every other caller: appended, with the harness realized in run
+      order.
+
+  The refusals are growth's, read through `growthOf`. One of them
+  moves: the refusal of an entrypoint whose tag would make an adapter
+  stop matching (`keel.uncoverable-entrypoint`, `drops`) now cites
+  L's missing merge base. No shipped cell reaches it, so no golden
+  moves, and `refusals.test.ts` holds the new sentence. It names a
+  vertical, never a tag (I6).
+
+**The proof.**
+
+- `growth.golden.json` regenerates byte-identical: 360 cells, the
+  reading R.2a recorded.
+- `converge.golden.json` records the reading on every cell of the
+  paths golden, and holds the round trip. The research measured the
+  round trip on 443 of 443 single-service cells (300 settings and 143
+  single extras); the whole-menu cells and the services are new
+  ground. The later steps' diffs are reviewed against this golden, as
+  Q1.2's readiness golden was for Q1.3.
+- `converge.test.ts` holds each rule on a fixture family:
+  - the reference order with and without a preset, and in a monorepo
+    service;
+  - a harness left out;
+  - the added contexts, the peer and the skeleton apart;
+  - each request kind;
+  - a prerequisite admitted and placed;
+  - a request type that cannot name a removal.
+- The render guard (`growth-render.test.ts`) passes as it is.
+
+**Holds green:** every golden, byte-identical.
+
+**Docs:** `src/domain/core/AGENTS.md` adds `converge` to the engine's
+modules and says what it reads. `tests/AGENTS.md` and
+`docs/development.md` add the converge golden, and its regeneration
+order: the paths golden, then the converge golden, then the growth
+golden, then the grid. `vitest.stryker.config.ts` leaves the golden
+out. CHANGELOG, under _Changed_: the `drops` sentence, which a
+plugin's family can reach.
+
+**Leaves out:** every caller, and every placement change.
+
+**Landed as the reading alone**, in one commit, called by no handler.
+`src/domain/core/converge.ts` holds `compositionOf`, `referenceOrder`
+and `convergeOf` over five request kinds (`add`, `reapply`,
+`entrypoint`, `module`, `new`), and `src/domain/core/contexts.ts`
+holds `contextsOf`, moved out of `growth.ts` unchanged, which both
+import. `growth.ts` exports `settingOf`, the dial reading its
+`scaffoldsAs` was, now `settingOf(…) !== null`, and `GrowthContext`
+is `contexts.ts`' `RecordedContext`. `refusals.ts` rewords the `drops`
+sentence. `tests/domain/core/converge.test.ts` holds 32 cases on the
+`acme` family, a product of two of its presets, and keel's Go CLI, and
+`tests/domain/core/converge.golden.test.ts` the golden:
+
+- **3,436 cells**, every key of the four paths goldens and no other;
+  its first test reads their keys. The 689 `keel new` cells read 707
+  scopes: 677 single projects, 6 monorepo product roots and 24
+  services. Of the other 2,747, 2,499 converge appended and 72 at the
+  twin's rank: the 90 `keel add entrypoint` cells less the 18 whose
+  last command is the dev container's re-render. 114 stop at the
+  handler's gates, each read through the function the handler reads
+  it with: 84 `keel.not-initialised` at the polyrepo roots, and at the
+  monorepo roots 18 `keel.wrong-scope` and 12
+  `keel.uncoverable-vertical` (`productRootReading`). 62 are the
+  planner's refusals, recorded with their sentence: 36
+  `keel.wrong-scope` in the monorepo services, 24
+  `keel.uncoverable-vertical` and the two `keel.needs-refresh`; 12 of
+  the sentences name a sibling service, which the `add` request's
+  siblings give them. A test holds every cell against the verdict its
+  paths golden records, code for code: every refusal it records is
+  read, and every Ok is a plan, but for the 28 `keel.unknown-answer`
+  bodies, which read as plans, since an answer is no part of a
+  request. The runs hold 6,960 installs, 2,770 re-renders, 225 settles
+  and 72 partial installs that settle the rest; 218 cells wire
+  contexts, the 200 module adds and the 18 growths after a history.
+- **The round trip holds on 697 of 697 scopes**: every single-service
+  `keel new` cell that comes back Ok (the 300 settings, the 150 whole
+  menus, the 143 single extras and the 56 answered bodies; the 28
+  `twice` bodies refuse), the 24 services, and 24 more beyond the
+  paths golden, which names no extra of a product's service: each of
+  the 6 products under each layout, every service naming its whole
+  menu, recorded nowhere. On each, the manifest it leaves reads back
+  as the preset, the dials, the harness, what the product gave the
+  service and the extras it was given, as a monorepo service or not
+  as it is, with a reference order equal to the order it records, and
+  the `new` reading's run in that order too. A test holds that every
+  Ok cell is read back in each scope it writes, a monorepo product's
+  root apart. The research measured 443; the whole menus, the
+  answered bodies and the services are new ground.
+- **The record each run leaves is held against the reading** on the
+  272 cells whose last command is `keel add module` (200) or a
+  converging `keel add entrypoint` (72): each is run, and the
+  verticals it records, in their order, and the contexts it records
+  are the target's, on 272 of 272; on the 200 module adds, the
+  `bounded-context` adapters its report resolves are the ones the
+  reading wires.
+- **Held byte for byte**: `growth.golden.json` (360 cells) and the four
+  paths goldens, each regenerated with `KEEL_UPDATE_GOLDEN=1` and
+  diffed against HEAD. The grid passes, and its four known files are
+  as they were. The render guard passes as it is.
+
+The golden takes about 44 s alone under `CI=true` (43.4, 43.9 and
+44.3 s in three runs, as vitest reports the file's tests), and
+`converge.test.ts` 52 to 69 ms. The
+golden makes 1,410 real runs (844 `keel new`, 456 `keel add module`,
+90 `keel add entrypoint` and 20 `keel add`) and 1,789 readings (840
+`keel.dials`, 440 previews, 508 statuses and the catalog), against the
+4,345 runs the paths golden dispatches. It comes to 1.62 MB, 46 kB
+under `gzip -9`. In one run of `CI=true pnpm test` on four cores it
+took 56.1 s beside the rest, and `converge.test.ts` 54 ms. The suite
+took 294 s, with 201 files and 3,213 tests passing, against 261 s,
+with 199 files and 3,174 tests, for HEAD (S.1a and S.1b) run on the
+same box just before it: 33 s more. Growth's grid axis took 105.0 s,
+and the paths golden's four 33.1, 41.6, 15.1 and 43.9 s (new, add,
+reapply, grow).
+
+`tests/AGENTS.md`, `src/domain/core/AGENTS.md` and
+`docs/development.md` record the golden and the regeneration order,
+`vitest.stryker.config.ts` leaves it out, and `tests/support/dial-walk.ts`
+lists it among the walk's consumers. The CHANGELOG entry is under
+_Added_ (below). No template changed, and no shipped cell reaches the
+new sentence, so no preview moves: neither the `keel ui` browser
+suites nor any e2e suite was run. `pnpm lint`, dependency-cruiser's
+`no-circular` among it, and `pnpm typecheck` pass.
+
+Beyond the text above:
+
+- **The families' sweeps moved to `tests/support/paths-families.ts`**,
+  so one enumeration serves both goldens; each paths suite is its
+  family and `pathsGolden`. `PathsSweep` gains a reading mode
+  (`PathsReader`): every scaffold and every command before a cell's
+  last run for real, and the last only where the reading runs it —
+  the `keel new`, `keel add module` and `keel add entrypoint` cells,
+  whose records it is held against. `keel new` sweeps last, and 350 of
+  its cells are read off the scaffold another family made of the same
+  line rather than run again. Two things fell out of sharing one
+  sweep. A scaffold asked for as a recorded cell after one family made
+  it unrecorded (the opening modulith's history, in `keel add` and in
+  growth) was never recorded, so `extend` keeps the two apart. And
+  `keel.dials` is read once per target, which every family asked
+  again: 3,906 reads fell to 828 over the paths golden's cells, and
+  the golden from 51.6 s to about 43 s before the runs it is held
+  against were added. Neither moved a cell of the paths golden.
+- **A composition carries three fields the text does not list.**
+  `recorded` is the record in its order, which the reference falls
+  back on where no preset reads back and which a target carries with
+  its new rows where its caller places them. `member` is read off the
+  record rather than handed in, since no caller has it to hand: a
+  preset listing verticals a repository root carries, of which the
+  project records none. Only `new`, whose seed records nothing, takes
+  it in its request. `given` is what a product installs in its
+  service of its own accord (`StackService.extraVerticals`, `gateway`
+  on every shipped product), read where the project links each other
+  service of a registered product with a service on its preset, at the
+  path `keel new` of the product links it, and records all of it.
+  Products that place a service alike read alike: a `web-components`
+  frontend reads the same under each of the six.
+- **What a product gives its service comes before the user's
+  extras.** `keel new` installs it straight after the preset's
+  verticals, in the product's order and never admitted, then admits
+  the extras the user names on a scope that has it
+  (`presetServiceScope`, with what a monorepo product root gives the
+  service). The `new` request names the product and the service's
+  path for that, and the reference order places `given` so. It moves
+  the order of 60 cells from a first reading that admitted `gateway`
+  with the extras, which sorted it after any extra whose id sorts
+  before it: `keel add` of ci, containerization, dev-env, distribution
+  or iac in a polyrepo service, and of dev-env in a monorepo
+  frontend, 6 products each. The paths golden names no extra of a
+  product's service, so the round trip is also held on each product's
+  services naming their whole menu, which fails on 24 of 24 scopes
+  under that first reading.
+- **A step can install in part and settle.** Growth installs the
+  newly matching adapters of a vertical of its twin and replays the
+  rest for their actions, on all 72 cells, so an `only` step carries
+  `settles`. A `present` entrypoint converges with an empty run,
+  appended.
+- **Growth's pure pieces moved into `converge.ts`**, since the reading
+  needs them now: `placed`, `grownManifest`, `admitGrowth` and
+  `incomingOf`. `add-entrypoint.ts` imports them back, which is all
+  a handler changes; no handler calls the reading. S.3's `placed` has
+  moved already.
+- **The extras' scope.** `admit` orders the extras on the scope
+  `keel new` plans them on, over the preset's tags, the dials and what
+  linked projects project there (the effective tags no vertical can
+  add). An extra no registered vertical is any more comes after the
+  others, which `admit` still orders; extras it refuses together keep
+  their recorded order.
+- **The `drops` sentence cites L's reason in words of its own**, not
+  by name: _… and keel removes nothing it installed — without a
+  recorded base, it cannot tell what it wrote from what you changed
+  since_. The missing recorded base is the reason `docs/cli.md` gives
+  for `--reapply`; the second half is new, and `docs/cli.md` now says
+  it of the entrypoint too. `refusals.test.ts` holds it, and
+  `add-entrypoint.test.ts`' table of growth's refusals moves with it.
+- **The CHANGELOG entry is under _Added_, not _Changed_.** The command
+  itself, `keel add entrypoint`, is unreleased, under _Added_, so the
+  reason is folded into that entry's `keel.uncoverable-entrypoint`
+  clause, which did not name this case before; no released refusal
+  changed.
+
+### S.3 — The run, and `keel add entrypoint` its first caller (L) ✅
+
+`src/domain/core/converge-run.ts` holds `converge(inputs)`, which runs
+a plan and commits nothing. `converge.ts` stays pure. The run is:
+
+- one `installVerticals` run over the plan's steps, with `only`,
+  `actionsOnly` and `rerender` read off them;
+- each context's replay (`wireModules`, moved out of the handler);
+- a seam after the run, before the harness pass, where the caller's
+  exact answer check runs, as both handlers run it today;
+- `retrofitHarness` for what did not run, with the caller's command
+  line (`line`);
+- one `finalizeHarness`, the buffer realized in the caller's order;
+- the recording at the caller's placement: `placed`, `twinOrder`,
+  `atRank` and `inPlace`, moved out of the handler;
+- the restamp where the harness ran;
+- a `ContributionConflictError` read as `keel.reapply-conflict` where
+  anything re-rendered, and rethrown otherwise, as both handlers do;
+- `refreshProposals`, with the caller's wording of a proposal (a later
+  run's for growth, the dry run's for `keel add`);
+- the report, with the diffs of what re-rendered (`workingTreeDiffs`)
+  and the caller's notes in the caller's order.
+
+The commit tail, tree then manifest then deferred actions, becomes one
+function every caller calls.
+
+`add-entrypoint.ts` keeps what is its own:
+
+- the gates: the scope, the generation (`pinnable`), the word, the
+  entrypoint already there;
+- growth's refusals, and the old-manifest check that reads the files
+  (`unrecordedConsumer`);
+- the linked-project note;
+- the words.
+
+It hands the rest to `converge`. `entrypointReading` and `grownScope`
+read the same plan.
+
+**Holds green:**
+
+- I10 on all 320 cells, and the growth axis's I9;
+- both growth goldens, the render guard and the paths golden;
+- the handler's 46 cases.
+
+The keel ui browser suites are not run, since no preview changes.
+
+**Leaves out:** every other caller.
+
+**Landed as the run and its first caller**, in one commit, with no
+golden moved. `src/domain/core/converge-run.ts` (534 lines) holds
+`converge(inputs)`, which stages a plan `convergeOf` read and commits
+nothing, and `commitConverged`, the tail every caller is to call: the
+tree, then the manifest at the project scope, then the deferred
+actions. `handlers/add-entrypoint.ts` goes from 832 lines to 489. It
+reads its plan with `convergeOf(…, { kind: 'entrypoint' })` and hands
+it to `converge`; its own `planOf` and `RunStep` go, and
+`wireModules`, `twinOrder`, `rankOf`, `atRank` and `inPlace` move
+into the run as they were, and `proposalNote` too, taking the registry
+and the wording as arguments. What it keeps is the text's list, and
+`reachable`, the early answer check's reading, now over the plan's
+steps. `add-vertical.ts`, `add-module.ts` and
+`new-project.ts` are untouched, and `converge.ts` changes in two doc
+comments alone.
+
+- **Held byte for byte**, each suite against its committed JSON under
+  `CI=true`, and `git diff --exit-code` over every golden and known
+  file after: `growth.golden.json` (360 cells), `converge.golden.json`
+  (3,436), the four paths goldens (689, 1,326, 731 and 690), and the
+  shared-files, agent-harness and run-skill goldens. The grid's four
+  axes pass, growth's I10 on all 320 cells with its I9, and the known
+  files are as they were: brownfield's `{"I5": {}}`, `{}` for the
+  others.
+- **The handler's 46 cases pass unchanged**, as do `growth.test.ts`,
+  `install-verticals.test.ts`, `converge.test.ts`, the project-status
+  suite and the render guard (`growth-render.test.ts`, its 4 cases). A
+  47th pins the order of the handler's own notes around the run's
+  proposals, which no case held, since none had growth add a
+  prerequisite: on a plugin family whose twin lists an observability
+  without the base it needs, a project recording a reader of the
+  observability and linked to another says the base the planner added,
+  then the refresh proposed, then the relink.
+- **`tests/domain/core/converge-run.test.ts`**, 20 cases on a fixture
+  family, over an in-memory disk each shipped `FakeTree` opens seeded
+  from and commits back into, a project scaffolded by the run itself:
+  each posture (a step installed whole, `only` with and without
+  settling, settled alone, re-rendered with its diff, on a project
+  without the harness counting what it skipped); growth's own plan,
+  read by `convergeOf`, run at the twin's rank and again appended,
+  moving the rows, the answer keys and the entries and no file; the
+  harness realized in the twin's order and in the run's; the retrofit
+  with and without the recorded contexts, and a context's element,
+  which the twin ranks nothing of, realized and recorded after every
+  ranked one; a re-render's conflict read as `keel.reapply-conflict`,
+  and an install's rethrown; the caller's check seeing the staged
+  adapters and reads and winning before the harness pass, and, where
+  it holds, the retrofit's refusal naming the caller's command line;
+  the proposals between the caller's notes, worded by the caller's flag
+  alone, dry run or not; what a proposal reads, in run order; an
+  installed vertical whose adapters the run's tags change, read before
+  on the recorded tags and after on the run's, and none proposed that
+  ran; none for what reads a vertical the run re-renders; the commit's
+  order; and its deferred actions run for real, the runner handed no
+  dry run, and each action run through `runActions` where the caller
+  hands none.
+
+**The proof** that the suite catches what it is for, each tried in a
+scratch edit of `converge-run.ts` and undone byte for byte. Each failed
+exactly the cases named, and no other of the file:
+
+- the buffer left in run order under a twin placement: the case of the
+  twin's order;
+- the record appended under a twin placement, no `atRank`: the growth
+  case and the case of the run's order;
+- `proposeForLater` ignored, the wording read off the dry run: both
+  cases of the wording; and read with the dry run as it was,
+  `proposeForLater || !dryRun`: the case of this run's wording;
+- a conflict read as a refused re-render whatever re-rendered: the
+  rethrow;
+- the caller's check moved after the retrofit: the seam's case, where
+  the retrofit's refusal then won;
+- the manifest written before the tree's commit: the commit's case;
+- the recorded contexts replayed whatever the caller says: the
+  retrofit's case. Of the handler's 47 cases and
+  `agent-harness-grown.test.ts`' 6, run on the same edit, it failed
+  one: the one wiring each context by keel's own `bounded-context`
+  whatever a registry lists;
+- an adapter the twin ranks nothing of realized first: the case of the
+  context's element;
+- the commit's deferred actions handed a dry run, or skipped where the
+  caller hands no runner: the case of the deferred actions;
+- the proposals' tags before read off the manifest the run leaves, or
+  a vertical that ran proposed: the case of the adapters;
+- every step read as installed: the case of the re-render;
+- the installed verticals sorted: the case of run order.
+
+And in `handlers/add-entrypoint.ts`, its notes before and after the
+proposals swapped, or its admission notes dropped: the handler's 47th
+case, and no other of its 47 or of `agent-harness-grown.test.ts`' 6.
+
+**Times**, under `CI=true` on four cores. `converge-run.test.ts` takes
+62 to 82 ms alone in three runs (as vitest reports the file's tests).
+`add-entrypoint.test.ts` and growth's grid axis, run together, took
+8.7 s and 86.6 s at a load average of 2.7, against 8.5 s and 85.9 s
+for HEAD at a load average below 1; the handler's suite took 7.9 s
+beside `growth.test.ts`, `install-verticals.test.ts` and
+`converge.test.ts`. In one run of `CI=true pnpm test` the suite took
+280.8 s as vitest reports it (4 min 42 s wall), with 202 files and
+3,234 tests passing, one file and 21 tests more than HEAD's 201 and
+3,213, against 274.2 s (4 min 35 s wall) for HEAD, run on the same box
+just before it — HEAD's run starting at a load average of 1.3, this
+one at 3.5. Growth's axis took 113.0 s (HEAD's 104.8 s),
+`add-entrypoint.test.ts` 11.0 s (11.0 s), the render guard 10.8 s
+(8.9 s), the converge golden 53.2 s (50.6 s), the paths golden's four
+33.8, 42.8, 12.8 and 45.7 s (36.3, 45.0, 13.6 and 47.2 s; new, add,
+reapply, grow), and `converge-run.test.ts` 73 ms beside the rest.
+
+No template changed and no preview moves, so neither the `keel ui`
+browser suites nor any e2e suite was run. No CHANGELOG entry:
+`keel add entrypoint` is itself under `[Unreleased]`, and the one thing
+of it a user sees that moves, the order a proposal lists what it reads
+(below), moves on no shipped cell. `pnpm lint`, dependency-cruiser's
+`no-circular` among it (306 modules, 1,508 dependencies), and
+`pnpm typecheck` pass. `src/domain/core/AGENTS.md` names the run among the engine's
+modules, says what it does, and trims the handler's part of the
+drill-down note to what it keeps.
+
+Beyond the text above:
+
+- **The run takes its ports as fields of its inputs**
+  (`ConvergeDeps`), as `retrofitHarness` does, so a handler spreads
+  its deps into the call; `commitConverged(deps, run)` takes the four
+  the commit touches (`CommitDeps`). Neither imports
+  `handlers/deps.ts`, and the clock is read once, in the run.
+- **The twin the run ranks by is the target's preset**, with the
+  target's harness dial, not a field of the placement. `growthOf` finds
+  the twin by the `settingOf` reading `compositionOf` reads the
+  target's preset with, so the two agree wherever growth grows, and
+  `Placement` stays as S.2 recorded it (`rows/harness` in the converge
+  golden). A twin placement whose target reads back no registered
+  preset throws.
+- **The run reads the rest off the plan**: the re-rendered ids (its
+  `rerender` steps: growth's `rerender`, `keel add`'s `--refresh` and
+  `--reapply`), what ran (every step but a settled one), and whether
+  the harness runs (its `agent-harness` step ran: growth's
+  `rerender.length > 0`, `keel add`'s `ran.has('agent-harness')`).
+- **The proposals read the steps that install, in run order.**
+  Growth handed them the admitted set in the planner's order; the run
+  hands the same set in the twin's, the order they install in. A
+  proposal's `reads` lists the verticals it reads among them in that
+  order, which `RefreshProposal.reads` documents as install order, and
+  its note names them so. The two orders differ only where one recorded
+  vertical reads two verticals growth installs in an order other than
+  the planner's, which only a plugin's family can make: a reader of two
+  verticals its twin lists the other way round, grown, now names them in
+  the twin's order in `reads` and in the note, where HEAD named them in
+  the planner's. No shipped one does: distribution reads persistence
+  and observability, and no preset lists persistence. The run's order
+  is pinned in `converge-run.test.ts`: a deploy vertical declaring the
+  log before the metrics, the run installing the metrics first.
+- **Three things stay the caller's to say.** Whether the retrofit
+  replays the recorded contexts (`retrofit.contexts`): growth's run
+  replays none, as it did (`modules: []`), and `keel add`'s adoption
+  replays each, as it does, until S.5 reads them once. The notes
+  around the proposals (`notes.before`, `notes.after`): `keel add`
+  sets its notes of what was there before them, growth its admission
+  notes before and its relink note after. And the proposals' wording
+  (`proposeForLater`, `refreshProposalNote`'s `committed`, whatever the
+  dry run says): growth passes true, a later run's, as it always worded
+  them, dry run or not; `keel add` is to pass `!dryRun`, as it words
+  them today.
+- **The handler reads growth twice, and admits it twice.** `growthOf`
+  for its gates, its note, its subject and the files check; then
+  `convergeOf`, which reads `growthOf` and `admitGrowth` again, for the
+  plan, whose refusal is the planner's the handler returned before; and
+  `admitGrowth` once more for the admission notes, which the plan does
+  not carry. The times above show no cost that
+  stands out from the load.
+- **`entrypointReading` is unchanged.** It reads the plan's own pieces,
+  `admitGrowth` and `incomingOf`, as `convergeOf` does, and names the
+  verticals in `incomingOf`'s order, which the status reports;
+  `grownScope` is `growth.ts`' and unchanged.
+- **The goldens were held, not regenerated.** Each suite compares
+  every cell with its committed JSON and names each one that moved, as
+  `verify` runs it, rather than rewriting it under
+  `KEEL_UPDATE_GOLDEN=1`, and `git diff --exit-code` shows every golden
+  and known file as HEAD has it.
+
+### S.4 — `keel add`, `--refresh` and `--reapply`, callers (M) ✅
+
+`add-vertical.ts` keeps what is its own:
+
+- naming the verticals (unknown, named twice);
+- the scope, and the product root's reading of what its services
+  have;
+- the generation gate and `bringsHarness`;
+- the notes of D4 (installed, provided, in the services);
+- the early answer check.
+
+The run is `converge`'s:
+
+- a plain add is the request of its verticals, appended and realized
+  in run order, as today;
+- `--refresh` adds its re-render set, planned as if not there yet, as
+  today;
+- `--reapply` is the request of a re-render alone, run in recorded
+  order, as today.
+
+Its copies of the tail, of `proposalNote` and of `hasAnswers` go.
+
+**Holds green:**
+
+- the paths golden: every `keel add`, `--reapply`, `--refresh`,
+  adoption and product cell, byte-identical;
+- the brownfield and composite goldens;
+- I4, I5, I9 and I11;
+- `add-vertical.test.ts`, and the handler suites that reach it.
+
+No preview changes, so neither the keel ui browser suites nor any e2e
+suite runs. No CHANGELOG entry.
+
+**Leaves out:** what a re-render replays (S.7), and where a new row
+goes (S.8).
+
+**Landed as the run's second caller**, in one commit, with no golden
+moved. `handlers/add-vertical.ts` goes from 608 lines to 494. It reads
+its plan with `convergeOf`: the `add` request, naming the verticals it
+installs, those `--refresh` names beside them, and the scope and
+siblings it plans on (`addScopeOf`, less what it re-renders, and
+`siblingsOf`); or, under `--reapply`, the `reapply` request, naming
+what `--reapply` and `--refresh` name. It hands the plan to
+`converge`, and the run to `commitConverged` unless it is a dry run.
+Its copies of the tail go: the `installVerticals` call, the retrofit,
+the finalize, the restamp, the conflict mapping, `refreshProposals`,
+the report and the commit, and so do `proposalNote` and
+`hasAnswers`. What it keeps is the text's list, the refusals of a
+re-render of a vertical not installed or of one its own rules refuse
+(`ruleRefusal`), the empty plan's early return, and its admission
+notes. It says four things to the run:
+
+- the recorded contexts are replayed where the harness runs, adopted
+  or re-rendered (`retrofit.contexts`), under the retrofit's own
+  command line, `keel add agent-harness`, as before;
+- the exact answer check is `strayAnswerRefusal` over the staged run;
+- a proposal is worded as `!dryRun` says (`proposeForLater`);
+- its notes go before the proposals, the admission notes then D4's,
+  and none after.
+
+`converge.ts` changes in one doc comment, its module's, which names
+`keel add` the reading's second caller. `converge-run.ts` changes in
+how a refused re-render names what it re-rendered (below), and in two
+doc comments: its module's, which names `keel add` the run's second
+caller, and `proposeForLater`'s.
+
+- **Held byte for byte**, each suite against its committed JSON under
+  `CI=true`, and `git diff --exit-code` over every golden and known
+  file after: the four paths goldens (689, 1,326, 731 and 690 cells,
+  every `keel add`, `--reapply`, `--refresh`, adoption and product cell
+  among them), `converge.golden.json` (3,436), `growth.golden.json`
+  (360), and the shared-files, agent-harness and run-skill goldens. The
+  grid's four axes pass: brownfield's and composite's I4, I5, I9 and
+  I11 among them, and growth's I10 on all 320 cells. The known files
+  are as they were: brownfield's `{"I5": {}}`, `{}` for the others.
+- **The handler's 34 cases pass unchanged**, as do the other 26
+  handler suites (460 tests), one case of which goes on (below), and
+  `tests/application`'s web and CLI suites (18 files, 313 tests).
+  Four cases join them, each pinning
+  what no case of those suites, and no cell of the paths golden, held,
+  and each passing on HEAD's handler and run as on this one. A 35th:
+  the notes of what was there already come before the refresh the run
+  proposes. On `go-http` with distribution,
+  `keel add distribution persistence --dry-run` says distribution is
+  installed, then proposes its refresh in this run's words. The
+  admission notes before D4's were held already. A 36th: on `go-http`
+  with distribution then persistence,
+  `keel add distribution --reapply --refresh persistence` restores an
+  edited `migrations/README.md` and resolves distribution's adapter
+  before persistence's four, in the order recorded, although
+  distribution reads persistence. The last two run on a plugin's
+  family. A 37th: of a log whose patch appends a line and a deploy
+  that reads it, installed deploy first, a `--refresh` of both runs
+  the log first, meets the log's own line, and is refused naming
+  `'acme-deploy', 'acme-log'`. A 38th: a `go-cli` project recording a
+  plugin's vertical, the plugin gone, plans an add and a `--reapply`
+  under `--dry-run`, and adopting the harness beside `ci` is refused
+  as `keel.missing-harness-contributor`, naming
+  `keel add agent-harness`, not the command run. `converge-run.test.ts`
+  gains a 21st case: a refused re-render names what it re-rendered in
+  the order the project records it, whatever order it ran in, and one
+  the manifest does not record after the rest. And
+  `agent-harness-grown.test.ts`' adoption on a grown project goes on
+  to re-render the harness it adopted, since the handler now asks for
+  the contexts' replay (`retrofit.contexts`) where HEAD's got it from
+  the manifest it handed the retrofit. A `--reapply` of the harness,
+  then a `--refresh agent-harness`, each over the greeting
+  context's skill edited and the team notes cut back to the user's
+  prose, puts the skill back byte for byte and each context's region
+  back, the domain files, the deferred actions and the modules
+  recorded as they were. An unedited tree cannot tell a re-render
+  that replays no context: it writes the same bytes. The case passes
+  on HEAD's handler and run as on this one, and takes about 0.3 s
+  more (0.88 to 1.03 s against 0.62 to 0.77 s, three runs each).
+
+**The proof** that the suites catch the handler's part. Each was tried
+in a scratch edit of `add-vertical.ts` and undone byte for byte, then
+run against the handler suites, `tests/application`, the paths
+golden's add, re-render and growth files and the brownfield and
+composite axes (50 files, 832 tests):
+
+- **D4's notes moved after the proposals.** Nothing failed before the
+  35th case. With it, that case alone fails.
+- **The admission notes dropped.** Five of the handler's cases fail,
+  and 189 cells of `paths-add` move, each in `report` alone: the adds
+  whose admission note names what the planner added. S.1a's proof
+  counted 189 adds bringing a prerequisite too.
+- **The proposals worded as a later run's under `--dry-run` too.** Two
+  of the handler's cases fail, the 35th among them.
+- **The exact answer check dropped.** Eight cases fail: two in
+  `add-vertical.test.ts`, three in `preview-answers.test.ts` and three
+  in `supplied-answers.test.ts`.
+- **The empty plan run rather than returned.** Two cases fail: the
+  handler's own case of adding nothing a second time, whose manifest
+  store records the write, and `composite-scope.test.ts`' monorepo
+  root adding what its services have.
+- **The retrofit replaying no recorded context.**
+  `agent-harness-grown.test.ts`' adoption on a grown project fails, and
+  no other case. No paths or grid cell moved, since no context adapter
+  of keel's declares a harness element (S.5).
+
+The 36th to 38th cases were then added, and three more edits run on the
+same 50 files, now 835 tests. Each failed one case and no other:
+
+- **`--reapply` naming what it names alone**, not what `--refresh`
+  names beside it: the 36th, its adapters distribution's alone.
+- **The retrofit handed `keel add`'s own command line**: the 38th, its
+  refusal naming `keel add agent-harness ci`.
+- **The run naming a refused re-render in run order again**, in
+  `converge-run.ts`: the 37th, naming `'acme-log', 'acme-deploy'`, so
+  without it nothing in the 50 files catches the edit, and in
+  `converge-run.test.ts` its 21st case alone.
+
+The adoption case's re-render came last, and two more edits run on the
+same 50 files, still 835 tests. Each replays the recorded contexts
+where the harness is adopted and not where one flag re-renders it:
+
+- **`contexts: !reapply`** fails the adoption case, at the skill its
+  `--reapply` leaves edited, and no other case.
+- **`contexts` false under `--refresh agent-harness` alone** fails the
+  same case, at its `--refresh`, and no other.
+
+Before the re-render, all 835 passed under both, the adoption case as
+it stood among them. The retrofit replaying no context at all still
+fails that case at the adoption, before its re-render.
+
+**Times**, under `CI=true` on four cores, as vitest reports a file's
+tests. Five files carry most of the step's dispatches:
+`add-vertical.test.ts`, `paths-add`, `paths-reapply` and the
+brownfield and composite axes. They were run together four times,
+alternating this handler with HEAD's copy of it, at a load average of
+4 to 8 from other work on the box:
+
+- this handler's two runs took 52.8 s and 49.5 s: `paths-add` 43.7 s
+  and 41.1 s, brownfield 16.6 s and 16.7 s, composite 14.8 s and
+  15.0 s, `paths-reapply` 13.8 s and 13.3 s, and the handler's suite
+  5.1 s and 5.5 s;
+- HEAD's took 50.7 s and 63.3 s, in the same order 39.8 s and 48.0 s,
+  16.9 s and 20.0 s, 13.9 s and 15.5 s, 13.5 s and 15.6 s, and 7.0 s
+  and 10.0 s;
+- HEAD's, run alone before the step at a load average below 1, took
+  50.4 s: 42.1 s, 15.3 s, 13.6 s, 13.9 s and 5.0 s.
+
+The second admission, and a re-render's reading of its composition,
+show no cost that stands out from the load. In one run of
+`CI=true pnpm test`, at a load average of 8.3 to 8.5, the suite took
+346.6 s as vitest reports it (5 min 47 s wall), with 202 files and
+3,236 tests passing, two tests more than S.3's 3,234. Growth's axis
+took 118.8 s and the converge golden 72.9 s. The paths golden's four
+took 39.2 s, 51.2 s, 15.7 s and 51.7 s (new, add, reapply, grow),
+brownfield 18.1 s, composite 15.7 s and the handler's suite 8.7 s.
+Those run high against S.3's run (280.8 s, at a load average of 3.5),
+in step with the load, so the paired runs above are the comparison. A
+last run, after the 36th to 38th cases and the converge golden's
+reading of `--reapply` beside `--refresh` (below), took 391.9 s
+(6 min 33 s wall) at a load average rising from 2.4 to 10.8, with 202
+files and 3,239 tests passing, the converge golden among them in
+60.9 s and the handler's suite in 7.8 s, and `git diff --exit-code`
+over every golden and known file clean after it.
+
+No preview changes, so neither the `keel ui` browser suites nor any
+e2e suite was run. There is no CHANGELOG entry, since nothing a user
+sees moves. `pnpm lint` and `pnpm typecheck` pass. Dependency-cruiser,
+part of `pnpm lint`, cruises 306 modules and 1,505 dependencies, three
+fewer than at S.3, since the handler imports less.
+`src/domain/core/AGENTS.md` names `keel add` among the run's callers,
+and says what its handler keeps and what it tells the run.
+
+Beyond the text above:
+
+- **A refused re-render names what it re-rendered in recorded order.**
+  The handler named a `keel.reapply-conflict`'s verticals in the order
+  the project installed them, and the run named them in the order they
+  ran. Under `--reapply` the two orders are one. `--refresh`, though,
+  re-renders in the planner's order, so a `--refresh` of two verticals
+  the planner orders otherwise than the record would have changed its
+  sentence if a conflict stopped it. No paths or grid cell reaches
+  that; the handler's 37th case does, on a plugin's family.
+  `converge-run.ts`' `recordedFirst` names them in the order the
+  project records them, any it does not record after. Growth
+  re-renders the harness alone, so nothing of it moves.
+- **`hasAnswers` goes with its guard, rather than moving.**
+  `unusedAnswers` and `strayAnswerRefusal` find nothing where nothing
+  is supplied, and `keel add module` already calls the latter
+  unguarded. So both checks now run on every add, and the early one
+  reads the reachable adapters where it did not before.
+  `add-entrypoint.ts` keeps its own copy, since S.4 touches no other
+  handler.
+- **The handler admits the set twice**, as `keel add entrypoint` reads
+  growth twice. `convergeOf` admits it for the plan. The handler admits
+  it again on the same scope for the admission notes, which the plan
+  does not carry, and, as before, once more without the refresh set
+  under `--refresh`. The second admission is of the set `convergeOf`
+  admitted, on its scope, and the planner is pure, so it cannot
+  refuse: where it would, the handler throws, as it does for a growth
+  refusal an `add` or `reapply` request cannot earn, and it takes no
+  siblings, which only word a refusal. No test can reach either. A
+  `--reapply` now reads a plan too, and so reads the project's
+  composition (`compositionOf`), which it did not before; the 38th case
+  holds that reading on a project recording a vertical no plugin
+  loaded provides. The times above show what it costs.
+- **`--reapply` beside `--refresh`** re-renders both, in recorded
+  order, as it did: the `reapply` request names both, and the 36th
+  case holds it. The converge golden's reading of `keel add` builds
+  that request as the handler does, gating a `--refresh` of a vertical
+  not installed under `--reapply` too. No paths cell combines the two,
+  so no byte of `converge.golden.json` moves.
+- **The empty plan stays the handler's.** Run, it would stage nothing
+  and still write the manifest's `updatedAt`, which the proof above
+  shows two suites hold.
+
+### S.5 — `keel add module`, a caller, and one reading of the added contexts (M) ✅
+
+`add-module.ts` keeps what is its own:
+
+- the name;
+- the seven refusals, `moduleRefusal` among them;
+- `--consumes`;
+- the generation gate.
+
+The run becomes `converge`'s request of one context. The same replay
+that wires contexts into a grown assembly wires it, with three
+differences:
+
+- it installs every adapter of keel's `bounded-context` that the tags
+  match, since none has run;
+- it reads the answers the user supplied, in the command's mode;
+- it takes no refresh proposals, as today.
+
+It runs onto one Tree, one ownership and one harness buffer, finalized
+once. The module record, and the first time the `bounded-context` row,
+are appended, as today. The handler's second re-index of the root map,
+which merges rows rather than replacing them, stays where it is, and
+so does `rehashEntries` after it.
+
+One reading of the added contexts, `contextsOf`, serves growth, this
+command, the harness retrofit and S.7. The retrofit changes in two
+ways:
+
+- it stops replaying the skeleton and the peer through
+  `bounded-context`, which it never needed, since a context declares
+  no harness element;
+- it reads keel's own `bounded-context`, as growth and this command
+  do, rather than a registry's first.
+
+**The proof.**
+
+- No byte moves on keel's registry. No context adapter declares a
+  document, a skill or a hook, and keel's registry lists no
+  `bounded-context`, so the retrofit already fell back to keel's own.
+- A plugin that registers a `bounded-context` of its own no longer has
+  its harness elements replayed. Its contexts were never run by
+  `keel add module`, which runs keel's own alone. The CHANGELOG says
+  so, under _Changed_.
+- Held byte-identical:
+  - the paths golden's history and module cells;
+  - I10 with histories;
+  - `shared-files.golden.json`'s 100 history cells;
+  - `add-module.test.ts`.
+
+No template changes, so no e2e suite runs.
+
+**Leaves out:** the plain `Error`s some adapters throw for an anchor
+they cannot find, and the formatter a JVM context lands without (the
+Backlog's). Both are the adapters', not the operation's.
+
+**Landed as the command's run on converge**, in one commit, with no
+golden moved. `handlers/add-module.ts` goes from 420 lines to 411. It
+reads its plan with `convergeOf(…, { kind: 'module', name, consumes })`
+and hands it to `converge`, then records the context after the others,
+re-indexes the root map and rehashes what that rewrote, as before, and
+commits through `commitConverged`. Its own `installVertical` call, its
+seeding and stripping of the add-module inputs and its copy of the
+commit tail go. The plan's contexts are `ConvergeModule`s
+(`converge.ts`): growth's `GrowthModule`, and, on the one
+`keel add module` adds, `adds`, with what it consumes. `wireModules`
+(`converge-run.ts`, 534 lines to 551) reads `adds`: that context
+consumes what the plan says and reads the answers supplied, in the
+caller's mode, where a recorded one replays as before; and it returns
+the answers each wiring read, so the caller's check sees them. The one
+reading of the added contexts is `contexts.ts`' new `addedContextsOf`
+(40 lines to 55): `contextsOf`'s `modules.context` contexts, each
+consuming what its record says. Growth (459 lines to 457), the
+reading's private `addedContexts` and the retrofit read it, where each
+filtered `contextsOf` for itself. `harness-retrofit.ts` replays keel's
+own `bounded-context` once for each, and nothing for the skeleton or
+the peer.
+
+- **Held byte for byte**, each suite against its committed JSON under
+  `CI=true`, and `git diff --exit-code` over every golden and known
+  file after:
+  - the four paths goldens (689, 1,326, 731 and 690 cells), among them
+    the 200 `keel add module` cells, and the 618 cells of the fourth
+    and 143 of the second that run after a module history;
+  - `converge.golden.json` (3,436), whose 200 module cells are run and
+    held against their reading, as S.2 landed them;
+  - `growth.golden.json` (360, 144 after a history);
+  - `shared-files.golden.json` (498, its 100 history cells among them);
+  - the agent-harness and run-skill goldens.
+
+  The grid's four axes pass: growth's I10 on all 320 cells, 128 of them
+  after a history, and brownfield's I9 on its 28 `keel add module
+orders` cells. The known files are as they were: brownfield's
+  `{"I5": {}}`, `{}` for the others. `add-entrypoint.test.ts`' 47
+  cases, `agent-harness.test.ts`' 18, `docs.test.ts`' 10, the
+  project-status, preview-answers, legacy-answers and harness-generation
+  suites, and the five context adapters' suites pass unchanged.
+
+- **What moved in the tests**, each the step's own:
+  - `converge.test.ts`: the module plan carries `adds`, consuming
+    `greeting`, and `null` where nothing is named.
+  - `converge-run.test.ts`: the retrofit's two cases went with the
+    family's own `bounded-context`, whose skill they wrote. One now
+    holds, and is named for, an absence: the retrofit writes that skill
+    under neither caller setting (`retrofit.contexts` true or false),
+    on a project recording the skeleton and one added context. The
+    other held an element no adapter of the twin ranks realized and
+    recorded last, and S.5 leaves no context element to hold it with.
+    A draft vertical stands in: its one adapter excludes a tag a later
+    vertical of the run promotes, so the run writes its skill, and the
+    twin, reading the tags the run leaves, ranks it nothing.
+  - `agent-harness-grown.test.ts`: adoption on a grown Quarkus
+    modulith, on a registry listing its own `bounded-context` with a
+    skill and a team-notes region on each context's shell, now writes
+    neither for any of the four contexts, the skeleton's `greeting`
+    included. The notes stay as the user wrote them, and persistence's
+    replayed skill is still written and recorded. A second case, on
+    the same registry, adds `ordering` to a harnessed modulith, then
+    checks and syncs the root map: no `inspect-` row after the add or
+    the sync, no drift, the notes as written, and no entry under
+    `.claude/skills/inspect-`. Run on HEAD's sources, the add wrote
+    rows for `/inspect-greeting` and `/inspect-ordering`, skills
+    nothing wrote. A third, the marker case, from the second review,
+    adds `orders` to `go-cli`'s modulith on a registry whose
+    `code-style` has one more adapter, requiring `modules.context` and
+    writing a skill: the root map has no row for it, and the check
+    reports no drift. With the re-index reading the marker, the add
+    wrote a `/marked` row.
+  - `add-module.test.ts` gains two cases on `go-cli`'s modulith, the
+    run past the gates. In the 11th, the adapters the report resolves
+    are the plan's, and the root map is among its changes; nothing is
+    noted or proposed. The row is recorded once and last, and each
+    context after the others, `orders` consuming `greeting` and
+    `shipping` none, at the pinned instant, with the tags and answer
+    keys as they were, and the root map's entries hashing what is on
+    disk. In the 12th, on a clock a second later each time it is read,
+    the context's `installedAt`, the row's and the manifest's
+    `updatedAt` are one instant.
+
+**The proof** that the suites catch what they are for, each tried in a
+scratch edit and undone byte for byte, run against the four suites
+above, `add-entrypoint.test.ts`, `agent-harness.test.ts`,
+`docs.test.ts`, `preview-answers.test.ts` and the five context
+adapters' suites (234 cases). Each failed exactly the cases named:
+
+- the retrofit reading a registry's `bounded-context` first, as HEAD
+  did: the retrofit's case, the adoption's, and the root map's on that
+  registry;
+- the context the run adds consuming what the record says, which is
+  nothing: 37 cases, across the five context suites and
+  `add-entrypoint.test.ts`;
+- the handler's report keeping the run's changes, from before the
+  re-index: the 11th case;
+- an element no adapter ranks realized first: the stand-in case;
+- the handler not rehashing what the re-index wrote: 11 cases, the
+  11th, four of `agent-harness.test.ts`' provenance cases (the root map
+  `keel add module` re-indexes, on quarkus-rest, go-http, rust-http and
+  ts-http) and six of `add-entrypoint.test.ts`' module-history cases,
+  and, run apart, `paths-grow.golden.test.ts`' comparison;
+- the run reading the clock afresh rather than the handler's instant:
+  the 12th case;
+- the re-index reading the manifest with the context marker, as HEAD
+  did: the marker case, and, outside the goldens, the grid and e2e,
+  no other of the 167 files' 2,919 cases.
+
+Five edits fail nothing, and cannot: the retrofit replaying no context
+at all; `converge` ignoring `retrofit.contexts`; the retrofit
+replaying every recorded module through keel's own `bounded-context`,
+the skeleton and the peer included, as HEAD did where no registry
+listed one; the added context's wiring without the supplied answers
+and the mode; and the run dropping the answers that wiring read. No
+adapter of keel's `bounded-context` declares a harness element or asks
+a question, so each writes what HEAD wrote. The first three are the
+retrofit's replay of the added contexts, which the text asks for and
+which writes nothing today; the last two, the command's mode. They are
+kept so that a context adapter that declares an element or asks a
+question is replayed, and answered, as a first install is. Deleting
+the replay and the setting instead, since no suite can hold them,
+would depart from the text's "`contextsOf` … serves … the harness
+retrofit", so it is left to the plan.
+
+**Times**, under `CI=true` on four cores, with another checkout's suite
+running beside both runs. In one run of `CI=true pnpm test` the suite
+took 350.0 s as vitest reports it (5 min 51 s wall), with 202 files
+and 3,235 tests passing, one test more than HEAD's 3,234. HEAD, run on
+the same box just before it, took 351.8 s (5 min 53 s wall). HEAD's run
+started at a load average of 2.0 and passed 9 during it; this one
+started at 5.2 and ended at 10.4. Beside the rest, with HEAD's in
+brackets:
+
+- growth's axis took 107.9 s (133.8 s);
+- the converge golden 68.8 s (66.5 s);
+- the paths golden's four 41.3, 56.1, 16.1 and 52.4 s (35.3, 44.7, 14.6
+  and 46.4 s; new, add, reapply, grow);
+- `shared-files.golden.test.ts` 48.8 s (40.7 s);
+- `add-module.test.ts` 1.75 s (1.53 s).
+
+Alone, in three runs, `add-module.test.ts` took 0.95 to 1.11 s,
+`agent-harness-grown.test.ts` 0.84 to 1.82 s, `converge-run.test.ts`
+94 to 215 ms and `converge.test.ts` 83 to 125 ms. No difference stands
+out from the load. Run again after the review's two new cases, the
+suite took 291.7 s (4 min 52 s wall), 202 files and 3,237 tests
+passing, from a load average of 4.4 to 4.7: growth's axis 106.4 s, the
+converge golden 56.0 s, the paths goldens 32.4, 43.5, 13.4 and 42.2 s,
+`shared-files.golden.test.ts` 38.1 s, `add-module.test.ts` 1.39 s and
+`agent-harness-grown.test.ts` 1.44 s. After the second review's marker
+case, it took 343.0 s (5 min 44 s wall), 202 files and 3,238 tests
+passing, from a load average of 6.0 to 4.8: growth's axis 123.0 s, the
+converge golden 70.6 s, the paths goldens 36.2, 49.1, 14.7 and 47.1 s,
+`shared-files.golden.test.ts` 42.2 s, `add-module.test.ts` 1.34 s and
+`agent-harness-grown.test.ts` 2.84 s.
+
+No template changed and no preview moves, so neither the `keel ui`
+browser suites nor any e2e suite was run. `pnpm lint`,
+dependency-cruiser's `no-circular` among it (306 modules, 1,509
+dependencies: one more, net — the handler's imports of `converge.ts`
+and `converge-run.ts` and the retrofit's of `contexts.ts`, less the
+handler's of `actions.ts` and the run's of `growth.ts`), and
+`pnpm typecheck` pass. The CHANGELOG entry is under _Changed_.
+`src/domain/core/AGENTS.md` names the command a caller and says what
+the retrofit reads, and that it writes nothing today.
+`docs/composition.md` (the harness adoption),
+`docs/verticals/agent-harness.md` (adopting it later) and
+`docs/plugins.md` (growing) say which `bounded-context` the replay
+reads.
+
+Beyond the text above:
+
+- **No flag for the proposals.** The run still reads them, over the
+  steps it installs and the tags it leaves. A module plan installs no
+  step, and keel's `bounded-context` declares no promotion, which
+  `installVertical` refuses an adapter to make undeclared. So the run
+  proposes nothing by construction, and the 11th case holds it.
+  `proposeForLater` is passed true, a later run's words, since the
+  command takes no `--refresh`.
+- **The context the run adds is marked on the plan**, by `adds`, rather
+  than handed to the run already recorded. The manifest records it
+  after the run, as before: the handler records it. The run's one
+  finalize projects the index over the manifest's modules, and HEAD's
+  install read them without the new one. `adds` is a field the converge
+  golden's module cells do not print, so the golden does not move.
+- **One instant for the run and the record.** The handler reads the
+  clock once and hands the run a clock that stays at that instant, so
+  the context's `installedAt` and the manifest's `updatedAt` are one
+  timestamp, as they were, and the 12th case holds it. The run reads
+  its clock once, as S.3 has it.
+- **The re-index reads the manifest the run leaves**, with the
+  add-module inputs and the context marker stripped. HEAD re-indexed
+  over the manifest still holding them. No vertical but
+  `bounded-context` reads either, so no byte moves on keel's registry,
+  and a plugin's vertical whose adapters require or exclude the marker
+  is now indexed there as `keel docs sync` indexes it. The CHANGELOG
+  entry says so, and the marker case holds it.
+- **The handler throws where the reading of one context refuses**,
+  which it never does: `moduleOf` has no refusal, and the handler's
+  gates are the command's refusals.
+- **`retrofit.contexts` stays the caller's.** Since the retrofit reads
+  keel's own `bounded-context`, whose adapters declare no harness
+  element, the setting moves no byte on any registry, and no suite can
+  tell its two values apart. It stays so that a context adapter that
+  declares one is replayed by an adoption, and not a second time by
+  growth, which wires the contexts itself.
+- **S.4's re-render of the adopted harness reads so too.** S.4, landed
+  beside this step, went on in `agent-harness-grown.test.ts`' adoption
+  case to re-render the harness it adopted, over the greeting
+  context's skill edited, and held the skill and each context's region
+  put back. Neither is written now, so the re-render edits the
+  persistence skill instead, which the retrofit replays as a recorded
+  vertical that did not run, and holds it put back byte for byte, no
+  `inspect-<context>` skill written, the team's notes left as the
+  user's prose, and the domain, the deferred actions and the modules as
+  they were, under `--reapply` and `--refresh agent-harness` alike. A
+  retrofit that replays no recorded context passes it, as S.4 says it
+  would where no context declares a harness element.
+
+### S.6 — `keel new`, a caller from its seed manifest (L) ✅
+
+`stageStack` hands `converge` a scope's seed and its request:
+
+- **The seed:** the empty manifest with the identity no vertical
+  makes: the preset's and the dials' tags, `projects`, `peers`,
+  `services`, the scaffolded modules and the generation.
+- **The request:**
+  - the preset's verticals, in the preset's order. They never go
+    through `admit`, which sorts a request by id and then reproduces
+    none of the 28 orders, and which cannot order a product root's
+    glue;
+  - then the extras, in `admit`'s order;
+  - less what a monorepo service's placement leaves to the root.
+
+It runs in the `scaffold` posture. The engine's own finalize becomes
+the operation's. The research measured that byte-identical on 4 of 4
+cells.
+
+`new-project.ts` keeps everything else, since it is `keel new`'s:
+
+- the drill-down and the review;
+- the dials and their gates;
+- adopting a `README.md` and a `.gitignore` (D13);
+- the directory gates;
+- the product: its scopes, its routing of extras, `crossScopeWrite`
+  and the commit across scopes.
+
+**Holds green:**
+
+- the greenfield and composite goldens;
+- every invariant the greenfield and composite axes hold;
+- the agent-harness, run-skill and shared-files goldens;
+- the paths golden's `keel new` cells, the answered bodies included,
+  byte-identical;
+- `new-project*.test.ts`.
+
+No byte of a scaffold moves, so no e2e suite runs. No CHANGELOG entry.
+
+**Leaves out:** a converge of a product's root or across scopes (U),
+and `keel new` in a directory holding a project, which stays
+`keel.already-initialised` (DS1).
+
+**Landed as the run's fourth caller**, in one commit, with no golden
+moved. `stageStack` in `handlers/new-project.ts` builds each scope's
+seed as it built its manifest before, reads its plan with
+`convergeOf(…, { kind: 'new', … })` and hands it to `converge`, where
+it called `installVerticals` and the engine realized its own harness
+buffer. The request names the preset, the harness dial, the extras
+the handler admitted on the scope in the order they install, whether
+the scope is a monorepo service, and, for a product's service, the
+product and the service's path, which say what the product gives it.
+The handler's own placement filter goes, since the reading applies it
+(`presetServiceVerticals`). The handler goes from 2,125 lines to
+2,159, its doc comments most of the difference. The run takes three
+inputs it did not take before, each optional and absent for the other
+callers:
+
+- `apply`, the posture its steps install in: `scaffold` here, and
+  `install` where it is absent;
+- `rules`, the preset's own (`stack.conflicts`), held with the run's
+  after every step, as `installVerticals` holds them;
+- `owners`, the handler's ownership, which `crossScopeWrite` reads
+  back to name who wrote a file two scopes stage.
+
+`Converged` carries two fields more, `adapters` and `reads`: what the
+run resolved and the supplied answers it read. The handler holds those
+answers across every scope at once, after the last is staged, as
+before. `converge-run.ts` goes from 566 lines to 612; `converge.ts`
+changes in its module's doc comment and in `serviceAt` (below), 871
+lines to 875; `install.ts` in two doc comments alone, 825 lines to
+829; and `apply.ts` does not change. What the handler keeps is the
+text's list, with the answer check across its scopes, `underService`
+and `commitScopes`: every tree, then every manifest, then each scope's
+deferred actions.
+
+- **Held byte for byte**, each suite against its committed JSON under
+  `CI=true`, and `git diff --exit-code` over every golden and known
+  file after:
+  - the four paths goldens (689, 1,326, 731 and 690 cells): the 689
+    `keel new` cells, the answered bodies among them, and every
+    scaffold the other three run their commands on;
+  - `converge.golden.json` (3,436 cells, 707 `keel new` scopes in
+    its 689 `keel new` cells), whose round trip reads back 673 of those
+    scopes (the product roots stay U's), and 24 more in the product
+    menus it records nowhere: 697, each now converged by the handler;
+  - the grid's greenfield (1,335 cells) and composite (1,656) goldens,
+    and brownfield's and growth's;
+  - `shared-files.golden.json` (498), the agent-harness golden (28
+    presets), the run-skill golden (5 families) and
+    `growth.golden.json` (360).
+
+  The grid's four axes pass, with every invariant the greenfield and
+  composite axes hold, and growth's I10 on all 320 cells. The known
+  files are as they were: brownfield's `{"I5": {}}`, and `{}` for the
+  others.
+
+- **The handler's suites pass**, unchanged but for a case each in two
+  of them: `new-project.test.ts`, 98 cases to 99,
+  `composite-scope.test.ts`, 36 to 37, `new-project-adoption.test.ts`'
+  15, and the 13 web suites of `tests/application/web` (240 tests).
+  The two cases:
+  - `new-project.test.ts`' `fullstack` under the monorepo layout, on a
+    clock a second later at every read: each of its three manifests
+    records every timestamp at the one instant, the manifest's, its
+    verticals', modules' and entries'. Handed the deps' clock instead
+    of the command's instant, each scope's verticals are stamped at a
+    later instant than its manifest, and the case fails where every
+    other suite, on a pinned clock, passes; HEAD passes it;
+  - `composite-scope.test.ts`' plugin product listing two services at
+    one path, `go-http` and `web-components` at `app/`, refused under
+    the polyrepo layout as `keel.cross-scope-write` in HEAD's
+    sentence, which a `serviceAt` that matches the path alone turns
+    into a plain throw (below).
+- **`converge-run.test.ts` gains four cases**, from 21 to 25, on the
+  family's CLI preset:
+  - the `new` reading of a seed, with the harness and without it, with
+    two extras, run in the `scaffold` posture, stages what
+    `installVerticals` stages from the same seed when it realizes its
+    own buffer: every file's bytes, the deferred actions, the adapters,
+    the count of skipped elements, and the manifest compared as JSON,
+    so key order too. What the research measured on 4 of 4 real
+    cells is held as a case, on the fixture family; on the shipped
+    presets the goldens above hold it;
+  - the posture: the log's patch writes into a user's `log.txt` under
+    `install`, and is refused as `keel.path-conflict` under
+    `scaffold`;
+  - the caller's rules: a rule of the preset's on the tag a step
+    promotes refuses that step as `keel.incompatible`, naming the rule,
+    and the same run without it is Ok;
+  - the caller's ownership, read back for who wrote `cli.txt`, and the
+    adapters and supplied answers the run returns.
+
+**The proof** that the suites catch the handler's part. Each edit was
+tried in a scratch copy of `stageStack` and undone byte for byte, then
+run against the handler suites `keel new` reaches most (the two
+`new-project` suites, `assembly-rules`, `composite-scope`, the six
+`fullstack` suites, `supplied-answers` and `preview-answers`),
+`converge-run.test.ts`, and the greenfield and composite axes: 15
+files, 276 tests. Each failed exactly the cases named:
+
+- **The run in the `install` posture.** The greenfield axis's golden
+  moves, and I1, which is hard, breaks on 31 cells. Four of
+  `new-project.test.ts`' cases fail: the refusals of ts-http over the
+  user's `package.json`, of quarkus-rest over their
+  `settings.gradle.kts`, and of go-cli over their `.gitattributes` and
+  `.claude/settings.json`, each a patch that merges into the user's
+  file where the scaffold posture refuses it.
+- **The preset's rules not handed to the run.** `assembly-rules.test.ts`'
+  case of a preset's own rule over the tags its verticals fold in, and
+  no other.
+- **The run's own ownership, not the handler's.** `composite-scope.test.ts`'
+  case of a product two of whose scopes write one file, whose sentence
+  names each writer, and no other.
+
+The same three edits made in `converge-run.ts` instead, so that the
+run ignores `apply`, `rules` or `owners`, each fail one case of
+`converge-run.test.ts`, its own, and none of the three other handler
+suites that call the run (`add-vertical`, `add-entrypoint` and
+`add-module`, 122 tests with it). The byte-identity case passes under
+the run's `install` posture too: on an empty tree the two postures
+write the same, as the research found.
+
+**Times**, under `CI=true` on four cores, as vitest reports a file's
+tests. Seven files carry most of `keel new`'s dispatches: the two
+`new-project` suites, `composite-scope.test.ts`, `paths-new`, the
+converge golden and the greenfield and composite axes (175 tests).
+They were run together four times, alternating this step's sources
+with HEAD's, at a load average of 3 to 11 from other work on the box:
+
+- this step's two runs took 74.1 s and 81.8 s: the converge golden
+  62.5 s and 68.9 s, `paths-new` 42.9 s and 39.9 s, greenfield 41.4 s
+  and 41.0 s, composite 17.0 s and 20.8 s, and `new-project.test.ts`
+  14.2 s and 19.9 s;
+- HEAD's took 89.0 s and 68.4 s, in the same order 76.8 s and 58.4 s,
+  43.6 s and 37.1 s, 46.1 s and 37.3 s, 23.2 s and 16.4 s, and 20.2 s
+  and 15.1 s.
+
+The reading of each scope's seed shows no cost that stands out from
+the load. In one run of `CI=true pnpm test` the suite took 360.3 s as
+vitest reports it (6 min 1 s wall), with 202 files and 3,247 tests
+passing, four more than HEAD's 3,243, against 316.8 s (5 min 18 s
+wall) for HEAD, run on the same box just before it. HEAD's run started
+at a load average of 0.3 and ended at 5.8; this one started at 0.8 and
+ended at 6.0, and collecting the files alone took it 26 s longer
+(166.7 s against 140.7 s), which nothing this step changes reaches.
+Beside the rest, with HEAD's in brackets:
+
+- the converge golden took 72.8 s (59.9 s);
+- the paths golden's four 39.6, 51.7, 16.2 and 49.1 s (39.3, 50.7,
+  16.4 and 50.7 s; new, add, reapply, grow);
+- greenfield 42.2 s (35.5 s), composite 15.8 s (17.9 s), brownfield
+  21.5 s (17.7 s) and growth's axis 121.5 s (118.8 s);
+- `shared-files.golden.test.ts` 42.4 s (42.0 s) and
+  `new-project.test.ts` 16.9 s (14.1 s).
+
+`converge-run.test.ts` takes 85 ms alone. A last run, on the finished
+tree with its docs, took 372.8 s (6 min 13 s wall) from a load average
+of 2.5 to 5.8, with 202 files and 3,247 tests passing: the converge
+golden 71.4 s, the paths goldens 39.5, 50.4, 15.4 and 48.7 s,
+greenfield 43.8 s and growth's axis 144.3 s. `git diff --exit-code`
+over every golden and known file, 19 of them, was clean after it. After
+review, with the two handler cases above, `serviceAt`'s match on the
+preset and the doc comments, a run took 348.3 s (5 min 49 s wall) from
+a load average of 1.9 to 6.0, with 202 files and 3,249 tests passing:
+the converge golden 69.2 s, the paths goldens 38.8, 50.7, 17.0 and
+49.4 s, greenfield 43.5 s and growth's axis 138.3 s. The goldens and
+known files were clean after it too.
+
+No byte of a scaffold moves and no preview changes, so neither the
+`keel ui` browser suites nor any e2e suite was run. There is no
+CHANGELOG entry, since nothing a user sees moves. `pnpm lint` and
+`pnpm typecheck` pass. Dependency-cruiser, part of `pnpm lint`,
+cruises 306 modules and 1,508 dependencies, two more than HEAD's
+1,506: the handler imports `converge.ts` and `converge-run.ts` where
+it imported `install.ts`, and the run imports `answers.ts` for the
+type of what it read. `src/domain/core/AGENTS.md` names `keel new`
+among the run's callers, and says what its handler keeps and what it
+tells the run.
+
+Beyond the text above:
+
+- **The extras are admitted twice**, as `keel add` admits its set
+  twice. The handler admits them before a question is asked, for its
+  refusals and its notes. The reading admits that set, already closed,
+  again, on the scope `keel new` plans it on (`presetScope`, or
+  `presetServiceScope` for a service), which is the handler's. So it
+  cannot refuse, and where it would, the handler throws. The converge
+  golden's round trip already held the `new` reading's run to the
+  order `keel new` records, on all 673 of the scopes it records, and
+  the menus' 24.
+- **The run's refusals cannot reach `keel new`.** The handler hands the
+  run no `check`, since it holds the supplied answers across every
+  scope at once, after the last is staged, as before; and nothing
+  re-renders. Where `converge` returned a refusal, the handler throws.
+  Every throw of an install or of the harness pass reaches the handler
+  as before, with a service's paths moved under it (`underService`),
+  since the run rethrows what it does not read as a re-render's
+  conflict.
+- **One instant for the command.** The handler reads the clock once,
+  as before, and hands each scope's run a clock that stays at that
+  instant, as `keel add module` does. A product's root and services
+  share their timestamps, which `new-project.test.ts`' case on a
+  ticking clock holds (above), as `add-module.test.ts` holds
+  `keel add module`'s.
+- **The reading finds a service by its preset too.** S.2's
+  `serviceAt` took the first service a product lists at the request's
+  path, and nothing in the registry stops a plugin's product listing
+  a path twice: on one listing `go-http` and `web-components` at
+  `app/`, the `web-components` scope's reading would throw a plain
+  `Error` under the polyrepo layout, where HEAD's install refuses the
+  product as `keel.cross-scope-write`. `serviceAt` now matches the
+  path and the preset. On that product, and on one listing `go-http`
+  twice at `app/`, the first with persistence of its own, both layouts
+  come back as HEAD's do: `keel.cross-scope-write` in HEAD's sentence,
+  or, under the monorepo layout with two presets, the product glue's
+  `ContributionConflictError`, thrown on HEAD too. Two services on one
+  preset at one path read the first one's extras, and meet the same
+  refusal. Refusing such a product at registration would be a new
+  refusal, and is left alone.
+- **What the run adds is a no-op on a seed.** `emptyManifestV2` stamps
+  this keel's generation, so where the harness runs, the restamp writes
+  the same value onto the key already there, and a
+  `--no-agent-harness` project keeps it, as before. The retrofit
+  replays nothing, since everything recorded ran and a seed records no
+  added context (`retrofit.contexts` false). No refresh can be
+  proposed, since a seed records no vertical.
+- **A monorepo product's root runs through the same call.** Its plan
+  is the product's verticals in the product's order, which the
+  handler installed before. Its round trip, and a converge of a root
+  that exists, stay U's.
+- **The report stays the handler's.** A product's report spans its
+  scopes, so the handler still builds it from each scope's tree,
+  deferred actions and skipped count. Of the run's own report it reads
+  the count alone.
+- **The engine keeps its own finalize**, which no command reaches now.
+  `installVerticals` still realizes its buffer where it is handed none,
+  as `install-verticals.test.ts` holds, and `converge-run.test.ts`'
+  first new case holds the run's finalize to it on a seed. Its module
+  comment and TSDoc say
+  so now: both front doors reach it through `converge`, which always
+  hands it the buffer. Taking the finalize out is left to a step that
+  changes `install.ts` anyway.
+
+### S.7 — A re-render keeps what later verticals wrote (L) ✅
+
+This is the first step that changes what a command writes, and it
+fixes R's blocker 8. A re-render (`--reapply v`, `--refresh v`) now
+runs within the recorded composition (DS4):
+
+- `v` re-renders in the `reapply` posture, as today. The apply records
+  which of `v`'s whole files it rewrote: those it wrote because the
+  render differs from what the Tree holds, not those it skipped as
+  identical.
+- Every other recorded vertical then replays its patches in recorded
+  order, and each added context's wiring after them. They go onto
+  those files, and onto no other. A new posture of `installVertical`,
+  `patchesOnto`, takes that set:
+  - it writes no whole file;
+  - it collects no harness element and queues no action;
+  - it reads its answers as recorded, against the recorded manifest.
+
+  A guarded patch is its own fixed point, so what it wrote into those
+  files comes back as it was. One that is not a fixed point refuses
+  the run as `keel.reapply-conflict`, as a re-rendered one does today.
+
+- D12 holds. Only what the command names is re-rendered, and the
+  replay writes into no file but those that re-render rewrote. A whole
+  file another vertical owns is left as the user left it.
+
+Why every other vertical, not only those recorded after `v`: rows
+recorded at rank (growth now, every caller after S.8) do not keep
+arrival order. A vertical that ran before `v` in one run cannot have
+patched `v`'s whole files. Its patch would have found no target, or
+its seed would have turned `v`'s write into a conflict. So the wider
+set restores the same bytes, whatever the recorded order.
+
+A declared read (`Vertical.reads`) is the one way the replay could
+write something new. It would take a vertical whose patch into `v`'s
+files depends on another that was recorded after it. No shipped order
+reaches it: persistence needs HTTP, which brings observability first.
+The Landed paragraph says the paths golden's pairs confirm this.
+
+**The dev container by the tags.**
+
+- Without `arch.server-http`, `dev-container`'s attached render is the
+  standalone definition attached as `dev-env` attaches it in place
+  (R.1b), which is what one run wrote. With the tag it is the
+  template, as today.
+- No greenfield cell reaches the first branch: on every preset without
+  the tag, the dev container comes first (R.1a's DR1 guard).
+- A CLI project that took the dev environment as an extra, and has
+  since grown HTTP, gets the template's shape from a re-render: its
+  twin's. That is the one shape a re-render moves, and it lies outside
+  I10, which has no extras.
+
+**I11 widens**, hard, as _The measure_ says: growth's twins,
+brownfield's ten whole-menu scaffolds where the dev environment is an
+extra, and each recorded vertical re-rendered alone.
+
+**The golden moves**, on these cells and no other:
+
+- every `walking-skeleton --reapply`, and every whole re-render, that
+  lost a later writer's lines. Each now keeps them and stages nothing:
+  - the 19 presets on their opening dials and with their whole menu:
+    observability, persistence and code-style;
+  - every product front end: the gateway;
+  - every module history but `go-cli`'s: observability on each HTTP
+    one, Go's included, and the contexts' wiring on the JVM, Rust,
+    TypeScript and `web-components`;
+- `dev-container --reapply`, and the whole re-render, on the
+  whole-menu scaffolds of the ten presets where the dev environment
+  is an extra. Each now stages nothing;
+- the grown project's `keel add dev-container --reapply` where it took
+  the dev environment as an extra;
+- the converge golden's re-render cells, which gain the replay steps.
+
+The Landed paragraph lists them by command line.
+
+**Holds green:** every greenfield byte, I10, and every other cell of
+every golden.
+
+**Runs:**
+
+- the keel ui browser suites, since a re-render's preview now stages
+  less;
+- `code-style-jvm`, the e2e suite that re-renders before it builds;
+- a fixture test, since no shipped patch reaches the new refusal.
+
+**CHANGELOG:**
+
+- _Fixed_: `keel add walking-skeleton --reapply` keeps what
+  observability, persistence, code-style, the gateway and each added
+  context wrote into the files it rewrites.
+- _Fixed_: `keel add dev-container --reapply` after a dev environment
+  added as an extra keeps the definition's shape.
+- _Changed_: a re-render refuses, as `keel.reapply-conflict`, where a
+  later vertical's patch cannot be put back as it was.
+
+`docs/cli.md` → `--reapply` says what a re-render keeps.
+`docs/composition.md` says what a re-render is.
+`src/domain/core/AGENTS.md` names the posture.
+
+**Leaves out:**
+
+- a user's own edit to a file `v` owns, which is still overwritten and
+  shown in the diff, as L has it;
+- naming `bounded-context` or a product root's `fullstack` row. The
+  contexts come back with the vertical whose files they patch (DS10),
+  and the root is U's.
+
+**Landed as the first step that changes what a command writes**, in
+one commit. `install.ts`' `installVertical` gains the posture,
+`patchesOnto`, a set of paths: each adapter the vertical resolves to
+on the manifest it is handed is contributed from what that records
+(`recordedContribution`, asking nothing, reading no supplied answer),
+and of what it contributes only the patches onto those paths apply, in
+the `reapply` apply mode, as a replay: `apply.ts`' `applyContribution`
+takes `replaying`, under which an adapter claims once more, once, a
+region it claimed earlier in the run. It writes no whole file, collects
+no harness element, queues no action, reports no resolved adapter and
+records nothing, and onto an empty set it contributes nothing at all.
+`installVerticals` takes the positions it replays so (`replays`, each
+a `ReplayAt`), each from what it records — the manifest its own step
+left, where it installed or re-rendered at an earlier position, else
+the one the run starts from, or the one the caller seeds, with the
+adapters it names — and onto `Ownership.rewritten`, which `apply.ts`
+fills: a `reapply` whole-file write records its path where the bytes differ
+from the Tree's, or the Tree holds none, and not where it skips them as
+identical or writes a mode back alone (`writeWholeFile` now says
+which). `converge.ts`' `reapply` plan, and its `add` plan where
+`--refresh` names anything, gain a `replay` step for every other
+vertical the project records, in recorded order after the first
+re-render, each as soon as every re-render still to come is of a
+vertical recorded after it, so a later named vertical re-renders at
+its own rank among them; and, after the last re-render, one for each
+vertical the run re-rendered ahead of one recorded before it, at its
+rank, then for each it installed before it, in run order
+(`withReplays`). Among the recorded ones, they gain a `replay` step of
+keel's `bounded-context` for each context `keel add module` added,
+naming it (`ConvergeStep.context`), by every adapter the tags match
+with the marker, where it arrived (`contextReplays`): just before the
+first vertical recorded after the `bounded-context` row that is not
+older than it, after them all where none is, never before a context
+recorded before it. `converge-run.ts` runs every replay by position,
+a context's on the manifest the run starts from, seeded with its
+inputs as `keel add module` seeds them (`contextReplayed`), and
+`wireModules` only wires, as before. A replayed vertical is not one that
+ran, so the harness retrofit still replays its harness elements and a
+refresh proposal still reads it, as before.
+`handlers/add-vertical.ts` leaves the replays out of the verticals it
+holds supplied answers against and of its empty plan. And
+`adapters/dev-container.ts`' `devContainerDefinition`, handed its
+adapter's id, renders the attached shape by the tags: without
+`arch.server-http`, the standalone render passed through
+`attachDevContainerToDevEnv`, as `dev-env` attaches it in place.
+
+**The golden moves**, on the cells the text lists and no other. Each
+golden was regenerated with `KEEL_UPDATE_GOLDEN=1`, in the order
+`tests/AGENTS.md` gives, and compared with HEAD's by a script, cell by
+cell and field by field. The paths golden moved on 466 cells, each in
+its tree and its report, or, as a dry run, its report alone:
+
+- **`paths-reapply`, 82 of 731:**
+  - `keel new --stack <preset> <opening dials> && keel add
+walking-skeleton --reapply`, and the same after `--with <whole menu>`,
+    on the 19 presets the text counts, 38 cells: the twelve JVM REST
+    presets and `ts-http` and `ts-cli-http` in `application`, `go-http`
+    and `go-cli-http` in `cmd`, `rust-http` and `rust-cli-http` in
+    `Cargo.toml` and `src`, and `web-components` in `package.json`,
+    where code-style writes its scripts;
+  - `keel new --stack <product> … --layout <layout> && cd <service> &&
+keel add walking-skeleton --reapply` in all 24 services: the twelve
+    front ends in `application`, `domain` and `package.json`, the
+    gateway and code-style, and the twelve back ends in `application`
+    (8), `cmd` (2) or `Cargo.toml` and `src` (2);
+  - `keel new --stack <preset> <opening dials> --with <whole menu> &&
+keel add dev-container --reapply` in `.devcontainer`, and the whole
+    re-render in its report, on the ten presets where the dev
+    environment is an extra: `go-cli`, `rust-cli`, `ts-cli`, the
+    Quarkus, Spring and Micronaut CLIs in Java and Kotlin, and
+    `web-components`. 20 cells.
+- **`paths-grow`, 384 of 690:** `keel new --stack <preset> <modulith
+dials> && keel add module orders --consumes greeting && keel add
+module shipping --consumes orders && keel add walking-skeleton
+--reapply` on 196 of the 200 histories, every one but `go-cli`'s
+  four, and the whole re-render after 188 of them, every one but Go's
+  twelve.
+- **`paths-new` and `paths-add`:** none of 689 and 1,326.
+
+Every single re-render that moved now leaves its scaffold's tree, byte
+for byte. The converge golden moved on 1,091 of its 3,436 cells, each
+a re-render gaining its replay steps and nothing else (the script held
+each cell's order, placement and re-rendered steps to HEAD's): the 651
+single re-renders of `paths-reapply`, the 200 bootstraps and 200 whole
+re-renders after a history, which also replay each context, a step
+at the end of the run (`bounded-context replay orders …`, then
+`shipping`), since no history adds a vertical after one; the 18 grown
+projects' `keel add dev-container --reapply`, the 20 pairs taking
+`--refresh distribution`, which also replay what the add installs
+ahead of the re-render after the recorded verticals (persistence on
+18, containerization on two), and Q3.4's two `keel add distribution
+--reapply`. The 80 whole re-renders with no history replay nothing,
+since every recorded vertical re-renders, and did not move.
+
+What they stage was read by a scratch sweep, not kept, that ran the
+last command of all 1,171 re-render cells of the three families, on
+HEAD's sources and on these. HEAD's staged files on 258 bootstrap
+re-renders (19, 19, 24 and 196), 198 whole re-renders (10 and 188) and
+the ten `dev-container` ones. Now none of them stages anything. The
+only re-renders alone that still stage are Q3.4's two, which move
+distribution onto the image's adapter, as S.9 will say. The 20 pairs
+stage what they staged, changes and diffs alike, and every cell
+resolves the adapters it resolved. Instrumented in a scratch edit, not
+kept, the replays over the re-render and history families put 2,644
+patches back, by 1,298 adapters replayed: 2,064 by 1,040 of the
+contexts', 380 by 176 of observability's, 92 by 20 of the gateway's,
+64 by 18 of persistence's and 44 by 44 of code-style's.
+
+**Held byte for byte:** the greenfield and composite goldens,
+`growth.golden.json` (360 cells), `shared-files.golden.json` (498), the
+agent-harness, run-skill, planner-readiness and stack-registry goldens,
+and the four known files: brownfield's `{"I5": {}}`, `{}` for the
+others. I10 holds on all 320 growth cells, and every greenfield byte
+with it: no `keel new` cell of the paths golden moved.
+
+**I11 widens, hard.** `holdRerenders` holds each `reapply:` pair's
+install to staging nothing, on brownfield's scaffolds and in every
+composite service. The brownfield axis gains `holdWholeMenu`: each
+preset whose opening menu offers the dev environment as an extra is
+scaffolded again with its whole menu, a setting and not a cell, and
+held to I9 and I11 there. `brownfield.golden.json` goes from 1,711
+verdicts to 1,891: 10 `fixed:<stack>/menu` cells and 85
+`reapply:<stack>/menu+<v>` pairs, all `ok`. The growth axis holds I11
+too, on each twin it scaffolds, as `fixed:` and the twin's command
+lines: `growth.golden.json` goes from 1,280 verdicts to 1,440, 160
+twins, 64 of them with a history, all `ok`. No key was lost or
+changed, and none starts with `add:`.
+
+**The proof**, each tried in a scratch edit and undone byte for byte:
+
+- **The replay dropped**, `withReplays` returning what it was handed,
+  the contexts' steps with the rest. I11 failed on exactly the cells
+  the golden moved: in brownfield on 20 (the 19
+  `reapply:<stack>+walking-skeleton` and
+  `reapply:web-components/menu+walking-skeleton`), in composite on all
+  24 `+walking-skeleton` pairs, and in growth on 60 twins, those of
+  every history but Go's four. So did 21 unit cases:
+  `converge-run.test.ts`' three new re-renders, ten of
+  `converge.test.ts`' plan readings and eight of `add-vertical.test.ts`'
+  re-renders.
+- **The contexts replayed after everything**, as the text's DS10
+  reads it: five unit cases failed, the three plan readings of where a
+  context arrived and `add-vertical.test.ts`' two on a vertical added
+  after one. Dropped from an add's plan alone (a `--refresh` beside an
+  add), three: the plan reading and `add-vertical.test.ts`' two
+  modulith refreshes. Placing each context by its row alone, the
+  timestamps ignored, fails the plan reading of a context added after a
+  `keel add`; by its timestamp alone, the `bounded-context` row
+  ignored, four plan readings, a row growth records at rank among
+  them.
+- **The region reclaimed no more**, `replayPatches` without
+  `replaying`: `converge-run.test.ts`' region case failed, refused as
+  declaring the region twice.
+- **The dev container's rule dropped**, `dev-container.ts` as HEAD has
+  it. I11 failed on exactly 20 brownfield cells, `fixed:<stack>/menu`
+  and `reapply:<stack>/menu+dev-container` on the ten presets, and
+  nothing in composite or growth. So did the 14 of
+  `dev-container.test.ts`' 21 new cases that run without the tag, and
+  no other.
+
+**Tests.** `apply.test.ts` holds what a `reapply` records as rewritten,
+and that an install records nothing, and that a replay claims once
+more, once, a region its adapter claimed earlier in the run, and never
+another contributor's. `install-verticals.test.ts` holds
+the posture in ten cases: it writes the one patch onto the files it
+is handed, no whole file, element, action, reported adapter or record;
+it reads its answers as recorded, a question left open by its default,
+never supplied or asked; a guarded patch is its own fixed point and one
+that is not is a divergence; onto no file it contributes nothing; it
+replays only the adapters it is handed, where set; it reads a patch's
+target as the Tree does (`./main.txt`); and in a run it replays onto
+what a re-render rewrote and not onto a file it never wrote, onto no
+file a re-render skipped as identical (an append there would refuse),
+a vertical installed at an earlier position, after a later re-render,
+from the answer its install recorded, and one vertical at several
+positions, each from the manifest and adapters it is handed there.
+`converge.test.ts` holds the plan in nine new cases and two changed:
+the `reapply` plan's replay steps, a later named vertical re-rendering
+at its rank among them, one recorded before the vertical re-rendered
+replayed after it, none for a vertical no plugin provides or where
+every recorded one re-renders; on keel's Go CLI, the contexts replayed
+as steps, each where it arrived — before a `keel add` recorded after
+it, after one recorded before it or grown at rank, under a pinned
+clock too — before a later named vertical that arrived after it, and
+after a `--refresh` re-render beside an add, before what the add
+installed; the `--refresh` plan's replay steps, an install the planner
+runs ahead of the re-render replayed after the recorded ones, a
+vertical re-rendered ahead of one recorded before it replayed at its
+rank, and none for a plain add. `converge-run.test.ts` gains four
+cases on the `acme` family, with a vertical that puts a guarded line
+into the file the CLI bootstrap writes, one that appends one, and one
+that owns a region of a file another writes whole and reads it: the
+line put back, the vertical recorded first, a whole file of its own
+left as the user left it; the new refusal (no shipped patch reaches
+it); the region put back where the planner installs its owner ahead of
+a `--refresh` re-render, as the add alone leaves it (no shipped patch
+reaches it either); and a re-render that rewrites no whole file never
+reaching the append.
+`dev-container.test.ts` gains 21: for each family without a server,
+the attached render is what `dev-env` attaching it in place writes
+(seven), and a re-render after the dev environment rewrites nothing,
+with the tag or without (fourteen), each family without a server
+titled apart (`…, as a CLI`). `add-vertical.test.ts` gains ten: on
+`go-http`, `keel add walking-skeleton --reapply` over an edited
+`cmd/http/main.go` puts back exactly the scaffold's bytes; on a
+`ts-cli` modulith after `keel add module orders` it stages nothing,
+and on a `ts-http` one that took persistence after the context too,
+the context's handler still listed before persistence's; `keel add ci
+--refresh walking-skeleton` on the `ts-cli` modulith and `keel add
+persistence --refresh walking-skeleton` on the `ts-http` one leave
+what the add alone leaves;
+`keel add walking-skeleton persistence --reapply` on `go-http --with
+persistence` stages nothing; `keel add ci --refresh walking-skeleton`
+and `keel add persistence --refresh walking-skeleton` on `go-http`
+stage and leave what the add alone does; a `go-cli --with dev-env`
+grown HTTP re-renders its definition to `go-cli-http`'s; and a `--set`
+for a vertical a re-render only replays is refused as
+`keel.frozen-answer`, not as a re-rendered one's. And the growth axis
+gains its I11 test.
+
+**Runs.** The four `keel ui` browser suites passed, 44 tests in 75 s
+wall, before the fixes below and again after them, and in 69 s on the
+sources this step lands with. The `code-style-jvm` e2e suite ran
+twice. In the first run its re-render case, `keel add code-style
+--reapply` and then `spotlessCheck` on a fresh `quarkus-cli`, passed,
+and its other case failed as Maven Central answered 429 _Too Many
+Requests_. The retry failed in both cases on the same 429, before
+either built. On the sources this step lands with, it ran twice more:
+both cases failed on the 429 before building, then the re-render case
+passed in 89 s and the other failed on it again. Maven Central
+rate-limits this box, so CI's `jvm-basic-quarkus` e2e shard, which
+runs the suite on every push, is its record for this step.
+
+**The weekly sweep**, before S.7 as _The measure_ has it. The
+`arrival` suite, filtered to one preset per family (`quarkus-cli-rest`,
+`go-cli-http`, `rust-cli-http`, `ts-cli-http` and `web-components`:
+48 dial settings, 1,302 pairs and 288 arrivals alone, 918 scaffolds and
+1,584 adds), found 12 findings on HEAD's sources in 3.8 minutes, all on
+`quarkus-cli-rest`: Q3.4's second finding on its six Gradle settings,
+`keel add containerization --refresh distribution` leaving the native
+release's two workflows and its answers key and tag behind, and its
+third on the same six, `keel add iac` refused as `keel.needs-refresh`.
+Run again on this step, it found the same 12, line for line, in 3.9
+minutes.
+
+**Times**, under `CI=true` on four cores, with another checkout's
+suite beside most runs. The run of `CI=true pnpm test` this step lands
+with took 344.7 s as vitest reports it (5 min 46 s wall), with 202
+files and 3,300 tests passing, 57 more than HEAD's 3,243, at a load
+average rising from 0.9 to 6.5. A second run, before each context
+replayed where it arrived and a replay claimed its own region again
+(below), took 382.4 s (6 min 23 s wall) at 5.1 to 9.3. A first run,
+before the replay's order and what an add installs ahead of a
+re-render were fixed (below), took 434.4 s (7 min 16 s wall) at a load
+average rising from 4.1 to 11.7, and HEAD's, run just after at 7.0 to
+8.9, 374.1 s (6 min 15 s wall). Beside the rest, the landing run's
+first, then the second's and the first's, with HEAD's in brackets:
+
+- growth's axis 137.6, 148.4 and 151.8 s (131.5 s);
+- brownfield 21.5, 27.6 and 28.1 s (19.2 s), and composite 21.3, 18.1
+  and 17.0 s (23.7 s);
+- the converge golden 66.1, 66.1 and 81.0 s (66.0 s);
+- the paths golden's four 37.6, 49.6, 16.0 and 54.4 s, then 42.5,
+  57.9, 15.0 and 59.2 s, then 50.1, 64.0, 18.5 and 72.2 s (39.0, 53.3,
+  16.8 and 51.2 s; new, add, reapply, grow);
+- `converge-run.test.ts` 99, 83 and 142 ms, `install-verticals.test.ts`
+  62, 51 and 34 ms, `dev-container.test.ts` 589, 407 and 762 ms, and
+  `add-vertical.test.ts` 8.6, 7.2 and 8.9 s.
+
+The twins' I11 costs growth some 7 s. Paired alone in review, HEAD's
+sources, then these twice, then HEAD's, at a load average of 2.0 to
+3.3, growth took 115.0 and 117.3 s against HEAD's 109.5 and
+107.9 s: 7.4 s more, 6.8%. On this machine the load swings more than
+that: three more such pairings here read 102.0 to 152.5 s against
+HEAD's 112.0 to 143.9 s, at 2.1 to 5.6 alone and at 2.3 to 8.7 beside
+brownfield and composite, one pairing faster than HEAD's. Paired alone
+at 1.8 to 2.7, `paths-grow` took 49.4 s (44.8 s), its 400 re-renders
+after a history now replaying each context, and the converge golden
+48.6 s (49.4 s). Paired alone at 3.5 to 4.5, brownfield took 20.7 and
+18.1 s against HEAD's 17.2 and 14.3 s, its 180 new cells among them,
+and composite, at 2.7 to 3.5, 14.7 and 14.8 s against 14.0 and 15.1 s.
+
+`pnpm lint`, dependency-cruiser among it (306 modules, 1,506
+dependencies, as at HEAD), and `pnpm typecheck` pass. The CHANGELOG
+entries are the two under _Fixed_ and the one under _Changed_ the text
+gives. `docs/cli.md` → `--reapply` says what a re-render keeps,
+`docs/composition.md` what a re-render is,
+`docs/verticals/dev-container.md` that a re-render keeps the
+definition's shape, `docs/plugins.md` that a plugin's patch onto a
+file another vertical writes whole must be its own fixed point,
+`src/domain/core/AGENTS.md` names the posture, and `tests/AGENTS.md`
+what each axis now holds under I11.
+
+Beyond the text above:
+
+- **Each replay goes where one run of the target composition applies
+  it.** The text replays every other vertical after `v`. Where several
+  are named, each re-renders at its own rank among the replays after
+  the first, so what is recorded between two of them patches in before
+  the later one. Replayed after the last re-render instead,
+  `keel add walking-skeleton persistence --reapply` on a scaffold
+  `--with persistence` staged the entrypoint on `go-http` and
+  `rust-http`, observability's lines gone where persistence's patch
+  had rewritten their anchor, and the build file and the properties on
+  `quarkus-rest` and `spring-rest`, their sections swapped; each now
+  stages nothing. Beside an add, what the project records replays
+  before what the add installs after the re-render. No golden or grid
+  cell names two verticals or more but all of them, so none moved on
+  this; `add-vertical.test.ts` holds it on `go-http`.
+- **What an add installs ahead of a `--refresh` re-render replays
+  after it.** The text replays the recorded composition. The planner
+  can run an install first, `admit` ordering by id where nothing else
+  decides, and the re-render then rewrote what the install had
+  patched: `keel add persistence --refresh walking-skeleton` left
+  `go-http`, `rust-http`, `quarkus-rest` and `spring-rest` without
+  persistence's wiring in the entrypoint or the build files, and
+  recorded it installed; each now leaves what the add alone leaves.
+  After the last re-render, the recorded replays and the contexts,
+  each vertical the run installed before it replays in run order,
+  from the manifest its
+  install left — so `installVerticals`' `replays` are positions, since
+  one vertical installs and replays in one run — and so does a
+  vertical re-rendered ahead of one recorded before it, at its rank.
+  Where the re-renders run in recorded order, every `--reapply` and a
+  lone `--refresh`, that is one run's order exactly. Several `--refresh`
+  re-renders the planner orders otherwise, with an install between
+  them, still put every patch back after the last, but can apply two
+  onto one file out of one run's order; no shipped command line reaches
+  it. The converge golden's 20 refresh pairs gain that one step, and no
+  paths cell moved, since neither install patches what distribution
+  rewrites (below).
+- **Each context replays where it arrived.** DS10 replays the
+  contexts' wiring after the verticals, measured on histories that add
+  no vertical after a context. A vertical added after one patched in
+  after its wiring: on a modulith that took `keel add module orders`
+  and then persistence, replaying the contexts last staged
+  `MediatorFactory.java` on the four Micronaut REST presets,
+  `application/http/Cargo.toml` on `rust-http` and `rust-cli-http`,
+  and `application/rest/src/main.ts` on `ts-http` and `ts-cli-http`,
+  the lines back in another order, and
+  `keel add persistence --refresh walking-skeleton` left them so. Each
+  context now replays as a step among the recorded verticals, just
+  before the first one recorded after the `bounded-context` row that is
+  not older than it — the first `keel add module` records that row
+  after every other, and a `keel add` appends after it — after them
+  all where none is, and never before a context recorded before it; so
+  always before what the run installs. A row growth records at rank
+  sits before that row, and growth's run wires the contexts after its
+  verticals, so the contexts replay after it too. Recorded at one
+  instant, as a pinned test clock records, a context goes before every
+  row after `bounded-context`: right for the first, not for one added
+  after such a row, which a real clock tells apart. S.8 records a new
+  row before `bounded-context`, so it needs another reading of arrival
+  there; `add-vertical.test.ts`' `ts-http` case holds the one this step
+  reads. Measured by a scratch sweep, not kept, on every modulith
+  preset (28): `keel add module orders --consumes greeting`, then each
+  of eight extras, 143 adds that write something, then
+  `keel add walking-skeleton --reapply` as a dry run and, on a twin,
+  the add with `--refresh walking-skeleton` against the add alone. On
+  HEAD's sources, 140 of the 143 re-renders staged and 140 refreshes
+  left other bytes, all but `go-cli`'s three; with the contexts
+  replayed last, eight of each, persistence on the eight presets above;
+  now none, under an advancing clock and a pinned one alike. Each
+  context replays by every adapter of keel's `bounded-context` the
+  recorded tags match with the marker, which is what its add ran and
+  what growth wired since. No golden or grid cell adds a vertical after
+  a context, so none moved on this, and the converge golden's 400 cells
+  that replay a context spell it as a step at the end of the run, where
+  it sat.
+- **A replay claims its own region again.** The replay goes through
+  the run's ownership, where a vertical the run installed or
+  re-rendered ahead of the re-render has claimed its regions already.
+  `keel add P` proposes refreshing a vertical that reads P; where that
+  vertical writes a file whole and P owns a region of it, taking the
+  proposal installs P first, re-renders the vertical, and was then
+  refused as `keel.reapply-conflict`, P's replay declaring the region a
+  second time. `applyContribution`'s `replaying` lets an adapter claim
+  once more, once, a region it claimed earlier in the run; another
+  contributor's claim, or its own twice in one replay, still refuses.
+  No shipped vertical reaches it — keel's own region patches target
+  `.editorconfig`, `.gitattributes` and `.gitlab-ci.yml`, which no
+  vertical writes whole — so a fixture of `converge-run.test.ts` holds
+  it.
+- **A vertical no loaded plugin provides is not replayed**, since
+  nothing can render it. `add-vertical.test.ts`' case planning on a
+  project that records one, a `--reapply` among its runs, passes as it
+  did.
+- **On the tag, the definition still renders the template.** There
+  its bytes are what `attachDevContainerToDevEnv` makes of the
+  standalone render, as R.1b's suite holds for each HTTP family, so no
+  test tells the two apart; the template stays the reference that hold
+  is read against, rather than the attach being held to itself.
+  `add-vertical.test.ts` holds the one shape the text says a re-render
+  moves: `go-cli --with dev-env`, grown HTTP, re-renders its definition
+  to `go-cli-http`'s.
+- **A pair the text leaves to its reading is confirmed.** A declared
+  read is the one way a replay could write something new. On the 20
+  pairs that take a refresh, and Q3.4's two `--reapply`, distribution
+  re-renders and rewrites `deploy/compose.yaml`, and Q3.4's
+  `.github/workflows/release-image.yml` too. The instrumented replay
+  met 347 adapters there, none with a patch on either file, and no
+  `paths-add` cell moved. Run again once the add's installs replay
+  too, it met 413, none with a patch on either file.
+- **The grown project's `keel add dev-container --reapply` moved no
+  paths cell.** The text lists it where the project took the dev
+  environment as an extra. The paths golden runs it on each preset's
+  opening scaffold, which has no extra, and growth installs the dev
+  environment as the twin's vertical, attached on the grown tags in
+  the template's shape already. The converge golden's 18 such cells
+  gain their replay steps.
+- **The whole-menu scaffolds carry `reapply:` pairs too.** The measure
+  names their whole re-render. Each vertical re-rendered alone there is
+  the reading S.7 adds on brownfield, and it is the one that holds
+  `keel add dev-container --reapply` by itself: 85 pairs, and no
+  `refresh:` pairs.
+- **A `refresh:` pair stages what its add stages**, so I11 holds it to
+  coming back Ok and re-rendering what it names, as S.1b did, and not
+  to staging nothing.
+- **No shard option.** _The measure_ has one land first where S.7
+  finds growth past about 150 s under `CI=true pnpm test`. The first
+  full run read it at 151.8 s, at a load average near 11; the run this
+  step lands with, 148.4 s at 5.1 to 9.3. The twins' I11 is some 7 s of
+  it (_Times_), and the rest of the axis is what HEAD runs. So no shard
+  option landed.
+
+### S.8 — One record order (M) ✅
+
+The second behaviour change (DS3). Every caller records a new row
+where one run of the target composition records it, at the reference
+order's rank:
+
+- the `verticals` rows;
+- the `answers` keys;
+- the harness `entries`, realized in the reference order.
+
+Where the harness does not re-render, the step finds a new entry's
+place without replaying the whole project. It uses the order
+realization writes in, and the contributing adapter's rank in the
+reference order. So a recorded vertical that no loaded plugin provides
+any more refuses nothing new, as a replay would
+(`keel.missing-harness-contributor`). The paths golden's cells hold
+the result against one run. Nothing recorded moves (DR4). A new row
+goes before `bounded-context`, which stays last. Where the drill-down
+places no preset, new rows are appended, as today.
+
+**I12 lands hard.** The `arrival` suite normalises only timestamps
+now, and runs filtered after the step.
+
+**The golden moves** in the manifest alone:
+
+- the `entries` of the single-extra `keel add` cells (37 measured:
+  persistence 18, iac 19);
+- the `verticals` of every harness adoption;
+- the rows of every pair cell whose arrival order is not one run's.
+  The Landed paragraph counts them per preset;
+- the rows of `keel add y` after a module history, which now lands
+  before `bounded-context`.
+
+No tree digest moves. On the cells adopted after an extra,
+`keel docs check` goes from red to green (18 of 143 measured).
+
+**CHANGELOG:**
+
+- _Changed_: `keel add` records what it adds where `keel new` records
+  it, in the manifest's verticals, answers and file entries.
+- _Fixed_: `keel docs check` is no longer red after
+  `keel add agent-harness` on a project that took persistence first.
+
+**Leaves out:** moving any recorded row, and the navigation index's
+reading. A manifest an older keel appended keeps its order, and
+`keel docs check` stays red on a project adopted before S. Reading the index
+in the reference order would change what `keel docs sync` writes on
+every appended manifest, and it waits for a step of its own.
+
+**Landed as one record order**, in one commit. `converge.ts` (875 lines
+to 915) places what its callers record: `convergeOf` hands the plans of
+`add`, `reapply` and `module` to `atReference`, which, where the target
+reads back a preset, places each row the run records anew with `placed`
+against the target's reference order — before the first recorded row
+the reference lists later, so before `bounded-context`, nothing
+recorded moving — reads the target again over those rows, and marks the
+plan `reference/reference`, a third `Placement` beside growth's
+`twin/twin` and `append/run`. Where no preset reads back the plan stays
+appended. `converge-run.ts` (612 lines to 763) ranks by the reference
+as it ranks growth by its twin (`rankingOf`, `twinOrder`): the harness
+buffer is realized in that order, and `atRank` places the rows and the
+answers keys by it. A harness entry is placed by a rank `atRank` is
+handed: growth's by where the pass realized it (`realizedRank`, as
+before); the reference's by `referenceRank`, which replays nothing. It
+reads the stage `realizeHarness` writes the entry's file in — a skill's
+or a hook's file, whole, where its contributor's vertical declares that
+skill or hook; the hook settings; a file a harness patch or a doc
+section lands in; a doc's pointer, ranked by the first contributor of
+its doc; the index — then the contributor's rank in the order, then
+where this run realized it, for one contributor's files. A contributor
+the order ranks nothing of ranks nowhere, and its entry stays where it
+is: a vertical no loaded plugin provides, and one the tags the run
+leaves no longer cover, which `twinOrder` reads with `coverageGap` and
+leaves unranked rather than resolve it and refuse the run. The handlers
+change in a doc comment each, and the doc comments that named the order
+a re-render runs in the install order — `add-vertical.ts`',
+`planner.ts`' and `RefreshGap.verticals` — name the recorded one.
+
+- **The golden moves in the manifest alone.** A script compared every
+  cell of HEAD's goldens with the regenerated ones, field by field
+  (kept outside the repository, re-runnable against any base): no tree
+  digest, verdict or action list moved on any of the 3,436 cells, and
+  `paths-new` and `paths-reapply` are byte-identical. `paths-add` moved
+  on 603 of its 1,326 cells:
+  - 74 single-extra adds, in `manifest.entries` alone: the 37 the
+    research measured, persistence 18 and iac 19, and the same 37 with
+    their questions answered. 24 more are the same adds in product
+    services, in `entries` alone: persistence in each backend under
+    both layouts, and iac in each polyrepo backend and frontend, on
+    the six products;
+  - all 171 harness adoptions, in `manifest.verticals` alone,
+    `agent-harness` recorded third where it was last. On the 18 after
+    `--with persistence`, `keel docs check`'s drift goes from red to 0,
+    as measured; no other cell's drift moves;
+  - 189 of the 265 pair cells, 21 on each of the nine presets that
+    carry both entrypoints. By field, `entries` alone on 43,
+    `verticals` alone on 40, `verticals` and `answers` on 43, all three
+    on 42, and `verticals` and `entries` on 21. Q3.4's second spelling
+    moved too, on its two presets, in `verticals` alone;
+  - all 143 adds after a module history, in `manifest.verticals`, the
+    row before `bounded-context`; the 37 of persistence and iac in
+    `entries` too.
+
+  `paths-grow` moved on the 18 of its 690 cells that adopt the harness
+  and then grow, in `manifest.verticals`, and on nine of them in the
+  report too (below). The converge golden moved in `placement` alone on
+  2,445 cells, `append/run` to `reference/reference`: every `keel add`,
+  `--refresh`, `--reapply` and `keel add module` cell that converges,
+  but the 54 at monorepo product roots, where no preset reads back. The
+  same 18 growth cells moved in `run` alone. `growth.golden.json` (360
+  cells) and the shared-files, agent-harness and run-skill goldens are
+  byte-identical, and so are the grid's four goldens and its known
+  files: brownfield's `{"I5": {}}`, `{}` for the others. I10 and I11
+  hold on every cell.
+
+- **I12 lands hard**, in `INVARIANTS` and `HARD`, held by brownfield
+  (`holdArrival`) on each preset's opening dials: `keel add y` on a copy
+  of the scaffold, with the refresh the `add:` cell's preview proposes,
+  against `keel new --with y`, for each of the 143 extras the menus
+  offer; `keel add agent-harness` on `keel new --no-agent-harness`
+  against the scaffold, on all 28; and the same after `--with y`
+  against `keel new --with y`, 143 more. Every file must match byte for
+  byte, the manifest among them: 314 pairs over 628 real runs, through
+  `Grid.twin`, so no verdict key is added. All 314 hold. The same axis
+  on HEAD's sources breaks it on 208: the 37 single extras (iac 19,
+  persistence 18) and all 171 adoptions.
+- **The weekly sweep, after S.8.** `normalisedManifest` puts the
+  timestamps alone to one value, and keeps key order and every list as
+  written; `machinery.test.ts`' case of it now reads a record in
+  another order as a `record` finding. Filtered as S.7 ran it
+  (`quarkus-cli-rest`, `go-cli-http`, `rust-cli-http`, `ts-cli-http`
+  and `web-components`: 48 dial settings, 1,302 pairs and 288
+  arrivals alone, 918 scaffolds, 1,590 previews and 1,584 adds), the
+  `arrival` suite found 12 findings in 4.7 minutes, all on
+  `quarkus-cli-rest`: Q3.4's second finding on its six Gradle
+  settings, the manifest differing in its tags and answers, and its
+  third on the same six — S.7's 12, line for line, but for the order
+  that line names the two fields in, the manifest's own key order now
+  rather than a sorted one. Run with the same reading on HEAD's
+  sources it found 825 in 4.8 minutes (`go-cli-http` and
+  `rust-cli-http` 105 each, `web-components` 192, `ts-cli-http` 210,
+  `quarkus-cli-rest` 213): besides the 12, a manifest recording the
+  same files otherwise.
+- **The tests.** `converge.test.ts` goes from 32 cases to 37: a new row
+  before the first recorded one the reference lists later, a harness
+  adopted later at its preset's rank, a row before `bounded-context`, a
+  recorded row kept where an older keel put it, and a project no preset
+  reads back appended; the `add`, `reapply` and `module` placements read
+  `reference/reference`. `converge-run.test.ts` goes from 25 to 38, on
+  presets of its own built from the family's pieces, most holding two
+  runs to one byte for byte, manifest included: the notes' skill
+  realized before a map's doc they rank after, and appended after it
+  under `append/run`; a row and its answers key before the first
+  recorded one; the harness adopted, and a harness with a hook, its
+  script whole, then the settings, before any doc; a doc the adopted
+  harness shares with a vertical run before it, in one run's section
+  order; a new doc's pointer before a recorded one the run does not
+  realize, and a recorded pointer ranked by the first of its doc's
+  contributors, not the last; a recorded vertical no loaded plugin
+  provides, whose re-render of the harness is refused as
+  `keel.missing-harness-contributor`, while the add goes on and its
+  entry stays last; a recorded vertical whose one adapter excludes the
+  tag an add promotes, the add going on with its refresh proposed, and a
+  later add and a `--reapply` of the promoting vertical after it;
+  harness entries an older keel recorded out of the reference order, and
+  rows it appended, kept where they are, only the new one placed; a new
+  row before `bounded-context`; and what a `--reapply` newly writes
+  recorded where one run records it. Every add there also holds the rows
+  it wrote to the plan's `target.recorded`, which the run places anew
+  rather than reads. `add-vertical.test.ts`' 36th case now puts the rows
+  back as an older keel appended them before its `--reapply` beside
+  `--refresh` (below).
+
+**The proof**, each tried in a scratch edit of `src/` and undone byte
+for byte, run against `converge-run.test.ts`, `converge.test.ts`,
+`add-vertical.test.ts`, `add-module.test.ts` and the brownfield axis
+(134 tests). Each failed exactly what is named:
+
+- **The rows appended, the harness still realized in the reference
+  order:** I12 on the 208 cells HEAD breaks it on, all thirteen new cases
+  of `converge-run.test.ts`, the three placements of
+  `converge.test.ts` and `add-vertical.test.ts`' 36th.
+- **The entries placed by where the pass realized them**, growth's
+  rule: I12 on the 37 single extras alone, and five cases: the
+  stage's, both pointers', the vertical no plugin provides and the
+  entries an older keel recorded out of the reference order.
+- **No stage for a contributor's file, its rank alone:** I12 on 189,
+  the 171 adoptions and persistence's 18, and seven cases: the
+  stage's, the row's, the adoption's, the hook's, the re-render's, the
+  vertical no plugin provides and the entries an older keel recorded
+  out of the reference order.
+- **A hook's file read as landed, not whole:** I12 on all 208, the
+  kit's hooks then ranking after the settings, beside code-style's
+  format step, and the hook's case.
+- **The hook settings ranked with the index:** I12 on the same 189,
+  and the hook's case.
+- **The harness buffer left in run order:** the case of a doc the
+  harness shares with a vertical run before it, alone. I12 holds on all
+  314 pairs.
+- **A pointer ranked by where the run realized it alone:** the pointer
+  case, alone, which was written for it once nothing else failed.
+- **A recorded pointer ranked by the last contributor of its doc:** the
+  recorded pointer's case, alone.
+- **The reference ranked without `bounded-context`:** the case of a
+  row before it, alone.
+- **Every recorded row put back into the reference order:** the case
+  of rows an older keel appended, alone. I12 holds, since every cell's
+  record is the current keel's, in that order already.
+- **Every recorded entry put back by its rank in the reference
+  order:** the case of entries an older keel recorded out of it,
+  alone, I12 holding for the same reason.
+- **A recorded vertical the run's tags no longer cover resolved, not
+  read with `coverageGap`:** its case, alone, the add refused as
+  `keel.uncoverable-vertical`.
+- **`--reapply` appended:** the re-render's case, and
+  `converge.test.ts`' reapply placement.
+
+**Times**, under `CI=true` on four cores. In one run of
+`CI=true pnpm test` the suite took 400.2 s as vitest reports it (6 min
+41 s wall), with 202 files and 3,268 tests passing, 19 more than S.6's
+3,249, from a load average of 4.7 to 8.9, another checkout's work
+beside it. Beside the rest: brownfield 67.0 s, growth's axis 132.5 s,
+greenfield 40.7 s and composite 20.7 s; the converge golden 69.8 s; the
+paths golden's four 49.8, 62.5, 18.5 and 62.9 s (new, add, reapply,
+grow); `shared-files.golden.test.ts` 50.4 s; `add-vertical.test.ts`
+15.4 s, `converge-run.test.ts` 258 ms and `converge.test.ts` 82 ms. Two
+earlier runs, before the last two cases of `converge-run.test.ts`, had
+brownfield at 74.5 s (load 2.7 to 6.0, the suite 387.6 s) and 64.0 s
+(4.1 to 8.2). I12 is the step's cost: brownfield alone took 51.3 s at a
+load average below 1, and, paired with HEAD's copy of the axis at 4 to
+7, 53.3 s and 47.8 s against 14.9 s and 16.6 s. The measure put it at
+some 330 real runs and about 50 s; it is 628 runs, in that time. It
+stays below growth's axis.
+
+No template changed and no preview moves — a preview stages no
+manifest — so neither the `keel ui` browser suites nor any e2e suite
+was run; the 13 web suites of `tests/application/web` pass, 240
+tests. `pnpm lint` and `pnpm typecheck` pass. Dependency-cruiser
+cruises 306 modules and 1,512 dependencies, four more than S.6's: the
+run imports node's `path` and the doc, hook and skill contracts. The
+CHANGELOG entries are under _Changed_ and _Fixed_.
+`src/domain/core/AGENTS.md` names the placements and how an entry is
+ranked; `tests/AGENTS.md` records I12 and the sweep's reading;
+`docs/composition.md`, `docs/cli.md` (`keel add`, `keel docs`),
+`docs/verticals/agent-harness.md` and `docs/development.md` say where
+a later run records.
+
+Beyond the text above:
+
+- **`keel new` stays `append/run`.** Its run is in the reference order
+  already, which the converge golden's round trip holds on every scope
+  it reads, onto a seed that records nothing; placed at the reference,
+  it would write the same bytes and move 689 cells of the converge
+  golden's `placement`.
+- **`--reapply` and `keel add module` are placed at the reference
+  too.** A re-render records anew only the key of an adapter the
+  vertical newly resolves to, or the entry of a harness file newly
+  written, and `keel add module` records `bounded-context` last the
+  first time, where appending puts it, its `bounded-context` realizing
+  no harness file on keel's presets. No cell reaches a difference, so
+  on every cell each behaves as appended; the re-render's case holds
+  the first.
+- **More single-extra cells move than the 37 measured.** The same 37
+  adds with their questions answered move alike, and so do 24 adds in
+  product services, which the research's 143 pairs did not include:
+  each records its skill's entry where one run of the service records
+  it.
+- **Nine growth reports move.** Growth runs in the order the record
+  keeps, placing what it adds at the twin's rank. After an adoption
+  that recorded the harness last it re-rendered the harness last, and
+  on the nine CLI presets growing HTTP the report listed its adapters
+  so. The harness is recorded third now, so it runs third, and the
+  report is the one growing the scaffold made with the harness gives,
+  on all 18 cells: report, actions, tree and drift alike.
+- **The harness buffer is realized in the reference order**, and on
+  keel's presets nothing tells: no vertical before the harness shares
+  a file with it, as the research found adoptions writing one run's
+  files already. The fixture case holds it.
+- **A pointer ranks by the first contributor of its doc**, since one
+  pass writes the pointers in the order their docs first appear. No
+  add of keel's writes a pointer among recorded ones; two fixture cases
+  hold it.
+- **`add-vertical.test.ts`' 36th case writes the manifest back** as an
+  older keel appended it, distribution before persistence: after two
+  adds, S.8 records persistence first, as the planner orders a
+  `--refresh`, so without it the case could not tell the recorded order
+  from the planner's. It also holds that the adds record persistence
+  first.
+- **The sweep's reading keeps key order too.** It sorted every
+  object's keys, the answers' among them, as well as the lists; it now
+  normalises the timestamps alone, as _The measure_ says.
+- **A recorded vertical the tags no longer cover refuses nothing new
+  either**, beside the one no loaded plugin provides that the text
+  names. Placed at the reference, every `keel add`, `--refresh`,
+  `--reapply` and `keel add module` ranks the recorded verticals, as
+  growth alone did before, and the ranking resolved each on the tags
+  the run leaves. So one whose only adapter excludes a tag the add
+  promotes refused the run as `keel.uncoverable-vertical`, naming a
+  vertical the user never asked about, where HEAD proposed its
+  refresh, and so was every later add, `--reapply` and dry run on the
+  project it left. `twinOrder` now reads each with `coverageGap` first
+  and ranks none of one it finds uncovered: the refusal stays with a
+  run that runs it. No cell reaches it, since among keel's adapters only
+  `quarkus-cli-native` declares `excludes`, and where it is ruled out
+  another adapter of `distribution` covers its dimensions. The fixture
+  case holds it; a probe through the mediator — `keel new` of a plugin
+  preset then `keel add` of the promoting vertical, and the project
+  reached so under the plugin's earlier version, then an add, a
+  `--reapply` and a dry run under the later — was refused four times
+  before and is Ok on all four, as on HEAD.
+- **A re-render after `keel add y` on a module history writes what
+  one run writes.** S.7 replays a context's wiring where it arrived,
+  read off the rows recorded after the `bounded-context` row; this step
+  records `y` before that row, where one run records it, so the
+  re-render replays `y`'s patches first and the contexts' wiring after
+  them, as `keel new --with y` then the same `keel add module` history
+  writes them. Every line of both comes back; only their order moves,
+  onto one run's, and a second re-render stages nothing. The arrival
+  order cannot be read otherwise: timestamps tie under a pinned clock,
+  a re-render restamps what it re-renders, and growth records its rows
+  at rank too while wiring the contexts after them. No golden cell
+  runs that history, so nothing of the goldens moves. S.7's handler
+  case of it now holds the bootstrap re-rendered on a `ts-http`
+  modulith that took persistence after `orders` to the entrypoint
+  `keel new --with persistence` then `keel add module orders` writes,
+  a `modify` of it alone, and a fixed point after. On a manifest an
+  older keel appended, the context's wiring comes back where it
+  arrived, as S.7 has it.
+- **Measured again on S.7's sources**, which this step lands after:
+  regenerated there, the goldens move on the same 621 cells as above
+  and no other (the move script flags none), in the manifest, the
+  drift of the 18 adoptions and the 9 reports alone, and the converge
+  golden's placement on the same 2,445 cells beside S.7's replay steps.
+  `CI=true pnpm test` passes 202 files and 3,325 tests, 19 more than
+  S.7's 3,306; brownfield takes about 53 s alone and 58 s in the full
+  suite. The filtered `arrival` sweep finds the same 12 findings, all
+  on `quarkus-cli-rest`, in 3.8 minutes.
+
+### S.9 — What a re-render leaves behind is said (S) ✅
+
+keel removes nothing, and a re-render now says what it leaves. Where
+a re-render moves a vertical off an adapter that ran, the report
+names that adapter.
+
+An adapter "ran" by the record, not by a comparison of tags:
+
+- an `answers` key of the vertical's that is not one of the adapters
+  the re-render resolves;
+- or an adapter of the vertical whose promoted tag the manifest holds
+  and the re-render does not promote.
+
+For each such adapter, the report also names:
+
+- the files it wrote that the Tree still holds, from a contribution
+  of that adapter on its recorded answers, whatever its predicate now
+  says;
+- its answers and its tags, which stay.
+
+The report says keel removes nothing it wrote without a merge base
+(L), so those are the user's to delete. Nothing else changes: no
+file, no manifest, no verdict.
+
+An adapter that recorded no answer and promoted no tag leaves no
+trace in the manifest, so this reading cannot find it. The step lists
+in its Landed paragraph which of keel's adapters could be moved off
+that way. Recording which adapters ran would take a new field (DS2),
+and that is not in scope.
+
+**The golden moves**, in notes alone: Q3.4's cells on
+`quarkus-cli-rest` and its Kotlin twin under Gradle, in both
+spellings. The note reaches the page through the preview's notes, so
+the keel ui browser suites run.
+
+**CHANGELOG:** _Changed_: "A re-render that moves a vertical onto
+another adapter names the files the first one wrote, which keel leaves
+in place."
+
+`docs/cli.md` → `--refresh` and `docs/verticals/distribution.md` say
+it. `add-vertical.test.ts` holds both spellings, and a file the user
+already deleted, which the note leaves out.
+
+**Leaves out:** deleting anything; and the weekly finding (2), which
+stays open, now said by the command itself.
+
+**Landed as the last behaviour change**, in one commit.
+`converge-run.ts` (799 lines to 945) reads what the run's re-renders
+leave (`leftBehind`) once the run is staged, for every `rerender` step,
+the verticals in the order the project records them: each adapter of the
+vertical that the run did not resolve and that ran by the record —
+answers under its id, or a tag of its share (`planner.ts`'
+`adapterPromotes`: `Adapter.promotes`, else the vertical's union) that
+the manifest holds, that no adapter the re-render resolved may promote,
+and that nothing else the project records accounts for (`unaccounted`):
+no adapter of another recorded vertical whose every required tag the
+recorded tags hold promotes it when contributed on what the project
+records, nor throws there, since one that throws may; its excludes go
+unread, as one that promoted the tag before a tag it excludes arrived
+ran all the same. The tag is read only for an adapter whose every
+required tag the recorded tags hold, a peer's among them
+(`effectiveTags`), since a project's own tags only accrue. For each, it
+names the files the adapter writes whole, contributed from the manifest
+the run starts from, asking nothing, whatever its predicate says
+(`install.ts`' `recordedContribution`, now exported), that the Tree
+still holds and no contribution of the run wrote whole (`leftFiles`,
+over `Ownership.wroteWhole`, a set `apply.ts` now keeps beside
+`writers`: each path a contribution of the run wrote whole — a file, a
+skill's file or a hook script — and none it only patched). `refusals.ts`
+words the note (`leftBehindNote`), which counts the tags and names none,
+as the module prints no tag. The reason it gives is the `drops`
+sentence's, now one constant both read (`REMOVES_NOTHING`), so that
+sentence is unchanged. The note goes after the caller's notes that come
+before the proposals, and before the proposals. `add-vertical.ts`,
+`commands.ts`' `InstallReport.notes` and `queries.ts`'
+`InstallPreview.notes` change in a doc comment each. Nothing else of a
+run moves: no file is written or removed, the manifest keeps the
+adapter's answers and tags, and no verdict changes.
+
+- **The golden moves in notes alone**, on the four cells the text
+  names and no other. The paths golden was regenerated with
+  `KEEL_UPDATE_GOLDEN=1` and compared with HEAD's by a script, cell by
+  cell and field by field (kept outside the repository, re-runnable
+  against any base). `paths-add` moved on 4 of its 1,326 cells, each in
+  `report` alone:
+
+  ```sh
+  keel new --stack quarkus-cli-rest --build-system gradle --module-layout basic --with distribution && keel add containerization --refresh distribution
+  keel new --stack quarkus-cli-rest --build-system gradle --module-layout basic --with distribution && keel add containerization && keel add distribution --reapply
+  ```
+
+  and the same two on `quarkus-cli-rest-kotlin`. Each report's one
+  note names both of the native release's files: _Distribution no
+  longer renders through distribution/quarkus-cli-native, and keel
+  removes nothing it installed — without a recorded base, it cannot
+  tell what it wrote from what you changed since — so
+  .github/workflows/native-build.yml and .github/workflows/release.yml,
+  which that adapter wrote, are yours to delete, and its answers and
+  the tag it promoted stay in the manifest_. With that note taken out of what a
+  cell records, in a scratch edit of `tests/support/paths-golden.ts`
+  undone after, `paths-add` passes against HEAD's JSON: the note is
+  all that moved. `paths-new`, `paths-reapply` and `paths-grow`
+  regenerate byte-identical, and so do `converge.golden.json` (3,436
+  cells: it records the reading, which holds no report), and
+  `growth.golden.json` (360); the shared-files, agent-harness,
+  run-skill, planner-readiness and stack-registry goldens pass as they
+  are. The grid's four axes pass, their goldens byte-identical, and
+  the known files are as they were: brownfield's `{"I5": {}}`, `{}` for
+  the others. I10 and I11 hold on every cell, and the compatibility
+  matrix does not move (`generated-docs.test.ts`). Regenerated again
+  after each review, the third time on the tree this step lands with,
+  `paths-add`, `paths-reapply` and `paths-grow` are byte-identical to
+  the golden above, and every other golden and grid axis passes as it
+  is.
+
+- **Which of keel's adapters a re-render can move off**, measured over
+  the registry: 167 adapters, the 136 of its 14 verticals, the 3 of
+  `fullstack`, which only a product preset carries and `keel add`
+  cannot name, and the 28 of keel's own `bounded-context`. A project's
+  own tags only accrue — no command takes one away — so an adapter
+  stops matching only where it excludes a tag that arrives, or requires
+  one that leaves the set it resolves against: a peer's, which
+  `keel link` replaces with what the project at that path projects now,
+  or the context marker `keel add module` seeds and strips.
+  - One excludes a tag: `distribution/quarkus-cli-native`
+    (`runtime.jvm-image`). It records its `targets` and promotes
+    `runtime.graalvm-native`, so either reading finds it, and on
+    Q3.4's cells both do (_The proof_, below).
+  - Nine require a peer's tag, all of them `gateway`'s: `wc-gateway-rest`
+    a REST back end's (`peer.api.rest`), and `rest-api-contract` and
+    the seven CORS adapters (Quarkus, Spring in Java and in Kotlin,
+    Micronaut, Go, Rust and TypeScript) a single-page front end's
+    (`peer.ui.spa`). None asks a question or promotes a tag, so these
+    are the adapters a re-render can move off with no trace: relinked
+    at the same path to a project that no longer projects the tag,
+    `keel add gateway --reapply` leaves what they wrote, and no note
+    names it. No golden or grid cell relinks.
+  - The 28 context adapters require the marker, and are
+    `bounded-context`'s, which no re-render names; a replay is no
+    re-render. The 28 peer-context adapters of `walking-skeleton`
+    require `modules.peer-context`, a tag the project keeps.
+
+  Two tags of an adapter's share are also in another vertical's
+  adapter's, and no preset seeds a tag of any share. One is
+  `runtime.graalvm-native`, the native release's, which
+  containerization's JVM images for Quarkus, Spring and Micronaut
+  promote on `flavor: native`: on Q3.4's cells the image is the JVM
+  flavor, and its render promotes `runtime.jvm-image`, so the tag stays
+  the native release's; on a server whose image is built native, where
+  the native release never resolves, the image accounts for it. The
+  other, `agentic.harness`, is the six harness kits' and, by its union,
+  `fullstack`'s, none of which a re-render moves off.
+
+- **The tests.** `add-vertical.test.ts` goes from 48 cases to 51. On
+  `quarkus-cli-rest` under Gradle with distribution, one case takes
+  both spellings: `keel add containerization --refresh distribution`,
+  planned and then written, and on a copy `keel add containerization`,
+  which proposes the refresh and says nothing of what stays, then
+  `keel add distribution --reapply`; each says the note, the
+  native release's two files are byte for byte as it wrote them, its
+  answers and tag are recorded still, and the two spellings leave the
+  same files. Another deletes `release.yml` before the re-render and
+  is named `native-build.yml` alone, then deletes that too and is named
+  no file, the manifest's record alone, with nothing staged. The third
+  is `quarkus-rest` under Gradle, its image built native and the
+  native release never resolved there, with a `release.yml` of the
+  user's: the re-render, planned and written, and
+  `keel add iac --refresh distribution` note nothing, and the file is
+  as the user wrote it. Two cases change, each now also holding the
+  note: the `iac` add that takes `--refresh distribution` after the
+  image noted nothing, and the one before the image, as a dry run,
+  noted the image it added alone. `converge-run.test.ts` goes from 42
+  cases to 59, on a ship vertical of the `acme` family whose binary
+  adapter excludes the tag an image vertical promotes, and writes two
+  files, one of which the image's adapter writes too: the note between
+  the caller's notes, naming the file the image does not write and not
+  the one it rewrote, the answers and the tag kept; each reading alone
+  (the tag, then the answers), and no note for an adapter that recorded
+  neither; two tags, counted; a share read as the vertical's union where
+  an adapter declares none, on the adapter moved off and on the one
+  moved onto; a third adapter of the ship, of a language the project
+  never had, whose share — its own, then the union — holds the tag the
+  binaries promoted, not named, the file of the user's at its path left
+  out of the note; an adapter that ran on a peer's tag a relink since
+  withdrew named by its answers alone, and not at all where it asked
+  nothing; a file the user deleted left out; a file named by the path
+  the project holds where the adapter spells it `./`; a file another
+  vertical of the run only patched still named, in one run as in two;
+  re-rendered after a run of its own took the image, an adapter that
+  throws on the manifest it is contributed from named by its record
+  alone, the run Ok, where one that renders there is named with its
+  file; a tag another recorded vertical promotes on its recorded answer
+  read as no sign the binaries ran, the file at their path the user's,
+  one that vertical's render does not promote read as theirs, one
+  whose render throws read as no sign, one it promoted before a tag its
+  adapter excludes arrived read as no sign, and one only an adapter of
+  it the project never matched would promote read as theirs; the note
+  before the refresh the run proposes; and two verticals it moved said in the order the project
+  records them, whatever order they re-rendered in.
+  `refusals.test.ts` goes from 58 cases to 59, the note's wording: one
+  file or two, or none; its answers, the tag it promoted, or both; and
+  two tags, counted.
+
+**The proof**, each tried in a scratch edit of `converge-run.ts` and
+undone byte for byte, run against `converge-run.test.ts`,
+`add-vertical.test.ts` and the paths golden's add, re-render and
+growth files (116 tests), cells counted by regenerating the three and
+comparing them with the step's own:
+
+- **No note** fails the fourteen fixture cases that say one, the four
+  handler cases that say it, and `paths-add` on exactly the four cells.
+- **The answers reading dropped** fails nine fixture cases, **the tag
+  reading dropped** twelve; each fails the four handler cases and the
+  four cells, whose note loses that half of its record.
+- **A file the user deleted named** fails the two cases that delete
+  one. **A file the run wrote whole named** fails thirteen fixture
+  cases, the image's adapter rewriting `ship/release.txt`, and no
+  handler case or cell: no adapter of keel's that a re-render moves
+  onto writes a moved-off one's file. **Any file the run wrote read
+  as written whole**, a patch among them (`Ownership.writers`, as the
+  step first read it), fails the case whose file another vertical only
+  patched, and nothing else.
+- **The render's refusal let through** fails the case of the adapter
+  that throws, and nothing else.
+- **The note placed after the proposals** fails the case that has one
+  of each; **after the caller's closing notes**, that case and the
+  first. **The verticals said in the order they re-rendered** fails the
+  case of the two moved; **one tag counted however many**, the case of
+  two; **the path as the adapter spells it**, the `./` case. Each fails
+  that case alone: keel moves one vertical off one adapter that
+  promotes one tag, spelled as the project holds it.
+- **The requirements dropped**, a tag read for an adapter whose
+  required tags the project never held (_Beyond the text above_),
+  fails the two cases that hold it — the adapter of a language the
+  project never had, and the one that ran on a peer's tag — and
+  nothing else; **a peer's tag left out of what it requires**, the
+  peer's case alone. Each of the next three, tried with the
+  requirements dropped as well, fails what it failed before them, and
+  their two cases besides.
+- **The union dropped**, an adapter that declares no share read as
+  promoting nothing on both sides of the move, fails the share case,
+  and no cell: every adapter of keel's that declares a share requires
+  its family's tags. With the requirements dropped too, it moves 24
+  cells of `paths-reapply`, 12 whole re-renders and 12 of
+  containerization re-rendered alone, no verdict among them.
+- **Every tag of an unresolved adapter's share read**, not only those
+  no resolved adapter may promote, fails the share case, and no
+  handler case or cell. With the requirements dropped too, the
+  adapters of a vertical's other families, whose share holds the tag
+  the one that ran promoted, are named on a re-render of it: four
+  handler cases, the one on `quarkus-rest` among them, and 710 cells,
+  16 of `paths-add`, 404 of `paths-reapply` and 290 of `paths-grow`,
+  each in `report` alone — the 280 whole re-renders, `dev-container`
+  re-rendered alone (98), `agent-harness` and `code-style` (80 each),
+  `ci` (28), `containerization` and `distribution` (19 each) and
+  `persistence` (18), 16 pairs taking `--refresh distribution`, and the
+  72 `keel add entrypoint` cells, whose run re-renders the harness.
+  With the render's refusal let through as well, 294 of those 710 come
+  back `thrown:Error`, an adapter rendering on a manifest of another
+  family's.
+- **Every held tag read as the adapter's**, no other vertical asked,
+  fails the three fixture cases that read it as no sign, and no handler
+  case or cell; with the requirements dropped too, the handler case on
+  `quarkus-rest` as well, which either reading answers alone. **The
+  other vertical read by its share, not its render**, fails the fixture
+  case that reads the tag as the binaries', the three handler cases
+  that re-render distribution after the image, and `paths-add` on the
+  two `keel add distribution --reapply` cells, whose note loses the
+  tag: the JVM image there may promote it, and does not. **A render
+  that throws read as promoting nothing** fails the case of the one
+  that throws. **The other vertical's adapters asked by their whole
+  predicate**, as the first review's fix read them, fails the case of
+  the one that promoted the tag before a tag it excludes arrived;
+  **asked whatever they require**, the case where only one the project
+  never matched would promote it. Each fails that case alone, and no
+  handler case or cell.
+- **Every unresolved adapter named**, whether or not it recorded
+  anything, fails seven fixture cases, seven handler cases and 1,098
+  cells (22, 586 and 490), no verdict among them.
+
+**Runs.** The four `keel ui` browser suites passed, 44 tests, in 67 s
+wall and again in 60.5 s before review, in 66 s after the first, 66.5 s
+after the second, and 64 s on the tree this step lands with, rebuilt. No suite of theirs
+reaches Q3.4's cells; the note reaches the page as every preview note
+does, through `keel.preview`'s `notes`, and the handler's case holds the
+dry run's note equal to the written run's. No template changed and
+nothing a toolchain builds moved, so no other e2e suite was run.
+
+**The weekly sweep, after S.9.** Filtered as S.7 and S.8 ran it
+(`quarkus-cli-rest`, `go-cli-http`, `rust-cli-http`, `ts-cli-http` and
+`web-components`: 48 dial settings, 1,302 pairs and 288 arrivals alone,
+918 scaffolds, 1,590 previews and 1,584 adds), the `arrival` suite
+found 12 findings in 3.1 minutes on the tree this step lands with, as
+after the first review and in 3.8 minutes after the second, its log the
+same but for times, all on
+`quarkus-cli-rest`: Q3.4's second finding on its six Gradle
+settings, the two native workflows only in two runs and the manifest
+differing in its tags and answers, and its third on the same six —
+S.8's 12, line for line. The sweep compares what two runs leave, and
+the note leaves nothing, so the finding stays open, as the text has
+it, now said by the command.
+
+**Times**, under `CI=true` on four cores. The run of
+`CI=true pnpm test` this step lands with took 312.8 s as vitest reports
+it (5 min 14 s wall), with 202 files and 3,346 tests passing,
+twenty-one more than S.8's 3,325, at a load average rising from 2.1 to
+5.1. Beside the rest: the paths golden's four 34.6, 48.1, 12.8 and
+51.5 s (new, add, reapply, grow), the converge golden 55.8 s, growth's
+grid axis 116.6 s, brownfield 51.7 s, greenfield 35.2 s and composite
+15.6 s, `add-vertical.test.ts` 12.5 s and `converge-run.test.ts`
+216 ms. The reading runs where something re-renders, renders an
+adapter only where one ran and moved off, and renders another
+vertical's only where a tag the manifest holds might be that one's:
+paired alone at a load average of 2 to 4, `paths-reapply` took 15.0
+and 16.9 s before review against HEAD's 15.1 and 14.2 s, 14.5 and
+14.6 s alone at 1.5 to 1.6 after the first review, 15.5 and 15.1 s
+alone at 2.5 to 2.9 after the second, and 15.1 and 15.9 s alone at 2.8
+to 3.7 on the tree this step lands with, within the box's swing. `pnpm lint`, dependency-cruiser among it (306 modules,
+1,513 dependencies, one more than at S.8: `converge-run.ts` reads
+`predicate.ts`' `matches`), and `pnpm typecheck` pass. The CHANGELOG
+entry is the one under _Changed_ the text gives. `docs/cli.md` →
+`--refresh` shows the note and says it repeats while the record holds,
+what it reads no native release into, and which of keel's adapters
+leave no trace; `docs/verticals/distribution.md` says what the refresh
+now reports.
+
+Beyond the text above:
+
+- **What the re-render promotes is its adapters' shares.** The text
+  compares the manifest's tags with what the re-render promotes; the
+  run reads the tags the adapters it resolved may promote, by the
+  planner's own `adapterPromotes`, not what their contributions
+  returned, which the run holds only for the whole run. Since a share
+  is read as the union where an adapter declares none, a plugin's
+  vertical whose adapters declare none is read by their answers alone.
+- **A tag another recorded vertical promotes is no sign.** The text
+  reads a promoted tag the manifest holds as the adapter's; a tag two
+  verticals' adapters may promote is read so only where the other does
+  not account for it, contributed on what the project records, and one
+  whose render throws there is taken to promote every tag it may, since
+  naming an adapter that never ran would hand the user a file of their
+  own. Review found it: on `quarkus-rest` and `spring-rest`, and on
+  `quarkus-cli-rest` under Maven, with the image built native, every
+  re-render of distribution named the native release, which never ran
+  there, and where the user kept a `release.yml`, called it the
+  release's to delete. No golden or grid cell builds the image native
+  beside distribution, so none moved. The requirements (next) now
+  answer those three first, since none holds all the native release
+  requires (`framework.quarkus`, `arch.cli` and `pkg.gradle`), and
+  either reading alone answers the handler's case on `quarkus-rest`;
+  this one is held by the fixture's cases, where the tag lands on a
+  project the adapter could have run on. The other vertical's adapters
+  are asked by their requirements alone, as the adapter moved off is
+  (next): a third review found one that promoted the tag before a tag
+  it excludes arrived left unasked, on the fixture, the tag read as the
+  binaries' though they never ran, and a file of the user's at their
+  path called theirs to delete. Of keel's adapters only the native
+  release excludes a tag, and no cell moved.
+- **A tag is read only for an adapter the recorded tags could have
+  matched.** The text reads a promoted tag the manifest holds as the
+  adapter's, and one vertical can hold a tag in the shares of several
+  adapters, one per family. A second review found every unresolved one
+  named beside the one that ran, on the fixture — one of a language the
+  project never had among them, and a file of the user's at its path
+  called that adapter's to delete. The tag is read only where the
+  recorded tags, a peer's among them, hold every tag the adapter
+  requires: a project's own tags only accrue, so an adapter they never
+  matched never ran. One that ran on a peer's tag a relink since
+  withdrew is read by its answers alone, its tag unsaid, and goes
+  unnamed where it asked nothing; none of keel's nine that require a
+  peer's tag asks or promotes. Measured over the registry, 160 pairs of
+  adapters of one of keel's verticals share a tag: 132 by their
+  vertical's union, which the adapter the re-render resolves there may
+  promote too; 12 a JVM image's union and another family's image's own
+  `deploy.container-image`; and 16 two declared shares, one tag per
+  family — containerization's images' `deploy.container-image` and
+  distribution's container releases' `dist.container-image`. Every
+  adapter of those 28 pairs requires its family's `lang.*`,
+  `framework.*` or `runtime.*` tag, and the native release's
+  `runtime.graalvm-native` is in no other distribution adapter's share,
+  so no cell moved: keel's shipped registry never reached it. Without
+  the requirements, a second native release — a Spring CLI one
+  promoting the same tag — would be named beside the Quarkus one on
+  Q3.4's cells.
+- **A file the run wrote whole is not left behind.** Where the adapter
+  the vertical moves onto writes a path the one it left wrote, the file
+  is the new adapter's, so the note leaves it out, read off what the
+  run wrote whole (`Ownership.wroteWhole`). A patch of the run leaves
+  it the old adapter's, so a vertical installed in the same run that
+  patches it does not hide it, and the two spellings say the same. No
+  cell reaches either: the image's pipeline writes `release-image.yml`,
+  the native release `release.yml`, and nothing patches them.
+- **A skill or a hook is not named.** The text names the files the
+  adapter wrote; the note names those it writes whole. A skill's files
+  and a hook's script are the harness's: recorded in the manifest's
+  entries under the adapter, a skill listed in the root index and a
+  hook wired into `.claude/settings.json`, all of which stay, so a note
+  calling the file the user's to delete would leave them naming
+  nothing. No adapter of keel's a re-render moves off stages either.
+- **A render that throws names no file.** An adapter moved off may
+  not render on the manifest it is contributed from once its predicate
+  no longer holds; the text has the note change no verdict, so the
+  note then names the adapter and its record alone. keel's one adapter
+  a re-render moves off by the record, `quarkus-cli-native`, renders
+  on each of Q3.4's manifests.
+- **The note repeats.** The adapter's answers and tag stay, so every
+  later re-render of the vertical says it again, with the files the
+  project still holds, while the manifest records them; `docs/cli.md`
+  says so.
+- **More docs than the text lists**: `docs/composition.md` says what a
+  re-render leaves beside what it is, `src/domain/core/AGENTS.md` names
+  the reading in the run's paragraph, `tests/AGENTS.md` names the four
+  cells beside the family that pins them, and Q3.4's finding 2 says the
+  command now names what it leaves.
+
+### Decisions on record
+
+Where a decision is genuinely open, the options are listed with a
+recommendation.
+
+- **DS1 — What "`new` and `add` become aliases" means.** Q's
+  _Successors_ says they become aliases, and Q's _Deliberately kept_
+  says they stay two commands.
+  - (a) Two front doors of one operation. Each keeps its surface, its
+    gates and its words. `keel new` still refuses a directory that
+    holds a project (`keel.already-initialised`), and `keel add` still
+    refuses one that holds none. What each runs is the same operation:
+    `keel new` from its seed manifest, `keel add` from the recorded
+    one. I12 proves them aliases in result.
+  - (b) Literal aliases. `keel new --stack=X` in a project converges it
+    onto X, and `keel add` in an empty directory scaffolds. Both turn a
+    refusal into a write, which changes an existing command's output
+    and surface.
+  - (c) Two pipelines, as today.
+
+  **Recommend (a).** It is what both of Q's sentences say at once, and
+  what the research measured: `keel new`, run as `keel add` runs, writes
+  the same bytes. (b) would need the user's word first. Taken in S.3 to
+  S.6: `keel new`, `keel add` with its flags, `keel add entrypoint` and
+  `keel add module` each keep their surface and refusals, and each hands
+  its request to the one run.
+
+- **DS2 — Where the target composition comes from.**
+  - (a) Read off the manifest and the request, with no new field. The
+    drill-down places every keel preset back on its own dials (300 of
+    300), and the manifest rebuilds the project byte for byte (443 of
+    443). Where the drill-down places nothing, the recorded order
+    stands in for the preset's.
+  - (b) Record the composition: a preset id, or which verticals were
+    asked for rather than closed over. An older keel reads such a field
+    and drops it on its next write, and the manifest records tags, not
+    a preset id (Q's and R's _Deliberately kept_).
+  - (c) A schema version bump, which every older keel fails to read.
+
+  **Recommend (a).** (b) and (c) are the manifest changes the user asked
+  to be consulted on, and (a) needs neither. Taken in S.2:
+  `compositionOf` reads it off the manifest with no field added, and the
+  round trip holds on 697 of 697 scopes.
+
+- **DS3 — One order for the record.**
+  - (a) The reference order: the one `keel new` of the target
+    composition records. That is the preset's order, then the extras
+    in `admit`'s order, then `bounded-context`. Each new row goes
+    before the first recorded row the reference lists later, and
+    nothing recorded moves (DR4). Where the drill-down places no
+    preset, rows are appended. It lands as its own step (S.8), after
+    every caller has moved with its placement unchanged.
+  - (b) Two rules kept: rank for growth, append for everything else.
+    The manifest keeps saying how the project arrived.
+    `keel docs check` stays red after harness adoption, and I12 cannot hold.
+  - (c) Re-sort the whole manifest on every write. This moves recorded
+    rows, which DR4 rules out.
+
+  **Recommend (a).** It moves `keel add`'s manifest and no project file,
+  and S.8 names every cell it moves. Taken in S.8: every caller records
+  a new row at the reference order's rank, and I12 lands hard.
+
+- **DS4 — What a re-render is.**
+  - (a) `v` re-rendered within the recorded composition. Every other
+    vertical's patches, and each added context's wiring, are replayed
+    onto the files `v` rewrote, and onto no other.
+  - (b) `v` alone, as today, and R's blocker 8 stays.
+  - (c) `v` and everything recorded after it, re-rendered whole. That
+    overwrites what those verticals own, against D12.
+
+  **Recommend (a).** S.7 takes it. A whole re-render is what I11
+  measures, not what a command does unasked.
+
+- **DS5 — Removal.** Q's _Deliberately kept_: "no removal or
+  reconfiguration without L's merge base".
+  - (a) Refuse any run that would move an adapter off, under a new
+    code. `keel add distribution --reapply` after a container image
+    would then be refused for good, and no path would ever give the
+    project the image's pipeline. D3 counted on that refresh, and
+    Q1.4 proposes it.
+  - (b) Removal is refused by construction: a request has no field
+    that takes anything away, so no command can ask for one (S.2).
+    Where a request would make an adapter stop matching, as growth's
+    tag can, it is refused, and S.2 makes that refusal cite L. Where
+    the user named the re-render of a vertical that moves off an
+    adapter, the run goes on additively and says what stays behind,
+    citing L (S.9). That keeps Q1.4's refresh and adds none.
+  - (c) Silent, as today.
+
+  **Recommend (b).** keel removes nothing it wrote, no command can ask
+  it to, and it says what it leaves. Taken in S.2 and S.9: no request
+  can name a removal, and a re-render that moves a vertical off an
+  adapter that ran names what that adapter left.
+
+- **DS6 — Which paths are callers.** The user's request names
+  `keel toolchain` and the planner's closure among the callers. The roadmap
+  line names neither.
+  - (a) The composition's paths are callers: `keel new`, `keel add`
+    with `--refresh` and `--reapply`, `keel add entrypoint` and
+    `keel add module`. So is the `toolchain` vertical, through `keel add`.
+    `keel toolchain install|check` stays a command of its own, for
+    three reasons. It converges the toolchain block, lockfiles on disk
+    and the managers' answers onto the managers' files and onto the
+    machine. Its verdict is machine state (which tools are installed).
+    It has no dry run to plan with. The planner's closure is the
+    admission the operation calls, since it returns a delta and no
+    target, rather than a caller.
+  - (b) The block's file-writing half becomes part of the operation's
+    plan, through a port in the contract that the provisioning context
+    implements and the composition root injects. The machine half
+    stays `keel toolchain`. This would end the `go.mod` directive
+    that a bootstrap re-render drops. It would also change what
+    `keel toolchain install` writes, make the plan depend on the machine
+    where a version resolves through a manager, and reach a context N
+    built to be extracted.
+  - (c) Move the provisioning context into core, which N's seam rules
+    out.
+
+  **Recommend (a).** It departs from the user's list for the toolchain
+  engine. The Backlog entry records the engine's divergences, and (b) is
+  the route it names for them. Taken in S.3 to S.6: the four front doors
+  are the operation's callers, and `keel toolchain` is not.
+
+- **DS7 — Settling.**
+  - (a) A caller settles only where the project's identity changes, as
+    growth does (DR5). `keel add` and `keel add module` queue their
+    own adapters' actions, as today.
+  - (b) Every run settles. This adds the family's fetch and format to
+    every `keel add`, and a second `npm install` to a TypeScript
+    context's.
+  - (c) (a), plus `keel add module` replaying the family's formatter
+    (the Backlog's _A JVM context lands formatted_).
+
+  **Recommend (a).** (c) is the Backlog entry's, and it can land on the
+  operation once S has. Taken in S.2 and S.3: growth's plan alone
+  settles (`settle`, and `settles` beside a partial install); `keel add`
+  and `keel add module` queue their own adapters' actions.
+
+- **DS8 — A re-render that changes nothing.**
+  - (a) As today: it queues its adapters' actions and records
+    `updatedAt`. Nothing records whether an action like
+    `gradle wrapper` is still due.
+  - (b) Queue nothing and write nothing where nothing was staged.
+
+  **Recommend (a).** (b) is an output change with no defect behind it.
+  Taken as it stands: no step changes it. A re-render that stages
+  nothing still queues its adapters' actions and records `updatedAt`,
+  and the replays S.7 adds queue none.
+
+- **DS9 — Where I11 and I12 live.**
+  - (a) In the axes that already write projects. I11 goes in
+    brownfield, composite and growth (the twins), and I12 in
+    brownfield. Both are hard, and no known file moves. The projects
+    they need that the grid does not write yet are named, with their
+    cost:
+    - S.1b: 28 modulith scaffolds;
+    - S.7: 10 whole-menu scaffolds;
+    - S.8: 28 `--no-agent-harness` scaffolds, 143 `keel new --with y`
+      projects and their adds, about 50 s measured.
+  - (b) A fifth axis, with a known file of its own. The user asked for
+    the four to stay as they are, so a fifth would need their word.
+
+  **Recommend (a).** If growth outgrows its budget, the shard option in
+  _The measure_ splits it with no new known file. Taken in S.1b, S.7 and
+  S.8: I11 lands in brownfield and composite and widens to growth's
+  twins, I12 lands in brownfield, both hard, no known file moves, and no
+  shard option was needed.
+
+- **DS10 — The contexts on a re-render.**
+  - (a) An added context comes back with the vertical whose files it
+    patches (S.7). `bounded-context`, the row `keel add module`
+    records, stays one no command names.
+  - (b) `bounded-context` becomes nameable under `--reapply`, and
+    re-renders every added context whole.
+  - (c) Record which vertical wrote each module. That is a new field,
+    which an older keel strips.
+
+  **Recommend (a).** It needs no new surface, and the history cells
+  measured it. Replaying the contexts' wiring after the verticals is a
+  fixed point on every family. Taken in S.7: a context's wiring replays
+  with the verticals whose files it patches, and `bounded-context` stays
+  one no command names. S.8's Landed paragraph says what recording at
+  rank changes in where it replays.
+
+- **DS11 — What "planned against disk" means.**
+  - (a) The target comes from the manifest and the request. The plan is
+    that composition's render, staged against the Tree over the
+    project's files. The disk decides what is written, what is
+    refused as `keel.path-conflict`, and what a re-render leaves
+    behind (S.9 names only files still there). The record is trusted
+    for what is realized: a context whose files the user deleted is
+    not written again unless its vertical re-renders.
+  - (b) Also read what is realized off the disk, adapter by adapter.
+    That would need the render of every recorded adapter on every run,
+    and a base to tell a deletion from a file never written, which is
+    L's missing merge base.
+
+  **Recommend (a).** It is what every path does today, and what growth's
+  old-manifest check reads files for. Taken throughout: every plan is
+  staged against the Tree, and S.9 names only files still there.
+
+### Not in scope for S
+
+- **Removing anything:** a file, a tag, an answer or a toolchain need
+  that a render no longer produces. That needs L's merge base.
+- **A product root, a converge across scopes, and `keel add service`.**
+  These are U's.
+- **Facets over presets, or recording a preset id.** That is T's.
+- **A new command or flag:** no `keel converge`, and no `--all`.
+- **The page's targets and the web API.** Their four targets stay the
+  request vocabulary. What a re-render previews changes in S.7 and
+  S.9, and reaches the page through the preview it already reads.
+- **`keel toolchain install|check`**, and its divergences, which the
+  Backlog records:
+  - it overwrites a user's own `mise.toml` on its first run;
+  - it has no dry run and no preview;
+  - it records no entry and bumps no `updatedAt`;
+  - it has no generation gate;
+  - its `go.mod` directive comes off under
+    `keel add walking-skeleton --reapply`.
+- **Byte identity where an extra is also a vertical of the twin**
+  (`dev-env` on a CLI project that grows HTTP). That was R's, and it
+  stays out.
+- **The plain `Error`s** some context adapters throw for an anchor
+  they cannot find. These are the adapters' own.
+- **Naming `bounded-context` or a product root's `fullstack` row**
+  under `--reapply` (DS10).
+- **A re-render that changes nothing writing nothing.** It still
+  queues its adapters' actions and records `updatedAt` (DS8).
+- **The navigation index read in the reference order**, which would
+  turn `keel docs check` green on a project adopted before S (S.8).
+- **Two sentences of L that the code has moved past.** L says
+  `--reapply` takes one vertical per invocation, and that `--set` with
+  `--reapply` is refused. The code takes several, and an adapter the
+  vertical newly resolves to takes `--set` (`add-vertical.test.ts`).
+  L's section stays as history, and `docs/cli.md` already says what
+  the code does.
+
+### Deliberately kept
+
+- **The manifest records tags, not a preset id.** S adds no field and
+  bumps no version (DS2).
+- **`keel new` and `keel add` stay two commands**, as two front doors
+  of one operation (DS1).
+- **D12: a refresh is proposed, never automatic.** A re-render
+  re-renders only what is named, and its replay writes into nothing
+  but the files that re-render rewrote.
+- **DR4: nothing recorded moves.** A new row goes where one run
+  records it. A row already there stays where it is.
+- **One e2e suite per cell, and presets as the entry vocabulary.** S
+  adds no cell.
+
+---
+
 ## Backlog (unordered)
 
 - ~~**A second bounded context in the modulith skeleton**~~ —
@@ -8004,6 +11875,34 @@ rather than remembered-in-a-file.
   `keel add module` to replay the family's formatter for its actions,
   as growth does (DR5), or the templates to be the formatter's fixed
   points.
+- **`keel toolchain install` keeps keel's rules for a file** — found by
+  S's research, and not yet filed as an issue. The provisioning engine
+  converges the manifest's toolchain block onto the managers' own files
+  and the machine, and S leaves it a command of its own (DS6). It does
+  not follow the rules the composition's writers do:
+  - its first run overwrites a `mise.toml`, `.tool-versions`,
+    `.sdkmanrc`, `.nvmrc` or `rust-toolchain.toml` the user already had,
+    where `keel add` would refuse it as `keel.path-conflict`;
+  - it has no dry run and no preview;
+  - it writes the manifest to record a provider without the generation
+    gate, without bumping `updatedAt`, and without recording its files
+    in `entries`;
+  - switching provider leaves the first one's file behind.
+
+  Two further gaps are between it and the composition:
+  - `keel add walking-skeleton --reapply` rewrites `go.mod` and drops
+    the `toolchain` directive go-native merged in, so `keel toolchain
+check` goes red until the next install;
+  - a pin bump takes four commands (`keel add toolchain --reapply`,
+    `keel add dev-container --reapply`, `keel add ci --reapply`,
+    `keel toolchain install`), and the first reports no change though
+    the block moved.
+
+  It wants the engine to take the first-write rule and a `--dry-run`,
+  and a port in the contract, implemented by the provisioning context,
+  through which a re-render keeps what the engine merged into a
+  project file.
+
 - ~~**Per-service build systems in composite stacks**~~
   ([#73](https://github.com/rgoussu-dev/keel/issues/73)) — **shipped**:
   composites ask the build-system question per service (pin with

@@ -63,11 +63,19 @@
  * names a stack's root takes for its own, which is what would let this
  * front door refuse `clock` there first (roadmap Q3.5).
  *
- * Pipeline after that is the `add-vertical` shape: install against a
- * Tree rooted at cwd, and under a real run commit the tree, persist
- * the manifest, then run deferred actions — manifest before actions,
- * so a failed `cargo check` leaves a coherent pair and a re-run
- * correctly refuses the now-installed name.
+ * Past the gates, the run is the converge operation's (roadmap S.5):
+ * `convergeOf`'s reading of one context (`../converge.ts`), which
+ * `../converge-run.ts` wires as it wires a grown assembly's contexts —
+ * by keel's own `bounded-context`, every adapter of it the tags match,
+ * reading the answers supplied in the command's mode — onto one Tree
+ * rooted at cwd, one ownership and one harness buffer, finalized once,
+ * the vertical's row recorded the first time where the reference order
+ * puts it, last (roadmap S.8). The handler then records
+ * the context among the modules, re-indexes the root map and rehashes
+ * what that rewrote, and under a real run commits through the run's
+ * one commit: the tree, the manifest, then the deferred actions —
+ * manifest before actions, so a failed `cargo check` leaves a coherent
+ * pair and a re-run correctly refuses the now-installed name.
  */
 
 import type { Action } from '../../kernel/action.js';
@@ -82,14 +90,15 @@ import {
   notInitialisedSentence,
 } from '../../contract/nearby.js';
 import type { Tag, Tree } from '../../contract/composition.js';
-import { runActions } from '../actions.js';
-import { addModuleInputs, CONTEXT_TAG, withoutAddModuleInputs } from '../adapters/added-context.js';
+import { CONTEXT_TAG } from '../adapters/added-context.js';
 import { emitsFor } from '../adapters/context-support.js';
 import { parseModuleName, type ModuleName } from '../adapters/module-name.js';
 import { conflictsOf, violatedBy } from '../compatibility.js';
+import { convergeOf } from '../converge.js';
+import { commitConverged, converge } from '../converge-run.js';
 import { moduleRulesRefusal } from '../refusals.js';
 import { harnessGenerationRefusal } from '../harness-generation.js';
-import { installVertical, rehashEntries } from '../install.js';
+import { rehashEntries } from '../install.js';
 import { historyOf, resolvedAdapters, strayAnswerRefusal } from '../supplied-answers.js';
 import { newOwnership, projectDocsIndex } from '../apply.js';
 import { projectDocs } from '../docs-projection.js';
@@ -138,86 +147,69 @@ export class AddModuleHandler implements Handler<AddModuleCommand> {
     const gate = admissible(stored, name.value, command.consumes ?? null);
     if (!gate.ok) return gate;
 
+    const registry = this.deps.registry;
+    const consumes = gate.value?.name ?? null;
+    const plan = convergeOf(registry, stored, { kind: 'module', name: name.value, consumes });
+    // The reading of one context refuses nothing: the gates above are
+    // its refusals.
+    if (plan.kind === 'refused') throw new Error(`convergeOf refused the context '${name.value}'`);
+
+    // One instant for the run and the context's record.
     const now = this.deps.clock.nowIso();
     const tree = this.deps.trees(command.cwd);
-    const recorded: readonly InstalledModule[] = [
+    const history = historyOf(registry, stored);
+    const converged = await converge({
+      ...this.deps,
+      clock: { nowIso: () => now },
+      plan,
+      stored,
+      tree,
+      cwd: command.cwd,
+      answers: command.answers,
+      interactive: command.interactive,
+      dryRun: command.dryRun,
+      subject: name.value,
+      // No step runs the harness, so nothing is retrofitted.
+      retrofit: { contexts: false },
+      // An answer none of the context's adapters read is refused, as the
+      // other front doors refuse one, before anything is committed.
+      check: (staged) =>
+        strayAnswerRefusal(
+          command.answers,
+          resolvedAdapters(staged.adapters),
+          history,
+          staged.reads,
+        ),
+      // A context installs no vertical and promotes no tag, so the run
+      // proposes nothing; this command takes no `--refresh`, so were it
+      // to, the proposal would be a later run's.
+      proposeForLater: true,
+      notes: { before: [], after: [] },
+    });
+    if (!converged.ok) return converged;
+
+    const modules: readonly InstalledModule[] = [
       ...stored.modules,
       {
         name: name.value,
         installedAt: now,
         seam: true,
-        ...(gate.value === null ? {} : { consumes: gate.value.name }),
+        ...(consumes === null ? {} : { consumes }),
       },
     ];
-    const seeded: ManifestV2 = {
-      ...stored,
-      tags: [...stored.tags, CONTEXT_TAG].sort(),
-      answers: {
-        ...stored.answers,
-        ...addModuleInputs({ name: name.value, consumes: gate.value?.name ?? null }),
-      },
-    };
-
-    const result = await installVertical({
-      vertical: boundedContextVertical,
-      manifest: seeded,
-      supplied: command.answers,
-      tree,
-      mode: command.interactive ? 'interactive' : 'non-interactive',
-      prompt: this.deps.prompt,
-      logger: this.deps.logger,
-      cwd: command.cwd,
-      templates: this.deps.templates,
-      processes: this.deps.processes,
-      now: () => now,
-      registry: this.deps.registry,
-    });
-    // An answer none of the context's adapters read is refused, as the
-    // other front doors refuse one, before anything is committed.
-    const plan = resolvedAdapters(result.adapters);
-    const stray = strayAnswerRefusal(
-      command.answers,
-      plan,
-      historyOf(this.deps.registry, stored),
-      result.reads,
-    );
-    if (stray !== null) return err(stray);
-
     // The context is a structural fact, so the index moves with it in
     // the same apply — nothing is left for a later `keel docs sync`
     // to notice. It is the full projection rather than this run's
     // declarations because the directory the contexts live in is the
     // family kit's declaration, and the kit does not run here.
-    const next: ManifestV2 = { ...result.manifest, modules: recorded };
-    const indexed = await this.reindex(command.cwd, next, tree);
-    const manifest = rehashEntries(result.manifest, tree, indexed);
+    const recorded: ManifestV2 = { ...converged.value.manifest, modules: [...modules] };
+    const indexed = await this.reindex(command.cwd, recorded, tree);
+    const manifest = rehashEntries(recorded, tree, indexed);
+    const report: InstallReport = { ...converged.value.report, changes: tree.changes() };
 
-    const report: InstallReport = {
-      subject: name.value,
-      changes: tree.changes(),
-      actions: result.applyResult.actions.map((a) => a.description),
-      committed: !command.dryRun,
-      ...(plan.length > 0 ? { resolvedAdapters: plan } : {}),
-      ...(result.applyResult.skippedHarnessElements
-        ? { skippedHarnessElements: result.applyResult.skippedHarnessElements }
-        : {}),
-    };
-
-    if (command.dryRun) return ok(report);
-
-    await tree.commit();
-    await this.deps.manifests.write(scopeRoot, {
-      ...withoutAddModuleInputs(manifest),
-      modules: [...recorded],
-    });
-    const runDeferred = this.deps.runDeferred ?? runActions;
-    await runDeferred({
-      actions: result.applyResult.actions,
-      cwd: command.cwd,
-      logger: this.deps.logger,
-      processes: this.deps.processes,
-      dryRun: false,
-    });
+    if (!command.dryRun) {
+      await commitConverged(this.deps, { ...converged.value, manifest, report });
+    }
     return ok(report);
   }
 

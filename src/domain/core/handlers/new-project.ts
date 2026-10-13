@@ -12,12 +12,16 @@
  *      product it is the root of (`keel.inside-product`, below).
  *   1. Resolve the stack (the `--stack` flag, or the default preset
  *      when omitted).
- *   2. Build an empty v2 manifest seeded with the stack's tags and
- *      its declared peer projections.
- *   3. Install each vertical in stack order against a fresh Tree
- *      (`installVerticals`, the loop `keel add` installs through).
- *      Tags emitted by adapters via `tagsAdd` accumulate into the
- *      manifest snapshot the next vertical sees. A pre-supplied
+ *   2. Build the seed manifest: an empty v2 manifest with the identity
+ *      no vertical makes — the stack's and the dials' tags, its
+ *      declared peer projections, the scaffolded modules.
+ *   3. Converge the seed onto the stack against a fresh Tree, in the
+ *      `scaffold` posture — the `new` reading of `../converge.ts`, run
+ *      by `../converge-run.ts`, the operation `keel add` converges
+ *      through: the stack's verticals in its order, then the extras in
+ *      the order they install, the harness realized once after the
+ *      last. Tags emitted by adapters via `tagsAdd` accumulate into
+ *      the manifest snapshot the next vertical sees. A pre-supplied
  *      answer reaches only the adapters keyed to it (or borrowing
  *      from it), which record what they resolve — so a scope's
  *      manifest holds only the answers of adapters that ran there.
@@ -139,7 +143,8 @@ import {
 } from '../dials.js';
 import type { AnswerRead } from '../answers.js';
 import { newOwnership } from '../apply.js';
-import { installVerticals } from '../install.js';
+import { convergeOf } from '../converge.js';
+import { converge } from '../converge-run.js';
 import { admissionNotes, admit, type AdmittedSet } from '../plan-refusal.js';
 import { nearestStack, nearestVertical, unknownIdSentence } from '../nearest-id.js';
 import { stackTagsFor, type BuildSystemOption, type Stack } from '../stacks.js';
@@ -660,7 +665,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       peers: [],
       services: [],
       member: false,
-      extraVerticals: admitted.order,
+      extras: admitted.order,
       command,
       now,
       prompt,
@@ -813,10 +818,8 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
           peers: peersFor(service, resolved),
           services: [],
           member: monorepo,
-          extraVerticals: [
-            ...service.extraVerticals,
-            ...(extras.value.admitted.get(service.path)?.order ?? []),
-          ],
+          service: { product: stack.id, path: service.path },
+          extras: extras.value.admitted.get(service.path)?.order ?? [],
           command,
           now,
           prompt,
@@ -1036,10 +1039,18 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
   }
 
   /**
-   * Installs one stack's verticals, then its extras, against a fresh
-   * manifest and Tree rooted at `cwd` — one `installVerticals` run,
-   * the loop `keel add` installs through as well. Nothing is
-   * committed — the caller owns commit order across scopes.
+   * Converges one scope from its seed manifest onto `inputs.stack` —
+   * `keel new`'s part in the one operation (roadmap S.6). The seed is
+   * the empty manifest with the identity no vertical makes: the stack's
+   * and the dials' tags, its `projects`, the `peers`, the `services`,
+   * the scaffolded modules and the harness generation. The plan is the
+   * `new` reading's (`../converge.ts`): the stack's verticals in its
+   * order, then what a product gives its service of its own accord,
+   * then the extras in the order they install — less what a monorepo
+   * service's product root carries. The run (`../converge-run.ts`)
+   * stages it onto a fresh Tree rooted at `cwd` and realizes the
+   * harness once. Nothing is committed — the caller owns commit order
+   * across scopes.
    */
   private async stageStack(inputs: {
     prefix: string;
@@ -1060,12 +1071,19 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
      * the repository.
      */
     member: boolean;
-    extraVerticals?: readonly Vertical[];
+    /**
+     * Where the scope is a service of a composite product: the product
+     * and the service's path in it, which say what the product gives
+     * the service of its own accord.
+     */
+    service?: { readonly product: string; readonly path: string };
+    /** The extras named for the scope, admitted on it, in the order they install. */
+    extras?: readonly Vertical[];
     command: NewProjectCommand;
     now: string;
     prompt: Prompt;
   }): Promise<StagedScope> {
-    const manifest: ManifestV2 = {
+    const seed: ManifestV2 = {
       ...emptyManifestV2(inputs.now, this.deps.keelVersion),
       tags: [
         ...inputs.stack.tags,
@@ -1078,52 +1096,68 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       services: inputs.services,
       modules: scaffoldedModules(inputs.layoutTag, inputs.peerTag ?? null, inputs.now),
     };
+    const plan = convergeOf(this.deps.registry, seed, {
+      kind: 'new',
+      stack: inputs.stack.id,
+      harness: inputs.command.agentHarness !== false,
+      extras: (inputs.extras ?? []).map(({ id }) => id),
+      member: inputs.member,
+      ...(inputs.service === undefined ? {} : { service: inputs.service }),
+    });
+    // The extras were admitted on this scope already, and the reading
+    // admits them again on the same one: it cannot refuse them.
+    if (plan.kind === 'refused') {
+      throw new Error(`convergeOf refused '${inputs.stack.id}', whose extras keel new admitted`);
+    }
 
     const tree = this.deps.trees(inputs.cwd);
-    // The declaration the add front door refuses by (`Vertical.placement`),
-    // read here too, so what a monorepo service is scaffolded without
-    // and what `keel add` there refuses cannot drift apart.
-    const placed = (v: Vertical) => inputs.member && v.placement?.scope === 'repository';
     // One per scope, read back for who wrote what (`crossScopeWrite`).
     const owners = newOwnership();
-    const result = await installVerticals({
-      verticals: [...inputs.stack.verticals, ...(inputs.extraVerticals ?? [])].filter(
-        (v) => !placed(v),
-      ),
-      owners,
+    const run = await converge({
+      ...this.deps,
+      // One instant for every scope of the command.
+      clock: { nowIso: () => inputs.now },
+      prompt: inputs.prompt,
+      plan,
+      stored: seed,
+      tree,
+      cwd: inputs.cwd,
+      answers: inputs.command.answers,
+      interactive: inputs.command.interactive,
+      dryRun: inputs.command.dryRun,
+      subject: inputs.stack.id,
+      // Nothing on disk here is keel's: a file in the way is the
+      // user's to move, and a patch target nothing created is a bug.
+      apply: 'scaffold',
       // The preset's own rules, held with its verticals' over every
       // tag the run folds in, as `assemblyIsLegal` held them over the
       // tags the dials settled.
       rules: inputs.stack.conflicts ?? [],
-      manifest,
-      supplied: inputs.command.answers,
-      tree,
-      // Nothing on disk here is keel's: a file in the way is the
-      // user's to move, and a patch target nothing created is a bug.
-      apply: 'scaffold',
-      mode: inputs.command.interactive ? 'interactive' : 'non-interactive',
-      prompt: inputs.prompt,
-      logger: this.deps.logger,
-      cwd: inputs.cwd,
-      templates: this.deps.templates,
-      processes: this.deps.processes,
-      now: () => inputs.now,
-      registry: this.deps.registry,
+      owners,
+      // Everything recorded runs, and a seed records no added context.
+      retrofit: { contexts: false },
+      // A seed records no vertical, so nothing is proposed.
+      proposeForLater: true,
+      notes: { before: [], after: [] },
     }).catch((thrown: unknown) => {
       // A service's Tree is rooted at its own directory, so the file
       // an adapter names is relative to it; the user ran `keel new`
       // one level up, where `go.mod` in the way is `backend/go.mod`.
       throw inputs.prefix === '' ? thrown : underService(thrown, inputs.prefix);
     });
+    // The run refuses only by a check it is handed — the supplied
+    // answers are held across every scope at once, by `stage` — or for
+    // a re-render's conflict, and nothing here re-renders.
+    if (!run.ok) throw new Error(`converge refused the seed of '${inputs.stack.id}'`);
     return {
       prefix: inputs.prefix,
       cwd: inputs.cwd,
       tree,
-      manifest: result.manifest,
-      actions: result.applyResult.actions,
-      adapters: result.adapters,
-      reads: result.reads,
-      skippedHarnessElements: result.applyResult.skippedHarnessElements ?? 0,
+      manifest: run.value.manifest,
+      actions: run.value.actions,
+      adapters: run.value.adapters,
+      reads: run.value.reads,
+      skippedHarnessElements: run.value.report.skippedHarnessElements ?? 0,
       writers: owners.writers,
     };
   }

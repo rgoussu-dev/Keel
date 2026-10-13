@@ -21,8 +21,10 @@ import {
 import { MANIFEST_FILENAME, projectScopeRoot } from '../../../../src/domain/contract/manifest.js';
 import { previewQuery, projectStatusQuery } from '../../../../src/domain/contract/queries.js';
 import { RefusalError } from '../../../../src/domain/contract/refusal.js';
+import type { Clock } from '../../../../src/domain/contract/ports/clock.js';
 import type { Tree } from '../../../../src/domain/contract/ports/tree.js';
 import { STACKS } from '../../../../src/domain/core/stacks.js';
+import { FakeClock } from '../../../../src/infrastructure/commons/fake-clock.js';
 import { FakeLogger } from '../../../../src/infrastructure/commons/fake-logger.js';
 import { fsManifestStore } from '../../../../src/infrastructure/manifest/fs-manifest-store.js';
 import { FakePrompt } from '../../../../src/infrastructure/prompt/fake.js';
@@ -31,6 +33,7 @@ import {
   expectErr,
   expectOk,
   installMediator,
+  PINNED_NOW,
   runActionsExcept,
 } from '../../../support/factory.js';
 
@@ -262,6 +265,45 @@ describe('keel.new-project (keel new)', () => {
     expect(manifest!.answers['walking-skeleton/rust-bootstrap']).toEqual({
       projectName: 'shipper',
     });
+  });
+
+  it('records every scope of a product at one instant, however often the clock is read', async () => {
+    const pinned = new FakeClock(PINNED_NOW);
+    let reads = 0;
+    const ticking: Clock = {
+      nowIso: () => {
+        const now = pinned.nowIso();
+        reads += 1;
+        pinned.set(new Date(Date.parse(PINNED_NOW) + reads * 1000).toISOString());
+        return now;
+      },
+    };
+
+    expectOk(
+      await installMediator({ clock: ticking, runDeferred: () => Promise.resolve() }).dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'fullstack',
+          layout: 'monorepo',
+          answers: {},
+          interactive: false,
+          dryRun: false,
+        }),
+      ),
+    );
+
+    for (const dir of [cwd, path.join(cwd, 'backend'), path.join(cwd, 'frontend')]) {
+      const manifest = await fsManifestStore.read(projectScopeRoot(dir));
+      if (manifest === null) throw new Error(`no manifest in ${dir}`);
+      const stamps = new Set([
+        manifest.installedAt,
+        manifest.updatedAt,
+        ...manifest.verticals.map(({ installedAt }) => installedAt),
+        ...manifest.modules.map(({ installedAt }) => installedAt),
+        ...manifest.entries.map(({ installedAt }) => installedAt),
+      ]);
+      expect([...stamps]).toEqual([PINNED_NOW]);
+    }
   });
 
   it('writes nothing under --dry-run', async () => {

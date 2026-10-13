@@ -36,6 +36,21 @@
  *     directory of the product's repository: what the product root
  *     builds for it reads as there already, and what only a
  *     repository root reads (a pipeline, a release) as not for it.
+ *   - **Every install target previews as it installs** (I9), in each
+ *     service that is a keel project, as on a brownfield scaffold: the
+ *     same bytes, or the same refusal — each vertical's add
+ *     (`add:<scope>+<v>`, beside the dry-run install
+ *     `install:<scope>+<v>`), `--reapply` of each installed vertical
+ *     (`reapply:`), and `--refresh` of each beside the add of the first
+ *     `ready` card (`refresh:<scope>+<card>~<v>`).
+ *   - **The recorded composition is a fixed point** (I11), in each of
+ *     those services: its whole re-render re-renders each vertical it
+ *     names and stages nothing (`fixed:<scope>`), and each `reapply:`
+ *     and `refresh:` pair above installs Ok, re-rendering the vertical
+ *     it names. Not at a product
+ *     root, whose glue, `fullstack`, no `keel add` names: there the
+ *     sweep only checks that the reading of what `keel add` can name
+ *     leaves the glue out, and nothing else.
  *
  * And before anything is scaffolded, each service's own extras menu —
  * what `keel new --with <path>:<id>` takes, as `keel.dials` reads it
@@ -58,6 +73,7 @@ import path from 'node:path';
 import { describe } from 'vitest';
 import {
   installCommandFor,
+  type AddVerticalTarget,
   type NewProjectTarget,
   type RepoLayout,
 } from '../../../../src/domain/contract/commands.js';
@@ -68,6 +84,7 @@ import {
   projectStatusQuery,
   type DialOptions,
   type InstallPreview,
+  type ProjectStatus,
 } from '../../../../src/domain/contract/queries.js';
 import { WRONG_SCOPE_CODE } from '../../../../src/domain/core/refusals.js';
 import {
@@ -75,7 +92,11 @@ import {
   OK,
   eachStack,
   holdCard,
+  holdParity,
+  holdRerenders,
   layoutsOf,
+  nameableOf,
+  runIn,
   settle,
   sweepGrid,
   type Grid,
@@ -86,7 +107,7 @@ describe('composition grid: composite', () => {
   sweepGrid({
     name: 'composite',
     here: import.meta.url,
-    holds: ['I1', 'I2', 'I3', 'I4', 'I6', 'I7'],
+    holds: ['I1', 'I2', 'I3', 'I4', 'I6', 'I7', 'I9', 'I11'],
     sweep: async (grid) => {
       const catalog = await grid.read(catalogQuery());
       const verticals = catalog.verticals.map((vertical) => vertical.id);
@@ -106,8 +127,7 @@ describe('composition grid: composite', () => {
           }
           const cwd = await grid.scratch();
           const { target, included } = await settle(grid, stack, { layout });
-          const run = { cwd, answers: {}, interactive: false, dryRun: false };
-          const scaffold = await grid.cell(`new:${product}`, installCommandFor(target, run));
+          const scaffold = await grid.cell(`new:${product}`, installCommandFor(target, runIn(cwd)));
           if (scaffold.verdict !== OK) continue;
 
           const scopes = [
@@ -119,15 +139,19 @@ describe('composition grid: composite', () => {
           ];
           for (const { scope, dir } of scopes) {
             const status = await grid.read(projectStatusQuery({ cwd: dir }));
+            const service = scope !== product && status.initialised;
+            if (scope === product && status.initialised) glueLeftOut(scope, status, verticals);
             for (const vertical of verticals) {
               const cell = `add:${scope}+${vertical}`;
+              const adding: AddVerticalTarget = { kind: 'add-vertical', verticals: [vertical] };
+              if (service) {
+                const install = `install:${scope}+${vertical}`;
+                await holdParity(grid, { preview: cell, install }, adding, {}, dir);
+              }
+              // Answered from the record in a service: holdParity swept it.
               const outcome = await grid.cell(
                 cell,
-                previewQuery({
-                  cwd: dir,
-                  target: { kind: 'add-vertical', verticals: [vertical] },
-                  answers: {},
-                }),
+                previewQuery({ cwd: dir, target: adding, answers: {} }),
               );
               if (status.initialised) await holdCard(grid, cell, status, vertical, dir, outcome);
               if (status.initialised && scope === product) {
@@ -137,6 +161,7 @@ describe('composition grid: composite', () => {
                 served.set(`${layout}/${scope.slice(product.length + 1)}+${vertical}`, cell);
               }
             }
+            if (service) await holdRerenders(grid, scope, status, verticals, dir);
           }
         }
         holdScopes(grid, stack, served);
@@ -145,6 +170,25 @@ describe('composition grid: composite', () => {
     },
   });
 });
+
+/**
+ * Throws unless what `keel add` can name of a product root's record
+ * ({@link nameableOf}) leaves out its glue, `fullstack`, and nothing
+ * else — the one place in the sweep where that reading drops a row, so
+ * the filter every service's whole re-render goes through is seen
+ * dropping one. A broken scenario, not a verdict.
+ */
+function glueLeftOut(scope: string, status: ProjectStatus, catalog: readonly string[]): void {
+  const nameable = nameableOf(status, catalog);
+  const dropped = status.installed
+    .map((vertical) => vertical.id)
+    .filter((id) => !nameable.includes(id));
+  if (dropped.join() !== 'fullstack') {
+    throw new Error(
+      `'${scope}': nameableOf leaves out [${dropped.join(', ')}], not the glue alone`,
+    );
+  }
+}
 
 /**
  * Holds a product root's add of a vertical to what `keel new --with` on

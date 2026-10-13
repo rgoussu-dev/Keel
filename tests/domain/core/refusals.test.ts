@@ -17,6 +17,7 @@ import {
   elsewhereRefusal,
   entrypointPresentNote,
   inServicesNote,
+  leftBehindNote,
   productRootPlacementRefusal,
   providedNote,
   reapplyConflictSentence,
@@ -24,6 +25,7 @@ import {
   relinkNote,
   ruleRefusal,
   unbuiltInServiceNote,
+  uncoverableEntrypointSentence,
   uncoveredRefusal,
   unavailableRefusal,
   WRONG_SCOPE_CODE,
@@ -715,6 +717,58 @@ describe('the notes of an entrypoint added', () => {
     expect(relinkNote('server-http', ['../front', '../admin'])).toBe(
       "the projects linked at ../front and ../admin still record what this one offered them before its HTTP server — 'keel link ../front' and 'keel link ../admin' bring those records up to date",
     );
+  });
+});
+
+describe('an entrypoint whose adding would stop an adapter applying', () => {
+  it('names the verticals by their titles, and why keel takes none of it away, never a tag', () => {
+    const sentence = uncoverableEntrypointSentence('cli', 'drops', [
+      vertical('walking-skeleton', 'Walking skeleton'),
+      vertical('observability', 'Observability'),
+    ]);
+    expect(sentence).toBe(
+      'CLI cannot be added here: part of Walking skeleton and Observability would stop applying to this project, and keel removes nothing it installed — without a recorded base, it cannot tell what it wrote from what you changed since',
+    );
+    expect(sentence).not.toMatch(/arch\.|--with|keel add|roadmap/);
+  });
+});
+
+describe('what a re-render moved off, and leaves in place', () => {
+  it('names the files the user may delete, and what the manifest keeps, counting tags and naming none', () => {
+    const distribution = vertical('distribution', 'Distribution');
+    const reason =
+      'keel removes nothing it installed — without a recorded base, it cannot tell what it wrote from what you changed since';
+    const lead = `Distribution no longer renders through distribution/quarkus-cli-native, and ${reason} — so`;
+    const both = ['native-build.yml', 'release.yml'];
+
+    expect(
+      leftBehindNote(distribution, 'distribution/quarkus-cli-native', both, {
+        answers: true,
+        tags: 1,
+      }),
+    ).toBe(
+      `${lead} native-build.yml and release.yml, which that adapter wrote, are yours to delete, and its answers and the tag it promoted stay in the manifest`,
+    );
+    expect(
+      leftBehindNote(distribution, 'distribution/quarkus-cli-native', ['release.yml'], {
+        answers: false,
+        tags: 1,
+      }),
+    ).toBe(
+      `${lead} release.yml, which that adapter wrote, is yours to delete, and the tag it promoted stays in the manifest`,
+    );
+    expect(
+      leftBehindNote(distribution, 'distribution/quarkus-cli-native', [], {
+        answers: false,
+        tags: 2,
+      }),
+    ).toBe(`${lead} the tags that adapter promoted stay in the manifest`);
+    expect(
+      leftBehindNote(distribution, 'distribution/quarkus-cli-native', [], {
+        answers: true,
+        tags: 0,
+      }),
+    ).toBe(`${lead} that adapter's answers stay in the manifest`);
   });
 });
 

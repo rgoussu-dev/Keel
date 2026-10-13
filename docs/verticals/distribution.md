@@ -56,32 +56,39 @@ note (`added Container image — needed by Distribution`). Naming both,
 in any order, is the same run.
 
 On a stack composing a CLI with an HTTP server (`quarkus-cli-rest`,
-`quarkus-cli-rest-kotlin` on Gradle), distribution **alone** resolves
-to `quarkus-cli-native` only: native binaries, no image pipeline —
-it covers both dimensions without an image, so it is ready rather than
-waiting on one. Add `containerization` in the same run and the image
-is built first; its flavor then decides which pipeline ships it (the
-JVM flavor excludes the native adapter). Adding `containerization` to
-such a project later does not touch the native release already there:
-the run proposes re-rendering distribution, and `keel add
-containerization --refresh distribution` (or `keel add distribution
---reapply` afterwards) takes it up — asking the image pipeline's
-questions, which the native release never had. The pipeline it then
-renders builds the JVM image's fast-jar, as a fresh project's does.
-The re-render does not take back what the native release wrote,
-though: its `.github/workflows/native-build.yml` and `release.yml`
-stay, and `release.yml` still runs on every `v*` tag beside the
-image's `release-image.yml`. Delete the two by hand — keel re-renders
-what a vertical owns but removes nothing it wrote, a gap the weekly
-composition sweep found ([roadmap](../roadmap.md) → Q3.4). The
-manifest keeps the native release's answers and runtime tag too,
-which the image pipeline reads past (below). Until distribution is
-re-rendered it publishes no image, so `keel add iac` there is refused
-as `keel.needs-refresh`, naming the re-render (_"Infrastructure as
-code needs Container image, then Distribution re-rendered — …"_),
-with `keel add iac --refresh distribution` as its hint: that one run
-installs the image, re-renders distribution after it, and installs
-`iac`.
+`quarkus-cli-rest-kotlin` on Gradle), distribution **alone** resolves to
+`quarkus-cli-native` only: native binaries, no image pipeline — it
+covers both dimensions without an image, so it is ready rather than
+waiting on one. Add `containerization` in the same run and the image is
+built first; its flavor then decides which pipeline ships it (the JVM
+flavor excludes the native adapter). Adding `containerization` to such a
+project later does not touch the native release already there: the run
+proposes re-rendering distribution, and `keel add containerization
+--refresh distribution` (or `keel add distribution --reapply`
+afterwards) takes it up — asking the image pipeline's questions, which
+the native release never had. The pipeline it then renders builds the
+JVM image's fast-jar, as a fresh project's does. The re-render does not
+take back what the native release wrote, though: its
+`.github/workflows/native-build.yml` and `release.yml` stay, and
+`release.yml` still runs on every `v*` tag beside the image's
+`release-image.yml`. Delete the two by hand — keel re-renders what a
+vertical owns but removes nothing it wrote, a gap the weekly composition
+sweep found ([roadmap](../roadmap.md) → Q3.4). The run says so: its
+report — and its preview — carries a note that Distribution no longer
+renders through `distribution/quarkus-cli-native`, naming whichever of
+the two files the project still holds as yours to delete, and saying the
+native release's answers and runtime tag stay in the manifest, which the
+image pipeline reads past (below). Every later re-render of distribution
+says it again while the manifest records them
+([`--refresh`](../cli.md#--refresh-what-an-add-changes)). An image built
+native (`flavor: native`) promotes the same runtime tag, and a re-render
+reads no native release into it: where the release never ran, nothing is
+named. Until distribution is re-rendered it publishes no image, so `keel
+add iac` there is refused as `keel.needs-refresh`, naming the re-render
+(_"Infrastructure as code needs Container image, then Distribution
+re-rendered — …"_), with `keel add iac --refresh distribution` as its
+hint: that one run installs the image, re-renders distribution after it,
+and installs `iac`.
 
 What each family's pipeline does on a `v*` tag:
 

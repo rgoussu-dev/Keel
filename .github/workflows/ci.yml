@@ -421,7 +421,9 @@ jobs:
           # Still one shard, and now for a reason it did not have
           # before: the floor is `fullstack-go`, a file none of this
           # work added, so splitting further would buy attribution and
-          # no wall clock. `docker` remains for `fullstack-go` alone.
+          # no wall clock. `docker` is for the two persistence cells,
+          # whose pgx contract test takes its Postgres from
+          # testcontainers-go; `fullstack-go` needs none.
           # `modulith-go-persistence-liquibase` rides here rather than
           # in a shard of its own: it is the persistence cell's shape
           # again with a different migrations/ unit, and a parallel
@@ -460,14 +462,18 @@ jobs:
           # decision still turns on.
           #
           # `tools:` stays `cargo`, and the persistence cell is why
-          # that is worth stating: its contract test wants a Postgres
-          # through Testcontainers and gets none here. The emitted test
-          # probes for a daemon and returns early, so `cargo test`
-          # still compiles every crate — which is what the cell exists
-          # to prove — and skips one case. Adding `docker` here would
-          # buy that one assertion and a container pull per run. The
-          # JVM's `modulith-persistence` makes the same trade in a
-          # shard with no `docker` either.
+          # that is worth stating: `tools:` is what a shard installs
+          # and probes for, not what its suites can reach. The
+          # runner's Docker daemon is there whether it is named or
+          # not, so the cell's contract test takes its Postgres from
+          # Testcontainers here, through the mirror the step after
+          # checkout sets up, and runs. That step already fails a
+          # shard whose daemon does not answer, so naming `docker`
+          # would add a second probe and nothing else; the JVM's
+          # persistence cells ride shards with no `docker` the same
+          # way. On a machine where no daemon answers, the emitted
+          # test returns early and `cargo test` still compiles every
+          # crate, which is what the cell exists to prove.
           - id: rust
             tools: cargo
             files: >-
@@ -597,6 +603,70 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Docker Hub limits anonymous pulls per egress address, and the
+      # hosted runners share theirs: a shard's `postgres:18-alpine`
+      # can come back `toomanyrequests`, or time out fetching its
+      # token from auth.docker.io, with nothing in the change at
+      # fault. So dockerd asks `mirror.gcr.io` — Google's
+      # pull-through cache of Docker Hub — first for every
+      # `docker.io` image, and falls back to Docker Hub only where
+      # the mirror cannot answer. Every pull the suites make goes
+      # through dockerd — Testcontainers on the JVM, Go and Rust,
+      # Quarkus Dev Services, `docker compose` — so the daemon's
+      # setting covers them all, and no suite or emitted test
+      # changes. Images from any other registry are not mirrored;
+      # the suites pull none.
+      #
+      # Every shard runs it, whatever its `tools:`: the runner's
+      # daemon is always there, so a Testcontainers case runs
+      # wherever its build does — `rust` and the JVM persistence
+      # shards pull without naming `docker`.
+      #
+      # The runner's own daemon.json, if it ships one, is merged
+      # into, never replaced, and invalid JSON fails the step before
+      # anything is written. `registry-mirrors` is one of the options
+      # dockerd re-reads on SIGHUP, so a reload applies it with
+      # nothing stopped; the daemon is restarted only if the reload
+      # did not take. What counts is the running daemon's own list,
+      # not the file — dockerd prints each mirror with a trailing
+      # slash, so the check strips it. A shard whose daemon does not
+      # come back listing the mirror fails here, with the daemon's
+      # status and log, rather than in whichever suite pulls first.
+      - name: Pull Docker Hub images through mirror.gcr.io
+        run: |
+          set -euo pipefail
+          mirror=https://mirror.gcr.io
+          conf=/etc/docker/daemon.json
+          mirrored() {
+            docker info --format '{{json .RegistryConfig.Mirrors}}' 2>/dev/null |
+              jq -e --arg m "$mirror" '(. // []) | map(sub("/+$"; "")) | any(. == $m)' >/dev/null
+          }
+          if mirrored; then
+            echo "dockerd already pulls Docker Hub images through $mirror"
+          else
+            if sudo test -s "$conf"; then sudo cat "$conf"; else echo '{}'; fi |
+              jq --arg m "$mirror" \
+                '.["registry-mirrors"] = [$m] + ((.["registry-mirrors"] // []) | map(select(sub("/+$"; "") != $m)))' \
+                > "$RUNNER_TEMP/daemon.json"
+            sudo install -D -m 0644 "$RUNNER_TEMP/daemon.json" "$conf"
+            sudo systemctl reload docker || echo "::warning::systemctl reload docker failed"
+            for _ in $(seq 1 20); do mirrored && break; sleep 0.5; done
+            if ! mirrored; then
+              echo "::warning::the reload did not apply registry-mirrors; restarting dockerd"
+              sudo timeout 120 systemctl restart docker ||
+                echo "::warning::systemctl restart docker did not report success"
+              for _ in $(seq 1 60); do docker info >/dev/null 2>&1 && break; sleep 1; done
+              if ! mirrored; then
+                echo "::error::dockerd does not list $mirror as a registry mirror after a restart"
+                sudo systemctl status docker --no-pager || true
+                sudo journalctl -u docker --no-pager -n 50 || true
+                exit 1
+              fi
+            fi
+          fi
+          echo "daemon.json: $(sudo cat "$conf")"
+          echo "registry mirrors: $(docker info --format '{{json .RegistryConfig.Mirrors}}')"
 
       # Which of mise.toml's tools this shard installs, derived from
       # the binaries it probes for below so the two lists cannot

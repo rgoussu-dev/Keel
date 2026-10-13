@@ -491,8 +491,10 @@ function pathsDifference(
 /**
  * Every file under `root`, by path from it, with its bytes — each keel
  * manifest normalised ({@link normalisedManifest}), since the moment a
- * vertical arrived, and the order it arrived in, is the one thing two
- * runs that reach one project may differ in.
+ * vertical arrived is the one thing two runs that reach one project may
+ * differ in. The order it records its rows in is not: every caller
+ * records a row where one run records it (roadmap S.8), so a row out of
+ * that order is a finding.
  */
 export async function treeOf(root: string): Promise<ReadonlyMap<string, Buffer>> {
   const files = new Map<string, Buffer>();
@@ -514,46 +516,24 @@ export async function treeOf(root: string): Promise<ReadonlyMap<string, Buffer>>
 }
 
 /**
- * A manifest with what records *when* and *in what order* taken out:
- * every `installedAt` and `updatedAt` set to one value, every object's
- * keys sorted (an answer is recorded under its adapter as it arrives),
- * and the lists that grow in arrival order — verticals, file entries,
- * contexts, services, peers — sorted. What is left is what the project
- * is.
+ * A manifest with what records *when* taken out: every `installedAt`
+ * and `updatedAt` set to one value. Its keys and its lists keep the
+ * order they were written in — verticals, answers, file entries,
+ * contexts, services, peers — so what is left is the project, as the
+ * manifest records it.
  */
 function normalisedManifest(bytes: Buffer): Buffer {
   const stamp = (value: unknown): unknown => {
     if (Array.isArray(value)) return value.map(stamp);
     if (value === null || typeof value !== 'object') return value;
     return Object.fromEntries(
-      Object.entries(value)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([key, field]) => [
-          key,
-          key === 'installedAt' || key === 'updatedAt' ? '(normalised)' : stamp(field),
-        ]),
+      Object.entries(value).map(([key, field]) => [
+        key,
+        key === 'installedAt' || key === 'updatedAt' ? '(normalised)' : stamp(field),
+      ]),
     );
   };
-  const manifest = stamp(JSON.parse(bytes.toString('utf8'))) as Record<string, unknown>;
-  const by =
-    (...keys: string[]) =>
-    (a: unknown, b: unknown): number => {
-      const text = (item: unknown): string =>
-        keys.map((key) => String((item as Record<string, unknown>)[key] ?? '')).join('\0');
-      return text(a).localeCompare(text(b));
-    };
-  const sorted: Record<string, (a: unknown, b: unknown) => number> = {
-    verticals: by('id'),
-    entries: by('target', 'source'),
-    modules: by('name'),
-    services: by('path'),
-    peers: by('ref'),
-  };
-  for (const [key, order] of Object.entries(sorted)) {
-    const list = manifest[key];
-    if (Array.isArray(list)) manifest[key] = [...list].sort(order);
-  }
-  return Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`);
+  return Buffer.from(`${JSON.stringify(stamp(JSON.parse(bytes.toString('utf8'))), null, 2)}\n`);
 }
 
 /**

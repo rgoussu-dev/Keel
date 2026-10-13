@@ -36,6 +36,13 @@
  *     answers, and over every question the preview asks answered away
  *     from its default (`answerBodies`, as the greenfield axis sends
  *     them): the monitoring stack, where HTTP arrives.
+ *   - **The twin's recorded composition is a fixed point** (I11,
+ *     roadmap S.7): its whole re-render — one `keel add --reapply`
+ *     naming every recorded vertical `keel add` can name, as a dry run
+ *     — re-renders each and stages nothing, a module history's
+ *     contexts' wiring kept (`fixed:<the twin's command lines>`). I10
+ *     makes each grown project its twin's bytes, so the twin carries
+ *     the grown cell.
  *
  * Holds I1 and I6 over every cell on the way. Every invariant here is
  * hard, so `growth.known.json` has no key.
@@ -50,7 +57,6 @@ import {
   installCommandFor,
   type AddEntrypointTarget,
   type AddModuleTarget,
-  type InstallRun,
   type NewProjectTarget,
 } from '../../../../src/domain/contract/commands.js';
 import {
@@ -66,7 +72,10 @@ import {
   OK,
   answerBodies,
   eachStack,
+  holdFixedPoint,
   holdParity,
+  nameableOf,
+  runIn,
   sweepGrid,
   type Grid,
 } from '../../../support/composition-grid.js';
@@ -108,9 +117,10 @@ describe('composition grid: growth', () => {
   sweepGrid({
     name: 'growth',
     here: import.meta.url,
-    holds: ['I1', 'I6', 'I9', 'I10'],
+    holds: ['I1', 'I6', 'I9', 'I10', 'I11'],
     sweep: async (grid) => {
-      const { finder } = await grid.read(catalogQuery());
+      const { finder, verticals } = await grid.read(catalogQuery());
+      const catalog = verticals.map((vertical) => vertical.id);
       const twins = new Map<string, Promise<Snapshot>>();
       const dials = async (target: NewProjectTarget) => grid.read(dialsQuery({ target }));
       await eachStack(growingOf(finder), async ({ stack, grows }) => {
@@ -118,14 +128,15 @@ describe('composition grid: growth', () => {
           for (const { word, twin } of grows) {
             const cwd = await grid.scratch();
             await grid.read(installCommandFor(target, runIn(cwd)));
-            await growCell(grid, twins, { target, history: [], word, twin, cwd });
+            const cell = { target, history: [], word, twin, cwd };
+            await growCell(grid, twins, catalog, cell);
             if (target.moduleLayout !== 'modulith') continue;
             const given = await grid.scratch();
             await grid.read(installCommandFor(target, runIn(given)));
             const history = await historyOf(grid, given);
             if (history === null) continue;
             for (const add of history) await grid.read(installCommandFor(add, runIn(given)));
-            await growCell(grid, twins, { target, history, word, twin, cwd: given });
+            await growCell(grid, twins, catalog, { target, history, word, twin, cwd: given });
           }
         }
       });
@@ -158,11 +169,14 @@ async function historyOf(grid: Grid, cwd: string): Promise<readonly AddModuleTar
 /**
  * Holds I9 and I10 over one cell: its add previewed as it installs,
  * then grown for real and held to its twin given the same history —
- * or refused as growth reads it.
+ * or refused as growth reads it. The twin, scaffolded once for every
+ * cell that grows into it, is held to I11, its whole re-render naming
+ * what `keel add` can name of it (`nameableOf` over `catalog`).
  */
 async function growCell(
   grid: Grid,
   twins: Map<string, Promise<Snapshot>>,
+  catalog: readonly string[],
   { target, history, word, twin, cwd }: Growth,
 ): Promise<void> {
   const cell = [
@@ -195,7 +209,7 @@ async function growCell(
   }
   const setting = { ...target, stack: twin };
   const key = JSON.stringify([setting, history]);
-  const expected = twins.get(key) ?? scaffold(grid, setting, history);
+  const expected = twins.get(key) ?? scaffold(grid, setting, history, catalog);
   twins.set(key, expected);
   const grown = await snapshotOf(cwd, grid.queued(cwd), false);
   if (!sameSnapshot(grown, await expected)) grid.violate('I10', cell);
@@ -233,18 +247,26 @@ function growingOf(finder: StackFinder): readonly Growing[] {
 
 /**
  * `keel new` of `setting` in a directory of its own, then `history`, as
- * I10 compares it: the actions are the ones `keel new` queued.
+ * I10 compares it: the actions are the ones `keel new` queued. Held to
+ * I11 on the way, as the cell `fixed:` and the command lines that make
+ * it: its whole re-render, naming every recorded vertical of `catalog`,
+ * a dry run that writes nothing.
  */
 async function scaffold(
   grid: Grid,
   setting: NewProjectTarget,
   history: readonly AddModuleTarget[],
+  catalog: readonly string[],
 ): Promise<Snapshot> {
   const cwd = await grid.scratch();
   await grid.read(installCommandFor(setting, runIn(cwd)));
   const queued = grid.queued(cwd);
   for (const add of history) await grid.read(installCommandFor(add, runIn(cwd)));
-  return snapshotOf(cwd, queued, true);
+  const snapshot = await snapshotOf(cwd, queued, true);
+  const lines = [newCommandLine(setting), ...history.map(addModuleCommandLine)];
+  const status = await grid.read(projectStatusQuery({ cwd }));
+  await holdFixedPoint(grid, `fixed:${lines.join(' && ')}`, nameableOf(status, catalog), cwd);
+  return snapshot;
 }
 
 /**
@@ -283,8 +305,4 @@ function sameSnapshot(a: Snapshot, b: Snapshot): boolean {
   return (
     sorted(a.files) === sorted(b.files) && JSON.stringify(a.actions) === JSON.stringify(b.actions)
   );
-}
-
-function runIn(cwd: string): InstallRun {
-  return { cwd, answers: {}, interactive: false, dryRun: false };
 }

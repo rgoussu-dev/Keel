@@ -27,13 +27,15 @@
  * crate it was proving absent; a substring check cannot tell prose
  * from an edge.
  *
- * **No Docker, by design.** The emitted contract test probes for a
+ * **No Docker required.** The emitted contract test probes for a
  * daemon and returns early without one, so this runs in the `rust`
  * shard with `tools: cargo` unchanged: `cargo test` compiles every
- * crate — which is what proves the wiring — and skips the single
- * Testcontainers case. The JVM's `modulith-persistence` makes the
- * same trade in a shard with no `docker` either, at the cost of a
- * task-exclusion list this needs no equivalent of.
+ * crate — which is what proves the wiring — and, where no daemon
+ * answers, skips the single Testcontainers case. On CI the hosted
+ * runner's daemon does answer, so there the case runs and pulls its
+ * Postgres. The JVM's `modulith-persistence` makes the same trade in
+ * a shard with no `docker` either, at the cost of a task-exclusion
+ * list this needs no equivalent of.
  */
 
 import path from 'node:path';

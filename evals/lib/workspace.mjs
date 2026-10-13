@@ -115,11 +115,22 @@ export function pinGitBaseline(workspace) {
     GIT_COMMITTER_EMAIL: 'evals@keel.invalid',
   };
   run('git', ['add', '-A'], workspace, env);
-  const r = spawnSync('git', ['commit', '-m', 'eval baseline', '--allow-empty', '--no-verify'], {
-    cwd: workspace,
-    encoding: 'utf8',
-    env,
-  });
+  // A commit starts `git maintenance run --auto`, which git 2.47 and
+  // later detach: still packing `.git/objects` after this returns, it
+  // races whoever removes the workspace. A throwaway repo needs none.
+  const r = spawnSync(
+    'git',
+    [
+      '-c',
+      'maintenance.auto=false',
+      'commit',
+      '-m',
+      'eval baseline',
+      '--allow-empty',
+      '--no-verify',
+    ],
+    { cwd: workspace, encoding: 'utf8', env },
+  );
   if (r.status !== 0) throw new Error(`git baseline commit failed:\n${r.stderr || r.stdout}`);
 }
 

@@ -87,7 +87,9 @@ describe('answers grading', () => {
 
 describe('clean worktree', () => {
   const git = (...args: string[]): void => {
-    const r = spawnSync('git', args, {
+    // Git 2.47 and later detach the maintenance a commit starts, which
+    // would race the workspace's removal after the test.
+    const r = spawnSync('git', ['-c', 'maintenance.auto=false', ...args], {
       cwd: workspace,
       encoding: 'utf8',
       env: {

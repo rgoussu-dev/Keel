@@ -1,29 +1,40 @@
 /**
  * Integration test for `keel add module <name>` — the front door.
  *
- * Every case here is a *refusal*, and that is the point of the file.
- * A bounded-context adapter declares `covers: []`, so the resolver's
- * uncovered-dimension hard-fail cannot catch a project no adapter
- * serves: without these gates the command exits 0 having written
- * nothing, which is the bug I.6 found behind `--with-peer-context`.
- * What the emitted context *contains* is asserted per family
- * alongside that family's adapter; what belongs here is that nothing
- * is emitted in silence.
+ * Every case here but the run past the gates is a *refusal*, and that
+ * is the point of the file. A bounded-context adapter declares `covers: []`, so the
+ * resolver's uncovered-dimension hard-fail cannot catch a project no
+ * adapter serves: without these gates the command exits 0 having
+ * written nothing, which is the bug I.6 found behind
+ * `--with-peer-context`. What the emitted context *contains* is
+ * asserted per family alongside that family's adapter; what belongs
+ * here is that nothing is emitted in silence, and, last, that what
+ * runs past the gates is the converge operation's reading of one
+ * context (`convergeOf`), which the converge golden holds on every
+ * module history, recorded at one instant.
  */
 
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import os from 'node:os';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { addModuleCommand, newProjectCommand } from '../../../../src/domain/contract/commands.js';
+import { projectScopeRoot, type ManifestV2 } from '../../../../src/domain/contract/manifest.js';
+import type { Clock } from '../../../../src/domain/contract/ports/clock.js';
 import { RefusalError } from '../../../../src/domain/contract/refusal.js';
 import type { RunActionsInputs } from '../../../../src/domain/core/actions.js';
-import { expectErr, installMediator } from '../../../support/factory.js';
+import { convergeOf } from '../../../../src/domain/core/converge.js';
+import { shippedRegistry } from '../../../../src/domain/core/registry.js';
+import { FakeClock } from '../../../../src/infrastructure/commons/fake-clock.js';
+import { fsManifestStore } from '../../../../src/infrastructure/manifest/fs-manifest-store.js';
+import { expectErr, expectOk, installMediator, PINNED_NOW } from '../../../support/factory.js';
 
 /**
- * Every case here refuses before a file is written, so no deferred
- * action is part of what is under test — and running the real ones
- * would make the composite case a `npm install` per assertion.
+ * No deferred action is part of what is under test here: the refusals
+ * write nothing, and the run past the gates is held on its tree and
+ * manifest. Running the real ones would make the composite case a
+ * `npm install` per assertion.
  */
 const discardDeferred = (): ((inputs: RunActionsInputs) => Promise<void>) => {
   return (): Promise<void> => Promise.resolve();
@@ -60,8 +71,8 @@ async function scaffold(options: {
   if (!result.ok) throw new Error(`scaffold failed: ${result.error.message}`);
 }
 
-/** Dispatches an add-module against the scaffolded project. */
-function addModule(module: string, consumes?: string) {
+/** Dispatches an add-module against the scaffolded project, as a dry run unless `dryRun` is false. */
+function addModule(module: string, consumes?: string, dryRun = true) {
   const mediator = installMediator({ runDeferred: discardDeferred() });
   return mediator.dispatch(
     addModuleCommand({
@@ -70,9 +81,16 @@ function addModule(module: string, consumes?: string) {
       ...(consumes === undefined ? {} : { consumes }),
       answers: {},
       interactive: false,
-      dryRun: true,
+      dryRun,
     }),
   );
+}
+
+/** The manifest the scaffolded project records. */
+async function recorded(): Promise<ManifestV2> {
+  const manifest = await fsManifestStore.read(projectScopeRoot(cwd));
+  if (manifest === null) throw new Error('no manifest recorded');
+  return manifest;
 }
 
 describe('keel add module front door', () => {
@@ -189,5 +207,85 @@ describe('the coverage gate', () => {
         : `failed with ${result.error.code}`;
 
     expect(['scaffolded', 'refused, naming the gap']).toContain(outcome);
+  });
+});
+
+/**
+ * Past the gates, the command runs the converge operation's reading of
+ * one context: every adapter of keel's `bounded-context` the tags
+ * match, as the report resolves them; the vertical's row recorded
+ * once, after every other; the context recorded after the others,
+ * consuming what it names; the root map it re-indexes recorded as
+ * written; the transient inputs gone; and one instant for it all.
+ */
+describe('the run past the gates', () => {
+  it('wires what the reading of the context plans, records the row once and the context last, and proposes nothing', async () => {
+    await scaffold({ stack: 'go-cli', moduleLayout: 'modulith' });
+    const before = await recorded();
+    const plan = convergeOf(shippedRegistry, before, {
+      kind: 'module',
+      name: 'orders',
+      consumes: 'greeting',
+    });
+    if (plan.kind !== 'converges') throw new Error('the reading of a context refused');
+
+    const report = expectOk(await addModule('orders', 'greeting', false));
+
+    expect(report.resolvedAdapters?.map(({ id }) => id)).toEqual(plan.modules[0]?.adapters);
+    // The root map re-indexed after the run is among what it reports.
+    expect(report.changes).toContainEqual({ kind: 'modify', path: 'AGENTS.md' });
+    expect(report.notes).toBeUndefined();
+    expect(report.refreshProposals).toBeUndefined();
+    const after = await recorded();
+    expect(after.verticals.map(({ id }) => id)).toEqual(plan.target.recorded);
+    expect(after.verticals.at(-1)?.id).toBe('bounded-context');
+    expect(after.modules).toEqual([
+      ...before.modules,
+      { name: 'orders', installedAt: PINNED_NOW, seam: true, consumes: 'greeting' },
+    ]);
+    expect(after.updatedAt).toBe(PINNED_NOW);
+    expect(after.tags).toEqual(before.tags);
+    expect(Object.keys(after.answers)).toEqual(Object.keys(before.answers));
+    // The re-index rewrote the root map after the run's harness pass
+    // recorded it: its entries hash what is on disk.
+    const onDisk = createHash('sha256')
+      .update(await fs.readFile(path.join(cwd, 'AGENTS.md')))
+      .digest('hex');
+    const rows = after.entries.filter(({ target }) => target === 'AGENTS.md');
+    expect(rows).not.toEqual([]);
+    expect(rows.map((row) => [row.sha256Shipped, row.sha256Current])).toEqual(
+      rows.map(() => [onDisk, onDisk]),
+    );
+
+    expectOk(await addModule('shipping', undefined, false));
+    const again = await recorded();
+    expect(again.verticals).toEqual(after.verticals);
+    expect(again.modules.at(-1)).toEqual({ name: 'shipping', installedAt: PINNED_NOW, seam: true });
+  });
+
+  it('records the context, its row and the manifest at one instant, however often the clock is read', async () => {
+    await scaffold({ stack: 'go-cli', moduleLayout: 'modulith' });
+    const pinned = new FakeClock(PINNED_NOW);
+    let reads = 0;
+    const ticking: Clock = {
+      nowIso: () => {
+        const now = pinned.nowIso();
+        reads += 1;
+        pinned.set(new Date(Date.parse(PINNED_NOW) + reads * 1000).toISOString());
+        return now;
+      },
+    };
+
+    expectOk(
+      await installMediator({ runDeferred: discardDeferred(), clock: ticking }).dispatch(
+        addModuleCommand({ cwd, module: 'orders', answers: {}, interactive: false, dryRun: false }),
+      ),
+    );
+
+    const after = await recorded();
+    expect(after.modules.at(-1)?.installedAt).toBe(after.updatedAt);
+    expect(after.verticals.find(({ id }) => id === 'bounded-context')?.installedAt).toBe(
+      after.updatedAt,
+    );
   });
 });

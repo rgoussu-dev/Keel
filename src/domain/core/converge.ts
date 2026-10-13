@@ -1,0 +1,1080 @@
+/**
+ * The converge reading (roadmap S.2): the composition a project has,
+ * the one a command asks for, and the run that takes it there — read
+ * before anything runs, from a registry, a manifest and a request.
+ *
+ * Every path that installs or re-renders verticals — `keel new`, `keel
+ * add` with `--refresh` and `--reapply`, `keel add entrypoint` and
+ * `keel add module` — is one operation run on a different request.
+ * This is its reading, pure as `./planner.ts` and `./growth.ts` are:
+ * nothing here runs, reads a file or is worded; `./converge-run.ts`
+ * runs it. `keel add entrypoint` is its first caller (S.3), `keel add`,
+ * with `--refresh` and `--reapply`, its second (S.4), `keel add module`
+ * its third (S.5), and `keel new`, from each scope's seed manifest, its
+ * fourth (S.6); `tests/domain/core/converge.golden.test.ts` records it
+ * on every cell of the paths golden.
+ *
+ * **The composition needs no new record** (DS2). A manifest already
+ * says what `keel new` was given ({@link compositionOf}): the preset the
+ * drill-down places it on (`./profile.ts` `projectProfile`), on the
+ * setting of its dials the tags record, read as growth reads a twin's
+ * (`./growth.ts` `settingOf`); the harness, by whether it is recorded;
+ * the extras, as what is recorded beyond the preset — among them, for a
+ * service of a composite product, what the product installs there of
+ * its own accord; and the contexts `keel add module` added after the
+ * skeleton (`./contexts.ts`).
+ *
+ * **One reference order** ({@link referenceOrder}): the order one run
+ * of `keel new` of the composition records — the preset's verticals in
+ * the preset's order, then what a product gives its service in the
+ * product's, then the other extras in `admit`'s, then
+ * `bounded-context`, which one run never records and `keel add module`
+ * records last. Where no preset reads back, the recorded order stands
+ * in for it. Every caller onto a project records by it (S.8, DS3).
+ *
+ * **A request names nothing to take away** (DS5). Each kind adds —
+ * verticals, a re-render, an entrypoint, a context, a preset from its
+ * seed manifest — and none has a field that removes, so no command can
+ * ask for a removal. Where reaching the composition would stop an
+ * adapter from applying, growth refuses it.
+ *
+ * **The plan** ({@link convergeOf}) is the target composition; the run,
+ * one step per vertical in run order, each installed whole, installed
+ * in part, re-rendered, replayed for its patches alone onto what a
+ * re-render rewrote — a context `keel add module` added among them —
+ * or replayed for its deferred actions alone where the caller settles
+ * (DR5, DS7); the contexts to wire; and the caller's placement —
+ * growth records at its twin's rank and realizes the harness in its
+ * twin's order; `keel add`, with `--refresh` and `--reapply`, and
+ * `keel add module` record at the reference order's rank and realize
+ * it in that order (S.8), nothing recorded moving (DR4) — or append,
+ * where no preset reads back; and `keel new`, whose run is in the
+ * reference order already, appends onto a seed that records nothing.
+ *
+ * **A re-render keeps what later verticals wrote** (S.7, DS4). `keel
+ * add --reapply` and `--refresh` re-render what they name within the
+ * recorded composition: every other recorded vertical is replayed for
+ * its patches, and each context `keel add module` added for its
+ * wiring's, where it arrived among them, onto the whole files the
+ * re-render rewrote and onto no other — so a bootstrap re-rendered
+ * keeps observability's lines, and each context's wiring — and so is
+ * what a `--refresh` beside an add installed before the re-render.
+ * Only what the command names re-renders (D12).
+ */
+
+import path from 'node:path';
+import type { DomainError, Result } from '../kernel/result.js';
+import type { Tag, Vertical } from '../contract/composition.js';
+import { effectiveTags, type ManifestV2, type PeerLink } from '../contract/manifest.js';
+import type { Registry } from '../contract/ports/registry.js';
+import type { Stack } from '../contract/stack.js';
+import { CONTEXT_TAG } from './adapters/added-context.js';
+import { PEER_CONTEXT_TAG } from './adapters/module-layout.js';
+import { addedContextsOf } from './contexts.js';
+import { presetScope, presetServicesOf, withoutHarness } from './dials.js';
+import {
+  growthOf,
+  settingOf,
+  type GrowthModule,
+  type GrowthPlan,
+  type GrowthRefusal,
+} from './growth.js';
+import { admit, type AdmittedSet } from './plan-refusal.js';
+import { acquirableIn, matchingIds, type PlanScope } from './planner.js';
+import { projectProfile } from './profile.js';
+import { rankedIndex } from './rank.js';
+import { installedVertical } from './registry.js';
+import {
+  presetServiceScope,
+  presetServiceVerticals,
+  projectScope,
+  type PresetService,
+  type ProductServiceScope,
+} from './scope.js';
+import { boundedContextVertical } from './verticals/bounded-context.js';
+
+/** The vertical whose record is the harness dial, and that `--no-agent-harness` leaves out. */
+const HARNESS = 'agent-harness';
+
+/** The row `keel add module` records, which one run of `keel new` never does. */
+const BOUNDED_CONTEXT = boundedContextVertical.id;
+
+/**
+ * What a project is, as the composition `keel new` would have been
+ * given for it — read off its manifest ({@link compositionOf}), or the
+ * target a request converges it onto ({@link ConvergePlan}).
+ */
+export interface Composition {
+  /**
+   * The preset, by id: the one the drill-down places the project on,
+   * where the tags record a setting of its dials — null where none
+   * reads back (a monorepo product's root, a plugin's preset off the
+   * tree, a manifest migrated from v1).
+   */
+  readonly preset: string | null;
+  /**
+   * The dial tags that setting folds in — the build system's, the
+   * module layout's, the peer context's marker — each where it has
+   * one; none where no preset reads back.
+   */
+  readonly dials: readonly Tag[];
+  /** The harness dial: whether `agent-harness` is recorded. */
+  readonly harness: boolean;
+  /**
+   * Whether the project is a service of a monorepo product: its preset
+   * lists verticals a repository root carries (`Vertical.placement`)
+   * and it records none of them, since the product root carries them
+   * and keel removes nothing a project of its own records.
+   */
+  readonly member: boolean;
+  /**
+   * What a composite product installs in the project as a service of
+   * it, of its own accord (`StackService.extraVerticals`), by id in the
+   * product's order — less, in a monorepo service, what its product
+   * root carries. Read where the project links each other service of a
+   * registered product with a service on its preset, by the path
+   * `keel new` of the product links it at, and records each of what
+   * that service is given: the first such service, in registry order.
+   * Products that place a service alike read alike. None for a project
+   * of its own, and where no preset reads back.
+   */
+  readonly given: readonly string[];
+  /**
+   * The verticals recorded beyond the preset's, in recorded order,
+   * `bounded-context` apart — {@link given} among them; every other
+   * recorded one, where no preset reads back.
+   */
+  readonly extras: readonly string[];
+  /**
+   * The contexts `keel add module` added, by name, in the order
+   * recorded: the modules after the skeleton, the peer apart.
+   */
+  readonly contexts: readonly string[];
+  /**
+   * The tags the project plans on — its own and what linked projects
+   * project here; a target's are those its run starts from, before
+   * anything it installs promotes.
+   */
+  readonly tags: readonly Tag[];
+  /** What the project projects onto a linked sibling. */
+  readonly projects: readonly Tag[];
+  /**
+   * The verticals the project records, in the order it records them —
+   * a target's with what its run records anew placed where the
+   * caller places it ({@link Placement}).
+   */
+  readonly recorded: readonly string[];
+  /** The order one run of `keel new` of this composition records ({@link referenceOrder}). */
+  readonly order: readonly string[];
+}
+
+/**
+ * What a command asks of the project a manifest records. Each kind
+ * adds; none names anything to take away (DS5), so a removal cannot be
+ * asked for.
+ *
+ * - `add` — `keel add`: the verticals it installs, by id, named less
+ *   what the project has, closed over their prerequisites (`admit`),
+ *   and those `--refresh` re-renders beside them. The caller hands in
+ *   the scope and the siblings it plans on (`./add-readiness.ts`
+ *   `addScopeOf`, `./scope.ts` `siblingsOf`), since a manifest alone
+ *   does not say where a monorepo service sits;
+ * - `reapply` — `keel add --reapply`: installed verticals re-rendered,
+ *   by id;
+ * - `entrypoint` — `keel add entrypoint`: the entrypoint by its word or
+ *   id, read by `growthOf`;
+ * - `module` — `keel add module`: the context to add, and the one it
+ *   consumes, which its adapters read from the inputs the run seeds;
+ * - `new` — `keel new`, run from a seed manifest (the preset's and the
+ *   dials' tags, `projects`, `peers`, `services`, the scaffolded
+ *   modules): the preset by id, the harness dial, the extras the user
+ *   names by id, whether the scope is a service of a monorepo product,
+ *   which leaves what the product root carries out of it, and — where
+ *   it is a service of a composite product — the product by id and the
+ *   service's path in it. What the product gives the service of its
+ *   own accord installs straight after the preset's verticals, in the
+ *   product's order and never admitted, and the extras are admitted
+ *   on the scope `keel new` plans them on there
+ *   (`./scope.ts` `presetServiceScope`), which has it.
+ */
+export type ConvergeRequest =
+  | {
+      readonly kind: 'add';
+      readonly verticals: readonly string[];
+      readonly refresh?: readonly string[];
+      readonly scope: PlanScope;
+      readonly siblings?: readonly ProductServiceScope[];
+    }
+  | { readonly kind: 'reapply'; readonly verticals: readonly string[] }
+  | { readonly kind: 'entrypoint'; readonly word: string }
+  | { readonly kind: 'module'; readonly name: string; readonly consumes: string | null }
+  | {
+      readonly kind: 'new';
+      readonly stack: string;
+      readonly harness: boolean;
+      readonly extras: readonly string[];
+      readonly member: boolean;
+      readonly service?: { readonly product: string; readonly path: string };
+    };
+
+/**
+ * One vertical of a run, in its posture:
+ *
+ * - `install` — installed whole;
+ * - `only` — only `adapters` install, the ones the target's tags newly
+ *   match; where `settles`, the others replay for their deferred
+ *   actions alone;
+ * - `rerender` — re-rendered from its recorded answers;
+ * - `replay` — replayed for its patches alone onto the whole files the
+ *   run's re-renders rewrote before it (`patchesOnto`, S.7), from what
+ *   it records: a recorded vertical the run does not name, or one it
+ *   installed, or re-rendered, before a re-render one run applies it
+ *   after — or, where `context` names one, keel's `bounded-context`
+ *   for a context `keel add module` added, by `adapters`, as its add
+ *   ran them. What it wrote into them comes back, and nothing else of
+ *   it is written, queued or recorded;
+ * - `settle` — replayed for its deferred actions alone (`actionsOnly`),
+ *   where the caller settles (DR5).
+ */
+export interface ConvergeStep {
+  readonly vertical: Vertical;
+  readonly posture: 'install' | 'only' | 'rerender' | 'replay' | 'settle';
+  /**
+   * Where `posture` is `only`: the adapters that install, by id, in
+   * declaration order; where a context replays: those of its wiring.
+   */
+  readonly adapters?: readonly string[];
+  /** Where `posture` is `only`: set where the adapters that do not install settle. */
+  readonly settles?: true;
+  /**
+   * Where `posture` is `replay` of keel's `bounded-context`: the
+   * context `keel add module` added whose wiring replays (S.7, DS10).
+   */
+  readonly context?: string;
+}
+
+/**
+ * Where the caller records a run:
+ *
+ * - `rows` — `twin`, each new row of the manifest at its twin's rank
+ *   (growth); `reference`, at the rank of the target's reference order
+ *   ({@link Composition.order}), where one run of the target records
+ *   it (S.8); `append`, after every recorded one;
+ * - `harness` — `twin`, the harness buffer realized in the twin's
+ *   order (growth); `reference`, in the reference order; `run`, in the
+ *   order the run filled it.
+ */
+export interface Placement {
+  readonly rows: 'twin' | 'reference' | 'append';
+  readonly harness: 'twin' | 'reference' | 'run';
+}
+
+/**
+ * A context the run wires, by a run of keel's own `bounded-context`
+ * installing {@link GrowthModule.adapters}: one `keel add module`
+ * added, which the manifest records with what it consumes and growth
+ * wires into a new assembly — or, with {@link adds}, the one `keel add
+ * module` adds, which the manifest records only once the run is over.
+ */
+export interface ConvergeModule extends GrowthModule {
+  /**
+   * Set on the context the run adds: the context it consumes, or null.
+   * It reads the answers the user supplied, in the command's mode, as
+   * a first install does; a recorded one replays as its add ran it.
+   */
+  readonly adds?: { readonly consumes: string | null };
+}
+
+/**
+ * Why a request does not converge: growth's refusal of the entrypoint
+ * (`growth`), or the planner's of the verticals it would install,
+ * worded as both front doors word it (`plan`, `./plan-refusal.ts`).
+ */
+export type ConvergeRefusal =
+  | { readonly kind: 'growth'; readonly refusal: GrowthRefusal }
+  | { readonly kind: 'plan'; readonly error: DomainError };
+
+/** What {@link convergeOf} makes of a request: a plan, or its refusal. */
+export type ConvergePlan =
+  | {
+      readonly kind: 'converges';
+      /** The composition the project is to have. */
+      readonly target: Composition;
+      /**
+       * One step per vertical, in run order — and, where it re-renders,
+       * one per context `keel add module` added, replayed where it
+       * arrived ({@link ConvergeStep.context}).
+       */
+      readonly run: readonly ConvergeStep[];
+      /**
+       * The contexts the run wires, each by a run of keel's own
+       * `bounded-context` with its adapters, after every step: those
+       * `keel add module` added, in the order recorded, or the one it
+       * adds.
+       */
+      readonly modules: readonly ConvergeModule[];
+      readonly placement: Placement;
+    }
+  | { readonly kind: 'refused'; readonly refusal: ConvergeRefusal };
+
+/**
+ * How `keel new` records — its run is in the reference order, onto a
+ * seed that records nothing — and how every other caller records where
+ * no preset reads back: appended, realized in run order.
+ */
+const APPENDED: Placement = { rows: 'append', harness: 'run' };
+
+/** How growth records: where its twin records. */
+const AT_TWIN: Placement = { rows: 'twin', harness: 'twin' };
+
+/** How every other caller onto a project records: where one run of its target records (S.8). */
+const AT_REFERENCE: Placement = { rows: 'reference', harness: 'reference' };
+
+/**
+ * The composition the project `manifest` records, as `keel new` would
+ * have been given it (DS2): the preset the drill-down places it on, on
+ * the setting of its dials its tags record; whether it records the
+ * harness; the extras, what it records beyond the preset; and the
+ * contexts `keel add module` added.
+ */
+export function compositionOf(registry: Registry, manifest: ManifestV2): Composition {
+  return recording(
+    registry,
+    manifest,
+    manifest.verticals.map(({ id }) => id),
+    addedContexts(manifest),
+  );
+}
+
+/**
+ * The order one run of `keel new` of `composition` records: the
+ * preset's verticals in the preset's order — less the harness where
+ * the harness dial is off, and less what a monorepo service leaves to
+ * its product root — then what a product gives its service
+ * ({@link Composition.given}) in the product's order, then the other
+ * extras in `admit`'s order on the scope `keel new` plans them on,
+ * then `bounded-context` where it is recorded. Where no preset reads
+ * back, the recorded order. An extra no registered vertical is any
+ * more comes after the others, and extras `admit` refuses together on
+ * that scope keep their recorded order.
+ */
+export function referenceOrder(
+  registry: Registry,
+  composition: Omit<Composition, 'order'>,
+): readonly string[] {
+  const stack = composition.preset === null ? null : registry.stack(composition.preset);
+  if (stack === null) return [...composition.recorded];
+  const dialed = composition.harness ? stack : withoutHarness(stack);
+  const own = ownOf(dialed, [], composition.member).map(({ id }) => id);
+  const { given } = composition;
+  const acquirable = acquirableIn(registry);
+  const tags = [
+    ...new Set([
+      ...stack.tags,
+      ...composition.dials,
+      ...composition.tags.filter((tag) => !acquirable.has(tag)),
+    ]),
+  ];
+  const service =
+    given.length > 0 || composition.member
+      ? serviceGiving(registry, stack.id, given, composition.member)
+      : null;
+  const scope = extrasScope(registry, dialed, tags, composition.member, service);
+  const extras = composition.extras.filter((id) => !given.includes(id));
+  const context = composition.recorded.includes(BOUNDED_CONTEXT) ? [BOUNDED_CONTEXT] : [];
+  return [...own, ...given, ...extrasInOrder(registry, scope, extras), ...context];
+}
+
+/**
+ * What `request` makes of the project `manifest` records: the plan
+ * that converges it onto the composition asked for, or the refusal —
+ * the plan each front door builds today.
+ *
+ * @throws Error where the request names a vertical or a preset the
+ *   registry does not know, which every front door refuses first
+ */
+export function convergeOf(
+  registry: Registry,
+  manifest: ManifestV2,
+  request: ConvergeRequest,
+): ConvergePlan {
+  switch (request.kind) {
+    case 'add':
+      return atReference(registry, manifest, addOf(registry, manifest, request));
+    case 'reapply':
+      return atReference(registry, manifest, reapplyOf(registry, manifest, request.verticals));
+    case 'entrypoint':
+      return entrypointOf(registry, manifest, request.word);
+    case 'module':
+      return atReference(registry, manifest, moduleOf(registry, manifest, request));
+    case 'new':
+      return newOf(registry, manifest, request);
+  }
+}
+
+/**
+ * `plan`, over the project `manifest` records, placed where one run of
+ * its target records (roadmap S.8, DS3): each row the run records anew
+ * before the first recorded one the reference order lists later —
+ * before `bounded-context`, which it lists last — nothing recorded
+ * moving (DR4), and the harness realized in that order. Where no
+ * preset reads back, the reference is the recorded order, and `plan`
+ * stays appended, as it was.
+ */
+function atReference(registry: Registry, manifest: ManifestV2, plan: ConvergePlan): ConvergePlan {
+  if (plan.kind !== 'converges' || plan.target.preset === null) return plan;
+  const had = manifest.verticals.map(({ id }) => id);
+  const incoming = plan.target.recorded.filter((id) => !had.includes(id));
+  const target =
+    incoming.length === 0
+      ? plan.target
+      : recording(
+          registry,
+          manifest,
+          placed(had, incoming, plan.target.order),
+          plan.target.contexts,
+        );
+  return { ...plan, target, placement: AT_REFERENCE };
+}
+
+/**
+ * `recorded`, the verticals a project records in its order, with
+ * `incoming` placed among them where `twin` lists them: each before
+ * the first recorded one the twin lists after it — one the twin does
+ * not list takes the place of the next incoming one it does — and
+ * after any other. Nothing recorded moves. Growth's order, by its twin,
+ * for its run and its record; and, by the target's reference order in
+ * place of a twin, the record of every other caller onto a project
+ * ({@link atReference}, `./converge-run.ts`).
+ */
+export function placed(
+  recorded: readonly string[],
+  incoming: readonly string[],
+  twin: readonly string[],
+): readonly string[] {
+  const rankFrom = (from: number): number | undefined => {
+    for (const next of incoming.slice(from)) {
+      const rank = twin.indexOf(next);
+      if (rank !== -1) return rank;
+    }
+    return undefined;
+  };
+  const rows = [...recorded];
+  incoming.forEach((id, index) => {
+    const own = rankFrom(index);
+    const at =
+      own === undefined
+        ? -1
+        : rankedIndex(
+            rows.map((row) => (twin.includes(row) ? twin.indexOf(row) : undefined)),
+            own,
+          );
+    rows.splice(at === -1 ? rows.length : at, 0, id);
+  });
+  return rows;
+}
+
+/** The project `stored` records, with the tags and `projects` `growth` folds in. */
+export function grownManifest(stored: ManifestV2, growth: GrowthPlan): ManifestV2 {
+  return { ...stored, tags: growth.tags, projects: growth.projects };
+}
+
+/**
+ * The verticals growth installs, admitted on `grown` — the harness it
+ * re-renders planned as if it were not there yet, as `keel add
+ * --refresh` plans one — closed over their prerequisites, or refused.
+ */
+export function admitGrowth(
+  registry: Registry,
+  grown: ManifestV2,
+  growth: GrowthPlan,
+): Result<AdmittedSet> {
+  return admit(
+    registry,
+    projectScope(registry, grown, growth.rerender),
+    lackingOf(registry, growth),
+  );
+}
+
+/**
+ * What a run growth plans installs: what the planner adds for what the
+ * twin names, then that, in the twin's order.
+ */
+export function incomingOf(
+  registry: Registry,
+  growth: GrowthPlan,
+  admitted: AdmittedSet,
+): readonly Vertical[] {
+  return [
+    ...admitted.order.filter((v) => !growth.verticals.includes(v.id)),
+    ...lackingOf(registry, growth),
+  ];
+}
+
+/** The verticals growth installs, registered, in the twin's order. */
+function lackingOf(registry: Registry, growth: GrowthPlan): readonly Vertical[] {
+  return growth.verticals.flatMap((id) => registry.vertical(id) ?? []);
+}
+
+/** A composition's parts, before its preset and extras are read off them. */
+interface Parts {
+  /** The project's own tags, which place its preset and read its dials. */
+  readonly own: readonly Tag[];
+  readonly tags: readonly Tag[];
+  readonly projects: readonly Tag[];
+  /** The siblings the project links, which say whether it is a product's service. */
+  readonly peers: readonly PeerLink[];
+  readonly recorded: readonly string[];
+  readonly contexts: readonly string[];
+}
+
+/**
+ * The composition `parts` make on `stack` — kept as its preset where
+ * the tags record a setting of its dials, and read as none where they
+ * do not.
+ */
+function composed(registry: Registry, stack: Stack | null, parts: Parts): Composition {
+  const harness = parts.recorded.includes(HARNESS);
+  const acquirable = acquirableIn(registry);
+  const identity = parts.own.filter((tag) => !acquirable.has(tag));
+  const setting = stack === null ? null : settingOf(stack, identity, parts.own, harness);
+  const preset = setting === null ? null : stack;
+  const own = preset?.verticals.map(({ id }) => id) ?? [];
+  const repository = (preset?.verticals ?? [])
+    .filter((vertical) => vertical.placement?.scope === 'repository')
+    .map(({ id }) => id);
+  const member = repository.length > 0 && repository.every((id) => !parts.recorded.includes(id));
+  const reading: Omit<Composition, 'order'> = {
+    preset: preset?.id ?? null,
+    dials:
+      setting === null
+        ? []
+        : [
+            ...(setting.build === null ? [] : [setting.build]),
+            ...(setting.layout === null ? [] : [setting.layout]),
+            ...(setting.peer ? [PEER_CONTEXT_TAG] : []),
+          ],
+    harness,
+    member,
+    given: preset === null ? [] : givenOf(registry, preset.id, parts, member),
+    extras: parts.recorded.filter((id) => !own.includes(id) && id !== BOUNDED_CONTEXT),
+    contexts: parts.contexts,
+    tags: parts.tags,
+    projects: parts.projects,
+    recorded: parts.recorded,
+  };
+  return { ...reading, order: referenceOrder(registry, reading) };
+}
+
+/**
+ * What a composite product installs in a service on the preset `preset`
+ * of its own accord, where the project `parts` make is one
+ * ({@link Composition.given}): the first registered product's service
+ * on it whose other services the project links, each at the path
+ * `keel new` of the product links it at, and whose own verticals it
+ * records — less, in a monorepo service (`member`), what its product
+ * root carries.
+ */
+function givenOf(
+  registry: Registry,
+  preset: string,
+  parts: Parts,
+  member: boolean,
+): readonly string[] {
+  const refs = new Set(parts.peers.map(({ ref }) => ref));
+  for (const product of registry.stacks()) {
+    const services = presetServicesOf(registry, product);
+    for (const service of services) {
+      if (service.stack.id !== preset) continue;
+      const linked = services.every(
+        (other) =>
+          other.path === service.path || refs.has(path.posix.relative(service.path, other.path)),
+      );
+      const given = givenIn(service, member);
+      if (linked && given.every((id) => parts.recorded.includes(id))) return given;
+    }
+  }
+  return [];
+}
+
+/** What `service` is given of its own accord, by id — less what a monorepo product's root carries. */
+function givenIn(service: PresetService, member: boolean): readonly string[] {
+  return ownOf({ ...service.stack, verticals: [] }, service.extraVerticals, member).map(
+    ({ id }) => id,
+  );
+}
+
+/** A service of a registered product, with the product: where `keel new` of it plans the service's extras. */
+interface ProductService {
+  readonly product: Stack;
+  readonly service: PresetService;
+}
+
+/**
+ * The first registered product's service on the preset `preset` that
+ * is given `given` of its own accord, in a monorepo or not as `member`
+ * says — which says where a monorepo service's product root is, for
+ * the scope its extras are planned on — or null.
+ */
+function serviceGiving(
+  registry: Registry,
+  preset: string,
+  given: readonly string[],
+  member: boolean,
+): ProductService | null {
+  for (const product of registry.stacks()) {
+    for (const service of presetServicesOf(registry, product)) {
+      if (service.stack.id !== preset) continue;
+      if (givenIn(service, member).join(' ') === given.join(' ')) return { product, service };
+    }
+  }
+  return null;
+}
+
+/**
+ * What `keel new` installs of `preset` before any extra is named: its
+ * verticals, then `given` — what a product gives the service of its
+ * own accord — less, in a monorepo service, what its product root
+ * carries (`./scope.ts` `presetServiceVerticals`).
+ */
+function ownOf(preset: Stack, given: readonly Vertical[], member: boolean): readonly Vertical[] {
+  return presetServiceVerticals({ path: '', stack: preset, extraVerticals: given }, member);
+}
+
+/**
+ * The scope `keel new` plans `preset`'s extras on, over `tags`: a
+ * product's service's where it is one (`./scope.ts`
+ * `presetServiceScope` — what the product gives it, and in a monorepo
+ * what the product root gives it, there already); the preset's own
+ * otherwise, marked as a monorepo service's where `member`.
+ */
+function extrasScope(
+  registry: Registry,
+  preset: Stack,
+  tags: readonly Tag[],
+  member: boolean,
+  service: ProductService | null,
+): PlanScope {
+  if (service !== null) {
+    return presetServiceScope(
+      registry,
+      service.product,
+      { ...service.service, stack: preset },
+      tags,
+      member,
+    );
+  }
+  const scope = presetScope(preset, tags);
+  return member ? { ...scope, member: { provided: [] } } : scope;
+}
+
+/**
+ * `extras` in the order `admit` installs them on `scope` — then any no
+ * registered vertical is any more, as recorded — or as recorded where
+ * it refuses them together.
+ */
+function extrasInOrder(
+  registry: Registry,
+  scope: PlanScope,
+  extras: readonly string[],
+): readonly string[] {
+  const verticals = extras.flatMap((id) => registry.vertical(id) ?? []);
+  if (verticals.length === 0) return extras;
+  const admitted = admit(registry, scope, verticals);
+  if (!admitted.ok) return extras;
+  const ordered = admitted.value.order.map(({ id }) => id).filter((id) => extras.includes(id));
+  return [...ordered, ...extras.filter((id) => !ordered.includes(id))];
+}
+
+/** The contexts `keel add module` added to the project `manifest` records, by name. */
+function addedContexts(manifest: ManifestV2): readonly string[] {
+  return addedContextsOf(manifest).map(({ name }) => name);
+}
+
+/**
+ * The composition of the project `manifest` records, recording
+ * `recorded` and holding the added `contexts` — the manifest's own, or
+ * a target's with what its run records anew.
+ */
+function recording(
+  registry: Registry,
+  manifest: ManifestV2,
+  recorded: readonly string[],
+  contexts: readonly string[],
+): Composition {
+  const placed = projectProfile(registry, manifest.tags, manifest.services).preset;
+  return composed(registry, placed === null ? null : registry.stack(placed), {
+    own: manifest.tags,
+    tags: effectiveTags(manifest),
+    projects: manifest.projects,
+    peers: manifest.peers,
+    recorded,
+    contexts,
+  });
+}
+
+/** The registered vertical `id` names; a front door refuses any other first. */
+function registered(registry: Registry, id: string): Vertical {
+  const vertical = registry.vertical(id);
+  if (vertical === null) throw new Error(`convergeOf: no vertical '${id}' is registered`);
+  return vertical;
+}
+
+function refusedByPlan(error: DomainError): ConvergePlan {
+  return { kind: 'refused', refusal: { kind: 'plan', error } };
+}
+
+/**
+ * `keel add`: the verticals named and those `--refresh` re-renders,
+ * admitted together on the caller's scope, in the order they install —
+ * each installed, or re-rendered where it is refreshed, within the
+ * recorded composition, as `--reapply` re-renders, what it installed
+ * before the re-render replayed after it ({@link withReplays}) —
+ * appended, which {@link convergeOf} places at the reference order
+ * ({@link atReference}).
+ */
+function addOf(
+  registry: Registry,
+  manifest: ManifestV2,
+  request: Extract<ConvergeRequest, { kind: 'add' }>,
+): ConvergePlan {
+  const refresh = request.refresh ?? [];
+  const admitted = admit(
+    registry,
+    request.scope,
+    [...request.verticals, ...refresh].map((id) => registered(registry, id)),
+    request.siblings ?? [],
+  );
+  if (!admitted.ok) return refusedByPlan(admitted.error);
+  const run = admitted.value.order.map(
+    (vertical): ConvergeStep => ({
+      vertical,
+      posture: refresh.includes(vertical.id) ? 'rerender' : 'install',
+    }),
+  );
+  const incoming = run.filter((step) => step.posture === 'install').map((step) => step.vertical.id);
+  return {
+    kind: 'converges',
+    target: recording(
+      registry,
+      manifest,
+      [...manifest.verticals.map(({ id }) => id), ...incoming],
+      addedContexts(manifest),
+    ),
+    run: withReplays(registry, manifest, run),
+    modules: [],
+    placement: APPENDED,
+  };
+}
+
+/**
+ * `keel add --reapply`: the named verticals re-rendered, in the order
+ * the project records them, within the recorded composition (S.7) —
+ * every other recorded vertical replayed for its patches after the
+ * first, in that order, and each context `keel add module` added where
+ * it arrived among them, a later one named re-rendering at its own
+ * rank ({@link withReplays}).
+ */
+function reapplyOf(
+  registry: Registry,
+  manifest: ManifestV2,
+  named: readonly string[],
+): ConvergePlan {
+  const run = manifest.verticals
+    .filter(({ id }) => named.includes(id))
+    .map(({ id }): ConvergeStep => ({ vertical: registered(registry, id), posture: 'rerender' }));
+  return {
+    kind: 'converges',
+    target: compositionOf(registry, manifest),
+    run: withReplays(registry, manifest, run),
+    modules: [],
+    placement: APPENDED,
+  };
+}
+
+/**
+ * `run`, with `replay` steps where it re-renders anything (DS4): each
+ * re-render keeps what the rest of the composition wrote into the
+ * whole files it rewrites, every patch put back where one run of the
+ * target composition applies it — the recorded verticals in recorded
+ * order, each context `keel add module` added where it arrived among
+ * them, then what the run installs, in run order.
+ *
+ * - Every vertical `manifest` records that the run does not name
+ *   replays once the first re-render has run and every re-render still
+ *   to come is of a vertical recorded after it: before the next such
+ *   re-render or install, so what that one patches in lands after it;
+ *   the rest after the last re-render. Every one, not only those
+ *   recorded after a re-render, since a row recorded at rank (growth's)
+ *   keeps no arrival order, and one that ran first cannot have patched
+ *   those files. Neither `bounded-context`, nor a vertical no loaded
+ *   plugin provides any more, which nothing can render. Each context
+ *   `keel add module` added replays so too, at the rank of its arrival
+ *   among them ({@link contextReplays}).
+ * - After the last re-render, what ran before it that one run applies
+ *   after it replays too: a vertical re-rendered ahead of one recorded
+ *   before it, among the recorded at its rank; then each vertical the
+ *   run installed, in run order, since `--refresh` re-renders where the
+ *   planner puts it, which can be after an install that patched what
+ *   it rewrites.
+ *
+ * Where the re-renders run in recorded order — every `--reapply`, and a
+ * lone `--refresh` — that is one run's order exactly: a vertical named
+ * among several re-renders at its own rank, after what is recorded
+ * before it.
+ */
+function withReplays(
+  registry: Registry,
+  manifest: ManifestV2,
+  run: readonly ConvergeStep[],
+): readonly ConvergeStep[] {
+  const first = run.findIndex((step) => step.posture === 'rerender');
+  if (first === -1) return run;
+  const last = run.map((step) => step.posture).lastIndexOf('rerender');
+  const rank = new Map<ConvergeStep | string, number>(
+    manifest.verticals.map(({ id }, at) => [id, at]),
+  );
+  const rankOf = (step: ConvergeStep): number =>
+    rank.get(step) ?? rank.get(step.vertical.id) ?? Infinity;
+  const replay = ({ vertical }: ConvergeStep): ConvergeStep => ({ vertical, posture: 'replay' });
+  const named = new Set(run.map((step) => step.vertical.id));
+  const contexts = contextReplays(manifest);
+  for (const { step, at } of contexts) rank.set(step, at);
+  let pending = [
+    ...manifest.verticals.flatMap(({ id }): ConvergeStep[] => {
+      if (named.has(id) || id === BOUNDED_CONTEXT) return [];
+      const vertical = installedVertical(registry, id);
+      return vertical === null ? [] : [{ vertical, posture: 'replay' }];
+    }),
+    ...contexts.map(({ step }) => step),
+  ].sort((a, b) => rankOf(a) - rankOf(b));
+  const rerenders = run.flatMap((step, at) => (step.posture === 'rerender' ? [{ step, at }] : []));
+  const replayed = run.slice(0, first + 1);
+  for (let at = first + 1; at <= last; at += 1) {
+    const floor = Math.min(...rerenders.filter((r) => r.at >= at).map((r) => rankOf(r.step)));
+    replayed.push(...pending.filter((step) => rankOf(step) < floor), run[at] as ConvergeStep);
+    pending = pending.filter((step) => rankOf(step) >= floor);
+  }
+  const ahead = rerenders
+    .filter(({ step, at }) => rerenders.some((r) => r.at > at && rankOf(r.step) < rankOf(step)))
+    .map(({ step }) => replay(step));
+  return [
+    ...replayed,
+    ...[...pending, ...ahead].sort((a, b) => rankOf(a) - rankOf(b)),
+    ...run
+      .slice(0, last)
+      .filter((step) => step.posture === 'install')
+      .map(replay),
+    ...run.slice(last + 1),
+  ];
+}
+
+/**
+ * Each context `keel add module` added to the project `manifest`
+ * records, in recorded order, as a `replay` step (DS10): by every
+ * adapter of keel's `bounded-context` the tags match with the
+ * context's marker, as its add ran them. With it, the rank among the
+ * recorded verticals it replays at (`at`), where it arrived:
+ *
+ * - just before the first vertical recorded after the
+ *   `bounded-context` row that is not older than the context — the
+ *   first `keel add module` records that row after every other, and a
+ *   `keel add` appends after it — so what that one patched in after
+ *   the wiring lands after it again. Where they were recorded at one
+ *   instant, as under a pinned clock, every context goes before them;
+ * - after every recorded vertical where none is, a row growth records
+ *   at rank before `bounded-context` among them, since growth's run
+ *   wires the contexts after its verticals;
+ * - never before a context recorded before it, whose wiring its own
+ *   calls.
+ */
+function contextReplays(
+  manifest: ManifestV2,
+): readonly { readonly step: ConvergeStep; readonly at: number }[] {
+  const adapters = matchingIds(
+    boundedContextVertical,
+    new Set([...effectiveTags(manifest), CONTEXT_TAG]),
+  );
+  const rows = manifest.verticals;
+  const since = rows.findIndex(({ id }) => id === BOUNDED_CONTEXT);
+  const arrived = new Map(manifest.modules.map(({ name, installedAt }) => [name, installedAt]));
+  let after = -Infinity;
+  return addedContexts(manifest).map((name) => {
+    const added = Date.parse(arrived.get(name) ?? '');
+    const next =
+      since === -1
+        ? -1
+        : rows.findIndex((row, at) => at > since && !(Date.parse(row.installedAt) < added));
+    after = Math.max(after, (next === -1 ? rows.length : next) - 0.5);
+    const step: ConvergeStep = {
+      vertical: boundedContextVertical,
+      posture: 'replay',
+      context: name,
+      adapters,
+    };
+    return { step, at: after };
+  });
+}
+
+/**
+ * `keel add entrypoint`: growth's reading (`growthOf`), run in its
+ * twin's order — each installed vertical the grown tags newly match
+ * installing those adapters alone, the harness re-rendered, what the
+ * project lacks installed, closed over its prerequisites, and every
+ * other vertical of the twin not placed at a repository root settling
+ * — then each context `keel add module` added wired in, recorded where
+ * the twin records it. Growth's refusals, and the planner's of what it
+ * installs.
+ */
+function entrypointOf(registry: Registry, manifest: ManifestV2, word: string): ConvergePlan {
+  const growth = growthOf(registry, manifest, word);
+  if (growth.kind === 'refused') {
+    return { kind: 'refused', refusal: { kind: 'growth', refusal: growth.refusal } };
+  }
+  const composition = compositionOf(registry, manifest);
+  if (growth.kind === 'present') {
+    return { kind: 'converges', target: composition, run: [], modules: [], placement: APPENDED };
+  }
+  const grown = grownManifest(manifest, growth);
+  const admitted = admitGrowth(registry, grown, growth);
+  if (!admitted.ok) return refusedByPlan(admitted.error);
+  const stack = registry.stack(growth.twin);
+  if (stack === null) throw new Error(`growth named '${growth.twin}', which is not registered`);
+  const twin = (composition.harness ? stack : withoutHarness(stack)).verticals.map(({ id }) => id);
+  const incoming = incomingOf(registry, growth, admitted.value);
+  const newly = new Map(growth.adapters.map((each) => [each.vertical, each.adapters]));
+  const order = placed(
+    composition.recorded,
+    incoming.map(({ id }) => id),
+    twin,
+  );
+  const run = order.flatMap((id): ConvergeStep[] => {
+    const vertical = incoming.find((v) => v.id === id) ?? installedVertical(registry, id) ?? null;
+    if (vertical === null) return [];
+    const settles = twin.includes(id) && vertical.placement?.scope !== 'repository';
+    if (growth.rerender.includes(id)) return [{ vertical, posture: 'rerender' }];
+    if (incoming.includes(vertical)) return [{ vertical, posture: 'install' }];
+    const only = newly.get(id);
+    if (only !== undefined) {
+      return [{ vertical, posture: 'only', adapters: only, ...(settles ? { settles: true } : {}) }];
+    }
+    return settles ? [{ vertical, posture: 'settle' }] : [];
+  });
+  return {
+    kind: 'converges',
+    target: composed(registry, stack, {
+      own: grown.tags,
+      tags: effectiveTags(grown),
+      projects: grown.projects,
+      peers: grown.peers,
+      recorded: order,
+      contexts: composition.contexts,
+    }),
+    run,
+    modules: growth.modules,
+    placement: AT_TWIN,
+  };
+}
+
+/**
+ * `keel add module`: one context, wired by keel's own `bounded-context`
+ * — every adapter of it the project's tags match with the context's
+ * marker, since none has run — consuming the one the request names,
+ * its row recorded after every other the first time.
+ */
+function moduleOf(
+  registry: Registry,
+  manifest: ManifestV2,
+  request: Extract<ConvergeRequest, { kind: 'module' }>,
+): ConvergePlan {
+  const adapters = matchingIds(
+    boundedContextVertical,
+    new Set([...effectiveTags(manifest), CONTEXT_TAG]),
+  );
+  const had = manifest.verticals.map(({ id }) => id);
+  const recorded = had.includes(BOUNDED_CONTEXT) ? had : [...had, BOUNDED_CONTEXT];
+  return {
+    kind: 'converges',
+    target: recording(registry, manifest, recorded, [...addedContexts(manifest), request.name]),
+    run: [],
+    modules: [{ name: request.name, adapters, adds: { consumes: request.consumes } }],
+    placement: APPENDED,
+  };
+}
+
+/**
+ * `keel new`, from the seed manifest `seed`: the preset's verticals in
+ * the preset's order — less the harness where the dial leaves it out —
+ * then what a product gives its service of its own accord, in the
+ * product's order, less what a monorepo service's product root
+ * carries; then the extras not among them, admitted on the scope
+ * `keel new` plans them on, in the order they install; each installed.
+ */
+function newOf(
+  registry: Registry,
+  seed: ManifestV2,
+  request: Extract<ConvergeRequest, { kind: 'new' }>,
+): ConvergePlan {
+  const stack = registry.stack(request.stack);
+  if (stack === null) throw new Error(`convergeOf: no preset '${request.stack}' is registered`);
+  const dialed = request.harness ? stack : withoutHarness(stack);
+  const service =
+    request.service === undefined ? null : serviceAt(registry, request.service, stack.id);
+  const own = ownOf(dialed, service?.service.extraVerticals ?? [], request.member);
+  const scope = extrasScope(registry, dialed, effectiveTags(seed), request.member, service);
+  let extras: readonly Vertical[] = [];
+  const asked = request.extras.filter((id) => !scope.installed.includes(id));
+  if (asked.length > 0) {
+    const admitted = admit(
+      registry,
+      scope,
+      asked.map((id) => registered(registry, id)),
+    );
+    if (!admitted.ok) return refusedByPlan(admitted.error);
+    extras = admitted.value.order;
+  }
+  const run = [...own, ...extras].map(
+    (vertical): ConvergeStep => ({ vertical, posture: 'install' }),
+  );
+  return {
+    kind: 'converges',
+    target: composed(registry, stack, {
+      own: seed.tags,
+      tags: effectiveTags(seed),
+      projects: seed.projects,
+      peers: seed.peers,
+      recorded: run.map((step) => step.vertical.id),
+      contexts: addedContexts(seed),
+    }),
+    run,
+    modules: [],
+    placement: APPENDED,
+  };
+}
+
+/**
+ * The service on the preset `preset` a `new` request names, with its
+ * product; a front door scaffolds no other.
+ */
+function serviceAt(
+  registry: Registry,
+  place: { readonly product: string; readonly path: string },
+  preset: string,
+): ProductService {
+  const product = registry.stack(place.product);
+  // Matched on the preset too: nothing stops a plugin's product listing
+  // two services at one path, and the scope `keel new` staged there is
+  // on this one, for `crossScopeWrite` to refuse as on any other product.
+  const service =
+    product === null
+      ? undefined
+      : presetServicesOf(registry, product).find(
+          ({ path: at, stack }) => at === place.path && stack.id === preset,
+        );
+  if (product === null || service === undefined) {
+    throw new Error(
+      `convergeOf: no product '${place.product}' has a '${preset}' service at '${place.path}'`,
+    );
+  }
+  return { product, service };
+}

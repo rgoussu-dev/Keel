@@ -32,8 +32,12 @@ export interface InstallReport {
    * one needs them — `added Container image, Distribution — needed by
    * Infrastructure as code`; then `installed in dependency order:
    * containerization, persistence, distribution` when the order named
-   * put one ahead of a vertical it needs or reads; then, under `add`,
-   * each {@link refreshProposals} entry in words. Absent when there is
+   * put one ahead of a vertical it needs or reads; then, where a
+   * re-render moved a vertical off an adapter that ran, what that
+   * adapter wrote and keel leaves in place — `Distribution no longer
+   * renders through distribution/quarkus-cli-native, and keel removes
+   * nothing it installed — …`; then, under `add`, each
+   * {@link refreshProposals} entry in words. Absent when there is
    * nothing to say.
    */
   readonly notes?: readonly string[];
