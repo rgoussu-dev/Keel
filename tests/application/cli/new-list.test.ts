@@ -59,7 +59,6 @@ describe('keel new --list', () => {
       'fullstack-spring-kotlin',
       'fullstack-ts',
       'fullstack-ts-cli',
-      'go-cli-http',
       'micronaut-cli-rest-kotlin',
       'quarkus-cli-rest-kotlin',
       'rust-cli-http',

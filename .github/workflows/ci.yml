@@ -399,7 +399,7 @@ jobs:
               tests/e2e/combo-modulith-micronaut-cli-rest-kotlin-gradle.test.ts
               tests/e2e/combo-modulith-micronaut-cli-rest-kotlin-maven.test.ts
               tests/e2e/combo-basic-micronaut-cli-rest-kotlin-maven.test.ts
-          # Six files where there were two, and the shape came from
+          # Nine files where there were two, and the shape came from
           # a measurement that twice contradicted the obvious answer.
           #
           # When the modulith cells first landed, `modulith-go-http`
@@ -418,22 +418,26 @@ jobs:
           # per run instead of once per file. The shipped shape is
           # comfortably faster than either earlier one.
           #
-          # Still one shard, and now for a reason it did not have
-          # before: the floor is `fullstack-go`, a file none of this
-          # work added, so splitting further would buy attribution and
-          # no wall clock. `docker` is for the two persistence cells,
-          # whose pgx contract test takes its Postgres from
-          # testcontainers-go; `fullstack-go` needs none.
+          # Still one shard: every file shares that one Go home since
+          # `fullstack-go` took it too (roadmap T.4a), so a file peeled
+          # off would pay the cold compile again, and splitting would
+          # buy attribution and no wall clock. `docker` is for the two
+          # persistence cells, whose pgx contract test takes its
+          # Postgres from testcontainers-go; `fullstack-go` needs none.
           # `modulith-go-persistence-liquibase` rides here rather than
           # in a shard of its own: it is the persistence cell's shape
           # again with a different migrations/ unit, and a parallel
-          # file under the floor costs nothing, where a new shard
-          # would need the exact-match `Setup Go` condition widened to
-          # earn the same.
+          # file on the warm shared Go home costs little, where a new
+          # shard would need the exact-match `Setup Go` condition
+          # widened to earn the same. `combo-basic-go-cli-http`
+          # (roadmap T.4b) rides here for the same reason: Go's walking
+          # skeleton retargeted at `go-cli-http`'s default, a few
+          # seconds on a warm Go home.
           - id: go
             tools: go docker
             files: >-
               tests/e2e/walking-skeleton-go.test.ts
+              tests/e2e/combo-basic-go-cli-http.test.ts
               tests/e2e/modulith-go-cli.test.ts
               tests/e2e/modulith-go-http.test.ts
               tests/e2e/modulith-go-persistence.test.ts

@@ -47,7 +47,7 @@ async function dials(
 describe('keel.dials — the settled cell’s tier', () => {
   it('reads the cell its target settles at, a facet spelling at its preset', async () => {
     expect((await dials({ stack: 'go-cli' })).support).toBe('first-class');
-    expect((await dials({ stack: 'go-cli-http' })).support).toBe('best-effort');
+    expect((await dials({ stack: 'spring-cli-rest' })).support).toBe('best-effort');
     const spelled = await dials({ stack: 'go-rest' });
     expect([spelled.target, spelled.support]).toEqual([
       expect.objectContaining({ stack: 'go-http' }),
@@ -70,7 +70,7 @@ describe('keel.dials — the settled cell’s tier', () => {
 
   it('reads a cell without the agent harness by its twin with it (P1)', async () => {
     expect((await dials({ stack: 'go-cli', agentHarness: false })).support).toBe('first-class');
-    expect((await dials({ stack: 'go-cli-http', agentHarness: false })).support).toBe(
+    expect((await dials({ stack: 'spring-cli-rest', agentHarness: false })).support).toBe(
       'best-effort',
     );
   });

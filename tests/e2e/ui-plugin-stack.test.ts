@@ -244,7 +244,7 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a plugin stack
       );
       expect(run.status, run.stderr).toBe(0);
       // The console logger writes to stderr, its level before each line.
-      expect(run.stderr).toMatch(/ {2}go-cli-http ◻ /);
+      expect(run.stderr).toMatch(/ {2}spring-cli-rest ◻ /);
       expect(run.stderr).toMatch(/ {2}go-cli +Go CLI/);
       expect(run.stderr).toMatch(new RegExp(` {2}${STACK} +Acme`));
     },

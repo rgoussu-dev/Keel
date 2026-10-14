@@ -480,6 +480,14 @@
       "agentHarness": true
     },
     {
+      "suite": "combo-basic-go-cli-http",
+      "stack": "go-cli-http",
+      "buildSystem": null,
+      "moduleLayout": "basic",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
       "suite": "modulith-go-cli",
       "stack": "go-cli",
       "buildSystem": null,

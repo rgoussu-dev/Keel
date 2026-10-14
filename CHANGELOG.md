@@ -661,6 +661,14 @@ new` the terminal adds the way past it (move it aside, or start in
 
 ### Changed
 
+- **`go-cli-http` reads first-class at its default setting.**
+  `combo-basic-go-cli-http`, in the `go` e2e shard and the
+  composed-entrypoint grid's 22nd cell, vets and tests the module, greets through its CLI, and drives the HTTP contract and
+  health probes through its server. The stack matrix and the
+  support-tier table drop its ◻, and `keel new --list` and `keel ui`'s
+  finder no longer mark it best-effort. It also covers the `basic`
+  `go-cli` and `go-http` projects `keel add entrypoint` grows into it.
+
 - **keel's product glue serves any stack tagged like a family it
   builds.** In a monorepo product, the `fullstack` glue picks a
   service's image and its run hint in the product README by what the
@@ -1500,8 +1508,8 @@ distribution iac`) — _Not for this project_, collapsed, each with the
   _best-effort_ where no CI job builds it. `keel new --list` marks ◻ the
   presets that are best-effort at their default setting — the twelve
   new products (above), `fullstack`, `fullstack-spring`,
-  `fullstack-micronaut`, `fullstack-ts`, `go-cli-http`,
-  `rust-cli-http`, `ts-cli-http`,
+  `fullstack-micronaut`, `fullstack-ts`, `rust-cli-http`,
+  `ts-cli-http`,
   `spring-cli-rest`, `quarkus-cli-rest-kotlin` and
   `micronaut-cli-rest-kotlin` — and says what the mark means. In
   `keel ui`, a drill-down card says _best-effort_ in its badge where the
@@ -1524,9 +1532,9 @@ distribution iac`) — _Not for this project_, collapsed, each with the
   composition sweep reads every setting. Each single-service preset
   gets a row per build system, with a column per module layout, and
   each product a row per layout and build systems, with what proves
-  each service. Today 81 of the 150 single-service settings are
+  each service. Today 82 of the 150 single-service settings are
   first-class, and 2 of the 128 product settings. The stack matrix in
-  the README and in the catalog marks ◻ the 22 presets that are
+  the README and in the catalog marks ◻ the 21 presets that are
   best-effort on their default setting. Both copies are now generated
   from the presets, so they can no longer drift apart. The matrix
   gains a _Product, CLI + HTTP server_ column, and no

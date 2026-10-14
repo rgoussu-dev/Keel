@@ -97,15 +97,17 @@ modulith suite is `-modulith`, `-persistence` and `-maven`.
   invisible to `ls tests/e2e/` and floors that file, which is exactly
   the state I.6 found and fixed.
 
-## The combo grid — 21 cells, two halves, two depths
+## The combo grid — 22 cells, two halves, two depths
 
 The stacks pairing `arch.cli` with `arch.server-http` ship one hexagon
-with two deployment units, and `combo-<layout>-<stack>-<build>.test.ts`
-is one file per cell, same rule as above. The `modulith` half is
+with two deployment units, and `combo-<layout>-<stack>[-<build>].test.ts`
+is one file per cell, same rule as above; the build segment is absent
+where the stack offers no build system (`combo-basic-go-cli-http`). The `modulith` half is
 **exhausted** — 6 JVM combo stacks × 2 build systems, plus `ts-cli-http`
 × npm and pnpm = 14 — because that is the half issue #108 was about and
 no build had ever compiled one. The `basic` half is **sampled at one
-build per stack** (7), the build system alternating so both appear
+build per stack** (8: Go's has one cell, having no build system to
+sample), the build system alternating so both appear
 against each framework and each language, and the TypeScript sample
 taking pnpm rather than npm: PR #110 built the whole `basic` half by
 hand before shipping the mechanism, so what was missing there was a
@@ -125,6 +127,14 @@ shards would buy eighteen cold JDK+Gradle provisions for a red X that
 framework × language already names. `web-combo` gets a shard rather than
 riding `web` because its cells render nothing, so a shard probing for
 Chromium would misdescribe them.
+
+**Go's cell is the exception to the three paragraphs around this one.**
+`combo-basic-go-cli-http` rides the `go` shard, on the Go home every Go
+suite there shares, rather than a combo shard of its own; it drives its
+units with `go-e2e.ts`'s `driveGreetCli` and `driveGreetContract`, and
+has no root build file to check, a Go module having none. The `modulith`
+half stays the JVM's and TypeScript's: `go-cli-http` on `modulith` has
+no combo file.
 
 Within the heaviest combo shard the two Gradle cells are effectively
 tied and the Maven one is roughly half either, so no single file is that
@@ -151,7 +161,9 @@ modulith combo suite scaffolds with the peer context, so the fourteen
 of them — the JVM's twelve and TypeScript's two — cover the peer
 moduliths that grow into them, since roadmap R.3d lifted the last
 family's refusal. None adds a `keel add module` history, so a grown
-modulith with one has no suite by proof.
+modulith with one has no suite by proof. `combo-basic-go-cli-http`
+covers the `basic` `go-cli` and `go-http` projects that grow into it,
+so Go's basic grown cells have a suite.
 
 ## The add-module grid — a job per cell, on the JVM only
 

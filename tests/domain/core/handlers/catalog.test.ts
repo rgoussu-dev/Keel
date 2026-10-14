@@ -367,7 +367,7 @@ describe('keel.catalog — the tier of each leaf (T.2e)', () => {
     agentHarness: true,
   };
 
-  it('marks the 22 presets best-effort at their default setting, as keel ships them', async () => {
+  it('marks the 21 presets best-effort at their default setting, as keel ships them', async () => {
     const shipped = await tiers(shippedSupport);
     expect(
       Object.entries(shipped)
@@ -391,14 +391,13 @@ describe('keel.catalog — the tier of each leaf (T.2e)', () => {
       'fullstack-spring-kotlin',
       'fullstack-ts',
       'fullstack-ts-cli',
-      'go-cli-http',
       'micronaut-cli-rest-kotlin',
       'quarkus-cli-rest-kotlin',
       'rust-cli-http',
       'spring-cli-rest',
       'ts-cli-http',
     ]);
-    expect(Object.values(shipped).filter((tier) => tier === 'first-class')).toHaveLength(24);
+    expect(Object.values(shipped).filter((tier) => tier === 'first-class')).toHaveLength(25);
   });
 
   it('reads the facts it is handed, not keel’s', async () => {
@@ -433,7 +432,7 @@ describe('keel.catalog — the tier of each leaf (T.2e)', () => {
     ]);
     const read = await tiers(shippedSupport, registry);
     expect(read).toHaveProperty('acme-widget', null);
-    expect(read['go-cli-http']).toBe('best-effort');
+    expect(read['spring-cli-rest']).toBe('best-effort');
     expect(read['go-cli']).toBe('first-class');
   });
 

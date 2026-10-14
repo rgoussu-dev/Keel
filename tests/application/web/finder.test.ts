@@ -284,8 +284,8 @@ describe('the page’s stack finder', () => {
 
   it('badges a card by the preset it lands on, best-effort at its default setting', async () => {
     const tree = await finder();
-    expect(tierBadge(tree, 'go-cli-http')).toBe('best-effort');
-    expect(tierBadge(tree, 'go-cli')).toBeUndefined();
+    expect(tierBadge(tree, 'spring-cli-rest')).toBe('best-effort');
+    expect(tierBadge(tree, 'go-cli-http')).toBeUndefined();
     expect(tierBadge(tree, 'nonsense')).toBeUndefined();
     expect(tierBadge(tree, null)).toBeUndefined();
 
@@ -315,7 +315,17 @@ describe('the page’s stack finder', () => {
       );
     expect(ticked('cli')).toBe('go-cli');
     expect(ticked('server-http')).toBe('go-cli-http');
-    expect(tierBadge(tree, ticked('server-http'))).toBe('best-effort');
+    expect(tierBadge(tree, ticked('server-http'))).toBeUndefined();
+    const spring = at(tree, 'spring-cli');
+    expect(
+      tierBadge(
+        tree,
+        pickEntrypoints(
+          spring.framework,
+          withEntrypoint(encodeSelection(spring.combination.entrypoints), 'server-http'),
+        ),
+      ),
+    ).toBe('best-effort');
     expect(withEntrypoint('cli,server-http', 'cli')).toBe('cli,server-http');
   });
 

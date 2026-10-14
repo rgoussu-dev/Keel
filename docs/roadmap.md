@@ -14193,7 +14193,7 @@ with the five other files that call a rewritten helper
 No doc named the helpers, so none moved, and there is no CHANGELOG
 entry, since nothing a user sees moves.
 
-#### T.4b — `go-cli-http` built (S)
+#### T.4b — `go-cli-http` built (S) ✅
 
 `combo-basic-go-cli-http.test.ts`, in the `go` shard: Go's walking
 skeleton retargeted. It builds and tests the module, greets through
@@ -14213,6 +14213,52 @@ which reproduces today's walls within 2 s)_.
   default setting.
 - Its Landed paragraph gives the shard's time from the PR's e2e run,
   named by run id, in place of the figures above.
+
+**Landed as one suite and its row**, in one commit.
+`combo-basic-go-cli-http.test.ts` (68 lines) scaffolds `go-cli-http`
+on its default dials (`--module-layout basic`, no build system to
+choose) through go-e2e's `scaffold`, so `e2eMediator` checks the cell
+against its row. It vets and tests the module once, builds `cmd/cli`
+and `cmd/http`, greets through the CLI with `driveGreetCli`, and drives
+`go-http`'s wire through the server with `withHttpUnit` and
+`driveGreetContract`: the greetings, the 400 problem+json, both health
+probes and the correlation id. No helper changed.
+
+- **Its row** in `support-tier.json`, `singles`, beside Go's: the
+  single-service tally goes from 81 first-class and 69 best-effort to
+  82 and 68, each way. 21 presets are now best-effort at their
+  default, and `keel new --list` marks 21.
+- **The tests the row moves:** seven in four files used `go-cli-http`
+  as their best-effort example (`new-list`, `catalog` twice, `dials`
+  twice, `finder` twice), and `ui-plugin-stack` read its ◻ off
+  `keel new --list`. They now use `spring-cli-rest`, which no T.4 step
+  promotes. `support-tier.premises` re-reads its tally, and `catalog`
+  its counts (21 best-effort, 25 first-class). `docs/cli.md`'s
+  `--list` sample changed the same way, from real output.
+- **`ci.yml`:** the file joins `go`, whose comment counted six files
+  of eight and now counts nine. Its floor sentence named
+  `fullstack-go`; it now gives the reason the shard stays one, the
+  shared Go home every file takes since T.4a.
+- **`tests/e2e/AGENTS.md`:** the combo grid has 22 cells, its file
+  pattern drops the build segment where a stack has no build system,
+  the `basic` half samples 8, and Go's basic grown cells have a suite.
+- **Generated regions:** both `stack-matrix` copies drop `go-cli-http`'s
+  ◻, and its `support-tiers` row reads ✅ `combo-basic-go-cli-http` at
+  `basic`.
+- **CHANGELOG** _Changed_, and the two unreleased tier entries' figures:
+  82 of 150 single-service settings first-class, 21 presets marked,
+  `go-cli-http` no longer among them.
+- **Docs:** `tests/e2e/AGENTS.md` and `docs/development.md` say Go's
+  combo cell rides `go`, with Go's own drives and no root build file.
+
+**Measured locally**, not on CI. The step asked for the `go` shard's
+time from the PR's e2e run; there is no PR yet, so that figure waits
+for one. The suite alone took 43.7 s on a cold shared Go home and 4.7
+to 5.9 s warm, and 41.6 s cold in this commit's run. Beside the
+`go` shard's other non-Docker files on a cold home it took 5.2 s, in a
+run of 68.9 s whose longest file was `modulith-go-http` at 62.3 s; the
+two persistence files did not run, the local Docker daemon not
+answering. The four browser suites passed 47 tests.
 
 #### T.4c — `rust-cli-http` built (S)
 
