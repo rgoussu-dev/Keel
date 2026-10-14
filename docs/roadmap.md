@@ -12798,7 +12798,7 @@ against 138 to 154 s in this epic's quieter runs. An earlier run under
 the same load failed `tests/evals/driver.test.ts`'s process-group
 timing case, which passed twice alone and in this run.
 
-#### T.2c — Each suite builds the cell it claims (M)
+#### T.2c — Each suite builds the cell it claims (M) ✅
 
 Every e2e helper and suite scaffolds through `e2eMediator`
 (`tests/support/e2e-cell.ts`), in place of `installMediator`. There
@@ -12822,6 +12822,90 @@ are 20 sites today: 11 in the helpers and 9 in the suites.
   `e2eMediator`), `tests/AGENTS.md`, and `docs/development.md`'s
   _End-to-end tests_, which says a suite scaffolds through the real
   mediator.
+
+**Landed as the wrapper, its claims and D0**, in one commit with no
+`src/` change. `tests/support/e2e-cell.ts` holds `e2eMediator`:
+`installMediator`, with a check in front of `keel.new-project` that
+settles the target through `keel.dials` and asserts the settled cell,
+spelled as `paths-new` keys it, is one the running file claims. A
+proving suite also scaffolds its cell with no extras. Importing the
+module registers a file-level `beforeAll`, which names the running
+file from the file task it is handed, and an `afterAll`, which fails
+unless the file scaffolded every cell it claims. No suite calls
+anything for them. `tests/support/e2e-claims.ts` spells the claims,
+side-effect free: a row's cell (`factLine`, which G3 and G4 now read
+too) and a settled target's. All 20 sites now call `e2eMediator`: 11
+in the helpers (`jvm-e2e`, `go-e2e` and `rust-e2e` three each,
+`web-e2e` two) and 9 in the suites (`ui-compose` three, and
+`code-style-jvm`, `walking-skeleton-rest`, `dev-compose`, `fullstack`,
+`fullstack-go` and `ui-refusal` one each). Every one of the 119 files
+reaches the module through its imports. `tests/support-tier.test.ts`
+gains D0, in a `describe` of its own: no `installMediator(` in
+`tests/e2e/` or `tests/support/*-e2e.ts`. G3 now also holds each seed
+to `paths-new`. The guard count stays eight. No CHANGELOG entry.
+
+**The gate.** Every e2e file ran with `KEEL_RUN_E2E=1` and JDK 25, its
+scaffold captured: the real mediator answered every query, and every
+command was recorded and then stopped, after `e2eMediator`'s check. The
+`ui-*` suites scaffolded for real, since they fake every deferred
+action, and a browser was on the box.
+
+- **The check.** 143 `keel new` dispatches in 117 files passed it, and
+  none failed: 138 in 115 files, as T.2b's capture counted, plus 4 in
+  `ui-compose` and 1 in `ui-refusal`. No file's claims disagree with
+  what it dispatches.
+- **The `afterAll`.** Each stopped test fails rather than skips, so it
+  checked every claim in the 115 files, and none was missing. The four
+  `ui-*` suites passed whole, 44 tests, `afterAll` included.
+- **The cost.** 159 s by vitest's clock, 161 s of wall clock, with
+  199 s of collection across workers, on the shared four-core box. The
+  step's text expected about a minute.
+
+**For real**, with `KEEL_RUN_E2E=1` and its `afterAll` green:
+`walking-skeleton-go` (2 tests, 27.4 s), `ts-walking-skeleton` (2,
+80.3 s) and `walking-skeleton-rust` (2, 93.4 s). `walking-skeleton`
+scaffolded past the check, then failed at `gradle wrapper`, because
+the box's Gradle is 8.14.3 and cannot run on JDK 25 (the coupling
+`tests/e2e/AGENTS.md` names). `dev-compose` skipped with no Docker
+daemon. **The PR's e2e job is the real check:** only there does every
+suite build what it scaffolds, each in its own shard.
+
+**The proof** that each half catches what it is for, tried and undone:
+
+- `add-module-go`'s seed moved to `go-http`: each of its 3 dispatches
+  fails, naming the cell, and its `afterAll` names the seed never
+  scaffolded.
+- `dev-compose` given a second seed, on Maven: its `afterAll` fails.
+- `walking-skeleton-go`'s `go-http` row moved to the peer modulith:
+  the dispatch fails, and the `afterAll` names the row's cell.
+- An `installMediator(` put back in `go-e2e.ts`: D0 fails, naming the
+  file, while G1 to G4 pass.
+
+**Where it departs from the step's text.** Every role that scaffolds
+in-process declares its seeds, not only the four the step names: 37
+of the 39 roles, 40 seeds. The 33 `variant` suites scaffold through
+the helpers too, and a check with no claim for them would either fail
+or let them scaffold anything. Only `ui-stack-finder` and
+`ui-plugin-stack` declare none, since their Generate runs in the
+`keel ui` they spawn. A file in which any test skipped skips the
+completeness check whole, since which cells the skipped test would
+have reached is not known; G2 is what keeps a proving suite's shard
+from skipping it, and the four files whose browser case skips without
+Chromium lose the check on such a box. A failed test is not excused.
+Since review, `support-tier.test.ts` also settles every row through
+`keel.dials` and holds it to the spelling the job compares with, so
+D1's premise runs in `verify`, and fails on a vitest config that stops
+isolating files, since the record is per file only then.
+
+**What it adds to `CI=true pnpm test`:** two cases in
+`support-tier.test.ts`, about 0.6 s, the rows settled through
+`keel.dials`. The run (402.4 s, 207 files, 3,517 tests) passed whole,
+the growth axis in 156.9 s of its 180. The run before it failed
+`tests/evals/driver.test.ts`'s process-group case on its 2 s polling
+budget under the suite's load; it passed five runs of five alone, and
+this step touches neither `src/` nor `tests/evals/`. Beyond the paragraphs the step names, two more now say
+a role seeds: the one in `tests/e2e/AGENTS.md` where a suite declares
+what it proves, and its twin in `docs/development.md`.
 
 #### T.2d — The tier in the docs (M)
 
@@ -13407,7 +13491,7 @@ what the user accepted in DT1.
   - (b) Static guards in `verify` and a dynamic check in the e2e job,
     on what each suite dispatches.
 
-  **Recommend (b).** Taken in T.2b (the static half); T.2c takes the job's half.
+  **Recommend (b).** Taken in T.2b (the static half) and T.2c (the job's half).
 
 - **DT11 — The weekly sweep and best-effort cells.** Best-effort cells
   are catalog cells, and the sweep reads the catalog, so they are

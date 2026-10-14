@@ -38,7 +38,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { runActions, type RunActionsInputs } from '../../src/domain/core/actions.js';
 import { newProjectCommand } from '../../src/domain/contract/commands.js';
 import type { DeferredAction } from '../../src/domain/contract/composition.js';
-import { expectOk, installMediator } from '../support/factory.js';
+import { e2eMediator } from '../support/e2e-cell.js';
+import { expectOk } from '../support/factory.js';
 
 /** A cold `postgres` pull plus a first-boot initdb. */
 const TIMEOUT_MS = 10 * 60 * 1000;
@@ -119,7 +120,7 @@ describe.skipIf(skip)('the emitted dev environment', () => {
   it(
     'parses whole and brings the dev database up healthy',
     async () => {
-      const mediator = installMediator({ keelVersion: '0.0.0-e2e', runDeferred: fakeActions });
+      const mediator = e2eMediator({ keelVersion: '0.0.0-e2e', runDeferred: fakeActions });
       expectOk(
         await mediator.dispatch(
           newProjectCommand({

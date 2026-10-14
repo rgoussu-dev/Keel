@@ -22,7 +22,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { runActions, type RunActionsInputs } from '../../src/domain/core/actions.js';
 import { newProjectCommand } from '../../src/domain/contract/commands.js';
 import type { DeferredAction } from '../../src/domain/contract/composition.js';
-import { expectOk, installMediator } from '../support/factory.js';
+import { e2eMediator } from '../support/e2e-cell.js';
+import { expectOk } from '../support/factory.js';
 
 const E2E_TIMEOUT_MS = 5 * 60 * 1000;
 
@@ -95,7 +96,7 @@ describe.skipIf(skipE2E)('fullstack-go e2e (monorepo)', () => {
   it(
     'scaffolds a product whose Go backend serves the wire the frontend gateway encodes',
     async () => {
-      const mediator = installMediator({
+      const mediator = e2eMediator({
         keelVersion: '0.0.0-e2e',
         runDeferred: stubActions(new Set(['vcs/git-init', 'walking-skeleton/npm-install'])),
       });

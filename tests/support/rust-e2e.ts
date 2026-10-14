@@ -44,7 +44,8 @@ import {
   newProjectCommand,
 } from '../../src/domain/contract/commands.js';
 import type { DeferredAction } from '../../src/domain/contract/composition.js';
-import { expectOk, installMediator } from './factory.js';
+import { e2eMediator } from './e2e-cell.js';
+import { expectOk } from './factory.js';
 
 /**
  * How long a Rust e2e may take. The `rust-cli` skeleton is
@@ -157,7 +158,7 @@ export async function scaffold(
   cwd: string,
   cargoHome: string,
 ): Promise<RustProject> {
-  const mediator = installMediator({
+  const mediator = e2eMediator({
     keelVersion: '0.0.0-e2e',
     runDeferred: stubActions(new Set([...ALWAYS_STUBBED, ...(spec.alsoStubbed ?? [])])),
   });
@@ -195,7 +196,7 @@ export async function scaffold(
  * `~/.cargo` rather than the isolated home.
  */
 export async function addVertical(vertical: string, cwd: string): Promise<void> {
-  const mediator = installMediator({
+  const mediator = e2eMediator({
     keelVersion: '0.0.0-e2e',
     runDeferred: stubActions(new Set([`${vertical}/rust-${vertical}`])),
   });
@@ -305,7 +306,7 @@ export async function addModule(
   consumes: string | null,
   cwd: string,
 ): Promise<void> {
-  const mediator = installMediator({ keelVersion: '0.0.0-e2e' });
+  const mediator = e2eMediator({ keelVersion: '0.0.0-e2e' });
   expectOk(
     await mediator.dispatch(
       addModuleCommand({

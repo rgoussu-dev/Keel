@@ -323,9 +323,16 @@ KEEL_RUN_E2E=1 pnpm test:e2e     # all of them
 KEEL_RUN_E2E=1 pnpm vitest run tests/e2e/walking-skeleton-modulith.test.ts
 ```
 
+Every suite scaffolds through `e2eMediator`
+(`tests/support/e2e-cell.ts`): the real mediator, which settles each
+`keel new` through `keel.dials` first and fails the test when the cell
+is not one its file claims. When the file ends, it fails unless every
+cell the file claims was scaffolded; a file in which any test skipped
+skips that check whole.
+
 Most of a JVM suite is shared. `tests/support/jvm-e2e.ts` carries the
-three steps every one of them runs — scaffold through the real
-mediator, build with the generated wrapper, locate the runnable jar —
+three steps every one of them runs — scaffold through `e2eMediator`,
+build with the generated wrapper, locate the runnable jar —
 behind a `JvmProjectSpec`. What happens next is the only difference:
 `jvm-rest-e2e.ts` boots the jar and drives the `/greet` wire contract,
 `jvm-cli-e2e.ts` runs it once with an argv and asserts on stdout. A new
@@ -407,8 +414,10 @@ That is enforced, not remembered: `tests/ci-workflow.test.ts` parses the
 workflow and fails in `verify` when the matrix and `tests/e2e/` disagree.
 A new suite also declares the dial cells it builds, as rows of
 `src/domain/core/support-tier.json`, or its role in
-`tests/support/e2e-roles.ts` where it proves none, and
-`tests/support-tier.test.ts` fails in `verify` until it does.
+`tests/support/e2e-roles.ts` where it proves none, with the cells it
+seeds, and `tests/support-tier.test.ts` fails in `verify` until it
+does. That file also fails when a suite or an e2e helper calls
+`installMediator(` itself, past `e2eMediator`'s check.
 
 One scheduling detail shapes how these files are split. Vitest runs
 files in parallel workers but the tests _inside_ a file in sequence, so

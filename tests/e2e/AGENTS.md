@@ -23,9 +23,26 @@ before it builds, checks an aspect of another suite's cell, builds
 nothing, or drives `keel ui`. `tests/support-tier.test.ts` fails in
 `verify` when a file is neither or both, and when the shard running a
 proving suite does not probe for its cell's toolchain. A new suite
-declares itself in the same change. `modulith-baseline` and the four
-`modulith-*-peer-context` suites, which the grids below call no cell,
-each build a dial cell as it is scaffolded, so each is that cell's row.
+declares itself in the same change. A role whose suite scaffolds
+in-process names the cells it seeds there. `modulith-baseline` and the
+four `modulith-*-peer-context` suites, which the grids below call no
+cell, each build a dial cell as it is scaffolded, so each is that
+cell's row.
+
+**A suite scaffolds through `e2eMediator`**
+(`tests/support/e2e-cell.ts`), never `installMediator`, and so does
+every helper here (`support/*-e2e.ts`). It settles each `keel new`
+through `keel.dials` and fails the test when the cell is not one the
+running file claims, as a row or as a seed of its role; a proving
+suite scaffolds its cell with no extras. When the file ends, it fails
+unless the file scaffolded every cell it claims (D1); a file in which
+any test skipped skips that completeness check whole, since which
+cells the skipped test would have reached is not known. The hooks
+register when the module is imported, so a suite calls nothing for
+them; the record is per file because vitest isolates files.
+`support-tier.test.ts` fails in `verify` on an `installMediator(` in
+this directory or in an e2e helper (D0), and on a config that stops
+isolating files.
 
 **A test file is the unit of CI scheduling.** Vitest parallelises across
 files and runs the tests inside one file in sequence, so the slowest

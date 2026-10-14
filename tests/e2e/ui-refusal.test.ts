@@ -72,7 +72,8 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { newProjectCommand } from '../../src/domain/contract/commands.js';
 import { MANIFEST_FILENAME, projectScopeRoot } from '../../src/domain/contract/manifest.js';
 import type { RunActionsInputs } from '../../src/domain/core/actions.js';
-import { expectOk, installMediator } from '../support/factory.js';
+import { e2eMediator } from '../support/e2e-cell.js';
+import { expectOk } from '../support/factory.js';
 import { E2E_TIMEOUT_MS, mkTempDir, skipE2E } from '../support/web-e2e.js';
 import {
   act,
@@ -170,7 +171,7 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a refusal on t
     // The real engine writes the real manifest, so the tags the page
     // is refused against are the ones a scaffolded project has.
     expectOk(
-      await installMediator({ runDeferred: fakeActions }).dispatch(
+      await e2eMediator({ runDeferred: fakeActions }).dispatch(
         newProjectCommand({
           cwd,
           stack: STACK,

@@ -6,7 +6,7 @@
  * it is an index of the kind `ci-workflow.test.ts` guards, and it rots
  * the same way, silently. A suite renamed or moved to a shard that
  * cannot build it, or a row on a cell keel no longer offers, leaves the
- * tier vouching for a build nobody runs. So four guards, in `verify`:
+ * tier vouching for a build nobody runs. So these, in `verify`:
  *
  *   - G1: every e2e file is a row's suite or has a role
  *     (`support/e2e-roles.ts`), never both, and every name has a file.
@@ -14,21 +14,31 @@
  *     of every cell it claims. A suite in a shard without its toolchain
  *     skips, and a skip reads as a pass.
  *   - G3: every claimed cell is a cell of the paths golden, so one
- *     `keel.dials` reaches, spelled as that golden keys it; and every
- *     service a product row builds is a service of its product.
+ *     `keel.dials` reaches, spelled as that golden keys it, and so is
+ *     every cell a role seeds; and every service a product row builds
+ *     is a service of its product.
  *   - G4: no cell is claimed twice: one suite per cell (roadmap J).
+ *   - D0: no e2e suite or e2e helper (`support/*-e2e.ts`) calls
+ *     `installMediator(`, so every scaffold of the e2e job goes through
+ *     `support/e2e-cell.ts`'s `e2eMediator`.
+ *   - D1's premises: every row, dispatched as a command and read back
+ *     as the job reads it, settles through `keel.dials` to the spelling
+ *     it is claimed by, with no extras; and nothing turns off vitest's
+ *     per-file isolation, which the job's per-file record rests on.
  *
- * The fifth guard scaffolds every cell, so it is a file of its own:
+ * G5 scaffolds every cell, so it is a file of its own:
  * `support-tier.premises.test.ts` holds P1's and P2's premises. What
  * a suite actually scaffolds can only be read where it runs, in the
- * e2e job (roadmap T.2c).
+ * e2e job: D1, `e2eMediator`'s check (roadmap T.2c). D0 is what keeps
+ * every scaffold going through it.
  */
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import type { NewProjectTarget } from '../src/domain/contract/commands.js';
+import { newProjectCommand, type NewProjectTarget } from '../src/domain/contract/commands.js';
+import { dialsQuery } from '../src/domain/contract/queries.js';
 import { shippedRegistry } from '../src/domain/core/registry.js';
 import {
   SHIPPED_SUPPORT_FACTS,
@@ -36,8 +46,15 @@ import {
   type SingleFact,
 } from '../src/domain/core/support-tier.js';
 import { claimedFiles, e2eShards, probedTools } from './support/ci-shards.js';
+import {
+  cellLine,
+  commandTarget,
+  factLine,
+  factTarget,
+  namesExtras,
+} from './support/e2e-claims.js';
+import { expectOk, installMediator } from './support/factory.js';
 import { E2E_ROLES } from './support/e2e-roles.js';
-import { newProjectCommandLine } from './support/paths-golden.js';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const e2eDir = path.join(repoRoot, 'tests', 'e2e');
@@ -61,29 +78,6 @@ const PROBES_FOR: Readonly<Record<string, readonly (readonly string[])[]>> = {
   'pkg.npm': [],
   'pkg.pnpm': [],
 };
-
-/** A row's cell as the `keel new` target that scaffolds it. */
-function targetOf(row: SingleFact | ProductFact): NewProjectTarget {
-  if ('builds' in row) {
-    return {
-      kind: 'new-project',
-      stack: row.stack,
-      buildSystem: row.buildSystem,
-      layout: row.layout,
-    };
-  }
-  return {
-    kind: 'new-project',
-    stack: row.stack,
-    ...(row.buildSystem === null ? {} : { buildSystem: row.buildSystem }),
-    ...(row.moduleLayout === null ? {} : { moduleLayout: row.moduleLayout }),
-    withPeerContext: row.peerContext,
-    agentHarness: row.agentHarness,
-  };
-}
-
-/** A row's cell as the paths golden keys it. */
-const lineOf = (row: SingleFact | ProductFact): string => newProjectCommandLine(targetOf(row));
 
 /** Each service a row compiles, as the stack it is built from and its build system there. */
 function builtBy(row: SingleFact | ProductFact): readonly (readonly [string, string | null])[] {
@@ -157,7 +151,10 @@ describe('the support tier facts', () => {
 
   it('claim only cells of the paths golden, and only services of their product (G3)', () => {
     const golden = new Set(Object.keys(JSON.parse(fs.readFileSync(pathsNew, 'utf8')) as object));
-    const notOffered = rows.filter((row) => !golden.has(lineOf(row)));
+    const notOffered = rows.filter((row) => !golden.has(factLine(row)));
+    const seedsNotOffered = Object.entries(E2E_ROLES).flatMap(([suite, role]) =>
+      (role.seeds ?? []).filter((cell) => !golden.has(cell)).map((cell) => `${suite}: ${cell}`),
+    );
     const notServices = products.flatMap((row) => {
       const services = shippedRegistry.stack(row.stack)?.services ?? [];
       return row.builds
@@ -165,18 +162,74 @@ describe('the support tier facts', () => {
         .map((at) => `${row.suite}: ${row.stack} has no service '${at}'`);
     });
 
-    expect(notOffered.map((row) => `${row.suite}: ${lineOf(row)}`)).toEqual([]);
+    expect(notOffered.map((row) => `${row.suite}: ${factLine(row)}`)).toEqual([]);
+    expect(seedsNotOffered).toEqual([]);
     expect(notServices).toEqual([]);
   });
 
   it('claim each cell once (G4)', () => {
     const claims = new Map<string, string[]>();
     for (const row of rows)
-      claims.set(lineOf(row), [...(claims.get(lineOf(row)) ?? []), row.suite]);
+      claims.set(factLine(row), [...(claims.get(factLine(row)) ?? []), row.suite]);
     const twice = [...claims]
       .filter(([, suites]) => suites.length > 1)
       .map(([line, suites]) => `${line}: ${suites.join(', ')}`);
 
     expect(twice).toEqual([]);
+  });
+});
+
+describe('the e2e suites', () => {
+  it('scaffold only through e2eMediator (D0)', () => {
+    const supportDir = path.join(repoRoot, 'tests', 'support');
+    const files = [
+      ...fs
+        .readdirSync(e2eDir)
+        .filter((entry) => entry.endsWith('.ts'))
+        .map((entry) => path.join(e2eDir, entry)),
+      ...fs
+        .readdirSync(supportDir)
+        .filter((entry) => entry.endsWith('-e2e.ts'))
+        .map((entry) => path.join(supportDir, entry)),
+    ];
+    const direct = files
+      .filter((file) => fs.readFileSync(file, 'utf8').includes('installMediator('))
+      .map((file) => path.relative(repoRoot, file));
+
+    expect(direct).toEqual([]);
+  });
+
+  it('settle each row to the cell it is spelled as, as the e2e job reads it (D1)', async () => {
+    // e2eMediator compares a dispatch, settled through keel.dials, with
+    // a row's spelling: the two must agree on every row, outside the job.
+    const mediator = installMediator();
+    const disagree: string[] = [];
+    for (const row of [...SHIPPED_SUPPORT_FACTS.singles, ...SHIPPED_SUPPORT_FACTS.products]) {
+      // As a suite dispatches it: a command, read back as the job reads it.
+      const { kind: _kind, ...dials } = factTarget(row);
+      const command = newProjectCommand({
+        cwd: '/x',
+        answers: {},
+        interactive: false,
+        dryRun: true,
+        ...dials,
+      });
+      const asked = commandTarget(command);
+      const { target } = expectOk(await mediator.dispatch(dialsQuery({ target: asked })));
+      const settled = target as NewProjectTarget;
+      if (cellLine(settled) !== factLine(row) || namesExtras(settled)) {
+        disagree.push(`${row.suite}: ${factLine(row)} settles as ${cellLine(settled)}`);
+      }
+    }
+    expect(disagree).toEqual([]);
+  });
+
+  it('run each in a file of its own, as e2eMediator’s record assumes', () => {
+    // Its hooks and record are per module evaluation, which is per file
+    // only while vitest isolates files.
+    const unisolated = /isolate[:=]\s*false|--no-isolate|singleThread|singleFork/;
+    for (const file of ['vitest.config.ts', '.github/workflows/ci.yml', 'package.json']) {
+      expect(fs.readFileSync(path.join(repoRoot, file), 'utf8'), file).not.toMatch(unisolated);
+    }
   });
 });

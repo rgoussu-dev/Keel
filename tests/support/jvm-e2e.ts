@@ -36,7 +36,8 @@ import {
   newProjectCommand,
 } from '../../src/domain/contract/commands.js';
 import type { DeferredAction } from '../../src/domain/contract/composition.js';
-import { expectOk, installMediator } from './factory.js';
+import { e2eMediator } from './e2e-cell.js';
+import { expectOk } from './factory.js';
 
 /** How long a JVM e2e may take: a cold cache downloads a toolchain. */
 export const E2E_TIMEOUT_MS = 20 * 60 * 1000;
@@ -298,7 +299,7 @@ export interface JvmRunnableSpec extends JvmProjectSpec {
 /** Scaffolds `spec.stack` into `cwd` through the real mediator. */
 export async function scaffold(spec: JvmProjectSpec, cwd: string): Promise<void> {
   const maven = spec.buildSystem === 'maven';
-  const mediator = installMediator({
+  const mediator = e2eMediator({
     keelVersion: '0.0.0-e2e',
     runDeferred: rewriteActions({
       stubbed: new Set(['vcs/git-init']),
@@ -338,7 +339,7 @@ export async function addVertical(
   cwd: string,
   answers: Readonly<Record<string, Record<string, string>>> = {},
 ): Promise<void> {
-  const mediator = installMediator({ keelVersion: '0.0.0-e2e' });
+  const mediator = e2eMediator({ keelVersion: '0.0.0-e2e' });
   expectOk(
     await mediator.dispatch(
       addVerticalCommand({
@@ -478,7 +479,7 @@ export async function addModule(
   consumes: string | null,
   cwd: string,
 ): Promise<void> {
-  const mediator = installMediator({ keelVersion: '0.0.0-e2e' });
+  const mediator = e2eMediator({ keelVersion: '0.0.0-e2e' });
   expectOk(
     await mediator.dispatch(
       addModuleCommand({

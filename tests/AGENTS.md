@@ -79,13 +79,21 @@ it guards:
   that runs a proving suite probes for the toolchain of each cell it
   claims, since a suite in a shard without it skips and reads as a pass
   (G2). Every claimed cell is a `paths-new` cell, spelled as that golden
-  keys it (G3), and none is claimed twice (G4). G5 is a file of its
-  own, `support-tier.premises.test.ts`, because it scaffolds: on every
-  dial cell `keel.dials` offers, each single-service cell without the
-  agent harness is its twin with it, less the agent files (P1), and
-  every product service with one key (`serviceKeys`) has the same
-  files, its manifest among them, and queues the same actions (P2). Its 340 scaffolds run in memory
-  in a `beforeAll`, so mutation testing leaves it out.
+  keys it, as is every cell a role seeds (G3), and none is claimed
+  twice (G4). No e2e suite or helper calls `installMediator(` (D0):
+  each scaffolds through `support/e2e-cell.ts`'s `e2eMediator`, which
+  holds the running file to the cells it claims in the e2e job, where
+  what a suite dispatches can be read (D1). Its premises run here:
+  every row, dispatched as a command and read back as the job reads
+  it, settles to the spelling it is claimed by, and nothing turns off
+  vitest's per-file isolation. G5 is a file of its own,
+  `support-tier.premises.test.ts`, because it scaffolds: on every dial
+  cell `keel.dials` offers, each single-service cell without the agent
+  harness is its twin with it, less the agent files (P1), and every
+  product service with one key (`serviceKeys`) has the same files, its
+  manifest among them, and queues the same actions (P2). Its 340
+  scaffolds run in memory in a `beforeAll`, so mutation testing leaves
+  it out.
 
 ## The composition grid
 

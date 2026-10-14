@@ -98,7 +98,8 @@ import {
   type PresetAnswers,
 } from '../../src/domain/contract/commands.js';
 import type { RunActionsInputs } from '../../src/domain/core/actions.js';
-import { expectOk, installMediator } from '../support/factory.js';
+import { e2eMediator } from '../support/e2e-cell.js';
+import { expectOk } from '../support/factory.js';
 import { E2E_TIMEOUT_MS, mkTempDir, skipE2E } from '../support/web-e2e.js';
 import {
   act,
@@ -552,7 +553,7 @@ const fakeActions = (inputs: RunActionsInputs): Promise<void> => {
 async function seeded(stack: string, buildSystem: string, prefix: string): Promise<string> {
   const dir = await mkTempDir(prefix);
   expectOk(
-    await installMediator({ runDeferred: fakeActions }).dispatch(
+    await e2eMediator({ runDeferred: fakeActions }).dispatch(
       newProjectCommand({
         cwd: dir,
         stack,
@@ -893,7 +894,7 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a product and 
     // nothing is generated anyway: the claim is where the page goes.
     product = await mkTempDir('keel-ui-compose-product-e2e-');
     expectOk(
-      await installMediator({ runDeferred: fakeActions }).dispatch(
+      await e2eMediator({ runDeferred: fakeActions }).dispatch(
         newProjectCommand({
           cwd: product,
           stack: 'fullstack-ts',
@@ -1058,7 +1059,7 @@ describe.skipIf(skipE2E() || browserBinary === null)(
               answers: PresetAnswers;
             };
             const report = expectOk(
-              await installMediator({ runDeferred: fakeActions }).dispatch(
+              await e2eMediator({ runDeferred: fakeActions }).dispatch(
                 installCommandFor(body.target, {
                   cwd: body.cwd,
                   answers: body.answers,
