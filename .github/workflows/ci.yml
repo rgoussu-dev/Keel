@@ -399,7 +399,7 @@ jobs:
               tests/e2e/combo-modulith-micronaut-cli-rest-kotlin-gradle.test.ts
               tests/e2e/combo-modulith-micronaut-cli-rest-kotlin-maven.test.ts
               tests/e2e/combo-basic-micronaut-cli-rest-kotlin-maven.test.ts
-          # Nine files where there were two, and the shape came from
+          # Ten files where there were two, and the shape came from
           # a measurement that twice contradicted the obvious answer.
           #
           # When the modulith cells first landed, `modulith-go-http`
@@ -423,7 +423,9 @@ jobs:
           # off would pay the cold compile again, and splitting would
           # buy attribution and no wall clock. `docker` is for the two
           # persistence cells, whose pgx contract test takes its
-          # Postgres from testcontainers-go; `fullstack-go` needs none.
+          # Postgres from testcontainers-go; neither product,
+          # `fullstack-go` nor `fullstack-go-cli` (roadmap T.4e), needs
+          # it.
           # `modulith-go-persistence-liquibase` rides here rather than
           # in a shard of its own: it is the persistence cell's shape
           # again with a different migrations/ unit, and a parallel
@@ -445,6 +447,7 @@ jobs:
               tests/e2e/modulith-go-peer-context.test.ts
               tests/e2e/add-module-go.test.ts
               tests/e2e/fullstack-go.test.ts
+              tests/e2e/fullstack-go-cli.test.ts
           # Eight files, one shard — and unlike every earlier revision
           # of this comment, that is now a choice with a cost rather
           # than a free one.

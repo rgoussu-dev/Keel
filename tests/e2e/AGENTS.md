@@ -230,7 +230,9 @@ install runs for real. Each suite checks that every image
 builds one: an image is deployment glue, which no e2e suite vouches
 for. A suite that builds its backend boots it once, with its dev-only
 CORS accommodation on, and `driveGatewayContract` drives the wire the
-frontend encodes. No suite builds a JVM product's backend, so those
+frontend encodes; a backend with a CLI beside its server greets
+through the CLI too, with its family's `driveGreetCli`. No suite
+builds a JVM product's backend, so those
 backends stay best-effort (roadmap DT12): a suite for them needs shards
 of its own, and new shards wait on the user's word.
 

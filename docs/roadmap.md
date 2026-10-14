@@ -14402,7 +14402,7 @@ skips there, and the four tests it touches (`support-tier.premises`,
 added the same: one e2e file each, skipped in `verify`. The full run,
 on T.4c: 3,703 tests in 406.7 s, green.
 
-#### T.4e — `fullstack-go-cli` built (S)
+#### T.4e — `fullstack-go-cli` built (S) ✅
 
 `fullstack-go-cli.test.ts`, in `go`: T.4d's shape on the Go CLI + HTTP
 backend, plus the CLI. Its prototype passed against a synthetic
@@ -14414,6 +14414,46 @@ registry, before T.3f registered the product.
   CHANGELOG _Changed_: `fullstack-go-cli` reads first-class at its
   default setting.
 - Its Landed paragraph gives the shard's time from the PR's e2e run.
+
+**Landed as one suite and its row**, in one commit.
+`fullstack-go-cli.test.ts` (86 lines) is `fullstack-go.test.ts` on
+the Go CLI + HTTP backend: it scaffolds the product on its default
+dials through `scaffoldProduct`, faking the frontend's install, checks
+the compose build contexts, vets and tests the backend on the shared
+Go home, builds `cmd/cli` and `cmd/http`, greets through the CLI with
+`driveGreetCli`, and boots the server with `GO_ENV=dev` and
+OpenTelemetry on to drive `driveGatewayContract`. No helper changed.
+
+- **Its row** in `support-tier.json`, `products`, beside
+  `fullstack-go`'s: the monorepo with the frontend on npm, building
+  the backend. Product settings first-class go from 3 to 4 of 128, and
+  the presets best-effort at their default from 19 to 18.
+- **The tests the row moves:** `new-list`'s and `catalog`'s marked
+  lists drop `fullstack-go-cli`, `catalog` counts 28 first-class,
+  `finder` reads the Go card from `quarkus-cli` unbadged, and
+  `support-tier.premises` re-reads its tally.
+- **`ci.yml`:** the file joins `go`, whose comment counts ten files,
+  and its `docker` sentence names both Go products as needing none.
+- **`tests/e2e/AGENTS.md`'s products section:** a backend with a CLI
+  greets through it too.
+- **`docs/stacks/fullstack.md`** and the CHANGELOG's twelve-products
+  entry said all twelve were best-effort; they now name
+  `fullstack-go-cli` first-class, and the unreleased tier entries
+  count 4 of 128 product settings and 18 presets, the marked list
+  naming the new products but `fullstack-go-cli`.
+- **Generated regions:** both `stack-matrix` copies drop
+  `fullstack-go-cli`'s ◻; its monorepo npm row in `support-tiers`
+  reads first-class, and the `frontend=pnpm` row gains the backend's ✅
+  while staying ◻, the table re-padded to the wider cell.
+- **CHANGELOG** _Changed_.
+
+**Measured locally**, not on CI: there is no PR, so the `go` shard's
+time waits for one. The suite took 57.3 s on a cold shared Go home and
+5.4 to 5.7 s warm.
+
+**What it adds to `CI=true pnpm test`:** nothing it runs; the e2e file
+skips there and four tests re-read their figures. The full run, on
+T.4d: 3,703 tests in 408.9 s, green.
 
 #### T.4f — `fullstack-rust-cli` built (S)
 

@@ -23,7 +23,7 @@ they spare you naming every tag and vertical by hand, nothing more.
 | **Kotlin · Spring Boot 4** ([docs](jvm.md))                 | `spring-cli-kotlin`    | `spring-rest-kotlin`    | `spring-cli-rest-kotlin`      | —                | `fullstack-spring-kotlin` ◻    | `fullstack-spring-cli-kotlin` ◻    |
 | **Java · Micronaut 4** ([docs](jvm.md))                     | `micronaut-cli`        | `micronaut-rest`        | `micronaut-cli-rest`          | —                | `fullstack-micronaut` ◻        | `fullstack-micronaut-cli` ◻        |
 | **Kotlin · Micronaut 4** ([docs](jvm.md))                   | `micronaut-cli-kotlin` | `micronaut-rest-kotlin` | `micronaut-cli-rest-kotlin` ◻ | —                | `fullstack-micronaut-kotlin` ◻ | `fullstack-micronaut-cli-kotlin` ◻ |
-| **Go · stdlib** ([docs](go.md))                             | `go-cli`               | `go-http`               | `go-cli-http`                 | —                | `fullstack-go`                 | `fullstack-go-cli` ◻               |
+| **Go · stdlib** ([docs](go.md))                             | `go-cli`               | `go-http`               | `go-cli-http`                 | —                | `fullstack-go`                 | `fullstack-go-cli`                 |
 | **Rust · stdlib / axum** ([docs](rust.md))                  | `rust-cli`             | `rust-http`             | `rust-cli-http`               | —                | `fullstack-rust`               | `fullstack-rust-cli` ◻             |
 | **TypeScript · Node** ([docs](ts-http.md))                  | `ts-cli`               | `ts-http`               | `ts-cli-http` ◻               | —                | `fullstack-ts`                 | `fullstack-ts-cli` ◻               |
 | **TypeScript · web components** ([docs](web-components.md)) | —                      | —                       | —                             | `web-components` | —                              | —                                  |
@@ -171,136 +171,136 @@ for keel's presets.
 
 A product is first-class where every service is. A service is proven where a suite builds it, on this product or on any other whose service has the same files.
 
-| Product                            | Layout   | Build systems                   | `backend/`          | `frontend/`    |
-| ---------------------------------- | -------- | ------------------------------- | ------------------- | -------------- |
-| `fullstack` ◻                      | monorepo | `backend=gradle, frontend=npm`  | ◻                   | ✅ `fullstack` |
-| `fullstack` ◻                      | monorepo | `backend=maven, frontend=npm`   | ◻                   | ✅ `fullstack` |
-| `fullstack` ◻                      | monorepo | `backend=gradle, frontend=pnpm` | ◻                   | ◻              |
-| `fullstack` ◻                      | monorepo | `backend=maven, frontend=pnpm`  | ◻                   | ◻              |
-| `fullstack` ◻                      | polyrepo | `backend=gradle, frontend=npm`  | ◻                   | ◻              |
-| `fullstack` ◻                      | polyrepo | `backend=maven, frontend=npm`   | ◻                   | ◻              |
-| `fullstack` ◻                      | polyrepo | `backend=gradle, frontend=pnpm` | ◻                   | ◻              |
-| `fullstack` ◻                      | polyrepo | `backend=maven, frontend=pnpm`  | ◻                   | ◻              |
-| `fullstack-cli` ◻                  | monorepo | `backend=gradle, frontend=npm`  | ◻                   | ✅ `fullstack` |
-| `fullstack-cli` ◻                  | monorepo | `backend=maven, frontend=npm`   | ◻                   | ✅ `fullstack` |
-| `fullstack-cli` ◻                  | monorepo | `backend=gradle, frontend=pnpm` | ◻                   | ◻              |
-| `fullstack-cli` ◻                  | monorepo | `backend=maven, frontend=pnpm`  | ◻                   | ◻              |
-| `fullstack-cli` ◻                  | polyrepo | `backend=gradle, frontend=npm`  | ◻                   | ◻              |
-| `fullstack-cli` ◻                  | polyrepo | `backend=maven, frontend=npm`   | ◻                   | ◻              |
-| `fullstack-cli` ◻                  | polyrepo | `backend=gradle, frontend=pnpm` | ◻                   | ◻              |
-| `fullstack-cli` ◻                  | polyrepo | `backend=maven, frontend=pnpm`  | ◻                   | ◻              |
-| `fullstack-cli-kotlin` ◻           | monorepo | `backend=gradle, frontend=npm`  | ◻                   | ✅ `fullstack` |
-| `fullstack-cli-kotlin` ◻           | monorepo | `backend=maven, frontend=npm`   | ◻                   | ✅ `fullstack` |
-| `fullstack-cli-kotlin` ◻           | monorepo | `backend=gradle, frontend=pnpm` | ◻                   | ◻              |
-| `fullstack-cli-kotlin` ◻           | monorepo | `backend=maven, frontend=pnpm`  | ◻                   | ◻              |
-| `fullstack-cli-kotlin` ◻           | polyrepo | `backend=gradle, frontend=npm`  | ◻                   | ◻              |
-| `fullstack-cli-kotlin` ◻           | polyrepo | `backend=maven, frontend=npm`   | ◻                   | ◻              |
-| `fullstack-cli-kotlin` ◻           | polyrepo | `backend=gradle, frontend=pnpm` | ◻                   | ◻              |
-| `fullstack-cli-kotlin` ◻           | polyrepo | `backend=maven, frontend=pnpm`  | ◻                   | ◻              |
-| `fullstack-go` ✅                  | monorepo | `frontend=npm`                  | ✅ `fullstack-go`   | ✅ `fullstack` |
-| `fullstack-go` ◻                   | monorepo | `frontend=pnpm`                 | ✅ `fullstack-go`   | ◻              |
-| `fullstack-go` ◻                   | polyrepo | `frontend=npm`                  | ◻                   | ◻              |
-| `fullstack-go` ◻                   | polyrepo | `frontend=pnpm`                 | ◻                   | ◻              |
-| `fullstack-go-cli` ◻               | monorepo | `frontend=npm`                  | ◻                   | ✅ `fullstack` |
-| `fullstack-go-cli` ◻               | monorepo | `frontend=pnpm`                 | ◻                   | ◻              |
-| `fullstack-go-cli` ◻               | polyrepo | `frontend=npm`                  | ◻                   | ◻              |
-| `fullstack-go-cli` ◻               | polyrepo | `frontend=pnpm`                 | ◻                   | ◻              |
-| `fullstack-kotlin` ◻               | monorepo | `backend=gradle, frontend=npm`  | ◻                   | ✅ `fullstack` |
-| `fullstack-kotlin` ◻               | monorepo | `backend=maven, frontend=npm`   | ◻                   | ✅ `fullstack` |
-| `fullstack-kotlin` ◻               | monorepo | `backend=gradle, frontend=pnpm` | ◻                   | ◻              |
-| `fullstack-kotlin` ◻               | monorepo | `backend=maven, frontend=pnpm`  | ◻                   | ◻              |
-| `fullstack-kotlin` ◻               | polyrepo | `backend=gradle, frontend=npm`  | ◻                   | ◻              |
-| `fullstack-kotlin` ◻               | polyrepo | `backend=maven, frontend=npm`   | ◻                   | ◻              |
-| `fullstack-kotlin` ◻               | polyrepo | `backend=gradle, frontend=pnpm` | ◻                   | ◻              |
-| `fullstack-kotlin` ◻               | polyrepo | `backend=maven, frontend=pnpm`  | ◻                   | ◻              |
-| `fullstack-micronaut` ◻            | monorepo | `backend=gradle, frontend=npm`  | ◻                   | ✅ `fullstack` |
-| `fullstack-micronaut` ◻            | monorepo | `backend=maven, frontend=npm`   | ◻                   | ✅ `fullstack` |
-| `fullstack-micronaut` ◻            | monorepo | `backend=gradle, frontend=pnpm` | ◻                   | ◻              |
-| `fullstack-micronaut` ◻            | monorepo | `backend=maven, frontend=pnpm`  | ◻                   | ◻              |
-| `fullstack-micronaut` ◻            | polyrepo | `backend=gradle, frontend=npm`  | ◻                   | ◻              |
-| `fullstack-micronaut` ◻            | polyrepo | `backend=maven, frontend=npm`   | ◻                   | ◻              |
-| `fullstack-micronaut` ◻            | polyrepo | `backend=gradle, frontend=pnpm` | ◻                   | ◻              |
-| `fullstack-micronaut` ◻            | polyrepo | `backend=maven, frontend=pnpm`  | ◻                   | ◻              |
-| `fullstack-micronaut-cli` ◻        | monorepo | `backend=gradle, frontend=npm`  | ◻                   | ✅ `fullstack` |
-| `fullstack-micronaut-cli` ◻        | monorepo | `backend=maven, frontend=npm`   | ◻                   | ✅ `fullstack` |
-| `fullstack-micronaut-cli` ◻        | monorepo | `backend=gradle, frontend=pnpm` | ◻                   | ◻              |
-| `fullstack-micronaut-cli` ◻        | monorepo | `backend=maven, frontend=pnpm`  | ◻                   | ◻              |
-| `fullstack-micronaut-cli` ◻        | polyrepo | `backend=gradle, frontend=npm`  | ◻                   | ◻              |
-| `fullstack-micronaut-cli` ◻        | polyrepo | `backend=maven, frontend=npm`   | ◻                   | ◻              |
-| `fullstack-micronaut-cli` ◻        | polyrepo | `backend=gradle, frontend=pnpm` | ◻                   | ◻              |
-| `fullstack-micronaut-cli` ◻        | polyrepo | `backend=maven, frontend=pnpm`  | ◻                   | ◻              |
-| `fullstack-micronaut-cli-kotlin` ◻ | monorepo | `backend=gradle, frontend=npm`  | ◻                   | ✅ `fullstack` |
-| `fullstack-micronaut-cli-kotlin` ◻ | monorepo | `backend=maven, frontend=npm`   | ◻                   | ✅ `fullstack` |
-| `fullstack-micronaut-cli-kotlin` ◻ | monorepo | `backend=gradle, frontend=pnpm` | ◻                   | ◻              |
-| `fullstack-micronaut-cli-kotlin` ◻ | monorepo | `backend=maven, frontend=pnpm`  | ◻                   | ◻              |
-| `fullstack-micronaut-cli-kotlin` ◻ | polyrepo | `backend=gradle, frontend=npm`  | ◻                   | ◻              |
-| `fullstack-micronaut-cli-kotlin` ◻ | polyrepo | `backend=maven, frontend=npm`   | ◻                   | ◻              |
-| `fullstack-micronaut-cli-kotlin` ◻ | polyrepo | `backend=gradle, frontend=pnpm` | ◻                   | ◻              |
-| `fullstack-micronaut-cli-kotlin` ◻ | polyrepo | `backend=maven, frontend=pnpm`  | ◻                   | ◻              |
-| `fullstack-micronaut-kotlin` ◻     | monorepo | `backend=gradle, frontend=npm`  | ◻                   | ✅ `fullstack` |
-| `fullstack-micronaut-kotlin` ◻     | monorepo | `backend=maven, frontend=npm`   | ◻                   | ✅ `fullstack` |
-| `fullstack-micronaut-kotlin` ◻     | monorepo | `backend=gradle, frontend=pnpm` | ◻                   | ◻              |
-| `fullstack-micronaut-kotlin` ◻     | monorepo | `backend=maven, frontend=pnpm`  | ◻                   | ◻              |
-| `fullstack-micronaut-kotlin` ◻     | polyrepo | `backend=gradle, frontend=npm`  | ◻                   | ◻              |
-| `fullstack-micronaut-kotlin` ◻     | polyrepo | `backend=maven, frontend=npm`   | ◻                   | ◻              |
-| `fullstack-micronaut-kotlin` ◻     | polyrepo | `backend=gradle, frontend=pnpm` | ◻                   | ◻              |
-| `fullstack-micronaut-kotlin` ◻     | polyrepo | `backend=maven, frontend=pnpm`  | ◻                   | ◻              |
-| `fullstack-rust` ✅                | monorepo | `frontend=npm`                  | ✅ `fullstack-rust` | ✅ `fullstack` |
-| `fullstack-rust` ◻                 | monorepo | `frontend=pnpm`                 | ✅ `fullstack-rust` | ◻              |
-| `fullstack-rust` ◻                 | polyrepo | `frontend=npm`                  | ◻                   | ◻              |
-| `fullstack-rust` ◻                 | polyrepo | `frontend=pnpm`                 | ◻                   | ◻              |
-| `fullstack-rust-cli` ◻             | monorepo | `frontend=npm`                  | ◻                   | ✅ `fullstack` |
-| `fullstack-rust-cli` ◻             | monorepo | `frontend=pnpm`                 | ◻                   | ◻              |
-| `fullstack-rust-cli` ◻             | polyrepo | `frontend=npm`                  | ◻                   | ◻              |
-| `fullstack-rust-cli` ◻             | polyrepo | `frontend=pnpm`                 | ◻                   | ◻              |
-| `fullstack-spring` ◻               | monorepo | `backend=gradle, frontend=npm`  | ◻                   | ✅ `fullstack` |
-| `fullstack-spring` ◻               | monorepo | `backend=maven, frontend=npm`   | ◻                   | ✅ `fullstack` |
-| `fullstack-spring` ◻               | monorepo | `backend=gradle, frontend=pnpm` | ◻                   | ◻              |
-| `fullstack-spring` ◻               | monorepo | `backend=maven, frontend=pnpm`  | ◻                   | ◻              |
-| `fullstack-spring` ◻               | polyrepo | `backend=gradle, frontend=npm`  | ◻                   | ◻              |
-| `fullstack-spring` ◻               | polyrepo | `backend=maven, frontend=npm`   | ◻                   | ◻              |
-| `fullstack-spring` ◻               | polyrepo | `backend=gradle, frontend=pnpm` | ◻                   | ◻              |
-| `fullstack-spring` ◻               | polyrepo | `backend=maven, frontend=pnpm`  | ◻                   | ◻              |
-| `fullstack-spring-cli` ◻           | monorepo | `backend=gradle, frontend=npm`  | ◻                   | ✅ `fullstack` |
-| `fullstack-spring-cli` ◻           | monorepo | `backend=maven, frontend=npm`   | ◻                   | ✅ `fullstack` |
-| `fullstack-spring-cli` ◻           | monorepo | `backend=gradle, frontend=pnpm` | ◻                   | ◻              |
-| `fullstack-spring-cli` ◻           | monorepo | `backend=maven, frontend=pnpm`  | ◻                   | ◻              |
-| `fullstack-spring-cli` ◻           | polyrepo | `backend=gradle, frontend=npm`  | ◻                   | ◻              |
-| `fullstack-spring-cli` ◻           | polyrepo | `backend=maven, frontend=npm`   | ◻                   | ◻              |
-| `fullstack-spring-cli` ◻           | polyrepo | `backend=gradle, frontend=pnpm` | ◻                   | ◻              |
-| `fullstack-spring-cli` ◻           | polyrepo | `backend=maven, frontend=pnpm`  | ◻                   | ◻              |
-| `fullstack-spring-cli-kotlin` ◻    | monorepo | `backend=gradle, frontend=npm`  | ◻                   | ✅ `fullstack` |
-| `fullstack-spring-cli-kotlin` ◻    | monorepo | `backend=maven, frontend=npm`   | ◻                   | ✅ `fullstack` |
-| `fullstack-spring-cli-kotlin` ◻    | monorepo | `backend=gradle, frontend=pnpm` | ◻                   | ◻              |
-| `fullstack-spring-cli-kotlin` ◻    | monorepo | `backend=maven, frontend=pnpm`  | ◻                   | ◻              |
-| `fullstack-spring-cli-kotlin` ◻    | polyrepo | `backend=gradle, frontend=npm`  | ◻                   | ◻              |
-| `fullstack-spring-cli-kotlin` ◻    | polyrepo | `backend=maven, frontend=npm`   | ◻                   | ◻              |
-| `fullstack-spring-cli-kotlin` ◻    | polyrepo | `backend=gradle, frontend=pnpm` | ◻                   | ◻              |
-| `fullstack-spring-cli-kotlin` ◻    | polyrepo | `backend=maven, frontend=pnpm`  | ◻                   | ◻              |
-| `fullstack-spring-kotlin` ◻        | monorepo | `backend=gradle, frontend=npm`  | ◻                   | ✅ `fullstack` |
-| `fullstack-spring-kotlin` ◻        | monorepo | `backend=maven, frontend=npm`   | ◻                   | ✅ `fullstack` |
-| `fullstack-spring-kotlin` ◻        | monorepo | `backend=gradle, frontend=pnpm` | ◻                   | ◻              |
-| `fullstack-spring-kotlin` ◻        | monorepo | `backend=maven, frontend=pnpm`  | ◻                   | ◻              |
-| `fullstack-spring-kotlin` ◻        | polyrepo | `backend=gradle, frontend=npm`  | ◻                   | ◻              |
-| `fullstack-spring-kotlin` ◻        | polyrepo | `backend=maven, frontend=npm`   | ◻                   | ◻              |
-| `fullstack-spring-kotlin` ◻        | polyrepo | `backend=gradle, frontend=pnpm` | ◻                   | ◻              |
-| `fullstack-spring-kotlin` ◻        | polyrepo | `backend=maven, frontend=pnpm`  | ◻                   | ◻              |
-| `fullstack-ts` ✅                  | monorepo | `backend=npm, frontend=npm`     | ✅ `fullstack-ts`   | ✅ `fullstack` |
-| `fullstack-ts` ◻                   | monorepo | `backend=pnpm, frontend=npm`    | ◻                   | ✅ `fullstack` |
-| `fullstack-ts` ◻                   | monorepo | `backend=npm, frontend=pnpm`    | ✅ `fullstack-ts`   | ◻              |
-| `fullstack-ts` ◻                   | monorepo | `backend=pnpm, frontend=pnpm`   | ◻                   | ◻              |
-| `fullstack-ts` ◻                   | polyrepo | `backend=npm, frontend=npm`     | ◻                   | ◻              |
-| `fullstack-ts` ◻                   | polyrepo | `backend=pnpm, frontend=npm`    | ◻                   | ◻              |
-| `fullstack-ts` ◻                   | polyrepo | `backend=npm, frontend=pnpm`    | ◻                   | ◻              |
-| `fullstack-ts` ◻                   | polyrepo | `backend=pnpm, frontend=pnpm`   | ◻                   | ◻              |
-| `fullstack-ts-cli` ◻               | monorepo | `backend=npm, frontend=npm`     | ◻                   | ✅ `fullstack` |
-| `fullstack-ts-cli` ◻               | monorepo | `backend=pnpm, frontend=npm`    | ◻                   | ✅ `fullstack` |
-| `fullstack-ts-cli` ◻               | monorepo | `backend=npm, frontend=pnpm`    | ◻                   | ◻              |
-| `fullstack-ts-cli` ◻               | monorepo | `backend=pnpm, frontend=pnpm`   | ◻                   | ◻              |
-| `fullstack-ts-cli` ◻               | polyrepo | `backend=npm, frontend=npm`     | ◻                   | ◻              |
-| `fullstack-ts-cli` ◻               | polyrepo | `backend=pnpm, frontend=npm`    | ◻                   | ◻              |
-| `fullstack-ts-cli` ◻               | polyrepo | `backend=npm, frontend=pnpm`    | ◻                   | ◻              |
-| `fullstack-ts-cli` ◻               | polyrepo | `backend=pnpm, frontend=pnpm`   | ◻                   | ◻              |
+| Product                            | Layout   | Build systems                   | `backend/`            | `frontend/`    |
+| ---------------------------------- | -------- | ------------------------------- | --------------------- | -------------- |
+| `fullstack` ◻                      | monorepo | `backend=gradle, frontend=npm`  | ◻                     | ✅ `fullstack` |
+| `fullstack` ◻                      | monorepo | `backend=maven, frontend=npm`   | ◻                     | ✅ `fullstack` |
+| `fullstack` ◻                      | monorepo | `backend=gradle, frontend=pnpm` | ◻                     | ◻              |
+| `fullstack` ◻                      | monorepo | `backend=maven, frontend=pnpm`  | ◻                     | ◻              |
+| `fullstack` ◻                      | polyrepo | `backend=gradle, frontend=npm`  | ◻                     | ◻              |
+| `fullstack` ◻                      | polyrepo | `backend=maven, frontend=npm`   | ◻                     | ◻              |
+| `fullstack` ◻                      | polyrepo | `backend=gradle, frontend=pnpm` | ◻                     | ◻              |
+| `fullstack` ◻                      | polyrepo | `backend=maven, frontend=pnpm`  | ◻                     | ◻              |
+| `fullstack-cli` ◻                  | monorepo | `backend=gradle, frontend=npm`  | ◻                     | ✅ `fullstack` |
+| `fullstack-cli` ◻                  | monorepo | `backend=maven, frontend=npm`   | ◻                     | ✅ `fullstack` |
+| `fullstack-cli` ◻                  | monorepo | `backend=gradle, frontend=pnpm` | ◻                     | ◻              |
+| `fullstack-cli` ◻                  | monorepo | `backend=maven, frontend=pnpm`  | ◻                     | ◻              |
+| `fullstack-cli` ◻                  | polyrepo | `backend=gradle, frontend=npm`  | ◻                     | ◻              |
+| `fullstack-cli` ◻                  | polyrepo | `backend=maven, frontend=npm`   | ◻                     | ◻              |
+| `fullstack-cli` ◻                  | polyrepo | `backend=gradle, frontend=pnpm` | ◻                     | ◻              |
+| `fullstack-cli` ◻                  | polyrepo | `backend=maven, frontend=pnpm`  | ◻                     | ◻              |
+| `fullstack-cli-kotlin` ◻           | monorepo | `backend=gradle, frontend=npm`  | ◻                     | ✅ `fullstack` |
+| `fullstack-cli-kotlin` ◻           | monorepo | `backend=maven, frontend=npm`   | ◻                     | ✅ `fullstack` |
+| `fullstack-cli-kotlin` ◻           | monorepo | `backend=gradle, frontend=pnpm` | ◻                     | ◻              |
+| `fullstack-cli-kotlin` ◻           | monorepo | `backend=maven, frontend=pnpm`  | ◻                     | ◻              |
+| `fullstack-cli-kotlin` ◻           | polyrepo | `backend=gradle, frontend=npm`  | ◻                     | ◻              |
+| `fullstack-cli-kotlin` ◻           | polyrepo | `backend=maven, frontend=npm`   | ◻                     | ◻              |
+| `fullstack-cli-kotlin` ◻           | polyrepo | `backend=gradle, frontend=pnpm` | ◻                     | ◻              |
+| `fullstack-cli-kotlin` ◻           | polyrepo | `backend=maven, frontend=pnpm`  | ◻                     | ◻              |
+| `fullstack-go` ✅                  | monorepo | `frontend=npm`                  | ✅ `fullstack-go`     | ✅ `fullstack` |
+| `fullstack-go` ◻                   | monorepo | `frontend=pnpm`                 | ✅ `fullstack-go`     | ◻              |
+| `fullstack-go` ◻                   | polyrepo | `frontend=npm`                  | ◻                     | ◻              |
+| `fullstack-go` ◻                   | polyrepo | `frontend=pnpm`                 | ◻                     | ◻              |
+| `fullstack-go-cli` ✅              | monorepo | `frontend=npm`                  | ✅ `fullstack-go-cli` | ✅ `fullstack` |
+| `fullstack-go-cli` ◻               | monorepo | `frontend=pnpm`                 | ✅ `fullstack-go-cli` | ◻              |
+| `fullstack-go-cli` ◻               | polyrepo | `frontend=npm`                  | ◻                     | ◻              |
+| `fullstack-go-cli` ◻               | polyrepo | `frontend=pnpm`                 | ◻                     | ◻              |
+| `fullstack-kotlin` ◻               | monorepo | `backend=gradle, frontend=npm`  | ◻                     | ✅ `fullstack` |
+| `fullstack-kotlin` ◻               | monorepo | `backend=maven, frontend=npm`   | ◻                     | ✅ `fullstack` |
+| `fullstack-kotlin` ◻               | monorepo | `backend=gradle, frontend=pnpm` | ◻                     | ◻              |
+| `fullstack-kotlin` ◻               | monorepo | `backend=maven, frontend=pnpm`  | ◻                     | ◻              |
+| `fullstack-kotlin` ◻               | polyrepo | `backend=gradle, frontend=npm`  | ◻                     | ◻              |
+| `fullstack-kotlin` ◻               | polyrepo | `backend=maven, frontend=npm`   | ◻                     | ◻              |
+| `fullstack-kotlin` ◻               | polyrepo | `backend=gradle, frontend=pnpm` | ◻                     | ◻              |
+| `fullstack-kotlin` ◻               | polyrepo | `backend=maven, frontend=pnpm`  | ◻                     | ◻              |
+| `fullstack-micronaut` ◻            | monorepo | `backend=gradle, frontend=npm`  | ◻                     | ✅ `fullstack` |
+| `fullstack-micronaut` ◻            | monorepo | `backend=maven, frontend=npm`   | ◻                     | ✅ `fullstack` |
+| `fullstack-micronaut` ◻            | monorepo | `backend=gradle, frontend=pnpm` | ◻                     | ◻              |
+| `fullstack-micronaut` ◻            | monorepo | `backend=maven, frontend=pnpm`  | ◻                     | ◻              |
+| `fullstack-micronaut` ◻            | polyrepo | `backend=gradle, frontend=npm`  | ◻                     | ◻              |
+| `fullstack-micronaut` ◻            | polyrepo | `backend=maven, frontend=npm`   | ◻                     | ◻              |
+| `fullstack-micronaut` ◻            | polyrepo | `backend=gradle, frontend=pnpm` | ◻                     | ◻              |
+| `fullstack-micronaut` ◻            | polyrepo | `backend=maven, frontend=pnpm`  | ◻                     | ◻              |
+| `fullstack-micronaut-cli` ◻        | monorepo | `backend=gradle, frontend=npm`  | ◻                     | ✅ `fullstack` |
+| `fullstack-micronaut-cli` ◻        | monorepo | `backend=maven, frontend=npm`   | ◻                     | ✅ `fullstack` |
+| `fullstack-micronaut-cli` ◻        | monorepo | `backend=gradle, frontend=pnpm` | ◻                     | ◻              |
+| `fullstack-micronaut-cli` ◻        | monorepo | `backend=maven, frontend=pnpm`  | ◻                     | ◻              |
+| `fullstack-micronaut-cli` ◻        | polyrepo | `backend=gradle, frontend=npm`  | ◻                     | ◻              |
+| `fullstack-micronaut-cli` ◻        | polyrepo | `backend=maven, frontend=npm`   | ◻                     | ◻              |
+| `fullstack-micronaut-cli` ◻        | polyrepo | `backend=gradle, frontend=pnpm` | ◻                     | ◻              |
+| `fullstack-micronaut-cli` ◻        | polyrepo | `backend=maven, frontend=pnpm`  | ◻                     | ◻              |
+| `fullstack-micronaut-cli-kotlin` ◻ | monorepo | `backend=gradle, frontend=npm`  | ◻                     | ✅ `fullstack` |
+| `fullstack-micronaut-cli-kotlin` ◻ | monorepo | `backend=maven, frontend=npm`   | ◻                     | ✅ `fullstack` |
+| `fullstack-micronaut-cli-kotlin` ◻ | monorepo | `backend=gradle, frontend=pnpm` | ◻                     | ◻              |
+| `fullstack-micronaut-cli-kotlin` ◻ | monorepo | `backend=maven, frontend=pnpm`  | ◻                     | ◻              |
+| `fullstack-micronaut-cli-kotlin` ◻ | polyrepo | `backend=gradle, frontend=npm`  | ◻                     | ◻              |
+| `fullstack-micronaut-cli-kotlin` ◻ | polyrepo | `backend=maven, frontend=npm`   | ◻                     | ◻              |
+| `fullstack-micronaut-cli-kotlin` ◻ | polyrepo | `backend=gradle, frontend=pnpm` | ◻                     | ◻              |
+| `fullstack-micronaut-cli-kotlin` ◻ | polyrepo | `backend=maven, frontend=pnpm`  | ◻                     | ◻              |
+| `fullstack-micronaut-kotlin` ◻     | monorepo | `backend=gradle, frontend=npm`  | ◻                     | ✅ `fullstack` |
+| `fullstack-micronaut-kotlin` ◻     | monorepo | `backend=maven, frontend=npm`   | ◻                     | ✅ `fullstack` |
+| `fullstack-micronaut-kotlin` ◻     | monorepo | `backend=gradle, frontend=pnpm` | ◻                     | ◻              |
+| `fullstack-micronaut-kotlin` ◻     | monorepo | `backend=maven, frontend=pnpm`  | ◻                     | ◻              |
+| `fullstack-micronaut-kotlin` ◻     | polyrepo | `backend=gradle, frontend=npm`  | ◻                     | ◻              |
+| `fullstack-micronaut-kotlin` ◻     | polyrepo | `backend=maven, frontend=npm`   | ◻                     | ◻              |
+| `fullstack-micronaut-kotlin` ◻     | polyrepo | `backend=gradle, frontend=pnpm` | ◻                     | ◻              |
+| `fullstack-micronaut-kotlin` ◻     | polyrepo | `backend=maven, frontend=pnpm`  | ◻                     | ◻              |
+| `fullstack-rust` ✅                | monorepo | `frontend=npm`                  | ✅ `fullstack-rust`   | ✅ `fullstack` |
+| `fullstack-rust` ◻                 | monorepo | `frontend=pnpm`                 | ✅ `fullstack-rust`   | ◻              |
+| `fullstack-rust` ◻                 | polyrepo | `frontend=npm`                  | ◻                     | ◻              |
+| `fullstack-rust` ◻                 | polyrepo | `frontend=pnpm`                 | ◻                     | ◻              |
+| `fullstack-rust-cli` ◻             | monorepo | `frontend=npm`                  | ◻                     | ✅ `fullstack` |
+| `fullstack-rust-cli` ◻             | monorepo | `frontend=pnpm`                 | ◻                     | ◻              |
+| `fullstack-rust-cli` ◻             | polyrepo | `frontend=npm`                  | ◻                     | ◻              |
+| `fullstack-rust-cli` ◻             | polyrepo | `frontend=pnpm`                 | ◻                     | ◻              |
+| `fullstack-spring` ◻               | monorepo | `backend=gradle, frontend=npm`  | ◻                     | ✅ `fullstack` |
+| `fullstack-spring` ◻               | monorepo | `backend=maven, frontend=npm`   | ◻                     | ✅ `fullstack` |
+| `fullstack-spring` ◻               | monorepo | `backend=gradle, frontend=pnpm` | ◻                     | ◻              |
+| `fullstack-spring` ◻               | monorepo | `backend=maven, frontend=pnpm`  | ◻                     | ◻              |
+| `fullstack-spring` ◻               | polyrepo | `backend=gradle, frontend=npm`  | ◻                     | ◻              |
+| `fullstack-spring` ◻               | polyrepo | `backend=maven, frontend=npm`   | ◻                     | ◻              |
+| `fullstack-spring` ◻               | polyrepo | `backend=gradle, frontend=pnpm` | ◻                     | ◻              |
+| `fullstack-spring` ◻               | polyrepo | `backend=maven, frontend=pnpm`  | ◻                     | ◻              |
+| `fullstack-spring-cli` ◻           | monorepo | `backend=gradle, frontend=npm`  | ◻                     | ✅ `fullstack` |
+| `fullstack-spring-cli` ◻           | monorepo | `backend=maven, frontend=npm`   | ◻                     | ✅ `fullstack` |
+| `fullstack-spring-cli` ◻           | monorepo | `backend=gradle, frontend=pnpm` | ◻                     | ◻              |
+| `fullstack-spring-cli` ◻           | monorepo | `backend=maven, frontend=pnpm`  | ◻                     | ◻              |
+| `fullstack-spring-cli` ◻           | polyrepo | `backend=gradle, frontend=npm`  | ◻                     | ◻              |
+| `fullstack-spring-cli` ◻           | polyrepo | `backend=maven, frontend=npm`   | ◻                     | ◻              |
+| `fullstack-spring-cli` ◻           | polyrepo | `backend=gradle, frontend=pnpm` | ◻                     | ◻              |
+| `fullstack-spring-cli` ◻           | polyrepo | `backend=maven, frontend=pnpm`  | ◻                     | ◻              |
+| `fullstack-spring-cli-kotlin` ◻    | monorepo | `backend=gradle, frontend=npm`  | ◻                     | ✅ `fullstack` |
+| `fullstack-spring-cli-kotlin` ◻    | monorepo | `backend=maven, frontend=npm`   | ◻                     | ✅ `fullstack` |
+| `fullstack-spring-cli-kotlin` ◻    | monorepo | `backend=gradle, frontend=pnpm` | ◻                     | ◻              |
+| `fullstack-spring-cli-kotlin` ◻    | monorepo | `backend=maven, frontend=pnpm`  | ◻                     | ◻              |
+| `fullstack-spring-cli-kotlin` ◻    | polyrepo | `backend=gradle, frontend=npm`  | ◻                     | ◻              |
+| `fullstack-spring-cli-kotlin` ◻    | polyrepo | `backend=maven, frontend=npm`   | ◻                     | ◻              |
+| `fullstack-spring-cli-kotlin` ◻    | polyrepo | `backend=gradle, frontend=pnpm` | ◻                     | ◻              |
+| `fullstack-spring-cli-kotlin` ◻    | polyrepo | `backend=maven, frontend=pnpm`  | ◻                     | ◻              |
+| `fullstack-spring-kotlin` ◻        | monorepo | `backend=gradle, frontend=npm`  | ◻                     | ✅ `fullstack` |
+| `fullstack-spring-kotlin` ◻        | monorepo | `backend=maven, frontend=npm`   | ◻                     | ✅ `fullstack` |
+| `fullstack-spring-kotlin` ◻        | monorepo | `backend=gradle, frontend=pnpm` | ◻                     | ◻              |
+| `fullstack-spring-kotlin` ◻        | monorepo | `backend=maven, frontend=pnpm`  | ◻                     | ◻              |
+| `fullstack-spring-kotlin` ◻        | polyrepo | `backend=gradle, frontend=npm`  | ◻                     | ◻              |
+| `fullstack-spring-kotlin` ◻        | polyrepo | `backend=maven, frontend=npm`   | ◻                     | ◻              |
+| `fullstack-spring-kotlin` ◻        | polyrepo | `backend=gradle, frontend=pnpm` | ◻                     | ◻              |
+| `fullstack-spring-kotlin` ◻        | polyrepo | `backend=maven, frontend=pnpm`  | ◻                     | ◻              |
+| `fullstack-ts` ✅                  | monorepo | `backend=npm, frontend=npm`     | ✅ `fullstack-ts`     | ✅ `fullstack` |
+| `fullstack-ts` ◻                   | monorepo | `backend=pnpm, frontend=npm`    | ◻                     | ✅ `fullstack` |
+| `fullstack-ts` ◻                   | monorepo | `backend=npm, frontend=pnpm`    | ✅ `fullstack-ts`     | ◻              |
+| `fullstack-ts` ◻                   | monorepo | `backend=pnpm, frontend=pnpm`   | ◻                     | ◻              |
+| `fullstack-ts` ◻                   | polyrepo | `backend=npm, frontend=npm`     | ◻                     | ◻              |
+| `fullstack-ts` ◻                   | polyrepo | `backend=pnpm, frontend=npm`    | ◻                     | ◻              |
+| `fullstack-ts` ◻                   | polyrepo | `backend=npm, frontend=pnpm`    | ◻                     | ◻              |
+| `fullstack-ts` ◻                   | polyrepo | `backend=pnpm, frontend=pnpm`   | ◻                     | ◻              |
+| `fullstack-ts-cli` ◻               | monorepo | `backend=npm, frontend=npm`     | ◻                     | ✅ `fullstack` |
+| `fullstack-ts-cli` ◻               | monorepo | `backend=pnpm, frontend=npm`    | ◻                     | ✅ `fullstack` |
+| `fullstack-ts-cli` ◻               | monorepo | `backend=npm, frontend=pnpm`    | ◻                     | ◻              |
+| `fullstack-ts-cli` ◻               | monorepo | `backend=pnpm, frontend=pnpm`   | ◻                     | ◻              |
+| `fullstack-ts-cli` ◻               | polyrepo | `backend=npm, frontend=npm`     | ◻                     | ◻              |
+| `fullstack-ts-cli` ◻               | polyrepo | `backend=pnpm, frontend=npm`    | ◻                     | ◻              |
+| `fullstack-ts-cli` ◻               | polyrepo | `backend=npm, frontend=pnpm`    | ◻                     | ◻              |
+| `fullstack-ts-cli` ◻               | polyrepo | `backend=pnpm, frontend=pnpm`   | ◻                     | ◻              |
 
 A cell scaffolded with `--no-agent-harness` has the tier of its twin with the harness. It is that twin less the agent files, and `verify` checks it on every cell.
 

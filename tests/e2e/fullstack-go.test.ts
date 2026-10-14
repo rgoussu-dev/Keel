@@ -68,7 +68,7 @@ describe.skipIf(skipGoE2E)('fullstack-go e2e (monorepo)', () => {
 
       // GO_ENV=dev activates the dev-only CORS accommodation under test;
       // OpenTelemetry stays on, so the backend boots through its real
-      // exporter setup, the one Go suite that does.
+      // exporter setup, as the Go products' suites alone do.
       await withHttpUnit(
         path.join(backend, 'bin', `backend-http${EXE}`),
         backend,

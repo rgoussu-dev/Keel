@@ -661,6 +661,16 @@ new` the terminal adds the way past it (move it aside, or start in
 
 ### Changed
 
+- **`fullstack-go-cli` reads first-class at its default setting.**
+  `fullstack-go-cli`, in the `go` e2e shard, scaffolds the product as
+  `keel new` leaves it, vets and tests its Go CLI + HTTP backend,
+  builds both binaries, greets through the CLI, checks that each image
+  `compose.yaml` builds has its `Dockerfile`, and drives the wire the
+  frontend's gateway encodes against the backend's server. The
+  frontend is the one `fullstack` builds. The stack matrix and the
+  support-tier table drop its ◻, and `keel new --list` and `keel ui`'s
+  finder no longer mark it best-effort.
+
 - **`fullstack-ts` reads first-class at its default setting.**
   `fullstack-ts`, in the `web-combo` e2e shard, scaffolds the product
   as `keel new` leaves it, installs, typechecks and tests its
@@ -1487,9 +1497,10 @@ distribution iac`) — _Not for this project_, collapsed, each with the
   `fullstack-ts-cli` and `fullstack-rust-cli`. A product is named by
   its backend, less `quarkus`, `rest` and `http`, so a CLI + HTTP
   backend makes a `-cli` product, whose image runs its HTTP server.
-  All twelve are best-effort on every setting: the composition grid
-  holds them to every invariant, and no CI job builds one, so
-  `keel new --list` marks each ◻. `keel new --list` lists 46 presets,
+  The composition grid holds them to every invariant. `fullstack-go-cli`
+  is first-class at its default setting; the others are best-effort on
+  every setting, no CI job building one, so `keel new --list` marks
+  each ◻. `keel new --list` lists 46 presets,
   where it listed 34. In the drill-down, in the terminal and in
   `keel ui`, every back-end language now has a product, and the
   _Fullstack_ shape asks for its adapters: _HTTP server + Browser SPA_
@@ -1526,8 +1537,8 @@ distribution iac`) — _Not for this project_, collapsed, each with the
   _first-class_ where an e2e suite builds it as `keel new` leaves it, or
   each part of it is proven identical to a part one builds;
   _best-effort_ where no CI job builds it. `keel new --list` marks ◻ the
-  presets that are best-effort at their default setting — the twelve
-  new products (above), `fullstack`, `fullstack-spring`,
+  presets that are best-effort at their default setting — the new
+  products (above) but `fullstack-go-cli`, `fullstack`, `fullstack-spring`,
   `fullstack-micronaut`, `ts-cli-http`,
   `spring-cli-rest`, `quarkus-cli-rest-kotlin` and
   `micronaut-cli-rest-kotlin` — and says what the mark means. In
@@ -1552,8 +1563,8 @@ distribution iac`) — _Not for this project_, collapsed, each with the
   gets a row per build system, with a column per module layout, and
   each product a row per layout and build systems, with what proves
   each service. Today 83 of the 150 single-service settings are
-  first-class, and 3 of the 128 product settings. The stack matrix in
-  the README and in the catalog marks ◻ the 19 presets that are
+  first-class, and 4 of the 128 product settings. The stack matrix in
+  the README and in the catalog marks ◻ the 18 presets that are
   best-effort on their default setting. Both copies are now generated
   from the presets, so they can no longer drift apart. The matrix
   gains a _Product, CLI + HTTP server_ column, and no

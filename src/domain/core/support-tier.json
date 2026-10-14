@@ -704,6 +704,13 @@
       "builds": ["backend"]
     },
     {
+      "suite": "fullstack-go-cli",
+      "stack": "fullstack-go-cli",
+      "layout": "monorepo",
+      "buildSystem": "frontend=npm",
+      "builds": ["backend"]
+    },
+    {
       "suite": "fullstack-rust",
       "stack": "fullstack-rust",
       "layout": "monorepo",

@@ -234,8 +234,8 @@ export function driveGreetCli(binary: string, cwd: string): void {
  *
  * The unit boots with `PORT=0` and `OTEL_SDK_DISABLED=true`, and `env`
  * is laid over that: a product's backend takes `GO_ENV=dev`, which
- * turns on its dev-only CORS accommodation, and `fullstack-go` turns
- * OpenTelemetry back on.
+ * turns on its dev-only CORS accommodation, and the Go products' suites
+ * turn OpenTelemetry back on.
  */
 export async function withHttpUnit(
   binary: string,
