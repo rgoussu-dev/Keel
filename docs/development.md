@@ -183,8 +183,9 @@ src/
                           # install, actions, docs-index,
                           # hook-settings), composition adapters/ +
                           # verticals/, the stack presets as data
-                          # (stack-presets.json) + the schema and id
-                          # resolution over them (stacks.ts),
+                          # (stack-presets.json, a table that
+                          # stack-table.ts expands) + the schema and
+                          # id resolution over them (stacks.ts),
                           # handlers/, registry.ts (registryOf + the
                           # shipped source, and every refusal naming
                           # its origin), RegistryMediator
@@ -1062,9 +1063,13 @@ the operator's machine would report it as a harness finding.
 
 ## Adding surface
 
-- **A stack** is an entry in
+- **A stack** is a cell of the table in
   [`src/domain/core/stack-presets.json`](../src/domain/core/stack-presets.json)
-  — tags + vertical ids + the dials it offers. Add it to
+  — an entrypoint set a platform row takes, or a backend id in the
+  product rule; a new platform is a row, with its tags and the dials it
+  offers. A new backend in the product rule also needs its image in
+  `src/domain/core/adapters/product-compose.ts` and its run hint in the
+  product README template, both keyed by id for now. Add it to
   `tests/domain/core/stack-registry.golden.json` in the same change;
   that file is the frozen picture of what users see, and the guard
   beside it fails in `verify` when the two disagree.

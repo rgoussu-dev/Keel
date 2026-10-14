@@ -2360,6 +2360,22 @@ assets }` and its pieces are written against the ordinary
   - Groundwork for presets supplied from outside this repository
     (#117).
 
+- **No preset is written out any more: the stack registry is a
+  table.** Each platform — a language on a runtime and framework,
+  with the build systems it offers — is a row of
+  `src/domain/core/stack-presets.json`, and the entrypoint sets it
+  takes are its cells (`cli`, `http`, `cli+http`, `spa`); one rule
+  crosses those cells into products (`fullstack-go` is the `go-http`
+  backend's). `src/domain/core/stack-table.ts` expands it into the
+  preset document `stacks.ts` resolves, so a generated preset passes
+  every check a written one does, and refuses a typo in the table — a
+  key it does not know, an entrypoint word it does not define, a row
+  naming no platform, two services at one path — rather than expanding
+  it into the wrong presets. The 34 presets come out exactly as they were, ids, fields
+  and order, which the registry golden holds; the file went from 614
+  lines to about 200. Adding a stack is a cell, a platform a row, and
+  an id is permanent, since a product root records its services' ids.
+
 - **`keel add module` refuses the flat layout by declaration now, and
   the form greys the control out by the same sentence.** The rule that
   a bounded context needs the modulith layout was a branch in the

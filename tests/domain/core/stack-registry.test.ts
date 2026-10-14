@@ -16,8 +16,8 @@
  * introduces — one preset's list quietly reordered, one dial
  * dropped — is precisely the kind a sample misses.
  *
- * Beside it, the guards on the data file itself: that every preset in
- * it resolves and none is quietly dropped, that a reference resolves
+ * Beside it, the guards on what the table expands into: that every
+ * preset it generates resolves and none is quietly dropped, that a reference resolves
  * to the registered object rather than a copy of it, and that a
  * composite names a stack that exists and does not nest. Then the
  * resolver's own two failure modes, which are deliberately different
@@ -36,7 +36,8 @@ import { getModuleLayoutOption } from '../../../src/domain/core/adapters/module-
 import { getDeclaredVertical } from '../../../src/domain/core/verticals/index.js';
 import { describeStacks, type StackShape } from '../../support/stack-registry.js';
 import golden from './stack-registry.golden.json' with { type: 'json' };
-import presetDocument from '../../../src/domain/core/stack-presets.json' with { type: 'json' };
+import stackTable from '../../../src/domain/core/stack-presets.json' with { type: 'json' };
+import { expandStackTable } from '../../../src/domain/core/stack-table.js';
 
 const expected = golden.stacks as readonly StackShape[];
 
@@ -53,15 +54,17 @@ describe('the resolved stack registry', () => {
 });
 
 describe('resolving the preset data', () => {
-  it('resolves every preset in the file, in the order it is written', () => {
-    expect(Object.keys(STACKS)).toEqual(presetDocument.presets.map((preset) => preset.id));
+  it('resolves every preset the table generates, in the order it generates them', () => {
+    expect(Object.keys(STACKS)).toEqual(
+      expandStackTable(stackTable).presets.map((preset) => preset.id),
+    );
   });
 
   it('reports no problem against the registries this build carries', () => {
     // The load in stacks.ts throws on a problem, so a red here is the
     // readable version of a crash every other suite would show as an
     // import failure.
-    expect(resolveStackPresets(presetDocument).problems).toEqual([]);
+    expect(resolveStackPresets(expandStackTable(stackTable)).problems).toEqual([]);
   });
 
   it('resolves each reference to the registered object itself, not a copy', () => {

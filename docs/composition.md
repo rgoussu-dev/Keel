@@ -330,10 +330,19 @@ the REST shape.
 Nothing in a preset is code — `tags` and `projects` are strings, and
 every other field references something registered under an id — so the
 presets are **data**, in
-[`src/domain/core/stack-presets.json`](../src/domain/core/stack-presets.json).
-Adding a stack is an entry there.
+[`src/domain/core/stack-presets.json`](../src/domain/core/stack-presets.json)
+— and no preset is written out there. The file is a table: each
+platform (a language on a runtime and framework, with the build
+systems it offers) by the entrypoint sets it takes, and a rule that
+crosses those cells into products. `quarkus-cli-rest` is the Quarkus
+Java row's `cli+http` cell; `fullstack-go` is the product rule's
+`go-http` backend. Adding a stack is a cell there, a platform a row;
+a product's new backend also needs its image and run hint, which the
+product glue keys by id for now.
+[`src/domain/core/stack-table.ts`](../src/domain/core/stack-table.ts)
+expands the table into a preset document, and
 [`src/domain/core/stacks.ts`](../src/domain/core/stacks.ts) holds the
-zod schema that file must satisfy, resolves each id against the
+zod schema that document must satisfy, resolves each id against the
 vertical / build-system / module-layout registries at load, and is
 where the resolved `Stack` type lives. A malformed document throws; a
 preset naming a piece this build does not carry is dropped with a

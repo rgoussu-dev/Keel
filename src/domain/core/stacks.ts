@@ -12,11 +12,14 @@
  * `tags` and `projects` are strings, and every other field is a
  * reference to something registered under an id — a vertical, a build
  * system, a module layout, a sibling stack. So they live in
- * `stack-presets.json` beside this module, and this module is the
- * schema that governs that file, the resolution of its references
- * against the registries, and the `Stack` type as the resolved
- * in-memory shape. Adding a stack is an edit to the data file; see
- * its header.
+ * `stack-presets.json` beside this module — not written out one by
+ * one, but as a platform × entrypoint table and a rule crossing its
+ * cells into products, which `./stack-table.ts` expands into the
+ * preset document this module resolves. This module is the schema
+ * that document satisfies, the resolution of its references against
+ * the registries, and the `Stack` type as the resolved in-memory
+ * shape. Adding a stack is a row or a cell of the table; see its
+ * header.
  *
  * The data is a JSON **module import**, not a file read, and that is
  * the whole reason it sits under `src/` rather than in `assets/`.
@@ -41,7 +44,8 @@
  */
 
 import { z } from 'zod';
-import presetDocument from './stack-presets.json' with { type: 'json' };
+import stackTable from './stack-presets.json' with { type: 'json' };
+import { expandStackTable } from './stack-table.js';
 import { getDeclaredVertical } from './verticals/index.js';
 import { getModuleLayoutOption } from './adapters/module-layout.js';
 import { assemblyRefusal } from './compatibility.js';
@@ -115,17 +119,18 @@ export function getBuildSystem(id: string): BuildSystemOption | null {
 }
 
 /**
- * The wire shape of one preset in `stack-presets.json`, and the zod
+ * The wire shape of one preset in a preset document, and the zod
  * schema that governs it.
  *
  * Validated the way `domain/contract/manifest.ts` validates a
- * manifest, and for the same reason: this is a **boundary**. The file
- * beside this module happens to be ours, but the shape it has to
- * satisfy is the shape a preset arriving from outside this repository
- * will have to satisfy too (roadmap #117), and a hand-rolled cast
- * over a third party's JSON is how a typo becomes an
- * `undefined is not iterable` three layers down. One schema serves
- * both, and it is the published contract for a preset author.
+ * manifest, and for the same reason: this is a **boundary**. keel's
+ * own document is the one `./stack-table.ts` generates from
+ * `stack-presets.json`, but the shape it has to satisfy is the shape a
+ * preset arriving from outside this repository will have to satisfy
+ * too (roadmap #117), and a hand-rolled cast over a third party's
+ * JSON is how a typo becomes an `undefined is not iterable` three
+ * layers down. One schema serves both, and it is the published
+ * contract for a preset author.
  */
 const ConflictDataSchema = z.object({
   id: z.string().min(1),
@@ -164,7 +169,7 @@ export const StackPresetsSchema = z.object({
   presets: z.array(StackPresetSchema),
 });
 
-/** One preset as it is written down, before its references resolve. */
+/** One preset as a preset document gives it, before its references resolve. */
 export type StackPreset = z.infer<typeof StackPresetSchema>;
 
 /** The reference lists a preset can name something unregistered in. */
@@ -324,9 +329,11 @@ function resolveConflict(conflict: z.infer<typeof ConflictDataSchema>): Conflict
  * The registry, resolved from `stack-presets.json` at load.
  *
  * The presets are data, and this is where they become objects. Order
- * is the document's — `Object.values(STACKS)` yields presets in the
- * order they are written, which only the registry golden records:
- * every menu reads an id-sorted view (`listStackIds`,
+ * is the expansion's — `Object.values(STACKS)` yields presets in the
+ * order `expandStackTable` generates them. The registry golden
+ * records it, and converge reads it, taking a service's given
+ * verticals from the first registered product with a service on its
+ * preset; every menu reads an id-sorted view (`listStackIds`,
  * `assemblableStacks`, the wizard's `wizardPaths`).
  *
  * A problem here is a defect in this repository rather than a missing
@@ -336,7 +343,7 @@ function resolveConflict(conflict: z.infer<typeof ConflictDataSchema>): Conflict
  * `tests/domain/core/stack-registry.test.ts` catches it in `verify`
  * first.
  */
-const RESOLVED = resolveStackPresets(presetDocument);
+const RESOLVED = resolveStackPresets(expandStackTable(stackTable));
 
 if (RESOLVED.problems.length > 0) {
   throw new Error(

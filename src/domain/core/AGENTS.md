@@ -5,7 +5,8 @@
 What lives here: the engine (`predicate`, `resolver`, `refusals`,
 `nearest-id`, `compatibility`, `planner`, `plan-refusal`, `scope`, `add-readiness`, `profile`, `growth`, `contexts`, `converge`, `converge-run`, `dials`, `answers`,
 `supplied-answers`, `apply`, `install`, `actions`, `docs-index`, `hook-settings`, `rank`), the composition
-`adapters/` and `verticals/`, the stack presets as data (`stack-presets.json`) with
+`adapters/` and `verticals/`, the stack presets as data (`stack-presets.json`, a
+platform × entrypoint table `stack-table.ts` expands) with
 the schema and id resolution over them (`stacks.ts`), `handlers/` (new-project,
 add-vertical, docs-sync, docs-check), `registry.ts` (`registryOf` and
 the shipped source, every refusal naming its origin) and
@@ -479,15 +480,22 @@ manifest, then each scope's deferred actions.
 
 **The stack presets are data.** `stack-presets.json`, because nothing in
 a `Stack` is code — `tags` and `projects` are strings and every other
-field names something registered under an id. `stacks.ts` holds the zod
-schema for that file, resolves the ids against the registries at load,
-and keeps `Stack` as the resolved in-memory shape. It is a JSON _module
+field names something registered under an id. It writes no preset out:
+it is a table, platforms × the entrypoint sets each takes, and a rule
+crossing those cells into products, and `stack-table.ts` expands it
+into the preset document `stacks.ts` resolves — the one a preset from
+outside the repository would be — so a generated preset passes every
+check a written one does. `stacks.ts` holds the zod schema for that
+document, resolves the ids against the registries at load, and keeps
+`Stack` as the resolved in-memory shape. An id is permanent: a product
+root records its services' ids, so a table edit may add a cell, never
+rename one. The file is a JSON _module
 import_ rather than a file read: `getStack`/`listStacks` are synchronous
 everywhere, so the registry has to resolve at load, and a module import
 gets that without `node:fs` or a port in the domain.
 `tests/domain/core/stack-registry.golden.json` freezes what the registry
 projects onto, the way `version-pins.json` and its test do one level up —
-edit a preset, edit the golden.
+edit a cell, edit the golden.
 
 **Refusals are data, worded once.** A refusal of a vertical or a file is
 a `RefusalError` (`domain/contract/refusal.ts`), and `refusals.ts` is the

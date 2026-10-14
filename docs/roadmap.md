@@ -12298,7 +12298,7 @@ not a string (undefined)_.
 - **Docs:** `docs/plugins.md` gains the two refusals' rows and that
   paragraph, and `Stack.id`, which plugins write against, its TSDoc.
 
-#### T.1c — The presets generated from a platform × entrypoint table (M)
+#### T.1c — The presets generated from a platform × entrypoint table (M) ✅
 
 `src/domain/core/stack-presets.json` becomes a table, about 200 lines
 where there are 614, and a new pure module, `stack-table.ts`, expands
@@ -12332,6 +12332,54 @@ generated preset passes exactly the validation a written one does.
   `stacks.ts`'s note, `src/domain/core/AGENTS.md`,
   `docs/composition.md`, `docs/development.md`, `CONTRIBUTING.md`,
   and a CHANGELOG _Changed_ entry beside "The stack registry is data".
+
+**Landed as the table alone**, in one commit. `stack-presets.json`
+holds 212 lines where it held 614: its header, the 3 entrypoints, the
+`singles` every cell shares, 10 platform rows with 28 cells among
+them, and one product rule crossing 6 backends with `web-components`.
+`stack-table.ts` (287 lines) validates the table against
+`StackTableSchema` and expands it into the preset document
+`resolveStackPresets` already took; `stacks.ts` resolves the expansion
+where it resolved the file. The expansion runs once, at load, in 4.2
+to 5.7 ms (zod's first parse included; 0.2 to 0.3 ms warm).
+
+- **Nothing moves.** The registry golden holds the 34 presets field
+  for field and in order, and `paths-new` holds its 717 cells, none
+  moved. The order rule needs no list: rows whose tags other than
+  `lang.*` are the same set are grouped, and within a group
+  one-entrypoint cells come first, which is today's order exactly.
+- **A typo is refused, not expanded.** A key the schema does not
+  know, at any level; a word the table does not define where an
+  entrypoint is meant (a cell key, a row's `words`, a vertical's
+  `with`); a cell key out of order; a row with no tag but its
+  language's; a product rule with two services at one path, a
+  `{<path>}` none of its services is at, or an id with an empty word;
+  and a product naming a stack that is no cell of the table, a product
+  among them, each throw at load, naming the file and, for a schema
+  refusal, each issue's path.
+  Each would otherwise expand quietly into the wrong presets, for the
+  goldens to notice. A row overriding the module layouts was dropped:
+  no row needs it.
+- **`stack-table.test.ts`** (18 cases, on tables small enough to
+  read) holds what a cell takes from its row, its entrypoints and the
+  table; a `with` vertical going only where its entrypoint is; the
+  order, tags read as a set; the product rule crossing two services of
+  two and three stacks, first service outermost, and its naming; each
+  refusal; and the shipped table's entrypoints against the finder's
+  `ENTRYPOINTS`. `stack-registry.test.ts` reads the expansion where it
+  read the file.
+- **What it adds to `CI=true pnpm test`:** one file of 18 cases, 32 ms.
+  The run (381.4 s, 203 files, 3,418 tests) passed whole, the growth
+  axis in 154.2 s of its 180.
+- **Docs:** the table's header, written anew. It says what reads the
+  order (the golden, and converge's `givenOf` and `serviceGiving`),
+  the row's dials, and that a product's new backend needs its image
+  and run hint, keyed by id until T.3c, which rewrites that sentence.
+  Also the preset-schema and `STACKS` notes in `stacks.ts`,
+  `contract/stack.ts`, `src/domain/core/AGENTS.md`,
+  `docs/composition.md`, `docs/development.md` and `CONTRIBUTING.md`,
+  which told a contributor to write a preset out, and a CHANGELOG
+  _Changed_ entry after "The stack registry is data".
 
 #### T.1d — A facet spelling names its preset (M)
 
@@ -12723,9 +12771,11 @@ picked them from tables of preset ids.
   and reads containerization as _provided_. The `composite-scope`
   fixture that relied on keel's glue skipping `spring-rest-kotlin`
   declares a glue of its own.
-- **Docs:** `docs/plugins.md`, `docs/verticals/fullstack.md`, and
-  CHANGELOG _Changed_ (keel's glue serves any stack tagged like a
-  family it builds).
+- **Docs:** `docs/plugins.md`, `docs/verticals/fullstack.md`, the
+  sentences T.1c wrote on a product's new backend needing its image
+  and run hint by id (the table's header, `docs/development.md`,
+  `docs/composition.md`), and CHANGELOG _Changed_ (keel's glue serves
+  any stack tagged like a family it builds).
 
 #### T.3d — The weekly sweep, split by family (S)
 

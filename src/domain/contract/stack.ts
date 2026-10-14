@@ -10,7 +10,8 @@
  * have, they spare the user from naming every tag and vertical by
  * hand.
  *
- * These are **types only**; the presets keel ships live in
+ * These are **types only**; the presets keel ships are generated from
+ * the table in `domain/core/stack-presets.json` and resolved by
  * `domain/core/stacks.ts`. They sit in the contract because the
  * {@link Registry} port (`./ports/registry.ts`) names them, and a
  * port may not reach into `domain/core` — which is the same reason
@@ -103,8 +104,10 @@ export interface Stack {
   readonly verticals: readonly Vertical[];
   /**
    * Peer tags this stack projects onto sibling services when composed
-   * into a product (e.g. `peer.api.rest` for a REST backend). Declared
-   * explicitly — never derived — so the tag vocabulary stays greppable.
+   * into a product (e.g. `peer.api.rest` for a REST backend). Never
+   * inferred from the stack's tags: keel's presets take them from their
+   * entrypoints' rows in `stack-presets.json`, where each peer tag is
+   * written once, so the tag vocabulary stays greppable.
    */
   readonly projects?: readonly Tag[];
   /** Present on composite stacks: the services to scaffold. */
