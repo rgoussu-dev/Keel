@@ -19,11 +19,12 @@
  */
 
 import fs from 'fs-extra';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
 import {
   cargoRun,
   debugBin,
   driveGreetCli,
+  driveGreetContract,
   E2E_TIMEOUT_MS,
   mkTempDir,
   scaffold,
@@ -84,30 +85,7 @@ describe.skipIf(skipRustE2E)('walking-skeleton Rust e2e', () => {
           cwd: project.root,
           env: { ...process.env, PORT: '0', OTEL_SDK_DISABLED: 'true' },
         },
-        async (base) => {
-          const ok = await fetch(`${base}/greet?name=E2E`);
-          expect(ok.status).toBe(200);
-          expect(await ok.json()).toEqual({ greeting: 'Hello, E2E!' });
-
-          const defaulted = await fetch(`${base}/greet`);
-          expect(defaulted.status).toBe(200);
-          expect(await defaulted.json()).toEqual({ greeting: 'Hello, world!' });
-
-          const rejected = await fetch(`${base}/greet?name=`);
-          expect(rejected.status).toBe(400);
-          expect(rejected.headers.get('content-type')).toBe('application/problem+json');
-
-          // Observability seam: both probes answer, and the correlation
-          // id round-trips (echoed when supplied, minted when absent).
-          expect((await fetch(`${base}/health/live`)).status).toBe(200);
-          expect((await fetch(`${base}/health/ready`)).status).toBe(200);
-          const correlated = await fetch(`${base}/greet?name=E2E`, {
-            headers: { 'X-Correlation-Id': 'corr-e2e' },
-          });
-          expect(correlated.headers.get('x-correlation-id')).toBe('corr-e2e');
-          const minted = await fetch(`${base}/greet?name=E2E`);
-          expect(minted.headers.get('x-correlation-id')).toBeTruthy();
-        },
+        driveGreetContract,
       );
     },
     E2E_TIMEOUT_MS,

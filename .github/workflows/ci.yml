@@ -445,7 +445,7 @@ jobs:
               tests/e2e/modulith-go-peer-context.test.ts
               tests/e2e/add-module-go.test.ts
               tests/e2e/fullstack-go.test.ts
-          # Six files, one shard — and unlike every earlier revision
+          # Eight files, one shard — and unlike every earlier revision
           # of this comment, that is now a choice with a cost rather
           # than a free one.
           #
@@ -458,7 +458,7 @@ jobs:
           #
           # How much, nobody has measured, and the honest bound
           # matters: that file's cost is a *contended* one — it shares
-          # the runner's cores with five others for much of its life,
+          # the runner's cores with the others for much of its life,
           # and run alone it would be faster, so a split lands this
           # job well short of what "max of the two halves" suggests.
           # Kept as one shard until someone measures the uncontended
@@ -478,10 +478,20 @@ jobs:
           # way. On a machine where no daemon answers, the emitted
           # test returns early and `cargo test` still compiles every
           # crate, which is what the cell exists to prove.
+          #
+          # `combo-basic-rust-cli-http` (roadmap T.4c) rides here, not
+          # in a combo shard: it needs cargo and nothing else, as every
+          # file here does, and one cell would not earn a shard of its
+          # own. It is `walking-skeleton-rust` retargeted at the combo
+          # stack: one package, two binaries, the same cold axum
+          # compile in a `CARGO_HOME` of its own. It runs beside the
+          # persistence file rather than after it (inference); the
+          # shard's time on a PR's run is what says so.
           - id: rust
             tools: cargo
             files: >-
               tests/e2e/walking-skeleton-rust.test.ts
+              tests/e2e/combo-basic-rust-cli-http.test.ts
               tests/e2e/fullstack-rust.test.ts
               tests/e2e/modulith-rust-cli.test.ts
               tests/e2e/modulith-rust-http.test.ts

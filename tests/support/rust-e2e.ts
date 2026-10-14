@@ -231,6 +231,35 @@ export function driveGreetCli(bin: string, cwd: string): void {
   expect(rejected.stderr).toContain('name must not be empty');
 }
 
+/**
+ * Drives a booted HTTP binary at `base` through the `/greet` wire
+ * contract: a named and a defaulted greeting, the RFC 9457 rejection,
+ * both health probes, and the correlation id echoed when supplied and
+ * minted when absent.
+ */
+export async function driveGreetContract(base: string): Promise<void> {
+  const ok = await fetch(`${base}/greet?name=E2E`);
+  expect(ok.status).toBe(200);
+  expect(await ok.json()).toEqual({ greeting: 'Hello, E2E!' });
+
+  const defaulted = await fetch(`${base}/greet`);
+  expect(defaulted.status).toBe(200);
+  expect(await defaulted.json()).toEqual({ greeting: 'Hello, world!' });
+
+  const rejected = await fetch(`${base}/greet?name=`);
+  expect(rejected.status).toBe(400);
+  expect(rejected.headers.get('content-type')).toBe('application/problem+json');
+
+  expect((await fetch(`${base}/health/live`)).status).toBe(200);
+  expect((await fetch(`${base}/health/ready`)).status).toBe(200);
+  const correlated = await fetch(`${base}/greet?name=E2E`, {
+    headers: { 'X-Correlation-Id': 'corr-e2e' },
+  });
+  expect(correlated.headers.get('x-correlation-id')).toBe('corr-e2e');
+  const minted = await fetch(`${base}/greet?name=E2E`);
+  expect(minted.headers.get('x-correlation-id')).toBeTruthy();
+}
+
 /** How long to wait for a booted binary to announce its port. */
 const BOOT_TIMEOUT_MS = 15_000;
 

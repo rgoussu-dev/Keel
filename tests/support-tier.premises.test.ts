@@ -151,7 +151,7 @@ describe('the support tier premises', () => {
     }
   }, SWEEP_TIMEOUT);
 
-  it('reads the shipped tier as measured: 82 cells first-class each way, 2 products', () => {
+  it('reads the shipped tier as measured: 83 cells first-class each way, 2 products', () => {
     // The figures T.2b recorded, the products' as T.3f's twelve took
     // them from 40 cells to 128; a rule that stopped reading a dial
     // (the peer context, the stack) would move them before any page did.
@@ -186,10 +186,10 @@ describe('the support tier premises', () => {
       count(`product ${support?.tier} ${support?.unbuilt.length}`);
     }
     expect(Object.fromEntries([...tally].sort())).toEqual({
-      'off best-effort': 68,
-      'off harness-twin': 82,
-      'on best-effort': 68,
-      'on suite': 82,
+      'off best-effort': 67,
+      'off harness-twin': 83,
+      'on best-effort': 67,
+      'on suite': 83,
       'product best-effort 1': 32,
       'product best-effort 2': 94,
       'product first-class 0': 2,

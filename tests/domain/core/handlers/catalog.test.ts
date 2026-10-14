@@ -367,7 +367,7 @@ describe('keel.catalog — the tier of each leaf (T.2e)', () => {
     agentHarness: true,
   };
 
-  it('marks the 21 presets best-effort at their default setting, as keel ships them', async () => {
+  it('marks the 20 presets best-effort at their default setting, as keel ships them', async () => {
     const shipped = await tiers(shippedSupport);
     expect(
       Object.entries(shipped)
@@ -393,11 +393,10 @@ describe('keel.catalog — the tier of each leaf (T.2e)', () => {
       'fullstack-ts-cli',
       'micronaut-cli-rest-kotlin',
       'quarkus-cli-rest-kotlin',
-      'rust-cli-http',
       'spring-cli-rest',
       'ts-cli-http',
     ]);
-    expect(Object.values(shipped).filter((tier) => tier === 'first-class')).toHaveLength(25);
+    expect(Object.values(shipped).filter((tier) => tier === 'first-class')).toHaveLength(26);
   });
 
   it('reads the facts it is handed, not keel’s', async () => {

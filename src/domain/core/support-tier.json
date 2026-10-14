@@ -678,6 +678,14 @@
       "moduleLayout": "basic",
       "peerContext": false,
       "agentHarness": true
+    },
+    {
+      "suite": "combo-basic-rust-cli-http",
+      "stack": "rust-cli-http",
+      "buildSystem": null,
+      "moduleLayout": "basic",
+      "peerContext": false,
+      "agentHarness": true
     }
   ],
   "products": [

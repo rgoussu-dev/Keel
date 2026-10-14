@@ -61,7 +61,6 @@ describe('keel new --list', () => {
       'fullstack-ts-cli',
       'micronaut-cli-rest-kotlin',
       'quarkus-cli-rest-kotlin',
-      'rust-cli-http',
       'spring-cli-rest',
       'ts-cli-http',
     ]);

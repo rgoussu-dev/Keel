@@ -14260,7 +14260,7 @@ run of 68.9 s whose longest file was `modulith-go-http` at 62.3 s; the
 two persistence files did not run, the local Docker daemon not
 answering. The four browser suites passed 47 tests.
 
-#### T.4c — `rust-cli-http` built (S)
+#### T.4c — `rust-cli-http` built (S) ✅
 
 `combo-basic-rust-cli-http.test.ts`, in the `rust` shard, the same
 shape as T.4b on Rust's walking skeleton. It takes 75 to 110 s on CI
@@ -14273,6 +14273,49 @@ _(inference)_, and the `rust` shard goes from about 164 s to about
 - **Docs:** CHANGELOG _Changed_: `rust-cli-http` reads first-class at
   its default setting.
 - Its Landed paragraph gives the shard's time from the PR's e2e run.
+
+**Landed as one suite and its row**, in one commit.
+`combo-basic-rust-cli-http.test.ts` (92 lines) scaffolds
+`rust-cli-http` on its default dials (`--module-layout basic`) through
+rust-e2e's `scaffold`, in a `CARGO_HOME` of its own. It checks the
+harness docs and that the root `Cargo.toml` is one package naming both
+binaries, each registered once, runs `cargo test` and `cargo build`
+once, greets through the CLI binary with `driveGreetCli`, and boots the
+server binary to drive `driveGreetContract`: a name, the default, the
+400 problem+json, both health probes, and the correlation id echoed
+and minted. That drive is lifted from `walking-skeleton-rust`, which
+spelled it out inline, into `rust-e2e.ts` beside `driveGreetCli`, so
+the two suites assert one wire, as Go's walking skeleton and combo
+do. `modulith-rust-http` keeps its narrower inline drive.
+
+- **Its row** in `support-tier.json`, `singles`: the single-service
+  tally goes to 83 first-class and 67 best-effort, each way. 20
+  presets are now best-effort at their default, and `keel new --list`
+  marks 20.
+- **The tests the row moves:** `new-list`'s and `catalog`'s lists of
+  marked presets drop `rust-cli-http`, `catalog` counts 26
+  first-class, and `support-tier.premises` re-reads its tally. No test
+  used `rust-cli-http` as its best-effort example.
+- **`ci.yml`:** the file joins `rust`, whose comment counted six files
+  of seven and now counts eight, with a paragraph on why it rides
+  there; the persistence paragraph no longer counts the files it
+  shares the cores with.
+- **`tests/e2e/AGENTS.md`:** the combo grid has 23 cells, the `basic`
+  half samples 9, and the paragraph on Go's cell now covers Rust's:
+  its family's shard, its family's drives, and the one-package check
+  in place of the module registration. `docs/development.md` says the
+  same.
+- **Generated regions:** both `stack-matrix` copies drop
+  `rust-cli-http`'s ◻, and its `support-tiers` row reads ✅
+  `combo-basic-rust-cli-http` at `basic`.
+- **CHANGELOG** _Changed_, and the two unreleased tier entries: 83 of
+  150 settings first-class, 20 presets marked.
+
+**Measured locally**, not on CI: there is no PR, so the `rust`
+shard's time waits for one. The suite alone took 48.0 and 48.3 s from
+a cold `CARGO_HOME`, at a load near 3, and 38.3 s in this commit's
+run; after the drive was lifted, 64.0 s beside `walking-skeleton-rust`
+(64.2 s, two tests), both green.
 
 #### T.4d — `fullstack-ts` built (S)
 

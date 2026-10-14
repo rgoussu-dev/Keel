@@ -391,11 +391,11 @@ plus `ts-cli-http` × npm and pnpm), `basic` is sampled at one build
 per stack. The asymmetry is not laziness — `basic` shipped with its
 whole half built by hand, `modulith` shipped with none of it built at
 all, and the modulith cells re-exercise the shared seed builders on
-every run anyway. Go's one cell, `basic` `go-cli-http`, rides the `go`
-shard on its shared Go home instead. Shards follow the
-`jvm-modulith-*` convention rather than the job-per-cell one above: a
-combo cell builds two assemblies, and three per shard still finish
-inside the matrix floor, so they cost no wall clock.
+every run anyway. Go's and Rust's one cell each, `basic` `go-cli-http`
+and `rust-cli-http`, ride the `go` and `rust` shards instead. Shards
+follow the `jvm-modulith-*` convention rather than the job-per-cell
+one above: a combo cell builds two assemblies, and three per shard
+still finish inside the matrix floor, so they cost no wall clock.
 
 Language is an axis on the modulith half only, and the grid is what
 made it one. A shard that runs nothing is worse than no shard, since

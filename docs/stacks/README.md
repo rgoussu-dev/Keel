@@ -24,7 +24,7 @@ they spare you naming every tag and vertical by hand, nothing more.
 | **Java · Micronaut 4** ([docs](jvm.md))                     | `micronaut-cli`        | `micronaut-rest`        | `micronaut-cli-rest`          | —                | `fullstack-micronaut` ◻        | `fullstack-micronaut-cli` ◻        |
 | **Kotlin · Micronaut 4** ([docs](jvm.md))                   | `micronaut-cli-kotlin` | `micronaut-rest-kotlin` | `micronaut-cli-rest-kotlin` ◻ | —                | `fullstack-micronaut-kotlin` ◻ | `fullstack-micronaut-cli-kotlin` ◻ |
 | **Go · stdlib** ([docs](go.md))                             | `go-cli`               | `go-http`               | `go-cli-http`                 | —                | `fullstack-go`                 | `fullstack-go-cli` ◻               |
-| **Rust · stdlib / axum** ([docs](rust.md))                  | `rust-cli`             | `rust-http`             | `rust-cli-http` ◻             | —                | `fullstack-rust`               | `fullstack-rust-cli` ◻             |
+| **Rust · stdlib / axum** ([docs](rust.md))                  | `rust-cli`             | `rust-http`             | `rust-cli-http`               | —                | `fullstack-rust`               | `fullstack-rust-cli` ◻             |
 | **TypeScript · Node** ([docs](ts-http.md))                  | `ts-cli`               | `ts-http`               | `ts-cli-http` ◻               | —                | `fullstack-ts` ◻               | `fullstack-ts-cli` ◻               |
 | **TypeScript · web components** ([docs](web-components.md)) | —                      | —                       | —                             | `web-components` | —                              | —                                  |
 
@@ -146,7 +146,7 @@ for keel's presets.
 | `quarkus-rest-kotlin`       | `gradle`     | ✅ `walking-skeleton-kotlin`                     | ◻ `add-module-quarkus-rest-kotlin-gradle`   | ✅ `modulith-quarkus-rest-kotlin-gradle`             |
 | `quarkus-rest-kotlin`       | `maven`      | ◻                                                | ◻ `add-module-quarkus-rest-kotlin-maven`    | ✅ `modulith-quarkus-rest-kotlin-maven`              |
 | `rust-cli`                  | —            | ✅ `walking-skeleton-rust`                       | ✅ `modulith-rust-cli`                      | ✅ `modulith-rust-peer-context`                      |
-| `rust-cli-http`             | —            | ◻                                                | ◻                                           | ◻                                                    |
+| `rust-cli-http`             | —            | ✅ `combo-basic-rust-cli-http`                   | ◻                                           | ◻                                                    |
 | `rust-http`                 | —            | ✅ `walking-skeleton-rust`                       | ✅ `modulith-rust-http`                     | ◻                                                    |
 | `spring-cli`                | `gradle`     | ✅ `walking-skeleton-spring-cli`                 | ◻ `add-module-spring-cli-gradle`            | ✅ `modulith-spring-cli-gradle`                      |
 | `spring-cli`                | `maven`      | ◻                                                | ◻ `add-module-spring-cli-maven`             | ✅ `modulith-spring-cli-maven`                       |
