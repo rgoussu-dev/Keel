@@ -321,7 +321,7 @@ composite about 11 to 15 s alone and 13 to 18 s in the full suite
 preset's opening dials only, each extra alone and the whole menu, and
 its growth axis every dial setting with no extras, because `verify`
 has to stay fast. What that leaves out is `sweep/`: three opt-in
-suites over `support/composition-sweep.ts`, self-skipping unless
+suites in six files over `support/composition-sweep.ts`, self-skipping unless
 `KEEL_RUN_SWEEP=1`, run weekly by
 `.github/workflows/composition-sweep.yml` and never on a PR. They
 sweep every dial setting `keel.dials` offers. The settings come
@@ -335,7 +335,20 @@ again with the agent harness left out wherever that is allowed.
   to a preview, which must be Ok, and to a dry-run install, which must
   stage the same changes (I1, I2, I9). It is also named backwards, in
   every order for up to three extras, and in every order its boxes can
-  be ticked in for up to three boxes (I8).
+  be ticked in for up to three boxes (I8). It is four of the six
+  files: one per JVM framework, and one for every other family, since a file runs in one worker and the
+  products' sets are most of the lane: `extras.quarkus.test.ts`,
+  `extras.spring.test.ts` and `extras.micronaut.test.ts` each take one
+  framework's presets and the products whose backend is one of them,
+  and `extras.test.ts` every preset whose family has no file. A
+  preset's family is its `framework.` tag's word, else its `lang.`
+  tag's, and a product's is its backend's (`sweepFamilyOf`). Each file
+  is a header and one call to `support/extras-sweep.ts`, which reads
+  its family off its name. The directory is the list: a new platform
+  falls into `extras.test.ts` with no edit, and a file
+  `extras.<family>.test.ts` gives its family a file of its own, which
+  CI's three vitest workers take in turn alongside `arrival` and
+  `choices`, not a worker of its own.
 - `arrival` installs every ordered pair of offered extras for real,
   once in one run and once in two runs (`keel new --with x`, then
   `keel add y` with the `--refresh` its preview proposes), and each
@@ -360,7 +373,11 @@ that reproduces each one listed underneath; a dispatch that throws or
 refuses, `keel.dials` on a setting included, is a finding, never the
 end of the preset — all but the blank preview a product's repository
 layouts are read from, which the composite grid holds in `verify`.
-`KEEL_SWEEP_STACKS=go-http,ts-cli` narrows a run. What a full run
+`KEEL_SWEEP_STACKS=go-http,ts-cli` narrows a run, and a run that
+includes `extras.test.ts`, `arrival` or `choices` fails on an id the
+catalog lacks. A family file such as `extras.spring.test.ts` run alone
+does not check the filter: narrowed to none of its family, it passes
+having swept nothing. What a full run
 costs, and how to read one, is in `docs/development.md` → The
 composition sweep. `sweep/machinery.test.ts` is the one file there
 that is not opted in. It holds the lane's helpers in `verify` (the
@@ -368,9 +385,13 @@ settings walked, a setting `keel.dials` refuses, the powerset and its
 cap, a tick and its closure, a product's ticks and keys per service,
 its two spellings, the read-back of what a dispatch staged, both
 comparisons, the report), so a helper that rots shows on a PR rather
-than as a weekly run that swept nothing. The skipped suites read
-nothing when they are collected, but they still import the engine, a
-couple of seconds each.
+than as a weekly run that swept nothing. It holds the `extras` split
+there too: every preset in exactly one file, an `extras.test.ts` for
+the families with none, no family file empty, as one would be
+whose tag was renamed, and each share cut from the whole catalog
+before `KEEL_SWEEP_STACKS` narrows it (`sharedSweep`). That an empty
+share logs no totals line is held by an opted-in run alone. The skipped suites read nothing when they are
+collected, but they still import the engine, a couple of seconds each.
 
 Only I9 posts answers, and only one non-default choice per question —
 on each preset's opening dials, and on every dial setting of a grown

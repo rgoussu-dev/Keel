@@ -13606,7 +13606,7 @@ and the new `scope.test.ts` and `composite-scope.test.ts` cases, well
 under a second. The run (403.5 s, 212 files, 3,666 tests) passed
 whole, the growth axis in 151.1 s of its 180; no golden moved.
 
-#### T.3d — The weekly sweep, split by family (S)
+#### T.3d — The weekly sweep, split by family (S) ✅
 
 Test-only, no `src/` change. `extras` becomes four files, each a
 header and one call, over the body today's file holds
@@ -13620,7 +13620,9 @@ header and one call, over the body today's file holds
 
 A product's family is its backend's (`sweepFamilyOf`). The directory is the
 list: a new platform lands in `extras.test.ts` with no edit, and a
-file `extras.<family>.test.ts` gives its family a fork of its own.
+file `extras.<family>.test.ts` gives its family a file of its own,
+which CI's three vitest workers take in turn alongside `arrival` and
+`choices`.
 `machinery.test.ts` holds that the partition covers the catalog, once
 each, and that no family file is empty. `ci-workflow.test.ts` needs no
 edit, since it holds one `vitest run tests/sweep` step and lists no
@@ -13629,14 +13631,134 @@ file.
 - **Proof:** the four files' totals sum to today's single file's
   (above).
 - **Projected:** 22 to 32 minutes on today's 34 presets, against 29 to
-  48 measured _(inference)_.
+  48 measured _(inference)_. Six heavy files share CI's three vitest
+  workers, so the projection holds only if the families do not queue
+  long behind `arrival` and `choices`.
 - **Measuring it** needs the workflow dispatched on the branch, which
   is the user's call. The PR says so.
 
-`docs/development.md`, `.github/AGENTS.md` and the workflow's comments
-drop the single file's 57 minutes and 179,000 dispatches for the CI
-figures. `tests/AGENTS.md`'s three opt-in suites become six, and the
+`docs/development.md`, `.github/AGENTS.md`, the workflow's comments
+and the `[Unreleased]` CHANGELOG sweep entry drop the single file's 57 minutes and 179,000 dispatches for the CI
+figures. `tests/AGENTS.md` counts three opt-in suites in six files,
+and the
 note on `PRESET_TIMEOUT` in `composition-sweep.ts` is reworded.
+
+**Landed as tests alone**, in one commit with no `src/` change. The
+body of `extras.test.ts` moved, unchanged, to
+`tests/support/extras-sweep.ts`, behind `describeExtrasSweep`, which
+reads its family off the file's name. `extras.test.ts`,
+`extras.quarkus.test.ts`, `extras.spring.test.ts` and
+`extras.micronaut.test.ts` are each a header and that one call.
+`composition-sweep.ts` gains the split:
+
+- `sweepFamilyOf`: a preset's `framework.` word, else its `lang.`
+  word, and a product's first service's, looked up in the catalog it
+  is handed. It throws where that catalog lacks the service.
+- `familyOfFile` and `laneFamilies`: the families the lane's files
+  take, read off `tests/sweep/`.
+- `sweptBy`: a family file's presets, or, for `extras.test.ts`, every
+  preset whose family has no file.
+- `sharedSweep`: `sweptBy` over the whole catalog, then narrowed by
+  `KEEL_SWEEP_STACKS` (`sweptStacks` now takes the filter, defaulting
+  to it).
+
+Each file splits the whole catalog, then narrows its share by
+`KEEL_SWEEP_STACKS`. The research's prototype narrowed first, which
+would have swept `fullstack`, named alone, in `extras.test.ts`: its
+backend was not in the narrowed list. `machinery.test.ts` holds the order in
+`verify`: `fullstack` named alone is in the Quarkus file's share and
+no other, and narrowing first throws. A file whose share is empty logs
+no totals line, which only an opted-in run holds. The guard on
+`KEEL_SWEEP_STACKS` (an unknown id, or none) is declared in
+`extras.test.ts` alone, so a typo fails one `extras` test, not four.
+A family file run alone therefore does not check the filter: narrowed
+to none of its family, it passes having swept nothing, as
+`docs/development.md` and `tests/AGENTS.md` say beside the one-family
+example. Each family file holds a placeholder test instead, so a share
+a narrowed run empties is not a file with no test, which vitest fails.
+It reads each share preset's `framework.<family>` tag directly, or its
+backend's, rather than through `sweepFamilyOf`, so it is not the
+share's own filter run again; it guards little beyond that. A family's file logs its totals as
+`[sweep:extras.<family>] total`, and the per-preset lines stay
+`[sweep:extras] <id>`.
+
+**The proof.** The sweep's own loop, re-run with no dispatch but the
+dial walk (15.5 s), counts each file's share:
+
+| File                       | Presets | Settings | Subsets | Sets   | Dispatches |
+| -------------------------- | ------- | -------- | ------- | ------ | ---------- |
+| `extras.quarkus.test.ts`   | 7       | 80       | 19,808  | 6,080  | 29,476     |
+| `extras.spring.test.ts`    | 7       | 80       | 19,712  | 5,888  | 28,624     |
+| `extras.micronaut.test.ts` | 7       | 80       | 19,712  | 5,888  | 28,624     |
+| `extras.test.ts`           | 13      | 100      | 36,928  | 10,432 | 49,712     |
+| Sum                        | 34      | 340      | 96,160  | 28,288 | 136,436    |
+
+The sum is the single file's, as CI's three runs counted it: 28,288
+`keel.dials` reads, 79,740 previews with the 120 bare spellings, and
+28,408 dry-run installs. No setting is capped. Each JVM file takes its
+framework's six presets and its product. `extras.test.ts` takes
+`fullstack-go`, `fullstack-rust`, `fullstack-ts` and the ten Go, Rust,
+TypeScript and web-components presets.
+
+- **Opted in** with
+  `KEEL_SWEEP_STACKS=go-cli,quarkus-cli,spring-cli,micronaut-cli`, the
+  four files swept each family file's own preset, and `go-cli` in
+  `extras.test.ts`: 8 tests passed, 0 findings, in 42.7 s.
+- **Narrowed to `go-cli`**, `extras.quarkus.test.ts` passed its one
+  test and logged no totals line. `nope` still fails.
+- **After review**, with `KEEL_SWEEP_STACKS=go-cli,quarkus-cli`, the
+  four files passed 6 tests in 23.1 s, Spring and Micronaut each their
+  one placeholder test, and `nope` failed the guard once, in
+  `extras.test.ts`, the three family files passing.
+- **`vitest list`** with `fullstack,fullstack-go,spring-rest-kotlin`
+  files them under Quarkus, the remainder and Spring.
+
+**In `verify`**, `machinery.test.ts` gains three tests (12 to 15). One
+holds the split: it covers the catalog once each, `extras.test.ts` is
+there, and no family file is empty. Another reads the families of
+`quarkus-cli-rest-kotlin`, `go-http`, `fullstack` and `fullstack-ts`,
+a file's family off its name, and the throw. The third holds
+split-then-narrow (above). Tried and undone, an
+`extras.elixir.test.ts` fails the first, naming itself, and so does
+`extras.test.ts` moved away. `ci-workflow.test.ts` passed its 5 tests
+unchanged. The three new files self-skip, but each imports the engine
+when collected. Run alone at a load of about 30 on four cores,
+`vitest run tests/sweep` took 12.3 to 17.2 s of wall time against 8.4
+to 14.3 s before, and 22.6 to 31.6 s of collection against 15.0 to
+22.6 s. What that adds to `CI=true pnpm test` is a few seconds
+_(inference)_.
+
+**Not measured: the split's wall time.** It is projected at 22 to 32
+minutes on today's 34 presets _(inference)_, against 29.4 to 47.9
+measured as one file. A file is a worker's only while it runs: the
+lane is six heavy files and CI's runner has three vitest workers
+(`numCpus - 1` on four vCPUs, no worker flag in the workflow), so the
+four `extras` files take them in turn alongside `arrival` and
+`choices`. With no results cache, vitest also starts the largest files
+first, so the small `extras` wrappers queue behind `arrival` and
+`choices`. The projection assumes that queueing stays short; adding a
+worker flag would change CI's cost and is the user's call. Measuring it needs a `workflow_dispatch` of
+`composition-sweep` on the branch, which is the user's call. Nor is
+the baseline _The measure_ asks of this paragraph recorded: S's order
+comparison first runs on CI on the 2026-10-19 schedule. The
+workflow's only runs are still the three on `babae29`, each with 2 red
+tests (Q3.4's findings 2 and 3).
+
+**Docs:** `docs/development.md`'s _The composition sweep_ (the split,
+and CI's figures for all three suites in place of the 57 minutes and
+179,000 dispatches measured when the lane landed), `tests/AGENTS.md`
+(three opt-in suites in six files, the split, and what
+`machinery.test.ts` holds),
+`.github/AGENTS.md`, the workflow's comments, and the note on
+`PRESET_TIMEOUT`. No new CHANGELOG entry, since nothing a user sees
+moves, but the existing `[Unreleased]` sweep entry's figures were
+corrected: its 57 minutes and 179,000 dispatches became CI's first
+runs, 29 to 48 minutes on four vCPUs, and `extras`' 136,436
+dispatches, now in a file per family.
+
+**The full run, on T.3c:** `CI=true pnpm test` (377.6 s, 212 files,
+3,669 tests) passed whole, `machinery.test.ts`'s 15 tests in 1.2 s,
+the growth axis in 140.2 s of its 180.
 
 #### T.3e — Nearest-id reads run-together words (S)
 

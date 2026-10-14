@@ -628,7 +628,8 @@ peer context and, on a product, each repository layout and each
 service's build system, every one again with the agent harness left out
 where it may be. The settings are walked from the replies
 (`tests/support/dial-walk.ts`, the walk the `keel ui` API test makes
-too), never listed. Three suites, each a test per preset:
+too), never listed. Three suites, in six files, each a test per
+preset:
 
 - **`extras`** — every set of offered extras: the full powerset of the
   setting's menu (a product's per service), each set ticked as the page
@@ -641,7 +642,8 @@ too), never listed. Three suites, each a test per preset:
   a product, a set whose every extra the product also takes without a
   service (`--with persistence` for `--with backend:persistence`) is
   sent that way as well, to a preview and a dry-run install, and must
-  stage what it stages per service.
+  stage what it stages per service. It runs in four files: one per JVM
+  framework, and one for every other family (below).
 - **`arrival`** — every ordered pair `(x, y)` of offered extras, with
   what each needs, installed for real into scratch directories: one run
   naming both, against `keel new --with x` then `keel add y` (in `y`'s
@@ -674,43 +676,77 @@ too), never listed. Three suites, each a test per preset:
   and install as a dry run without a throw or a refusal, the preview
   must read the answer, and both must stage the same changes.
 
+**`extras` is split by family.** A file runs in one worker, and as one
+file `extras` was the long pole of every run, while two of the
+runner's three workers sat idle once `arrival` and `choices` were
+done. `extras.quarkus.test.ts`, `extras.spring.test.ts` and
+`extras.micronaut.test.ts` each take one framework's presets, Kotlin's
+included, and the products whose backend is one of them.
+`extras.test.ts` takes every preset whose family has no file of its
+own: Go, Rust, TypeScript and the web components today. A preset's
+family is the framework its catalog tags name, else its language, and
+a product's is its backend's. The directory is the list: a new
+platform falls into `extras.test.ts` with no edit, and a file
+`extras.<family>.test.ts` gives its family a file of its own. That is
+not a worker of its own: the lane is six heavy files, and CI's runner
+has three vitest workers, which take the four `extras` files in turn
+alongside `arrival` and `choices`. All four files run one body,
+`tests/support/extras-sweep.ts`.
+
 Opt-in (`KEEL_RUN_SWEEP=1`); every suite self-skips otherwise, so
 `pnpm test` and `verify` never run it — only `machinery.test.ts` beside
 them, which holds the lane's helpers there in about a second, so one
-that rots is caught on a PR. `KEEL_SWEEP_STACKS` narrows a run to the
-presets it names, and a name the catalog lacks, or a list that names
-none, fails the run rather than sweeping nothing:
+that rots is caught on a PR. It also holds the split: every preset is
+swept by exactly one `extras` file, `extras.test.ts` is there, no
+family file is empty, and each file's share is cut from the whole
+catalog before `KEEL_SWEEP_STACKS` narrows it, so a product named
+alone is swept in its backend's file. `KEEL_SWEEP_STACKS` narrows a run to the
+presets it names. In a run that includes `extras.test.ts`, `arrival`
+or `choices`, a name the catalog lacks, or a list that names none,
+fails the run rather than sweeping nothing:
 
 ```sh
-KEEL_RUN_SWEEP=1 pnpm vitest run tests/sweep                                   # every preset: about an hour
+KEEL_RUN_SWEEP=1 pnpm vitest run tests/sweep                                   # every preset: under an hour on CI
 KEEL_RUN_SWEEP=1 KEEL_SWEEP_STACKS=go-http,ts-cli pnpm vitest run tests/sweep  # two presets, about half a minute
 KEEL_RUN_SWEEP=1 KEEL_SWEEP_STACKS=fullstack pnpm vitest run tests/sweep/arrival.test.ts
+KEEL_RUN_SWEEP=1 pnpm vitest run tests/sweep/extras.spring.test.ts             # one family's extras
 ```
 
-**What it costs.** It was measured in full when it landed
-(2026-09-25, four vCPUs). `tests/sweep` took 57 minutes of wall time,
-with the three files running in three workers.
+A family file run alone, as in the last line, does not check the
+filter: narrowed to presets none of which is its family's, it passes
+having swept nothing. A run of the whole `tests/sweep` keeps the
+guard.
 
-- `extras` is the long pole, at 57 minutes. Over 340 dial settings it
-  ticked 96,160 subsets, which came to 28,288 distinct sets. Each set
-  went to `keel.dials`, a preview and a dry-run install: 79,740
-  previews in all, counting the reorderings and the 120 sets spelled
-  without services, and 28,408 dry-run installs. Most of that time is
-  the products. A polyrepo product offers twelve extras, six in each
-  service, which makes 1,024 sets on each of its settings. The four
-  products with a build-system dial in both services ran side by side
-  and took about 47 minutes each.
-- `arrival` took 21 minutes, measured again on its own once each extra
-  also arrived alone: 8,928 pairs and 1,844 extras alone, 6,288
-  scaffolds and 10,496 adds, all written to disk.
-- `choices` took 8 minutes: 6,346 answers to 3,974 questions.
+**What it costs.** Its first three runs on CI, on four vCPUs, took
+37.5, 47.9 and 29.4 minutes (2026-09-28, 2026-10-05 and 2026-10-12,
+all on `babae29`). The code was the same each time, and the runner's
+speed varied by 1.6 times. Each run swept the same counts, with
+`extras` still one file:
 
-That is about 179,000 dispatches, all through the mediator. The
-workflow's limit is three hours. Swept alone, a preset takes from
-seconds to some eleven minutes — `KEEL_SWEEP_STACKS=fullstack`, a
-product with a build-system dial in each service, nearly all of it
-`extras` — and `KEEL_SWEEP_STACKS=go-http,ts-cli` runs all three
-suites in about half a minute.
+- `extras` was the long pole, at 29.4 to 47.9 minutes. Over 340 dial
+  settings it ticked 96,160 subsets, which came to 28,288 distinct
+  sets. Each set went to `keel.dials`, a preview and a dry-run
+  install: 79,740 previews in all, counting the reorderings and the
+  120 sets spelled without services, and 28,408 dry-run installs, so
+  136,436 dispatches. Most of that time is the products. A polyrepo
+  product offers twelve extras, six in each service, which makes 1,024
+  sets on each of its settings. Side by side in the one file, each JVM
+  product took 24 to 40 minutes.
+- `arrival` took 12.2 to 16.8 minutes: 8,928 pairs and 1,844 extras
+  alone, 6,288 scaffolds and 10,760 adds, all written to disk.
+- `choices` took 6.2 to 9.3 minutes: 6,418 answers to 4,022
+  questions.
+
+Split by family, the four `extras` files share those counts. Each
+framework's file holds 80 settings: 29,476 dispatches for Quarkus and
+28,624 each for Spring and Micronaut. `extras.test.ts` holds 100
+settings and 49,712 dispatches. The split's wall time has yet to be
+measured on CI. The workflow's limit is three hours. Swept alone, a
+preset takes from seconds to some eleven minutes —
+`KEEL_SWEEP_STACKS=fullstack`, a product with a build-system dial in
+each service, nearly all of it `extras` — and
+`KEEL_SWEEP_STACKS=go-http,ts-cli` runs all three suites in about half
+a minute.
 
 **Reading a red run.** There is no golden and no known file: a red run
 is the report. Each failing test is a preset. Its message counts what
@@ -745,11 +781,13 @@ under one heading, `arriving after another extra … only as it does
 arriving on its own`, so a fact about `keel add y` reads once, not once
 per `x`. Each preset logs one summary line
 (`[sweep:<suite>] <preset>: … settings, … sets, … previews …`), and
-each suite logs its totals once at the end. A setting that offers more
-extras than the powerset bound (twelve, `POWERSET_BOUND`) is swept over
-every set of up to three, the whole menu less each one, and the whole
-menu, with a warning in the log. No shipped setting passes it: a
-polyrepo product offers exactly twelve, and is swept whole.
+each file logs its totals once at the end, a family's `extras` file as
+`[sweep:extras.<family>] total`. A file a narrowed run leaves nothing
+to sweep logs none. A setting that offers more extras than the
+powerset bound (twelve, `POWERSET_BOUND`) is swept over every set of
+up to three, the whole menu less each one, and the whole menu, with a
+warning in the log. No shipped setting passes it: a polyrepo product
+offers exactly twelve, and is swept whole.
 
 What a run found when the lane landed, and what is left to plan from it,
 is in [`roadmap.md`](roadmap.md) → Q3.4.

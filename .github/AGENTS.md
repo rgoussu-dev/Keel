@@ -124,9 +124,12 @@ actionable.
   on every dial setting of every preset — what the composition grid in
   `verify` reads on the opening dials only. Node alone, no toolchain:
   every dispatch goes through the mediator with a fake process runner.
-  It runs for most of an hour (57 minutes measured on four vCPUs), so
-  it is never a gate; a red run is the report, one failing test per
-  preset, each finding with the command line that reproduces it.
+  Its first three runs took 29.4 to 47.9 minutes, with one `extras`
+  file the long pole, so `extras` now runs in four files, one per
+  JVM framework and one for every other family, which the runner's three vitest workers take in turn
+  alongside `arrival` and `choices`. It is never a gate; a red run is the report,
+  one failing test per preset, each finding with the command line that
+  reproduces it.
   `tests/ci-workflow.test.ts` holds it to a schedule and a dispatch,
   opted in, to running the whole directory, to sweeping every preset
   unless a dispatch names some, and to a step and job with no `if:` and

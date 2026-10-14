@@ -12,13 +12,15 @@
 # report — each failing test is a preset, and its message names every
 # finding with the command line that reproduces it.
 #
-# Deliberately a schedule, never a PR gate: it runs for most of an
-# hour (some 179,000 dispatches, 57 minutes measured on four vCPUs),
-# and what it finds (an undeclared read, an order-dependent adapter, a
-# choice offered where it throws) is a follow-up step to plan, not a
-# build to fix in place. Nothing it needs is on the network or on the
-# PATH beyond Node: every dispatch goes through the mediator with a
-# fake process runner.
+# Deliberately a schedule, never a PR gate: its first three runs took
+# 29 to 48 minutes on four vCPUs, the `extras` suite's 136,436
+# dispatches the long pole (since split into a file per family, which
+# the runner's three vitest workers take in turn alongside `arrival`
+# and `choices`), and what it finds (an undeclared read, an order-dependent
+# adapter, a choice offered where it throws) is a follow-up step to
+# plan, not a build to fix in place. Nothing it needs is on the network
+# or on the PATH beyond Node: every dispatch goes through the mediator
+# with a fake process runner.
 
 name: composition-sweep
 
@@ -45,9 +47,10 @@ jobs:
   sweep:
     name: sweep (${{ inputs.stacks || 'every preset' }})
     runs-on: ubuntu-latest
-    # A full run was 57 minutes on four vCPUs; the products' extras are
-    # most of it, and they grow as a power of the menu, so the budget is
-    # about three times that rather than a tight fit.
+    # The first three runs took 29 to 48 minutes on four vCPUs; the
+    # products' extras are most of it, and they grow as a power of the
+    # menu, so the budget is nearly four times the slowest rather than a
+    # tight fit.
     timeout-minutes: 180
 
     steps:

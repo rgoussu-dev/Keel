@@ -1610,8 +1610,9 @@ entrypoint http` on a CLI project, or `keel add entrypoint cli` on an
 
   A red run is the report: one failing test per preset, its findings
   grouped by kind, each with the command lines that reproduce it.
-  A full run takes 57 minutes on four vCPUs, about 179,000
-  dispatches. What it found when it landed is recorded in
+  Its first runs on CI took 29 to 48 minutes on four vCPUs, most of
+  it the `extras` suite's 136,436 dispatches, which now runs in a
+  file per family. What it found when it landed is recorded in
   `docs/roadmap.md` → Q3.4, for later steps. The first run turned up
   one throw on a dial setting the grid never reads: `persistence` on
   the modulith layout with the peer context, on the Micronaut REST

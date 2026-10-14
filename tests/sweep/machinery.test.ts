@@ -1,15 +1,15 @@
 /**
  * The weekly composition sweep's own machinery, held in `verify`.
  *
- * The three suites beside this one self-skip outside the weekly lane,
- * so a helper they lean on that stopped working — a walk that no longer
+ * The suites beside this one self-skip outside the weekly lane, so a
+ * helper they lean on that stopped working — a walk that no longer
  * reaches a setting, a closure that no longer ticks what a box needs, a
  * read-back that stages nothing, a comparison that no longer sees a
  * difference — would go unseen until a Monday run swept nothing, or
  * everything, for the wrong reason. This file is not opted in: it runs
  * wherever `pnpm test` does, over a few presets' dials, one product's
- * preview and dry-run install, and a few small trees, in about a
- * second.
+ * preview and dry-run install, a few small trees, and how the `extras`
+ * files share the catalog, in about a second.
  */
 
 import path from 'node:path';
@@ -34,12 +34,16 @@ import {
   bareSpelling,
   commandOf,
   everyDialSetting,
+  laneFamilies,
   naming,
   offeredExtras,
   scratchDirectory,
   setKey,
+  sharedSweep,
   stagedDifference,
   subsetsOf,
+  sweepFamilyOf,
+  sweptBy,
   ticked,
   treeDifference,
   treeOf,
@@ -159,6 +163,68 @@ describe("the sweep's dial settings", () => {
     expect(commands(settings)).toEqual(
       commands(every.filter((reply) => harnessOn(reply) !== refused)),
     );
+  });
+});
+
+describe("the sweep's files", () => {
+  it('sweeps each preset in exactly one extras file, extras.test.ts among them, and none in a family file that takes nothing', async () => {
+    const catalog = (await grid.read(catalogQuery())).stacks;
+    const families = laneFamilies('extras');
+    // extras.test.ts, the file every family with none of its own falls to.
+    expect(families).toContain(null);
+    const shares = families.map((family) => ({
+      file: family === null ? 'extras.test.ts' : `extras.${family}.test.ts`,
+      ids: sweptBy(family, families, catalog).map((stack) => stack.id),
+    }));
+    expect(shares.flatMap((share) => share.ids).sort()).toEqual(
+      catalog.map((stack) => stack.id).sort(),
+    );
+    // A family file no preset's tags name any more would sweep nothing, and pass.
+    expect(
+      shares
+        .filter((share) => share.file !== 'extras.test.ts' && share.ids.length === 0)
+        .map((share) => share.file),
+    ).toEqual([]);
+  });
+
+  it("reads a preset's family off its tags, a product's off its backend's, and a file's off its name", async () => {
+    const catalog = (await grid.read(catalogQuery())).stacks;
+    const fullstack = await stackOf('fullstack');
+    expect(sweepFamilyOf(await stackOf('quarkus-cli-rest-kotlin'), catalog)).toBe('quarkus');
+    expect(sweepFamilyOf(await stackOf('go-http'), catalog)).toBe('go');
+    expect(sweepFamilyOf(fullstack, catalog)).toBe('quarkus');
+    expect(sweepFamilyOf(await stackOf('fullstack-ts'), catalog)).toBe('typescript');
+    // A catalog that lacks a product's backend is an error, never a product filed under none.
+    expect(() => sweepFamilyOf(fullstack, [fullstack])).toThrow(/'quarkus-rest'/);
+    expect(
+      laneFamilies('extras', [
+        'arrival.test.ts',
+        'extras.go.test.ts',
+        'extras.test.ts',
+        'machinery.test.ts',
+      ]),
+    ).toEqual(['go', null]);
+    const rest = sweptBy(null, [null, 'go'], catalog).map((stack) => sweepFamilyOf(stack, catalog));
+    expect(rest).not.toContain('go');
+    expect(rest).toContain('quarkus');
+  });
+
+  it("splits the whole catalog before narrowing it, so a product named alone is swept in its backend's file", async () => {
+    const catalog = (await grid.read(catalogQuery())).stacks;
+    const families = laneFamilies('extras');
+    const ids = (family: string | null): readonly string[] =>
+      sharedSweep(family, families, catalog, ['fullstack']).map((stack) => stack.id);
+    expect(ids('quarkus')).toEqual(['fullstack']);
+    expect(ids(null)).toEqual([]);
+    expect(ids('spring')).toEqual([]);
+    // Narrowed first, the catalog would lack fullstack's backend.
+    expect(() =>
+      sweptBy(
+        'quarkus',
+        families,
+        catalog.filter((stack) => stack.id === 'fullstack'),
+      ),
+    ).toThrow(/'quarkus-rest'/);
   });
 });
 

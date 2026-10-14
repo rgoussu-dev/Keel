@@ -11,7 +11,8 @@
  *
  *   - `extras` — every set of offered extras (the full powerset),
  *     named backwards and, for up to three, in every order —
- *     previewed and installed as a dry run;
+ *     previewed and installed as a dry run, in a file per family
+ *     ({@link sweptBy});
  *   - `arrival` — every ordered pair of offered extras, and each extra
  *     on its own, arriving in one run and in two, installed for real;
  *   - `choices` — every choice of every question the whole menu, no
@@ -46,6 +47,7 @@
 
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import fs from 'fs-extra';
 import { commandFor, commandText } from '../../assets/web/src/command.js';
 import { toggleExtra } from '../../assets/web/src/target.js';
@@ -85,12 +87,13 @@ export const STACK_FILTER: readonly string[] | null = (() => {
 })();
 
 /**
- * One preset's budget. The heaviest presets of the heaviest suite — a
- * product's `extras`, four of them interleaved in the one worker that
- * runs the file — took some 47 minutes each, about eleven alone: the
- * figure grows with how many heavy presets that file runs at once, not
- * with the runner's cores. This is nearly twice that and half the
- * workflow's own limit, so a preset that hangs fails by name.
+ * One preset's budget. A file runs in one worker, five of its presets
+ * at a time, so a preset's wall time grows with what its file runs
+ * beside it, not with the runner's cores. The heaviest is a product's
+ * `extras`: when that lane was one file, a JVM product swept beside the
+ * other products took 24 to 40 minutes on CI. Split by family, it runs
+ * beside its own family's presets alone. This is over twice that and
+ * half the workflow's own limit, so a preset that hangs fails by name.
  */
 export const PRESET_TIMEOUT = 90 * 60_000;
 
@@ -116,12 +119,101 @@ const FREE_FORM_SAMPLES: Readonly<Record<string, string>> = {
 };
 
 /**
- * The catalog's presets a run sweeps: all of them, or those
- * {@link STACK_FILTER} names, in catalog order.
+ * The catalog's presets a run sweeps: all of them, or those `filter`
+ * names ({@link STACK_FILTER} unless given), in catalog order.
  */
-export function sweptStacks(stacks: readonly StackDescriptor[]): readonly StackDescriptor[] {
-  if (STACK_FILTER === null) return stacks;
-  return stacks.filter((stack) => STACK_FILTER?.includes(stack.id));
+export function sweptStacks(
+  stacks: readonly StackDescriptor[],
+  filter: readonly string[] | null = STACK_FILTER,
+): readonly StackDescriptor[] {
+  if (filter === null) return stacks;
+  return stacks.filter((stack) => filter.includes(stack.id));
+}
+
+/**
+ * The family `stack` is swept under: the framework its catalog tags
+ * name, else its language. A product's is its first service's, which
+ * is its backend on every product keel ships, looked up in `catalog`:
+ * the whole catalog, since a product's services are presets a run
+ * narrowed by {@link STACK_FILTER} may leave out. Read off the tags,
+ * never listed, so a preset of a new platform has a family the day it
+ * lands.
+ */
+export function sweepFamilyOf(
+  stack: StackDescriptor,
+  catalog: readonly StackDescriptor[],
+): string | null {
+  const [first] = stack.services;
+  const own =
+    first === undefined ? stack : catalog.find((candidate) => candidate.id === first.stack);
+  if (own === undefined) {
+    throw new Error(`'${stack.id}' has a service of '${first?.stack}', which the catalog lacks`);
+  }
+  const word = (prefix: string): string | undefined =>
+    own.tags.find((tag) => tag.startsWith(prefix))?.slice(prefix.length);
+  return word('framework.') ?? word('lang.') ?? null;
+}
+
+/** Where the lanes' suites sit: `tests/sweep/`. */
+export const SWEEP_DIRECTORY = fileURLToPath(new URL('../sweep/', import.meta.url));
+
+/**
+ * The family a file of `lane` sweeps, read off its name:
+ * `extras.quarkus.test.ts` takes `quarkus`, and `extras.test.ts` takes
+ * null, every family no sibling file takes. Undefined for a file that
+ * is not one of the lane's.
+ */
+export function familyOfFile(lane: string, file: string): string | null | undefined {
+  const match = new RegExp(`^${lane}(?:\\.([a-z0-9-]+))?\\.test\\.ts$`).exec(path.basename(file));
+  if (match === null) return undefined;
+  return match[1] ?? null;
+}
+
+/**
+ * The families the files of `lane` take, in directory order: the
+ * directory is the list, so a family gains a file of its own by its
+ * file alone, and nothing else is edited.
+ */
+export function laneFamilies(
+  lane: string,
+  files: readonly string[] = fs.readdirSync(SWEEP_DIRECTORY),
+): readonly (string | null)[] {
+  return files
+    .map((file) => familyOfFile(lane, file))
+    .filter((family): family is string | null => family !== undefined);
+}
+
+/**
+ * The presets of `catalog` that the file taking `family` sweeps, in
+ * catalog order: those of its family, or, for the file that takes null,
+ * every preset whose family none of `siblings` takes. Every preset is
+ * one file's, so a family gains a file of its own by gaining one, and
+ * is swept still when it loses it.
+ */
+export function sweptBy(
+  family: string | null,
+  siblings: readonly (string | null)[],
+  catalog: readonly StackDescriptor[],
+): readonly StackDescriptor[] {
+  return catalog.filter((stack) => {
+    const own = sweepFamilyOf(stack, catalog);
+    return family === null ? own === null || !siblings.includes(own) : own === family;
+  });
+}
+
+/**
+ * The presets the file taking `family` sweeps in a run narrowed by
+ * `filter` ({@link STACK_FILTER} unless given): its share of the whole
+ * `catalog` ({@link sweptBy}), then narrowed. Split first, since a
+ * product's family is its backend's, which `filter` may not name.
+ */
+export function sharedSweep(
+  family: string | null,
+  siblings: readonly (string | null)[],
+  catalog: readonly StackDescriptor[],
+  filter: readonly string[] | null = STACK_FILTER,
+): readonly StackDescriptor[] {
+  return sweptStacks(sweptBy(family, siblings, catalog), filter);
 }
 
 /**
@@ -699,12 +791,12 @@ export class PresetSweep {
   }
 }
 
-/** A suite's totals over every preset it swept, printed once at the end. */
+/** A suite file's totals over every preset it swept, printed once at the end. */
 export class LaneTotals {
   private readonly totals = new Map<string, number>();
   private readonly started = Date.now();
 
-  /** @param lane the suite: `extras`, `arrival` or `choices`. */
+  /** @param lane the file: `extras` or `extras.<family>`, `arrival` or `choices`. */
   constructor(readonly lane: string) {}
 
   /** Adds a preset's counts. */
