@@ -23,10 +23,15 @@
  */
 
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
 import fs from 'fs-extra';
 import { expect } from 'vitest';
-import { runStep, scaffold, withRestAssembly, type PackageManager } from './web-e2e.js';
+import {
+  driveGreetCli,
+  runStep,
+  scaffold,
+  withRestAssembly,
+  type PackageManager,
+} from './web-e2e.js';
 
 export { E2E_TIMEOUT_MS, mkTempDir, skipWebE2E } from './web-e2e.js';
 export type { PackageManager } from './web-e2e.js';
@@ -82,20 +87,7 @@ export async function runTsComboE2E(cell: TsComboCell, cwd: string): Promise<voi
   runStep(cwd, `${pm} test`, pm, ['test']);
   if (moduleLayout === 'modulith') runStep(cwd, `${pm} run lint`, pm, ['run', 'lint']);
 
-  // The CLI assembly runs: the greeting on stdout, and the domain's
-  // no as exit code 2 — the CLI counterpart of a 400 on the wire.
-  const greeted = spawnSync('node', ['application/cli/src/main.ts', '--name', 'E2E'], {
-    cwd,
-    encoding: 'utf8',
-  });
-  expect(greeted.status, greeted.stderr).toBe(0);
-  expect(greeted.stdout).toBe('Hello, E2E!\n');
-  const refused = spawnSync('node', ['application/cli/src/main.ts', '--name', '  '], {
-    cwd,
-    encoding: 'utf8',
-  });
-  expect(refused.status).toBe(2);
-  expect(refused.stderr).toContain('name must not be blank');
+  driveGreetCli(cwd);
 
   // The REST assembly runs, off the same domain, in the same
   // workspace, without the CLI having been rebuilt or reinstalled.

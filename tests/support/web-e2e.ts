@@ -450,6 +450,27 @@ async function stopRestAssembly(child: ChildProcess): Promise<void> {
 }
 
 /**
+ * Runs a TypeScript workspace's CLI assembly
+ * (`application/cli/src/main.ts`, from `cwd`) twice: it greets a name
+ * on stdout, and refuses a blank one with exit code 2, the domain's
+ * no — the CLI counterpart of a 400 on the wire.
+ */
+export function driveGreetCli(cwd: string): void {
+  const greeted = spawnSync('node', ['application/cli/src/main.ts', '--name', 'E2E'], {
+    cwd,
+    encoding: 'utf8',
+  });
+  expect(greeted.status, greeted.stderr).toBe(0);
+  expect(greeted.stdout).toBe('Hello, E2E!\n');
+  const refused = spawnSync('node', ['application/cli/src/main.ts', '--name', '  '], {
+    cwd,
+    encoding: 'utf8',
+  });
+  expect(refused.status).toBe(2);
+  expect(refused.stderr).toContain('name must not be blank');
+}
+
+/**
  * Starts a TypeScript workspace's REST assembly
  * (`application/rest/src/main.ts`, run from `cwd`), hands `drive` its
  * base URL once it says it is listening, and stops it however `drive`

@@ -605,9 +605,9 @@ jobs:
           # shard lands an order of magnitude inside the matrix floor.
           # There is no build step to pay for; the install is the cost,
           # and npm's is the best part of twice pnpm's on the same
-          # layout. `fullstack-ts` (roadmap T.4d) installs the backend
-          # alone, on npm, and fakes the frontend's install, which
-          # `fullstack` in `web` builds.
+          # layout. `fullstack-ts` and `fullstack-ts-cli` (roadmap T.4d
+          # and T.4g) install the backend alone, on npm, and fake the
+          # frontend's install, which `fullstack` in `web` builds.
           - id: web-combo
             tools: npm pnpm
             files: >-
@@ -615,6 +615,7 @@ jobs:
               tests/e2e/combo-modulith-ts-cli-http-pnpm.test.ts
               tests/e2e/combo-basic-ts-cli-http-pnpm.test.ts
               tests/e2e/fullstack-ts.test.ts
+              tests/e2e/fullstack-ts-cli.test.ts
           # The only shard whose suite compiles nothing, and the only
           # one that runs an emitted `dev/compose.yaml`. Every other
           # docker-using suite reaches its database through

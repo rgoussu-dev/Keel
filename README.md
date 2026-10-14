@@ -98,7 +98,7 @@ description):
 | **Kotlin · Micronaut 4** ([docs](docs/stacks/jvm.md))                   | `micronaut-cli-kotlin` | `micronaut-rest-kotlin` | `micronaut-cli-rest-kotlin` ◻ | —                | `fullstack-micronaut-kotlin` ◻ | `fullstack-micronaut-cli-kotlin` ◻ |
 | **Go · stdlib** ([docs](docs/stacks/go.md))                             | `go-cli`               | `go-http`               | `go-cli-http`                 | —                | `fullstack-go`                 | `fullstack-go-cli`                 |
 | **Rust · stdlib / axum** ([docs](docs/stacks/rust.md))                  | `rust-cli`             | `rust-http`             | `rust-cli-http`               | —                | `fullstack-rust`               | `fullstack-rust-cli`               |
-| **TypeScript · Node** ([docs](docs/stacks/ts-http.md))                  | `ts-cli`               | `ts-http`               | `ts-cli-http` ◻               | —                | `fullstack-ts`                 | `fullstack-ts-cli` ◻               |
+| **TypeScript · Node** ([docs](docs/stacks/ts-http.md))                  | `ts-cli`               | `ts-http`               | `ts-cli-http` ◻               | —                | `fullstack-ts`                 | `fullstack-ts-cli`                 |
 | **TypeScript · web components** ([docs](docs/stacks/web-components.md)) | —                      | —                       | —                             | `web-components` | —                              | —                                  |
 
 A product column's preset pairs the row's preset for that column's entrypoints, in `backend/`, with `web-components` in `frontend/`.

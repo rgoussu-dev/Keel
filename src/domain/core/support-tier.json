@@ -697,6 +697,13 @@
       "builds": ["backend"]
     },
     {
+      "suite": "fullstack-ts-cli",
+      "stack": "fullstack-ts-cli",
+      "layout": "monorepo",
+      "buildSystem": "backend=npm,frontend=npm",
+      "builds": ["backend"]
+    },
+    {
       "suite": "fullstack-go",
       "stack": "fullstack-go",
       "layout": "monorepo",

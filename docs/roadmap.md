@@ -21,26 +21,31 @@ held until K had exercised it locally, product-shaped rather than
 harness-shaped — a gate K's landing has now opened. The backlog
 items below each carry an issue of their own.
 
-**Q** (supple composition) has landed, Phases 0 to 3: proposed from
-an audit of how `keel new`, `keel add`, the presets and `keel ui`
+**Q** (supple composition) has landed, Phases 0 to 3: proposed from an
+audit of how `keel new`, `keel add`, the presets and `keel ui`
 exercise the composition model, it was sliced into the steps its
 section lists and landed one commit per step. Its Phase 3 — the open
 ends found once it had merged — landed one step each, the last of them
 the weekly composition sweep its measure had planned. Its successors —
-**R**, **S**, **T** and **U** — are named there. **R** (entrypoints can
-grow) has landed too, one commit per step, R.1a to R.3d, as its own
-section below records: every single-entrypoint backend preset grows
-the other entrypoint into its twin, byte for byte, on every dial
-setting, with its bounded contexts. **S** (one converge operation)
-has landed as well, S.1a to S.9, one commit per step, as its own
-section below records: `keel new`, `keel add` with `--refresh` and
-`--reapply`, `keel add entrypoint` and `keel add module` are callers of
-one operation, which keeps what later verticals wrote through a
+**R**, **S**, **T** and **U** — are named there. **R** (entrypoints
+can grow) has landed too, one commit per step, R.1a to R.3d, as its
+own section below records: every single-entrypoint backend preset
+grows the other entrypoint into its twin, byte for byte, on every dial
+setting, with its bounded contexts. **S** (one converge operation) has
+landed as well, S.1a to S.9, one commit per step, as its own section
+below records: `keel new`, `keel add` with `--refresh` and
+`--reapply`, `keel add entrypoint` and `keel add module` are callers
+of one operation, which keeps what later verticals wrote through a
 re-render, records where one run records, and says what a re-render
-leaves. **T** (facets over presets) is planned in its own section
-below, on a support tier the user decided, and lands one commit per
-step. **U** waits on decisions of its own and is not yet sliced into
-issues or ordered against the backlog.
+leaves. **T** (facets over presets) has landed too, T.1a to T.4g, one
+commit per step, on a support tier the user decided, as its own
+section below records: the presets are read off a facet table and
+answer to facet spellings, every setting `keel new` offers has a tier,
+twelve more products pair every backend that serves HTTP with the
+front end, and every product off the JVM is built by a suite of its
+own; the JVM products' suites wait on shards the user has not yet
+granted (its DT12). **U** waits on decisions of its own and is not yet
+sliced into issues or ordered against the backlog.
 
 [#67]: https://github.com/rgoussu-dev/keel/issues/67
 [#68]: https://github.com/rgoussu-dev/keel/issues/68
@@ -2196,8 +2201,9 @@ init` and a resolved toolchain, not a zip. A remote service would
 below, one commit per step, every decision taken as recommended
 (_Decisions on record_); Phase 3 held the open ends found once it had
 merged (#169), one step each, and landed too. **R**, **S**, **T** and
-**U** were named at the end of this section, not part of Q; **R** has
-landed since, in its own section, and **S**, **T** and **U** remain.
+**U** were named at the end of this section, not part of Q; **R**,
+**S** and **T** have landed since, each in its own section, and **U**
+remains.
 Anchored on [#117] ("one declaration, read twice"), which it extends
 from the stack drill-down to every vertical, in both phases.
 
@@ -4388,7 +4394,7 @@ Each taken as the audit recommended; the step that carries it is named.
 - **T — Facets over presets.** Presets generated from a platform ×
   entrypoint table with ids kept as aliases (all 34 regenerate
   exactly); products as per-service selections. Only with a data
-  support tier for cells no e2e suite proves. Planned; its own
+  support tier for cells no e2e suite proves. Landed; its own
   section, _T — Facets over presets_, below, records it; what "ids
   kept as aliases" means is its DT3.
 - **U — A release story for monorepo products.** Decide the image
@@ -11792,14 +11798,15 @@ recommendation.
 
 ---
 
-## T — Facets over presets
+## T — Facets over presets ✅
 
 **Proposed 2026-10-14 from research passes over `babae29` and
-`93275d5`** (R's merge, then S's). None of the passes edited the
-repository. The research was costed before S landed, and the support
-tier was decided on those costs (DT1). It was then measured again
-over S, which moved what a new cell costs but none of what T stands
-on. Q's _Successors_ named this epic:
+`93275d5`** (R's merge, then S's), **and landed**: T.1a to T.4g below,
+one commit per step. None of the passes edited the repository. The
+research was costed before S landed, and the support tier was decided
+on those costs (DT1). It was then measured again over S, which moved
+what a new cell costs but none of what T stands on. Q's _Successors_
+named this epic:
 
 > Presets generated from a platform × entrypoint table with ids kept
 > as aliases (all 34 regenerate exactly); products as per-service
@@ -14506,12 +14513,62 @@ home at a load near 1, 81.6 s beside `fullstack-rust` in one run, and
 skips there and three tests re-read their figures. The full run, on
 T.4e: 3,703 tests in 449.6 s, green.
 
-#### T.4g — `fullstack-ts-cli` built (S)
+#### T.4g — `fullstack-ts-cli` built (S) ✅
 
 `fullstack-ts-cli.test.ts`, in `web-combo`, as T.4d plus the CLI. With
 T.4d's file and this one, `web-combo` reaches 48–60 s _(inference)_.
 
 - **Same commit:** as T.4e, on `web-combo`.
+
+**Landed as one suite, its row and one lifted helper**, in one
+commit. `fullstack-ts-cli.test.ts` (78 lines) is `fullstack-ts.test.ts`
+on the TypeScript CLI + HTTP backend: it scaffolds the product on its
+default dials, faking the frontend's install alone, checks that the
+backend's install ran and the frontend's did not, checks the compose
+build contexts, runs the backend's typecheck and tests, greets through
+the CLI assembly, and boots the REST assembly with
+`NODE_ENV=development` to drive `driveGatewayContract` with the
+TypeScript backend's problem content type.
+
+- **`driveGreetCli` joins `web-e2e.ts`**, lifted from
+  `ts-combo-e2e.ts`, which spelled the CLI assembly's greeting and its
+  exit-2 refusal out inline; both now call it, as Go's and Rust's
+  suites call their family's.
+- **Its row** in `support-tier.json`, `products`, beside
+  `fullstack-ts`'s: product settings first-class go from 5 to 6 of
+  128, and the presets best-effort at their default from 17 to 16.
+  Every product off the JVM is now first-class at its default setting.
+- **The tests the row moves:** `new-list`'s and `catalog`'s marked
+  lists drop `fullstack-ts-cli`, `catalog` counts 30 first-class, and
+  `support-tier.premises` re-reads its tally.
+- **`ci.yml`:** the file joins `web-combo`, whose comment names both
+  TypeScript products.
+- **`docs/stacks/fullstack.md`** and the CHANGELOG's twelve-products
+  entry say the three products off the JVM are first-class and the
+  nine JVM ones best-effort; the unreleased tier entries count 6 of
+  128 product settings and 16 presets, the marked list naming the new
+  JVM products.
+- **Generated regions:** both `stack-matrix` copies drop
+  `fullstack-ts-cli`'s ◻; its monorepo npm/npm row in `support-tiers`
+  reads first-class, and its npm/pnpm row gains the backend's ✅ while
+  staying ◻.
+- **CHANGELOG** _Changed_.
+
+**Measured locally**, not on CI: there is no PR, so `web-combo`'s time
+waits for one. The suite took 39.7 s alone at a load near 6, and the
+whole `web-combo` shard, five files with this one and `fullstack-ts`,
+passed in one run of 70.0 s (`fullstack-ts-cli` 35.9 s), against the
+plan's 48 to 60 s _(inference)_.
+
+**What it adds to `CI=true pnpm test`:** nothing it runs; the e2e file
+skips there, and four tests re-read their figures or, in `finder`'s
+case, read the TypeScript card from `quarkus-cli` landing on
+`fullstack-ts-cli` unbadged. The full run, on T.4f: 3,703 tests in
+395.3 s, green.
+
+**T landed with this step**, and the roadmap says so in the same
+commit: this section's heading and opening, Q's opening paragraph and
+its _Successors_ bullet, and the introduction.
 
 ### Decisions on record
 

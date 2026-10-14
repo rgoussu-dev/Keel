@@ -30,11 +30,11 @@ A product is named by its backend: `fullstack` plus the backend's id,
 less `quarkus`, `rest` and `http`, which every product says already.
 The first six were the only ones until the product rule listed every
 single-service preset that serves HTTP. The composition grid holds the
-twelve after them to every invariant. `fullstack-go-cli` and
-`fullstack-rust-cli` are first-class at their default setting, a suite
-building each; the others
-are [best-effort](README.md#support-tiers) on every setting, no CI job
-building one.
+twelve after them to every invariant. The three off the JVM,
+`fullstack-go-cli`, `fullstack-ts-cli` and `fullstack-rust-cli`, are
+first-class at their default setting, a suite building each; the nine
+JVM ones are [best-effort](README.md#support-tiers) on every setting,
+no CI job building one.
 
 All eighteen select the **same** frontend gateway adapters, because the
 seam is driven by peer tags, not by the backend's language or

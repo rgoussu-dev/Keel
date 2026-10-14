@@ -25,7 +25,7 @@ they spare you naming every tag and vertical by hand, nothing more.
 | **Kotlin · Micronaut 4** ([docs](jvm.md))                   | `micronaut-cli-kotlin` | `micronaut-rest-kotlin` | `micronaut-cli-rest-kotlin` ◻ | —                | `fullstack-micronaut-kotlin` ◻ | `fullstack-micronaut-cli-kotlin` ◻ |
 | **Go · stdlib** ([docs](go.md))                             | `go-cli`               | `go-http`               | `go-cli-http`                 | —                | `fullstack-go`                 | `fullstack-go-cli`                 |
 | **Rust · stdlib / axum** ([docs](rust.md))                  | `rust-cli`             | `rust-http`             | `rust-cli-http`               | —                | `fullstack-rust`               | `fullstack-rust-cli`               |
-| **TypeScript · Node** ([docs](ts-http.md))                  | `ts-cli`               | `ts-http`               | `ts-cli-http` ◻               | —                | `fullstack-ts`                 | `fullstack-ts-cli` ◻               |
+| **TypeScript · Node** ([docs](ts-http.md))                  | `ts-cli`               | `ts-http`               | `ts-cli-http` ◻               | —                | `fullstack-ts`                 | `fullstack-ts-cli`                 |
 | **TypeScript · web components** ([docs](web-components.md)) | —                      | —                       | —                             | `web-components` | —                              | —                                  |
 
 A product column's preset pairs the row's preset for that column's entrypoints, in `backend/`, with `web-components` in `frontend/`.
@@ -293,9 +293,9 @@ A product is first-class where every service is. A service is proven where a sui
 | `fullstack-ts` ◻                   | polyrepo | `backend=pnpm, frontend=npm`    | ◻                       | ◻              |
 | `fullstack-ts` ◻                   | polyrepo | `backend=npm, frontend=pnpm`    | ◻                       | ◻              |
 | `fullstack-ts` ◻                   | polyrepo | `backend=pnpm, frontend=pnpm`   | ◻                       | ◻              |
-| `fullstack-ts-cli` ◻               | monorepo | `backend=npm, frontend=npm`     | ◻                       | ✅ `fullstack` |
+| `fullstack-ts-cli` ✅              | monorepo | `backend=npm, frontend=npm`     | ✅ `fullstack-ts-cli`   | ✅ `fullstack` |
 | `fullstack-ts-cli` ◻               | monorepo | `backend=pnpm, frontend=npm`    | ◻                       | ✅ `fullstack` |
-| `fullstack-ts-cli` ◻               | monorepo | `backend=npm, frontend=pnpm`    | ◻                       | ◻              |
+| `fullstack-ts-cli` ◻               | monorepo | `backend=npm, frontend=pnpm`    | ✅ `fullstack-ts-cli`   | ◻              |
 | `fullstack-ts-cli` ◻               | monorepo | `backend=pnpm, frontend=pnpm`   | ◻                       | ◻              |
 | `fullstack-ts-cli` ◻               | polyrepo | `backend=npm, frontend=npm`     | ◻                       | ◻              |
 | `fullstack-ts-cli` ◻               | polyrepo | `backend=pnpm, frontend=npm`    | ◻                       | ◻              |

@@ -661,6 +661,18 @@ new` the terminal adds the way past it (move it aside, or start in
 
 ### Changed
 
+- **`fullstack-ts-cli` reads first-class at its default setting.**
+  `fullstack-ts-cli`, in the `web-combo` e2e shard, scaffolds the
+  product as `keel new` leaves it, installs, typechecks and tests its
+  TypeScript CLI + HTTP backend, greets through its CLI assembly,
+  checks that each image `compose.yaml` builds has its `Dockerfile`,
+  and drives the wire the frontend's gateway encodes against the
+  backend's REST server. The frontend is the one `fullstack` builds.
+  The stack matrix and the support-tier table drop its ◻, and
+  `keel new --list` and `keel ui`'s finder no longer mark it
+  best-effort. With it, every product off the JVM is first-class at
+  its default setting.
+
 - **`fullstack-rust-cli` reads first-class at its default setting.**
   `fullstack-rust-cli`, in the `rust` e2e shard, scaffolds the product
   as `keel new` leaves it, tests and builds its Rust CLI + HTTP
@@ -1507,18 +1519,18 @@ distribution iac`) — _Not for this project_, collapsed, each with the
   `fullstack-ts-cli` and `fullstack-rust-cli`. A product is named by
   its backend, less `quarkus`, `rest` and `http`, so a CLI + HTTP
   backend makes a `-cli` product, whose image runs its HTTP server.
-  The composition grid holds them to every invariant.
-  `fullstack-go-cli` and `fullstack-rust-cli` are first-class at their
-  default setting; the others are best-effort on every setting, no CI
-  job building one, so `keel new --list` marks each ◻.
-  `keel new --list` lists 46 presets, where it listed 34. In the
-  drill-down, in the terminal and in `keel ui`, every back-end
-  language now has a product, and the _Fullstack_ shape asks for its
-  adapters: _HTTP server + Browser SPA_ or _CLI + HTTP server + Browser
-  SPA_. Moving
-  `spring-cli` to _Fullstack_ lands on `fullstack-spring-cli`. A facet
-  spelling names them too: `fullstack-quarkus-cli-rest` is
-  `fullstack-cli`. See [Fullstack products](docs/stacks/fullstack.md).
+  The composition grid holds them to every invariant. The three off
+  the JVM, `fullstack-go-cli`, `fullstack-ts-cli` and
+  `fullstack-rust-cli`, are first-class at their default setting; the
+  nine JVM ones are best-effort on every setting, no CI job building
+  one, so `keel new --list` marks each ◻. `keel new --list` lists 46
+  presets, where it listed 34. In the drill-down, in the terminal and
+  in `keel ui`, every back-end language now has a product, and the
+  _Fullstack_ shape asks for its adapters: _HTTP server + Browser SPA_
+  or _CLI + HTTP server + Browser SPA_. Moving `spring-cli` to
+  _Fullstack_ lands on `fullstack-spring-cli`. A facet spelling names
+  them too: `fullstack-quarkus-cli-rest` is `fullstack-cli`. See
+  [Fullstack products](docs/stacks/fullstack.md).
 
 - **Product glue can name a service by what it is, and reads each
   service's facets.** A plugin adapter's `providesInServices` takes
@@ -1549,8 +1561,7 @@ distribution iac`) — _Not for this project_, collapsed, each with the
   each part of it is proven identical to a part one builds;
   _best-effort_ where no CI job builds it. `keel new --list` marks ◻ the
   presets that are best-effort at their default setting — the new
-  products (above) other than `fullstack-go-cli` and
-  `fullstack-rust-cli`, plus `fullstack`, `fullstack-spring`,
+  JVM products (above), `fullstack`, `fullstack-spring`,
   `fullstack-micronaut`, `ts-cli-http`,
   `spring-cli-rest`, `quarkus-cli-rest-kotlin` and
   `micronaut-cli-rest-kotlin` — and says what the mark means. In
@@ -1575,8 +1586,8 @@ distribution iac`) — _Not for this project_, collapsed, each with the
   gets a row per build system, with a column per module layout, and
   each product a row per layout and build systems, with what proves
   each service. Today 83 of the 150 single-service settings are
-  first-class, and 5 of the 128 product settings. The stack matrix in
-  the README and in the catalog marks ◻ the 17 presets that are
+  first-class, and 6 of the 128 product settings. The stack matrix in
+  the README and in the catalog marks ◻ the 16 presets that are
   best-effort on their default setting. Both copies are now generated
   from the presets, so they can no longer drift apart. The matrix
   gains a _Product, CLI + HTTP server_ column, and no
