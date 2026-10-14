@@ -1388,6 +1388,26 @@ distribution iac`) — _Not for this project_, collapsed, each with the
 
 ### Added
 
+- **The docs say how far keel vouches for each setting.** A new
+  _Support tiers_ section in the [stack catalog](docs/stacks/README.md#support-tiers)
+  gives every setting `keel new` offers a tier. A setting is
+  _first-class_ where an e2e suite builds it as `keel new` leaves it,
+  or where each part of it is proven identical to a part a suite
+  builds. It is _best-effort_ where no CI job builds it as `keel new`
+  leaves it. The composition grid in `verify` holds each preset's
+  default setting to its hard invariants, and the weekly, report-only
+  composition sweep reads every setting. Each single-service preset
+  gets a row per build system, with a column per module layout, and
+  each product a row per layout and build systems, with what proves
+  each service. Today 81 of the 150 single-service settings are
+  first-class, and 2 of the 40 product settings. The stack matrix in
+  the README and in the catalog marks ◻ the 10 presets that are
+  best-effort on their default setting. Both copies are now generated
+  from the presets, so they can no longer drift apart. The matrix
+  gains a _Product, CLI + HTTP server_ column, empty for now, and no
+  longer lists `web-components` as a product cell; the sentence under
+  it says each product pairs the row's preset with `web-components`.
+
 - **`--stack` takes a preset's facets, in any order.**
   `keel new --stack=kotlin-spring-http` scaffolds `spring-rest-kotlin`:
   where the words of a typed id — a language, a framework, its

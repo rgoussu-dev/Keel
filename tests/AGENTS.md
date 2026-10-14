@@ -63,11 +63,14 @@ it guards:
   preaches a ≤ 120-line root; this is what keeps it one.
 - `mise-toolchain.test.ts` and `toolchain-pins.test.ts` — `mise.toml`
   against the shard matrix's tool lists and against `GRADLE_VERSION`.
-- `generated-docs.test.ts` — the two tables `docs/` does not write by
-  hand, the verticals compatibility matrix and the stack catalog's
-  defaults, against what `support/generated-docs.ts` renders from the
-  grid's goldens, `keel.dials` and the registry. It fails when
-  regenerating would change a committed file, as `prettier --check`
+- `generated-docs.test.ts` — the five tables in three files nobody
+  writes by hand: the verticals compatibility matrix; the stack matrix,
+  in the root `README.md` and in the stack catalog; and the catalog's
+  defaults and support tiers. It holds them against what
+  `support/generated-docs.ts` renders from the grid's goldens,
+  `keel.dials`, the registry, the support tier's facts and
+  `support/e2e-roles.ts`. It fails
+  when regenerating would change a committed file, as `prettier --check`
   does, and `KEEL_UPDATE_GOLDEN=1` rewrites what lies between each
   region's `generated:` sentinels, and nothing around them:
   `KEEL_UPDATE_GOLDEN=1 pnpm exec vitest run tests/generated-docs.test.ts`.

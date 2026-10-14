@@ -12907,7 +12907,7 @@ this step touches neither `src/` nor `tests/evals/`. Beyond the paragraphs the s
 a role seeds: the one in `tests/e2e/AGENTS.md` where a suite declares
 what it proves, and its twin in `docs/development.md`.
 
-#### T.2d — The tier in the docs (M)
+#### T.2d — The tier in the docs (M) ✅
 
 `tests/support/generated-docs.ts` renders three more regions:
 
@@ -12943,6 +12943,87 @@ what it proves, and its twin in `docs/development.md`.
   regenerates rather than being edited (it stays within its 120 lines,
   111 today). CHANGELOG _Added_: the docs say how far keel vouches for
   each setting.
+
+**Landed as three regions and their renderers**, in one commit with
+no `src/` change. It takes DT9's docs half. `tests/support/generated-docs.ts` gains `docFacts`:
+`gridFacts`, plus the finder's platforms from `keel.catalog`, each
+preset's tier on the setting a bare `--stack` settles to, and the tier
+of every harness-on cell `keel.dials` offers, walked as the paths
+golden walks them (`walkDials`) and read by `supportOf` over
+`shippedSupport`. `renderStackMatrix` renders `stack-matrix` into
+`README.md` and `docs/stacks/README.md`, the two differing only in
+their links. `renderSupportTiers` renders `support-tiers` into a new
+_Support tiers_ section of `docs/stacks/README.md`, under prose that
+says what each tier means. `PLATFORM_LABELS` holds the ten names and
+pages the registry lacks, in the matrix's row order. The stack matrix
+throws on a platform with no label, a label that reaches no platform,
+a page that does not exist, two presets in one cell, a placed preset
+with no default tier, a product service whose preset is no
+single-service preset, or a product whose backend is not the preset
+its row places at those entrypoints. The support tiers throw on two cells of one
+preset and build system in one layout, and on a first-class cell
+whose proof they cannot name; they branch on the tier first. The
+user-facing wording states what is measured rather than DT1's
+definition: no CI job builds a best-effort cell as `keel new` leaves
+it, the grid in `verify` holds each preset's default setting, and the
+weekly, report-only composition sweep reads every setting.
+`BEST_EFFORT` holds that sentence. Both legends say it, and a test
+holds the hand-written prose and the committed legends to it word for
+word. A suite named beside ◻ builds the cell only after changing it,
+as the `variant` role says; ✅ on a product's service may name a
+suite that builds an identical service.
+
+**What the tables show**, as rendered:
+
+- **The stack matrix:** 10 rows and 6 columns, the four entrypoint
+  sets and the two product columns. _Product, CLI + HTTP server_ is
+  `—` throughout. A product column is every back set that holds what
+  every product's backend holds, so T.3f's products fill it with no
+  edit here. ◻ marks the ten presets T.2b measured: `fullstack`,
+  `fullstack-spring`, `fullstack-micronaut`, `fullstack-ts`,
+  `go-cli-http`, `rust-cli-http`, `quarkus-cli-rest-kotlin`,
+  `spring-cli-rest`, `micronaut-cli-rest-kotlin` and `ts-cli-http`.
+- **The single-service tiers:** 50 rows of preset × build system, 150
+  cells. 81 are ✅ with their suite. 23 are ◻ with the `variant` suite
+  that builds them after changing them, and 46 are ◻ alone: the
+  research's 81, 23 and 46.
+- **The product tiers:** 40 rows. 2 are ✅, `fullstack-go` and
+  `fullstack-rust` on npm in a monorepo. Each service names its suite
+  where one proves it, P2's transfers included.
+- **The two sentences:** a `--no-agent-harness` cell has its twin's
+  tier (P1), and no suite builds a `Dockerfile` or runs a product's
+  `compose.yaml`.
+
+**What moved and what did not.** Both hand-written matrices are gone.
+What only they said is kept: each platform's page is linked from its
+row, and the sentence under the matrix says a product column's preset
+pairs the row's preset with `web-components` in `frontend/`, where the old tables put _frontend of
+all_ in the `web-components` row. The catalog's own spelling, _web
+comps_, and its _Docs_ column give way to the README's. Each region's
+provenance comment now names what that region is read from, and no
+cell of the other two moved. No golden moved.
+`tests/generated-docs.test.ts` gains eleven cases over made-up facts:
+a row per platform with ◻ and `—`, the two label refusals, the missing
+page and the shared cell, the missing default tier, the missing
+product service's preset, a product on another backend than its
+row's, a single-service row's suite and variant, a product row's
+services, the shared support-tiers cell, the first-class cell with no
+nameable proof, and one more that holds the prose's best-effort
+sentence to both committed legends. Tried and undone: `go-cli-http`'s ◻
+taken out of `README.md` by hand fails the `README.md` region alone.
+
+**Docs:** `docs/AGENTS.md` (five tables in three files, and the stack
+matrix regenerated rather than edited), `tests/AGENTS.md`'s
+`generated-docs.test.ts` bullet, both modules' notes, and the root
+`AGENTS.md`'s working agreement, which stays at 112 lines. CHANGELOG
+_Added_: the docs say how far keel vouches for each setting.
+
+**What it adds to `CI=true pnpm test`:** `generated-docs.test.ts` took
+4.8 s for its 28 tests in two runs here, against 0.7 s for its 14 on
+HEAD, the cost of walking every setting through `keel.dials` in its
+`beforeAll`. The run (462.6 s, 207 files, 3,531
+tests) passed whole, the growth axis in 170.6 s of its 180 with other
+work on the box.
 
 #### T.2e — The tier where a stack is picked (M)
 
@@ -13484,7 +13565,8 @@ what the user accepted in DT1.
   - (b) `keel.catalog`, `keel.dials`, the finder's badge, Options,
     `keel new --list` and the generated docs.
 
-  **Recommend (b).**
+  **Recommend (b).** Taken in T.2d (the generated docs) and T.2e (the
+  catalog, the dials, the page and `--list`).
 
 - **DT10 — How a suite's claim is checked.**
   - (a) Static, from the suite's literals. This finds 123 of 138.

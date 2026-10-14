@@ -416,7 +416,10 @@ A new suite also declares the dial cells it builds, as rows of
 `src/domain/core/support-tier.json`, or its role in
 `tests/support/e2e-roles.ts` where it proves none, with the cells it
 seeds, and `tests/support-tier.test.ts` fails in `verify` until it
-does. That file also fails when a suite or an e2e helper calls
+does. A new row, role or seed moves the docs' support tiers, so the
+same change regenerates them
+(`KEEL_UPDATE_GOLDEN=1 pnpm exec vitest run tests/generated-docs.test.ts`).
+That file also fails when a suite or an e2e helper calls
 `installMediator(` itself, past `e2eMediator`'s check.
 
 One scheduling detail shapes how these files are split. Vitest runs
@@ -1086,7 +1089,12 @@ the operator's machine would report it as a harness finding.
   product README template, both keyed by id for now. Add it to
   `tests/domain/core/stack-registry.golden.json` in the same change;
   that file is the frozen picture of what users see, and the guard
-  beside it fails in `verify` when the two disagree.
+  beside it fails in `verify` when the two disagree. A new platform
+  also gets a row in `PLATFORM_LABELS`
+  (`tests/support/generated-docs.ts`): its name and its page under
+  `docs/stacks/`. Any new stack then regenerates the README's stack
+  matrix, after the grid
+  (`KEEL_UPDATE_GOLDEN=1 pnpm exec vitest run tests/generated-docs.test.ts`).
 - **An adapter** lives in `src/domain/core/adapters/` with its
   template tree under `assets/composition/<vertical>/<adapter>/`, and
   registers in its vertical's adapter list.
