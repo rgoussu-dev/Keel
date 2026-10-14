@@ -7,10 +7,11 @@ What lives here: the engine (`predicate`, `resolver`, `refusals`,
 `supplied-answers`, `apply`, `install`, `actions`, `docs-index`, `hook-settings`, `rank`), the composition
 `adapters/` and `verticals/`, the stack presets as data (`stack-presets.json`, a
 platform × entrypoint table `stack-table.ts` expands) with
-the schema and id resolution over them (`stacks.ts`), `handlers/` (new-project,
-add-vertical, docs-sync, docs-check), `registry.ts` (`registryOf` and
-the shipped source, every refusal naming its origin) and
-`RegistryMediator`.
+the schema and id resolution over them (`stacks.ts`), the support tier as
+data (`support-tier.json`) with the rules that read it (`support-tier.ts`),
+`handlers/` (new-project, add-vertical, docs-sync, docs-check), `registry.ts`
+(`registryOf`, the shipped source and the shipped support, every refusal
+naming its origin) and `RegistryMediator`.
 
 - Never import `application/` or `infrastructure/` — reach the world
   through the ports in `domain/contract/ports/` only. `node:path` is
@@ -122,7 +123,14 @@ resolves it with `stackSpelled` (`stack-spelling.ts`): the id, or the
 one preset its facets name. Every reader of an id keel produced — a
 product's services, a drill-down placement, a recorded
 `services[].stack`, converge's preset — calls `Registry.stack()`, which
-stays exact, so a corrupt record is never read leniently.
+stays exact, so a corrupt record is never read leniently. The support tier is handed in as the registry is
+(roadmap T.2b): `support-tier.ts`'s rules read a `SupportSource` — the
+facts, and the stacks keel vouches for — and never `STACKS`.
+`registry.ts` builds keel's own beside the shipped source
+(`shippedSupport`), for the composition root to hand to the handlers
+that show a tier (T.2e), so their tests hand in facts of their own. A
+plugin's stack is not among the stacks keel vouches for, so it has no
+tier.
 
 **Compatibility is a declaration, never a hand-written check.** A
 `Conflict` on the vertical or stack that owns the rule is read three

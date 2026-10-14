@@ -12607,7 +12607,7 @@ of the e2e job, which needs its steps too. Nothing else moves.
 `CI=true pnpm test` (356.1 s, 204 files, 3,478 tests) passed whole,
 the growth axis in 138.3 s of its 180.
 
-#### T.2b — The tier as data, and its guards (L)
+#### T.2b — The tier as data, and its guards (L) ✅
 
 - **Types** in `src/domain/contract/support-tier.ts`:
   - `SupportTier`: `first-class` or `best-effort`.
@@ -12680,6 +12680,123 @@ the growth axis in 138.3 s of its 180.
 
   No CHANGELOG entry: the data is not shown yet. DT2, DT8 and DT10 are
   taken here.
+
+**Landed as the data and its guards**, in one commit that no handler
+reads yet. `src/domain/contract/support-tier.ts` holds the types.
+`src/domain/core/support-tier.json` holds 81 single-service rows over
+77 suites and 3 product rows, every dial spelled out, the harness
+among them. `src/domain/core/support-tier.ts` validates it at load,
+with strict rows, so a misspelt dial is refused rather than read as a
+default. It holds `supportOf` and `serviceKeys`, P2's key, which the
+premises suite reads too. `registry.ts` builds `shippedSupport`, the
+facts over `shippedSource`'s stacks, for T.2e's composition root to
+hand in. The rules import neither `STACKS` nor the registry.
+
+The rows were derived again on HEAD, after S, not copied from the
+research. Every `keel new` the e2e suites dispatch was captured, the
+`ui-*` suites apart: 138 dispatches in 115 files, in 82 s with no
+build. Each was settled through `keel.dials`, and all 138 are keys of
+`paths-new`. The rows came out as the research's: 77 suites prove 81
+cells, and `walking-skeleton-go`, `-rust`, `ts-walking-skeleton` and
+`ts-cli-walking-skeleton` prove two each. `fullstack` builds its
+frontend, and `fullstack-go` and `fullstack-rust` their backends.
+`tests/support/e2e-roles.ts` gives the other 39 suites their roles:
+33 `variant` (the 28 `add-module` suites and the 5 persistence
+suites), `code-style-jvm` as an `aspect`, `dev-compose` as `no-build`
+and the four `ui-*` suites as `browser`. 80 proving suites and 39
+roles are the 119 files of `tests/e2e/`. `modulith-baseline` and the
+four `*-peer-context` suites, which `tests/e2e/AGENTS.md` calls no
+grid cell, each build a dial cell as it is scaffolded, so each is a
+row, and that file now says so.
+
+**The tier, measured** with `supportOf` over `shippedSupport` on the
+340 plain `keel new` cells of `paths-new`, every setting `keel.dials`
+offers:
+
+- **Single, harness on:** 81 of 150 first-class, each by its row.
+- **Single, harness off:** 81 of 150, all by P1.
+- **Products:** 2 of 40, `fullstack-go` and `fullstack-rust` with an
+  npm frontend in a monorepo. Each backend is its own suite's, and each
+  frontend is `fullstack`'s, by P2. Of the other 38, 10 have one
+  service proven and 28 none.
+- **Best-effort at the default setting:** 10 presets, the research's
+  ten: `fullstack`, `fullstack-spring`, `fullstack-micronaut`,
+  `fullstack-ts`, `go-cli-http`, `rust-cli-http`,
+  `quarkus-cli-rest-kotlin`, `spring-cli-rest`,
+  `micronaut-cli-rest-kotlin` and `ts-cli-http`.
+
+**The guards.** `tests/support-tier.test.ts` holds G1 to G4 in `verify`,
+reading the shard matrix through T.2a's `tests/support/ci-shards.ts`,
+which gains `probedTools`. G2 maps each claimed cell's packaging tag to
+the binaries its shard must probe for, and finds 0 gaps. G3 spells each
+row as `paths-golden.ts` keys a cell, and finds every row a cell of
+`paths-new`. `tests/support-tier.premises.test.ts` holds G5 on 340
+scaffolds in memory, made by real runs into the shipped `Tree` and
+`ManifestStore` fakes:
+
+- **P1:** 150 pairs, 0 violations. The test holds that whatever the
+  harness-off cells lack is an agent file; measured, they lack these: `AGENTS.md` and `CLAUDE.md` at the
+  root and per directory, `.aider.conf.yml`, `.gemini/settings.json`,
+  `.claude/settings.json`, the two hooks and the three skills.
+- **P2:** 40 product cells, 24 service keys, 0 split. The frontend
+  falls into 4 classes of 10 cells, and the backend into 20 classes of
+  2, as the research measured.
+
+`tests/domain/core/support-tier.test.ts` holds each rule in 28 cases,
+each dial moved alone and a product's own row named before P2's, on a
+fixture family, through sources it builds. `vitest.stryker.config.ts`
+leaves the premises suite out, as it does the paths golden: it leaves
+out twelve suites now, where it left out eleven. No golden moved:
+`paths-new` holds its 717 cells. No CHANGELOG entry: nothing a user sees
+moved.
+
+**The proof** that each guard catches what it is for, tried and
+undone:
+
+- G1: `dev-compose` without a role fails, as an unnamed file.
+- G2: `walking-skeleton-go` moved into the `web` shard fails on both
+  its cells, while `ci-workflow.test.ts` stays green.
+- G3: the `go-cli` basic row on Gradle fails.
+- G4: a second row on `walking-skeleton`'s cell fails.
+- G5: the harness writing one more root file, `agents.lock`, fails P1
+  on all 150 pairs. A key without the build system fails P2 on 10 keys.
+
+**Held since review:** the premises suite also pins the counts above
+(81 by their rows and 69 best-effort each way, and the products' 2,
+10 and 28), so a rule that stopped reading a dial moves a test before
+any page; and P2's signature holds each service's queued actions as
+P1's does.
+
+**Cost.** The four guards take under 0.1 s, after some 5 s of
+collection. The premises suite took 19.2 s, 21.2 s, 36.5 s and 51.1 s
+in four runs, at load averages of 9 to 33 on four cores with other
+work on the box, and 16.5 to 18.0 s of user CPU. The research inferred
+some 15 s.
+
+**Where it departs from the step's text.** A `SupportSource` carries the
+stacks keel vouches for, not their ids alone. P2 reads a product's
+services, their extras and their siblings' `projects`, and the rules may
+read neither `STACKS` nor a registry. The ids it vouches for are those
+stacks' ids. `supportOf` also answers null for a cell of the other kind
+than its stack, a single-service cell of a product or the reverse. It
+takes a settled cell as given: handed one `keel.dials` never settles to,
+it answers best-effort rather than null, so T.2e's callers settle
+through `keel.dials` first. G4 holds one row per cell, a product's
+included, whatever services the rows build. One doc the step does not
+name was made false by it: `docs/development.md` counted eleven suites
+that mutation testing leaves out, now twelve. `docs/development.md` and
+the root `AGENTS.md`'s working agreement also say that a new suite
+declares what it proves, as `tests/e2e/AGENTS.md` and `CONTRIBUTING.md`
+now do; `src/domain/contract/AGENTS.md` names the types. DT2 and DT8
+are recorded as taken, and DT10's static half.
+
+**What it adds to `CI=true pnpm test`:** 31 cases in three files, the
+premises suite's 20.9 s the bulk of it. The run (485.4 s, 207 files,
+3,514 tests) passed whole, at a load average of 6 to 8 from an e2e
+implementer on the box; the growth axis took 177.3 s of its 180 there,
+against 138 to 154 s in this epic's quieter runs. An earlier run under
+the same load failed `tests/evals/driver.test.ts`'s process-group
+timing case, which passed twice alone and in this run.
 
 #### T.2c — Each suite builds the cell it claims (M)
 
@@ -13198,7 +13315,7 @@ what the user accepted in DT1.
     rewrite, inside the 24 it calls first-class.
   - (b) The dial cell: the roadmap's own cell (J, `tests/e2e/AGENTS.md`).
 
-  **Taken (DT1): (b).**
+  **Taken (DT1): (b).** Taken in T.2b.
 
 - **DT3 — "Ids kept as aliases".**
   - (a) Facet spellings canonical, the 34 ids their aliases, as the
@@ -13275,6 +13392,8 @@ what the user accepted in DT1.
   - **A product backend against its single-service preset:** no
     transfer, since they differ in the code a product compiles.
 
+  Taken in T.2b.
+
 - **DT9 — Where the tier shows.**
   - (a) A note in `keel new`'s report. It moves 299 of 717 cells of
     the paths golden, and a note per run for a fact about a setting.
@@ -13288,7 +13407,7 @@ what the user accepted in DT1.
   - (b) Static guards in `verify` and a dynamic check in the e2e job,
     on what each suite dispatches.
 
-  **Recommend (b).**
+  **Recommend (b).** Taken in T.2b (the static half); T.2c takes the job's half.
 
 - **DT11 — The weekly sweep and best-effort cells.** Best-effort cells
   are catalog cells, and the sweep reads the catalog, so they are

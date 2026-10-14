@@ -4,7 +4,8 @@
  *
  * A module of its own so every guard that holds the matrix to
  * something else reads it one way — `tests/ci-workflow.test.ts` holds
- * it to `tests/e2e/`.
+ * it to `tests/e2e/`, `tests/support-tier.test.ts` to the cells
+ * `support-tier.json` says each suite builds.
  */
 
 import fs from 'node:fs';
@@ -39,4 +40,9 @@ export function e2eShards(): readonly Shard[] {
 /** The suites `shard` runs, each as `tests/e2e/<name>.test.ts`. */
 export function claimedFiles(shard: Shard): readonly string[] {
   return shard.files.trim().split(/\s+/);
+}
+
+/** The binaries `shard` probes for. */
+export function probedTools(shard: Shard): readonly string[] {
+  return shard.tools.trim().split(/\s+/);
 }

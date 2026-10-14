@@ -38,7 +38,7 @@ sweep (`sweep/`).
 
 ## The guard tests
 
-Seven suites in `verify` exist because an index nobody checks rots
+Eight suites in `verify` exist because an index nobody checks rots
 silently. They check structure, never prose — a generated table is
 structure too, checked as the projection it claims to be — and they
 are the reason a matching change lands in the same commit as the thing
@@ -50,7 +50,7 @@ it guards:
   `tests/sweep/` opted in, with no `if:` to skip it and no
   `continue-on-error` to pass it red, and to a schedule and dispatch
   only (the weekly sweep, below). It reads the matrix through
-  `support/ci-shards.ts`, which T.2b's guards share.
+  `support/ci-shards.ts`, as `support-tier.test.ts` does.
 - `version-pins.test.ts` — `assets/composition/version-pins.json` against
   the templates. Extend the registry, never the sweep's blind spots; see
   [`assets/`](../assets/AGENTS.md).
@@ -72,6 +72,20 @@ it guards:
   region's `generated:` sentinels, and nothing around them:
   `KEEL_UPDATE_GOLDEN=1 pnpm exec vitest run tests/generated-docs.test.ts`.
   See [`docs/`](../docs/AGENTS.md).
+- `support-tier.test.ts` — `src/domain/core/support-tier.json`, the
+  support tier's facts (roadmap T.2b), against `tests/e2e/`, the shard
+  matrix and the paths golden. Every e2e file is the suite of a row or
+  has a role in `support/e2e-roles.ts`, never both (G1). The shard
+  that runs a proving suite probes for the toolchain of each cell it
+  claims, since a suite in a shard without it skips and reads as a pass
+  (G2). Every claimed cell is a `paths-new` cell, spelled as that golden
+  keys it (G3), and none is claimed twice (G4). G5 is a file of its
+  own, `support-tier.premises.test.ts`, because it scaffolds: on every
+  dial cell `keel.dials` offers, each single-service cell without the
+  agent harness is its twin with it, less the agent files (P1), and
+  every product service with one key (`serviceKeys`) has the same
+  files, its manifest among them, and queues the same actions (P2). Its 340 scaffolds run in memory
+  in a `beforeAll`, so mutation testing leaves it out.
 
 ## The composition grid
 

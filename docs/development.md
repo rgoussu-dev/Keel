@@ -405,6 +405,10 @@ Each shard lists its files explicitly in `.github/workflows/ci.yml`,
 which means **a new suite must be added to a shard or it never runs**.
 That is enforced, not remembered: `tests/ci-workflow.test.ts` parses the
 workflow and fails in `verify` when the matrix and `tests/e2e/` disagree.
+A new suite also declares the dial cells it builds, as rows of
+`src/domain/core/support-tier.json`, or its role in
+`tests/support/e2e-roles.ts` where it proves none, and
+`tests/support-tier.test.ts` fails in `verify` until it does.
 
 One scheduling detail shapes how these files are split. Vitest runs
 files in parallel workers but the tests _inside_ a file in sequence, so
@@ -481,7 +485,7 @@ recorded there too:
   stronger check of that declarative surface than a mutant re-running
   the unit suite.
 - **Mutants run against `vitest.stryker.config.ts`**, which is the
-  ordinary config minus eleven suites — all excluded by construction,
+  ordinary config minus twelve suites — all excluded by construction,
   not by environment. `tests/e2e/` decides for itself whether to run,
   and on a box with a JDK on PATH it would happily build a real
   project once per mutant. `tests/version-pins.test.ts` is a text
@@ -509,8 +513,9 @@ recorded there too:
   the growth golden and its render guard
   (`tests/domain/core/growth.golden.test.ts`,
   `tests/domain/core/growth-render.test.ts`), the paths golden's
-  four families (`tests/domain/core/paths-*.golden.test.ts`) and the
-  converge golden (`tests/domain/core/converge.golden.test.ts`).
+  four families (`tests/domain/core/paths-*.golden.test.ts`), the
+  converge golden (`tests/domain/core/converge.golden.test.ts`) and
+  the support tier's premises (`tests/support-tier.premises.test.ts`).
 
 Incremental mode is on: `reports/stryker-incremental.json`
 (gitignored) records what was tested against which code, so a re-run

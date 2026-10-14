@@ -4,7 +4,7 @@ import base from './vitest.config';
 /**
  * The vitest config Stryker runs mutants against.
  *
- * Same config as `pnpm test`, minus eleven suites — all excluded by
+ * Same config as `pnpm test`, minus twelve suites — all excluded by
  * construction, not by environment:
  *
  *   - `tests/e2e/`. Those suites decide for themselves whether to
@@ -44,6 +44,11 @@ import base from './vitest.config';
  *     the converge golden, `converge.golden.test.ts`, which reads each
  *     of those cells in one; `converge.test.ts` holds the reading
  *     itself.
+ *   - `tests/support-tier.premises.test.ts`, for the same reason: it
+ *     scaffolds every dial cell in a `beforeAll`, and its tests only
+ *     compare what those scaffolds left. It holds the support tier's
+ *     premises in `verify`; `tests/domain/core/support-tier.test.ts`
+ *     holds the rules themselves.
  *
  * The second exclusion would be right even if the dry run survived
  * it. A text sweep sees the mutant *in the source* rather than in the
@@ -66,6 +71,7 @@ export default mergeConfig(
         'tests/domain/core/growth-render.test.ts',
         'tests/domain/core/paths-*.golden.test.ts',
         'tests/domain/core/converge.golden.test.ts',
+        'tests/support-tier.premises.test.ts',
       ],
     },
   }),

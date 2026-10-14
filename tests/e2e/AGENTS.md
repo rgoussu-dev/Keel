@@ -14,6 +14,19 @@ passed.** `tests/ci-workflow.test.ts` parses `ci.yml` and fails in
 `verify` when the matrix and this directory disagree. A new suite goes
 into a shard in the same change.
 
+**A suite declares what it proves.** One that builds a dial cell as
+keel scaffolds it is that cell's row in
+`src/domain/core/support-tier.json`, every dial spelled out, and the
+row is what makes the cell first-class (roadmap T). One that proves no
+cell has its role in `tests/support/e2e-roles.ts`: it changes the cell
+before it builds, checks an aspect of another suite's cell, builds
+nothing, or drives `keel ui`. `tests/support-tier.test.ts` fails in
+`verify` when a file is neither or both, and when the shard running a
+proving suite does not probe for its cell's toolchain. A new suite
+declares itself in the same change. `modulith-baseline` and the four
+`modulith-*-peer-context` suites, which the grids below call no cell,
+each build a dial cell as it is scaffolded, so each is that cell's row.
+
 **A test file is the unit of CI scheduling.** Vitest parallelises across
 files and runs the tests inside one file in sequence, so the slowest
 single file floors the whole job regardless of sharding. Long cases get

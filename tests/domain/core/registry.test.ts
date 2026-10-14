@@ -22,9 +22,11 @@ import {
   RESERVED_VERTICAL_IDS,
   shippedRegistry,
   shippedSource,
+  shippedSupport,
 } from '../../../src/domain/core/registry.js';
 import { stackSpelled } from '../../../src/domain/core/stack-spelling.js';
 import { STACKS } from '../../../src/domain/core/stacks.js';
+import { SHIPPED_SUPPORT_FACTS } from '../../../src/domain/core/support-tier.js';
 import { SHIPPED_VERTICALS } from '../../../src/domain/core/verticals/index.js';
 
 /** A vertical with one adapter covering its one dimension. */
@@ -61,6 +63,13 @@ describe('shippedRegistry', () => {
     expect(listVerticalIds(shippedRegistry)).toEqual(
       SHIPPED_VERTICALS.map((vertical) => vertical.id).sort(),
     );
+  });
+});
+
+describe('shippedSupport', () => {
+  it("vouches for keel's presets with keel's facts, and for no plugin's", () => {
+    expect(shippedSupport.stacks.map((stack) => stack.id)).toEqual(Object.keys(STACKS));
+    expect(shippedSupport.facts).toBe(SHIPPED_SUPPORT_FACTS);
   });
 });
 

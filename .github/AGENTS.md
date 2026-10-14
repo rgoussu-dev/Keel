@@ -74,9 +74,12 @@ The shard matrix names its files explicitly, and that is a hazard with a
 guard: a suite in no shard never runs, which looks exactly like a suite
 that passed. `tests/ci-workflow.test.ts` parses the workflow and fails
 in `verify` when the matrix and `tests/e2e/` disagree — keep it when
-editing the matrix; it is the only thing standing between a new suite
-and silent non-coverage. Which cells exist and why they are grouped the
-way they are: [`tests/e2e/`](../tests/e2e/AGENTS.md).
+editing the matrix; it is what stands between a new suite and silent
+non-coverage. A suite in a shard that lacks its toolchain skips, which
+reads as a pass too, so `tests/support-tier.test.ts` fails when the
+shard running a suite that proves a cell does not probe for that
+cell's toolchain. Which cells exist and why they are grouped the way
+they are: [`tests/e2e/`](../tests/e2e/AGENTS.md).
 
 **The e2e job's JDK and Gradle versions are coupled and neither is
 arbitrary.** The emitted JVM projects target release 25; Maven compiles

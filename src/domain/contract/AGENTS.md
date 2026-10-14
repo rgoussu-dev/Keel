@@ -4,7 +4,9 @@
 
 What lives here: the commands and `InstallReport`; the composition
 vocabulary (`Adapter`, `Vertical`, …); the `Stack` vocabulary
-(`stack.ts`) and the plugin contract (`plugin.ts`); the harness seams
+(`stack.ts`) and the plugin contract (`plugin.ts`); the support tier's
+vocabulary (`support-tier.ts`: a dial cell, its tier and the proof of
+it, types only — the facts and rules are `domain/core`'s); the harness seams
 (`skill.ts`, `hook.ts`, `doc.ts`, `region.ts`); the refusal vocabulary
 (`refusal.ts`); where the projects nearest a directory holding none are
 (`nearby.ts`); the manifest types and their zod schemas; and `ports/`

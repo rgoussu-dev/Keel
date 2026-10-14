@@ -36,6 +36,7 @@ import type { Stack } from '../contract/stack.js';
 import { validateConflict } from './compatibility.js';
 import { stackReader } from './stack-spelling.js';
 import { isAssemblable, STACKS } from './stacks.js';
+import { SHIPPED_SUPPORT_FACTS, type SupportSource } from './support-tier.js';
 import { SHIPPED_VERTICALS } from './verticals/index.js';
 
 /** The origin string every shipped piece registers under. */
@@ -196,6 +197,19 @@ function refuseSpellingClashes(
 
 /** The registry over keel's own pieces and nothing else. */
 export const shippedRegistry: Registry = registryOf([shippedSource]);
+
+/**
+ * How far keel vouches for its own presets: the rows
+ * `support-tier.json` records, over the stacks {@link shippedSource}
+ * registers, and no plugin's. Built here, beside the registry, so the
+ * tier's rules never read `STACKS`: the composition root hands this to
+ * the handlers that show a tier as it hands them the registry
+ * (roadmap T.2e), and their tests hand in their own.
+ */
+export const shippedSupport: SupportSource = {
+  facts: SHIPPED_SUPPORT_FACTS,
+  stacks: shippedSource.stacks ?? [],
+};
 
 /**
  * Refuses a second claim on an id, naming both claimants.
