@@ -6,178 +6,75 @@
  * absent-name request, the RFC 9457 rejection, and the CORS header
  * the `go-cors` decoration added for the SPA's dev origin.
  *
- * The frontend's own npm gates are exercised by the quarkus-pair
- * fullstack e2e (the frontend is identical); here `npm install` is
- * no-op'd alongside `git init`, so this test costs one `go mod tidy`
- * (offline — the skeleton is stdlib-only) plus a Go build. Skip
- * rules: skipped when `go` is missing from PATH; skipped on CI
- * unless `KEEL_RUN_E2E=1`; opt out locally with `KEEL_SKIP_E2E=1`.
+ * The frontend's own npm gates are exercised by `fullstack.test.ts`
+ * (the frontend is identical); here its `npm install` is faked in the
+ * frontend's scope, with the root's `git init`. The backend's two
+ * scaffold-time `go mod tidy` runs (go-bootstrap's and
+ * go-observability's) run for real in the process's own Go
+ * environment, and fetch the OpenTelemetry modules, so the suite needs
+ * the network; its vet, test and build run against the Go home every
+ * Go suite in the run shares. The scaffolding is
+ * `tests/support/product-e2e.ts`'s, and the skip rules and toolchain
+ * environment are `tests/support/go-e2e.ts`'s.
  */
 
 import path from 'node:path';
-import os from 'node:os';
-import { spawn, spawnSync } from 'node:child_process';
 import fs from 'fs-extra';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { runActions, type RunActionsInputs } from '../../src/domain/core/actions.js';
-import { newProjectCommand } from '../../src/domain/contract/commands.js';
-import type { DeferredAction } from '../../src/domain/contract/composition.js';
-import { e2eMediator } from '../support/e2e-cell.js';
-import { expectOk } from '../support/factory.js';
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import {
+  E2E_TIMEOUT_MS,
+  EXE,
+  goRun,
+  mkTempDir,
+  sharedGoHome,
+  skipGoE2E,
+  withHttpUnit,
+} from '../support/go-e2e.js';
+import {
+  driveGatewayContract,
+  expectComposeBuildContexts,
+  scaffoldProduct,
+} from '../support/product-e2e.js';
 
-const E2E_TIMEOUT_MS = 5 * 60 * 1000;
-
-const EXE = process.platform === 'win32' ? '.exe' : '';
-
-const stubActions =
-  (stubbed: ReadonlySet<string>) =>
-  (inputs: RunActionsInputs): Promise<void> => {
-    const rewritten = inputs.actions.map((a): DeferredAction => {
-      if (!stubbed.has(a.id)) return a;
-      return {
-        id: a.id,
-        description: `${a.description} [faked: no-op]`,
-        run: () => Promise.resolve(),
-      };
-    });
-    return runActions({ ...inputs, actions: rewritten });
-  };
-
-const onPath = (cmd: string): boolean => {
-  const probe = process.platform === 'win32' ? 'where' : 'which';
-  return spawnSync(probe, [cmd], { stdio: 'ignore' }).status === 0;
-};
-
-const optedIn = process.env.KEEL_RUN_E2E === '1';
-const optedOut = process.env.KEEL_SKIP_E2E === '1';
-const onCI = process.env.CI === 'true';
-const skipE2E = optedOut || !onPath('go') || (onCI && !optedIn);
-
-let cwd: string;
 let goHome: string;
+let cwd: string;
+
+beforeAll(async () => {
+  goHome = await sharedGoHome();
+});
 
 beforeEach(async () => {
-  cwd = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-fsgo-e2e-'));
-  goHome = await fs.mkdtemp(path.join(os.tmpdir(), 'keel-fsgo-e2e-go-'));
+  cwd = await mkTempDir('keel-fsgo-e2e-');
 });
 
 afterEach(async () => {
   await fs.remove(cwd);
-  await fs.remove(goHome);
 });
 
-/**
- * The Go environment every spawned toolchain call gets: a temp cache
- * and GOPATH for hermeticity, and `-modcacherw` so the module cache
- * they fill stays writable.
- *
- * That last flag is a teardown fix, not a build one. Go writes the
- * module cache read-only, so removing the temp GOPATH afterwards fails
- * with `EACCES: permission denied, rmdir …/pkg/mod/…` for any user who
- * is not root — invisible in a root container, fatal on a CI runner,
- * and it surfaces as a suite-level failure that says nothing about
- * cleanup.
- */
-const goEnv = (): NodeJS.ProcessEnv => ({
-  ...process.env,
-  GOCACHE: path.join(goHome, 'cache'),
-  GOPATH: path.join(goHome, 'path'),
-  GOFLAGS: '-modcacherw',
-});
-
-const goRun = (backend: string, args: readonly string[]): void => {
-  const r = spawnSync('go', args, { cwd: backend, env: goEnv(), encoding: 'utf8' });
-  if (r.status !== 0) {
-    throw new Error(`go ${args.join(' ')} failed (exit ${r.status})\n${r.stdout}\n${r.stderr}`);
-  }
-};
-
-describe.skipIf(skipE2E)('fullstack-go e2e (monorepo)', () => {
+describe.skipIf(skipGoE2E)('fullstack-go e2e (monorepo)', () => {
   it(
     'scaffolds a product whose Go backend serves the wire the frontend gateway encodes',
     async () => {
-      const mediator = e2eMediator({
-        keelVersion: '0.0.0-e2e',
-        runDeferred: stubActions(new Set(['vcs/git-init', 'walking-skeleton/npm-install'])),
-      });
-      expectOk(
-        await mediator.dispatch(
-          newProjectCommand({
-            cwd,
-            stack: 'fullstack-go',
-            answers: {},
-            interactive: false,
-            dryRun: false,
-          }),
-        ),
+      const { backend, frontend } = await scaffoldProduct(
+        { stack: 'fullstack-go', fakes: { frontend: ['walking-skeleton/npm-install'] } },
+        cwd,
       );
+      expect(await fs.pathExists(path.join(frontend, 'node_modules'))).toBe(false);
+      await expectComposeBuildContexts(cwd);
 
-      const backend = path.join(cwd, 'backend');
-      expect(await fs.pathExists(path.join(cwd, 'frontend', 'package.json'))).toBe(true);
-      expect(await fs.pathExists(path.join(backend, 'contract', 'greet.openapi.yaml'))).toBe(true);
+      goRun(backend, goHome, ['vet', './...']);
+      goRun(backend, goHome, ['test', './...']);
+      goRun(backend, goHome, ['build', '-o', `bin/backend-http${EXE}`, './cmd/http']);
 
-      goRun(backend, ['vet', './...']);
-      goRun(backend, ['test', './...']);
-      goRun(backend, ['build', '-o', `bin/backend-http${EXE}`, './cmd/http']);
-
-      const server = spawn(path.join(backend, 'bin', `backend-http${EXE}`), [], {
-        cwd: backend,
-        // GO_ENV=dev activates the dev-only CORS accommodation under test.
-        env: { ...process.env, PORT: '0', GO_ENV: 'dev' },
-      });
-      try {
-        const port = await new Promise<string>((resolve, reject) => {
-          const timer = setTimeout(
-            () => reject(new Error('server never announced its port')),
-            15_000,
-          );
-          const settle = (outcome: () => void): void => {
-            clearTimeout(timer);
-            outcome();
-          };
-          let buffered = '';
-          const sniff = (chunk: Buffer): void => {
-            buffered += chunk.toString();
-            const match = /listening on .*:(\d+)/.exec(buffered);
-            if (match?.[1]) {
-              const found = match[1];
-              settle(() => resolve(found));
-            }
-          };
-          server.stdout.on('data', sniff);
-          server.stderr.on('data', sniff);
-          server.on('error', (err) => settle(() => reject(err)));
-          server.on('exit', (code) =>
-            settle(() => reject(new Error(`server exited early (${code}): ${buffered}`))),
-          );
-        });
-        const base = `http://127.0.0.1:${port}`;
-
-        // The wire the frontend gateway encodes, per the contract.
-        const named = await fetch(`${base}/greet?name=E2E`);
-        expect(named.status).toBe(200);
-        expect(await named.json()).toEqual({ greeting: 'Hello, E2E!' });
-        expect(named.headers.get('access-control-allow-origin')).toBe('http://localhost:5173');
-
-        const defaulted = await fetch(`${base}/greet`);
-        expect(defaulted.status).toBe(200);
-        expect(await defaulted.json()).toEqual({ greeting: 'Hello, world!' });
-
-        const rejected = await fetch(`${base}/greet?name=`);
-        expect(rejected.status).toBe(400);
-        expect(rejected.headers.get('content-type')).toBe('application/problem+json');
-
-        const preflight = await fetch(`${base}/greet`, {
-          method: 'OPTIONS',
-          headers: { 'access-control-request-headers': 'x-requested-with' },
-        });
-        expect(preflight.status).toBe(204);
-        expect(preflight.headers.get('access-control-allow-methods')).toBe('GET');
-        expect(preflight.headers.get('access-control-allow-headers')).toBe('x-requested-with');
-      } finally {
-        server.removeAllListeners('exit');
-        server.kill();
-      }
+      // GO_ENV=dev activates the dev-only CORS accommodation under test;
+      // OpenTelemetry stays on, so the backend boots through its real
+      // exporter setup, the one Go suite that does.
+      await withHttpUnit(
+        path.join(backend, 'bin', `backend-http${EXE}`),
+        backend,
+        (port) => driveGatewayContract(`http://127.0.0.1:${port}`),
+        { GO_ENV: 'dev', OTEL_SDK_DISABLED: 'false' },
+      );
     },
     E2E_TIMEOUT_MS,
   );

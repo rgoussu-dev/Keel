@@ -14,10 +14,10 @@
  */
 
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
 import fs from 'fs-extra';
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, it } from 'vitest';
 import {
+  driveGreetCli,
   driveGreetContract,
   E2E_TIMEOUT_MS,
   EXE,
@@ -58,19 +58,7 @@ describe.skipIf(skipGoE2E)('walking-skeleton Go e2e', () => {
       goRun(cwd, goHome, ['test', './...']);
       goRun(cwd, goHome, ['build', '-o', `bin/skel${EXE}`, './cmd/cli']);
 
-      const run = spawnSync(path.join(cwd, 'bin', `skel${EXE}`), ['--name', 'E2E'], {
-        cwd,
-        encoding: 'utf8',
-      });
-      expect(run.status).toBe(0);
-      expect(run.stdout).toBe('Hello, E2E!\n');
-
-      const rejected = spawnSync(path.join(cwd, 'bin', `skel${EXE}`), ['--name', '  '], {
-        cwd,
-        encoding: 'utf8',
-      });
-      expect(rejected.status).toBe(2);
-      expect(rejected.stderr).toContain('name must not be empty');
+      driveGreetCli(path.join(cwd, 'bin', `skel${EXE}`), cwd);
     },
     E2E_TIMEOUT_MS,
   );

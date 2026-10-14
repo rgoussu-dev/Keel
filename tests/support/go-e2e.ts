@@ -215,17 +215,37 @@ export function goRunFails(cwd: string, goHome: string, args: readonly string[])
 }
 
 /**
+ * Runs a built CLI unit twice in `cwd`: it greets a name on stdout, and
+ * refuses a blank one with exit code 2, the domain's no.
+ */
+export function driveGreetCli(binary: string, cwd: string): void {
+  const run = spawnSync(binary, ['--name', 'E2E'], { cwd, encoding: 'utf8' });
+  expect(run.status, run.stderr).toBe(0);
+  expect(run.stdout).toBe('Hello, E2E!\n');
+
+  const rejected = spawnSync(binary, ['--name', '  '], { cwd, encoding: 'utf8' });
+  expect(rejected.status).toBe(2);
+  expect(rejected.stderr).toContain('name must not be empty');
+}
+
+/**
  * Boots a built HTTP unit on an OS-assigned port, hands its port to
  * `drive`, and kills it afterwards however that goes.
+ *
+ * The unit boots with `PORT=0` and `OTEL_SDK_DISABLED=true`, and `env`
+ * is laid over that: a product's backend takes `GO_ENV=dev`, which
+ * turns on its dev-only CORS accommodation, and `fullstack-go` turns
+ * OpenTelemetry back on.
  */
 export async function withHttpUnit(
   binary: string,
   cwd: string,
   drive: (port: string) => Promise<void>,
+  env: NodeJS.ProcessEnv = {},
 ): Promise<void> {
   const server = spawn(binary, [], {
     cwd,
-    env: { ...process.env, PORT: '0', OTEL_SDK_DISABLED: 'true' },
+    env: { ...process.env, PORT: '0', OTEL_SDK_DISABLED: 'true', ...env },
   });
   try {
     const port = await new Promise<string>((resolve, reject) => {

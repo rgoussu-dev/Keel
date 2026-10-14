@@ -14062,7 +14062,7 @@ greenfield from 32 s to 43–45 s.
 
 ### T.4 — The cheap builds, in the shards there are
 
-#### T.4a — The product e2e helpers (S)
+#### T.4a — The product e2e helpers (S) ✅
 
 A refactor with no new cell. `tests/support/product-e2e.ts` gathers
 what the product suites repeat, and what the new ones need:
@@ -14079,6 +14079,119 @@ Go's and Rust's CLI greeting check becomes `driveGreetCli`, and the
 TypeScript REST server's start and stop become `withRestAssembly`.
 `fullstack`, `fullstack-go` and `fullstack-rust` move onto them, and
 run green locally. `fullstack-go` takes the shared Go home.
+
+**Landed as the helpers and their callers**, in one commit with no
+`src/` change and no cell added. `tests/support/product-e2e.ts` (189
+lines) holds four helpers:
+
+- `stubInScopes` fakes a deferred action by the scope that queues it,
+  read as `path.relative(root, cwd)`, with `.` for the product root,
+  and only the ids it names there. Each of the 18 products queues
+  `vcs/git-init` and `vcs/commit-conventions` at its root and its
+  frontend's `walking-skeleton/npm-install` in `frontend/`.
+  `fullstack-ts`' and `fullstack-ts-cli`'s backends queue
+  `walking-skeleton/npm-install` too, which is why the scope is the
+  key. The helper replaces the private `stubActions` copies in
+  `fullstack` and `fullstack-go`.
+- `scaffoldProduct` scaffolds a product on its default dials, through
+  T.2c's `e2eMediator`, so the cell it scaffolds is checked against
+  the ones its suite claims. It fakes the root's `git init` and the
+  fakes the suite names. It asserts that no `.git` was made, that the
+  frontend landed, and that the backend carries
+  `contract/greet.openapi.yaml`, and returns the two services' paths.
+  Each suite names what it fakes: `fullstack` builds the frontend, so
+  a default that fakes the frontend's install would be one that suite
+  overrides.
+- `expectComposeBuildContexts` reads the root's `compose.yaml`. It
+  asserts that the file builds a service, and that each service it
+  builds finds its `Dockerfile` under the build context, in the short
+  form or the long one.
+- `driveGatewayContract` holds the gateway wire that `fullstack-go`
+  and `fullstack-rust` each spelled out, the rejection's media type
+  compared exactly, as both did. T.4d's TypeScript backend sends `;
+charset=utf-8` after it, so that step decides how its caller reads
+  the header.
+
+The other helpers are lifted from the code that runs them:
+
+- `driveGreetCli` joins `go-e2e.ts` and `rust-e2e.ts`, one in each, as
+  the rest of each harness is. It replaces the greeting check
+  inlined in `walking-skeleton-go`, `modulith-go-cli`,
+  `walking-skeleton-rust` and `modulith-rust-cli`.
+- `withRestAssembly` joins `web-e2e.ts`, on its existing free-port
+  probe. `ts-combo-e2e.ts` loses its own start, stop and port probe:
+  75 lines out, 6 in.
+- `withHttpUnit` takes an `env` laid over the unit's, so `fullstack-go`
+  boots its backend with `GO_ENV=dev` through it, not through a port
+  sniff of its own, and with `OTEL_SDK_DISABLED=false` over the
+  helper's default, keeping the boot conditions it had: OpenTelemetry
+  on, the one Go suite that boots with it. No test sees the difference,
+  since the wire it drives is the same either way.
+- `RustProjectSpec` loses `alsoStubbed` and `servicePath`, which only
+  `fullstack-rust` set.
+
+The three product suites move onto the helpers. `fullstack` goes from
+114 lines to 66, `fullstack-go` from 184 to 81, and `fullstack-rust`
+from 96 to 81. Each now checks two things it did not. Its compose
+build contexts hold their `Dockerfile`s. And its scoped fake hit:
+`fullstack`'s backend has no `gradlew`, the frontend of
+`fullstack-go` and `fullstack-rust` has no `node_modules`, and
+`fullstack-rust`'s backend has no `target` before its build.
+`fullstack-go` takes `sharedGoHome()` in place of a `GOCACHE` and
+`GOPATH` of its own. `scaffoldProduct` and `expectComposeBuildContexts`
+would have had no caller before T.4d, and have three now.
+`tests/product-e2e.test.ts` pins, in `verify`, the two of the four
+that can rot silently: a fake keyed on the wrong scope runs the real
+install and passes, only slower, and a compose check that cannot go
+red passes the product it is there to stop. A fake that swallowed a
+whole scope would skip `vcs/commit-conventions` beside the faked
+`git init`, and a case holds that too. That is 7 tests, 30 ms in
+their run, and the one file this step adds to `CI=true pnpm test`; the
+e2e files skip there.
+
+The seven e2e files this step changed, and the three whose helper it
+changed, ran green with
+`KEEL_RUN_E2E=1` locally, in one vitest run each side, on a four-core
+box shared with other work:
+
+| File                              | Before  | After   |
+| --------------------------------- | ------- | ------- |
+| `fullstack`                       | 190.6 s | 87.2 s  |
+| `fullstack-go`                    | 224.5 s | 94.3 s  |
+| `fullstack-rust`                  | 296.4 s | 139.8 s |
+| `walking-skeleton-go`             | 273.5 s | 35.9 s  |
+| `modulith-go-cli`                 | 122.8 s | 13.2 s  |
+| `walking-skeleton-rust`           | 239.5 s | 145.2 s |
+| `modulith-rust-cli`               | 23.1 s  | 6.3 s   |
+| `combo-basic-ts-cli-http-pnpm`    | 34.4 s  | 43.3 s  |
+| `combo-modulith-ts-cli-http-npm`  | 161.6 s | 83.8 s  |
+| `combo-modulith-ts-cli-http-pnpm` | 46.4 s  | 56.7 s  |
+| The run (10 files, 13 tests)      | 567.6 s | 257.0 s |
+
+The load average read 13 to 34 through the first run and 15 at each
+end of the second. Every Cargo home started empty in both. In the
+first, `fullstack-go` built in a Go home of its own and the other two
+Go files in the shared one under `/tmp`, empty when the run started;
+the second ran under a fresh `TMPDIR`, so its shared Go home started
+empty too. Files this step changed only in how a server starts moved
+both ways (`combo-basic-ts-cli-http-pnpm` 34.4 → 43.3 s,
+`combo-modulith-ts-cli-http-npm` 161.6 → 83.8 s), so the table says
+that each file passes, not what the change saves _(inference)_. The
+`go` shard's run on the PR measures what sharing the Go home saves,
+and its `ci.yml` comment, which names `fullstack-go` its floor, is
+T.4b's to rewrite.
+Rebased onto T.3f, where `scaffoldProduct` dispatches through
+`e2eMediator`, the ten ran green again in one run of 154.3 s
+(`fullstack` 57.9 s, `fullstack-go` 61.7 s, `fullstack-rust` 72.4 s).
+
+After the review, `fullstack-go` and `fullstack-rust` ran green again,
+with the five other files that call a rewritten helper
+(`modulith-go-http`, `add-module-rust`, `modulith-rust-http`,
+`modulith-rust-peer-context` and `modulith-rust-persistence`): 7 files,
+9 tests, in one run of 187.5 s.
+
+No doc named the helpers, so none moved, and there is no CHANGELOG
+entry, since nothing a user sees moves.
 
 #### T.4b — `go-cli-http` built (S)
 

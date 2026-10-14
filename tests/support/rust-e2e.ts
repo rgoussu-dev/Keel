@@ -107,18 +107,6 @@ export interface RustProjectSpec {
   readonly projectName: string;
   /** Module layout to scaffold; the stack's default when omitted. */
   readonly moduleLayout?: string;
-  /**
-   * Deferred actions to no-op *beyond* {@link ALWAYS_STUBBED} — the
-   * composite stacks also carry `walking-skeleton/npm-install` for
-   * their frontend.
-   */
-  readonly alsoStubbed?: readonly string[];
-  /**
-   * Where the Rust project lands relative to the scaffold root, for
-   * composite stacks that put the service in a subdirectory
-   * (`fullstack-rust` → `backend`). The root itself when omitted.
-   */
-  readonly servicePath?: string;
   /** Also scaffold the peer bounded context (modulith only). */
   readonly withPeerContext?: boolean;
 }
@@ -160,7 +148,7 @@ export async function scaffold(
 ): Promise<RustProject> {
   const mediator = e2eMediator({
     keelVersion: '0.0.0-e2e',
-    runDeferred: stubActions(new Set([...ALWAYS_STUBBED, ...(spec.alsoStubbed ?? [])])),
+    runDeferred: stubActions(new Set(ALWAYS_STUBBED)),
   });
   expectOk(
     await mediator.dispatch(
@@ -179,10 +167,7 @@ export async function scaffold(
     ),
   );
   expect(await fs.pathExists(path.join(cwd, '.git'))).toBe(false);
-  return {
-    root: spec.servicePath === undefined ? cwd : path.join(cwd, spec.servicePath),
-    cargoHome,
-  };
+  return { root: cwd, cargoHome };
 }
 
 /**
@@ -230,6 +215,20 @@ export function cargoRun(project: RustProject, args: readonly string[]): void {
 /** Absolute path of a binary the debug build just produced. */
 export function debugBin(project: RustProject, name: string): string {
   return path.join(project.root, 'target', 'debug', `${name}${EXE}`);
+}
+
+/**
+ * Runs a built CLI binary twice in `cwd`: it greets a name on stdout,
+ * and refuses a blank one with exit code 2, the domain's no.
+ */
+export function driveGreetCli(bin: string, cwd: string): void {
+  const run = spawnSync(bin, ['--name', 'E2E'], { cwd, encoding: 'utf8' });
+  expect(run.status, run.stderr).toBe(0);
+  expect(run.stdout).toBe('Hello, E2E!\n');
+
+  const rejected = spawnSync(bin, ['--name', '  '], { cwd, encoding: 'utf8' });
+  expect(rejected.status).toBe(2);
+  expect(rejected.stderr).toContain('name must not be empty');
 }
 
 /** How long to wait for a booted binary to announce its port. */
