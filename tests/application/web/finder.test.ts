@@ -292,7 +292,8 @@ describe('the page’s stack finder', () => {
     // The Fullstack shape card, from the default preset, lands on the
     // Quarkus product with a CLI beside its server; Go's language card
     // there on Go's, and from an HTTP server on the one Go product a
-    // suite builds.
+    // suite builds, as TypeScript's lands on the one TypeScript product
+    // a suite builds.
     const here = at(tree, 'quarkus-cli');
     expect(pickShape(tree, 'fullstack', here)).toBe('fullstack-cli');
     expect(tierBadge(tree, 'fullstack-cli')).toBe('best-effort');
@@ -302,7 +303,9 @@ describe('the page’s stack finder', () => {
     const server = at(tree, 'quarkus-rest');
     expect(tierBadge(tree, pickLanguage(fullstack, 'go', server))).toBeUndefined();
     expect(pickLanguage(fullstack, 'typescript@node', server)).toBe('fullstack-ts');
-    expect(tierBadge(tree, 'fullstack-ts')).toBe('best-effort');
+    expect(tierBadge(tree, 'fullstack-ts')).toBeUndefined();
+    expect(pickLanguage(fullstack, 'java@jvm', server)).toBe('fullstack');
+    expect(tierBadge(tree, 'fullstack')).toBe('best-effort');
   });
 
   it('badges a box by the preset it lands on with the box ticked', async () => {

@@ -403,11 +403,15 @@ export async function startDevServer(appCwd: string): Promise<DevServer> {
 const REST_START_TIMEOUT_MS = 30 * 1000;
 
 /** Starts the REST assembly on `port`, resolving once it says it is listening. */
-function startRestAssembly(cwd: string, port: number): Promise<ChildProcess> {
+function startRestAssembly(
+  cwd: string,
+  port: number,
+  env: NodeJS.ProcessEnv,
+): Promise<ChildProcess> {
   return new Promise((resolve, reject) => {
     const child = spawn('node', ['application/rest/src/main.ts'], {
       cwd,
-      env: { ...process.env, PORT: String(port) },
+      env: { ...process.env, PORT: String(port), ...env },
     });
     let output = '';
     const timer = setTimeout(() => {
@@ -454,13 +458,18 @@ async function stopRestAssembly(child: ChildProcess): Promise<void> {
  * The emitted `main.ts` logs the port it was *asked* for rather than
  * the one it bound, which is why this picks a free port itself instead
  * of passing `PORT=0` and parsing the announcement back out.
+ *
+ * `env` is laid over the assembly's environment: a product's backend
+ * takes `NODE_ENV=development`, under which its dev-only CORS
+ * accommodation is on whatever this process was started with.
  */
 export async function withRestAssembly(
   cwd: string,
   drive: (baseUrl: string) => Promise<void>,
+  env: NodeJS.ProcessEnv = {},
 ): Promise<void> {
   const port = await findFreePort();
-  const server = await startRestAssembly(cwd, port);
+  const server = await startRestAssembly(cwd, port, env);
   try {
     await drive(`http://127.0.0.1:${port}`);
   } finally {

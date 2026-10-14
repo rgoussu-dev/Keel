@@ -341,9 +341,9 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — the guided ste
       expect(await badge('entrypoints', 'cli').textContent()).toBe('best-effort');
       expect(await badge('entrypoints', 'server-http').textContent()).toBe('best-effort');
 
-      // Under Fullstack, on the products without a CLI, the TypeScript
-      // card lands on fullstack-ts, which no CI job builds as it
-      // stands; the Go card, on fullstack-go, does not.
+      // Under Fullstack, on the products without a CLI, the Java card
+      // lands on fullstack, whose backend no CI job builds; the Go and
+      // TypeScript cards, on fullstack-go and fullstack-ts, do not.
       await goToStep(traffic, page, 'shape');
       await act(traffic, () => choice(page, 'shape', 'fullstack').check());
       await stackIs(page, 'fullstack-cli-kotlin');
@@ -351,7 +351,8 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — the guided ste
       await act(traffic, () => choice(page, 'entrypoints', 'server-http,spa').check());
       await stackIs(page, 'fullstack-kotlin');
       await goToStep(traffic, page, 'language');
-      expect(await badge('language', 'typescript@node').textContent()).toBe('best-effort');
+      expect(await badge('language', 'java@jvm').textContent()).toBe('best-effort');
+      expect(await badge('language', 'typescript@node').count()).toBe(0);
       expect(await badge('language', 'go').count()).toBe(0);
     },
     E2E_TIMEOUT_MS,

@@ -578,26 +578,30 @@ jobs:
               tests/e2e/ui-plugin-stack.test.ts
               tests/e2e/ui-refusal.test.ts
               tests/e2e/ui-compose.test.ts
-          # The TypeScript half of the composed-entrypoint grid, in a
-          # shard of its own rather than as three more files above.
-          # Two reasons, and neither is wall clock inside this job:
-          # the `web` shard carries `browser` in `tools:` because
-          # four of its suites render in Chromium, and these render
-          # nothing — a shard that probes for a browser it never uses
-          # is a provisioning cost and a lie about what the suites
-          # need. And `web` already carries fifteen files with real
-          # headroom to spare; three more real installs would push its
-          # wall up, where one more parallel shard pushes the
-          # phase's up by nothing — this shard lands an order of
-          # magnitude inside the matrix floor. There is no build step
-          # to pay for; the install is the cost, and npm's is the best
-          # part of twice pnpm's on the same layout.
+          # The TypeScript suites that render nothing, in a shard of
+          # their own rather than as more files above: the TypeScript
+          # half of the composed-entrypoint grid, and the TypeScript
+          # products' backends. Two reasons, and neither is wall clock
+          # inside this job: the `web` shard carries `browser` in
+          # `tools:` because four of its suites render in Chromium, and
+          # these render nothing — a shard that probes for a browser it
+          # never uses is a provisioning cost and a lie about what the
+          # suites need. And `web` already carries eighteen files; more
+          # real installs would push its wall up, where one more
+          # parallel shard pushes the phase's up by nothing — this
+          # shard lands an order of magnitude inside the matrix floor.
+          # There is no build step to pay for; the install is the cost,
+          # and npm's is the best part of twice pnpm's on the same
+          # layout. `fullstack-ts` (roadmap T.4d) installs the backend
+          # alone, on npm, and fakes the frontend's install, which
+          # `fullstack` in `web` builds.
           - id: web-combo
             tools: npm pnpm
             files: >-
               tests/e2e/combo-modulith-ts-cli-http-npm.test.ts
               tests/e2e/combo-modulith-ts-cli-http-pnpm.test.ts
               tests/e2e/combo-basic-ts-cli-http-pnpm.test.ts
+              tests/e2e/fullstack-ts.test.ts
           # The only shard whose suite compiles nothing, and the only
           # one that runs an emitted `dev/compose.yaml`. Every other
           # docker-using suite reaches its database through

@@ -690,6 +690,13 @@
   ],
   "products": [
     {
+      "suite": "fullstack-ts",
+      "stack": "fullstack-ts",
+      "layout": "monorepo",
+      "buildSystem": "backend=npm,frontend=npm",
+      "builds": ["backend"]
+    },
+    {
       "suite": "fullstack-go",
       "stack": "fullstack-go",
       "layout": "monorepo",

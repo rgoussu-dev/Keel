@@ -14317,7 +14317,7 @@ a cold `CARGO_HOME`, at a load near 3, and 38.3 s in this commit's
 run; after the drive was lifted, 64.0 s beside `walking-skeleton-rust`
 (64.2 s, two tests), both green.
 
-#### T.4d — `fullstack-ts` built (S)
+#### T.4d — `fullstack-ts` built (S) ✅
 
 `fullstack-ts.test.ts`, in `web-combo`.
 
@@ -14343,6 +14343,64 @@ run; after the drive was lifted, 64.0 s beside `walking-skeleton-rust`
   - CHANGELOG _Changed_: `fullstack-ts` reads first-class at its
     default setting.
 - Its Landed paragraph gives the shard's time from the PR's e2e run.
+
+**Landed as T's first product suite and its row**, in one commit.
+`fullstack-ts.test.ts` (73 lines) scaffolds `fullstack-ts` on its
+default dials through `scaffoldProduct`, faking the frontend's
+`npm install` alone: the backend's own install runs, and the suite
+checks both, no `node_modules` in `frontend/` and one in `backend/`.
+It checks the compose build contexts, runs the backend's typecheck and
+tests, and boots its REST assembly with `NODE_ENV=development`, so the
+dev-only CORS accommodation is on, to drive the gateway contract.
+
+- **Two helpers change.** `driveGatewayContract` takes
+  `problemContentType`, compared exactly and `application/problem+json`
+  unless given: the TypeScript backend sends `; charset=utf-8` after
+  it, measured live, and Go's and Rust's suites keep the bare check.
+  `withRestAssembly` takes an `env` laid over the assembly's, as
+  `withHttpUnit` does for Go, so the suite sets `NODE_ENV` for the
+  child alone, not for the test process.
+- **Its row** in `support-tier.json`, `products`: the monorepo on npm
+  for both services (`backend=npm,frontend=npm`), building the
+  backend. Product settings first-class go from 2 to 3 of 128, and the
+  presets best-effort at their default from 20 to 19.
+- **The tests the row moves:** `new-list`'s and `catalog`'s marked
+  lists drop `fullstack-ts`, `catalog` counts 27 first-class, `finder`
+  reads TypeScript's product card unbadged, and
+  `support-tier.premises` re-reads its tally. `ui-stack-finder` read
+  the TypeScript card's badge under _Fullstack_ as its example of a
+  badged language; it now reads the Java card's, which lands on
+  `fullstack` (a JVM product whose backend no suite builds, DT12), and
+  the
+  TypeScript and Go cards unbadged.
+- **`ci.yml`:** the file joins `web-combo`, whose comment now speaks
+  for the TypeScript suites that render nothing, the products'
+  backends among them, and counts `web`'s files as eighteen, where it
+  said fifteen.
+- **`tests/e2e/AGENTS.md`** gains _The products — one file each, at
+  the default setting_: a product suite builds one service and proves
+  the other by P2, keys its fakes by scope, checks the compose
+  contexts and never builds an image, and no suite builds a JVM
+  product's backend (DT12).
+- **Generated regions:** both `stack-matrix` copies drop
+  `fullstack-ts`'s ◻; in `support-tiers` its monorepo npm/npm row
+  reads first-class, and the npm/pnpm row gains the backend's ✅ while
+  staying ◻.
+- **CHANGELOG** _Changed_, and the two unreleased tier entries: 3 of
+  128 product settings first-class, 19 presets marked.
+
+**Measured locally**, not on CI: there is no PR, so `web-combo`'s time
+waits for one. The suite alone took 26.7 to 37.6 s at loads of 2 to
+9, and 57.7 s in this commit's run beside five other e2e files. The
+three `web-combo` combo files, `fullstack-go` and `fullstack-rust`,
+whose helpers changed, passed in the same run, and the four browser
+suites passed 47 tests.
+
+**What it adds to `CI=true pnpm test`:** nothing it runs. The e2e file
+skips there, and the four tests it touches (`support-tier.premises`,
+`catalog`, `new-list`, `finder`) re-read their figures. T.4b and T.4c
+added the same: one e2e file each, skipped in `verify`. The full run,
+on T.4c: 3,703 tests in 406.7 s, green.
 
 #### T.4e — `fullstack-go-cli` built (S)
 

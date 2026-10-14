@@ -164,8 +164,18 @@ export async function expectComposeBuildContexts(root: string): Promise<void> {
  * defaulted greeting, the RFC 9457 rejection, and the dev-only CORS
  * accommodation for the SPA's dev origin — the allowed origin on a
  * `GET`, and a `204` preflight echoing the headers it was asked for.
+ *
+ * The rejection's media type is compared exactly, as
+ * `options.problemContentType`, `application/problem+json` unless
+ * given. The Go and Rust backends send it bare; the TypeScript backend
+ * sends `application/problem+json; charset=utf-8`, and its suites pass
+ * that.
  */
-export async function driveGatewayContract(baseUrl: string): Promise<void> {
+export async function driveGatewayContract(
+  baseUrl: string,
+  options: { readonly problemContentType?: string } = {},
+): Promise<void> {
+  const { problemContentType = 'application/problem+json' } = options;
   const named = await fetch(`${baseUrl}/greet?name=E2E`);
   expect(named.status).toBe(200);
   expect(await named.json()).toEqual({ greeting: 'Hello, E2E!' });
@@ -177,7 +187,7 @@ export async function driveGatewayContract(baseUrl: string): Promise<void> {
 
   const rejected = await fetch(`${baseUrl}/greet?name=`);
   expect(rejected.status).toBe(400);
-  expect(rejected.headers.get('content-type')).toBe('application/problem+json');
+  expect(rejected.headers.get('content-type')).toBe(problemContentType);
 
   const preflight = await fetch(`${baseUrl}/greet`, {
     method: 'OPTIONS',

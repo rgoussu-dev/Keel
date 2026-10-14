@@ -661,6 +661,17 @@ new` the terminal adds the way past it (move it aside, or start in
 
 ### Changed
 
+- **`fullstack-ts` reads first-class at its default setting.**
+  `fullstack-ts`, in the `web-combo` e2e shard, scaffolds the product
+  as `keel new` leaves it, installs, typechecks and tests its
+  TypeScript backend, checks that each image `compose.yaml` builds has
+  its `Dockerfile`, and drives the wire the frontend's gateway encodes
+  against the backend's REST server: the greetings, the RFC 9457
+  rejection and the dev-only CORS accommodation. The frontend is the
+  one `fullstack` builds. The stack matrix and the support-tier table
+  drop its ◻, and `keel new --list` and `keel ui`'s finder no longer
+  mark it best-effort.
+
 - **`rust-cli-http` reads first-class at its default setting.**
   `combo-basic-rust-cli-http`, in the `rust` e2e shard and the
   composed-entrypoint grid's 23rd cell, tests and builds the package, greets through its CLI binary, and drives the
@@ -1517,7 +1528,7 @@ distribution iac`) — _Not for this project_, collapsed, each with the
   _best-effort_ where no CI job builds it. `keel new --list` marks ◻ the
   presets that are best-effort at their default setting — the twelve
   new products (above), `fullstack`, `fullstack-spring`,
-  `fullstack-micronaut`, `fullstack-ts`, `ts-cli-http`,
+  `fullstack-micronaut`, `ts-cli-http`,
   `spring-cli-rest`, `quarkus-cli-rest-kotlin` and
   `micronaut-cli-rest-kotlin` — and says what the mark means. In
   `keel ui`, a drill-down card says _best-effort_ in its badge where the
@@ -1541,8 +1552,8 @@ distribution iac`) — _Not for this project_, collapsed, each with the
   gets a row per build system, with a column per module layout, and
   each product a row per layout and build systems, with what proves
   each service. Today 83 of the 150 single-service settings are
-  first-class, and 2 of the 128 product settings. The stack matrix in
-  the README and in the catalog marks ◻ the 20 presets that are
+  first-class, and 3 of the 128 product settings. The stack matrix in
+  the README and in the catalog marks ◻ the 19 presets that are
   best-effort on their default setting. Both copies are now generated
   from the presets, so they can no longer drift apart. The matrix
   gains a _Product, CLI + HTTP server_ column, and no

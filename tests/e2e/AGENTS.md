@@ -214,6 +214,26 @@ module` with no growth at all. A pnpm cell for it, and the fix, are
 the roadmap Backlog's _A TypeScript context declares the context it
 consumes_.
 
+## The products — one file each, at the default setting
+
+**A product suite builds one service and proves the other by P2.** Each
+`fullstack*` file, one per product that has a suite, scaffolds its product as `keel new` leaves it on its
+default dials, a monorepo, through `scaffoldProduct`
+(`tests/support/product-e2e.ts`), and is that product cell's row. The
+frontend is the same `web-components` service on every product, so
+`fullstack` builds it and fakes the backend's toolchain; every other
+product suite builds its backend and fakes the frontend's install,
+which P2 reads as built by `fullstack`. The fake is keyed by scope: a
+TypeScript backend queues `walking-skeleton/npm-install` too, and its
+install runs for real. Each suite checks that every image
+`compose.yaml` builds has a `Dockerfile` under its context, and never
+builds one: an image is deployment glue, which no e2e suite vouches
+for. A suite that builds its backend boots it once, with its dev-only
+CORS accommodation on, and `driveGatewayContract` drives the wire the
+frontend encodes. No suite builds a JVM product's backend, so those
+backends stay best-effort (roadmap DT12): a suite for them needs shards
+of its own, and new shards wait on the user's word.
+
 ## The suites that are not cells
 
 - **`dev-compose` is the only shard that runs an emitted
