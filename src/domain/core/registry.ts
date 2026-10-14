@@ -61,6 +61,18 @@ export const REGISTRY_ERROR_CODE = 'keel.invalid-piece';
 export const RESERVED_VERTICAL_IDS: readonly string[] = ['module', 'entrypoint'];
 
 /**
+ * What a stack id is spelled in: words of `a`–`z` and `0`–`9`, joined
+ * by single `-`s. keel reads an id as its words — lowercased, broken at
+ * every character but `a`–`z` and `0`–`9`, as the nearest id an
+ * unknown `--stack` is answered with is read — so `Acme-Web`,
+ * `acme_web` and `acme.web` would be three ids that read as
+ * `acme-web`, and `AcmeWeb` one that reads as a single word. The
+ * rule leaves each id one spelling; and `+ / @ # , :` or a space would
+ * break the keys and hints keel builds from an id.
+ */
+const STACK_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+/**
  * One contributor of pieces: keel itself, or a plugin.
  *
  * `origin` is the whole reason this is a record rather than two
@@ -155,7 +167,19 @@ function claim(
 }
 
 function validateStack(origin: string, stack: Stack): void {
-  if (stack.id.length === 0) throw refuse(origin, 'registers a stack with no id');
+  // A plugin written in plain JavaScript can hand any value here, or
+  // none: `test` would read a number or a list as its string.
+  const id: unknown = stack.id;
+  if (typeof id !== 'string') {
+    throw refuse(origin, `registers a stack whose id is not a string (${String(id)})`);
+  }
+  if (id.length === 0) throw refuse(origin, 'registers a stack with no id');
+  if (!STACK_ID.test(id)) {
+    throw refuse(
+      origin,
+      `registers stack '${stack.id}', whose id is not lowercase words joined by '-'`,
+    );
+  }
   validateConflicts(origin, `stack '${stack.id}'`, stack);
   for (const vertical of stack.verticals) validateVertical(origin, vertical);
 }

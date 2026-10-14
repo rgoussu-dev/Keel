@@ -642,6 +642,22 @@ new` the terminal adds the way past it (move it aside, or start in
 
 ### Changed
 
+- **A plugin's stack id is lowercase words joined by `-`.** A plugin
+  registering a stack whose id is anything but words of `a`–`z` and
+  `0`–`9` joined by single `-`s — an uppercase or accented letter, a
+  `_`, a `.`, a space or any of `+ / @ # , :`, or a doubled, leading or
+  trailing `-` — is refused when keel loads it, naming the plugin and
+  the id: _plugin 'acme' registers stack 'Acme_web', whose id is not
+  lowercase words joined by '-'_; an id that is not a string at all
+  is refused as one. keel reads an id as its words — lowercased and
+  broken at every character but `a`–`z` and `0`–`9`, as the nearest
+  id an unknown `--stack` is answered with is read — so `Acme-Web`,
+  `acme_web` and `acme.web` would be three ids that read as
+  `acme-web`, and `AcmeWeb` one that reads as a single word. The rule
+  leaves each id one spelling; and `+ / @ # , :` or a space would
+  break the keys and hints keel builds from an id. Every stack keel
+  ships already complies. `docs/plugins.md` lists both refusals.
+
 - **A re-render that moves a vertical onto another adapter names the
   files the first one wrote, which keel leaves in place.** On
   `quarkus-cli-rest` and its Kotlin twin under Gradle, distribution

@@ -12253,7 +12253,7 @@ growth axis took 169.1 s of its 180 s, with other work on the box. No
 step of T touches that axis. Should one find it past its budget, it
 lands S's shard option for `sweepGrid` first (S, _The measure_).
 
-#### T.1b — A stack id is lowercase words joined by `-` (S)
+#### T.1b — A stack id is lowercase words joined by `-` (S) ✅
 
 `registryOf` refuses a stack whose id does not match
 `^[a-z0-9]+(?:-[a-z0-9]+)*$`, naming its origin. It runs at the one
@@ -12262,6 +12262,41 @@ gate every origin passes (`validateStack`), since a plugin registers
 and so do the 46 that T.3f will make. The cost is one more refusal in
 `docs/plugins.md`'s error table and a CHANGELOG _Changed_ entry: a
 plugin id with an uppercase letter, `_` or `.` is refused from now on.
+
+**Landed as the refusal alone**, in one commit. `registry.ts` holds
+the rule as `STACK_ID`, declared above `shippedRegistry`: `registryOf`
+builds that at module load and reads the rule as it does, so the rule
+is in place before keel's own presets pass through it.
+`validateStack` refuses an id that is not a string at all first —
+which a plugin written in plain JavaScript can hand it, or leave out —
+then an empty one, then one outside the rule. So one refusal covers
+keel's presets and every plugin's, in the words and under the code
+(`keel.invalid-piece`) of every other piece the registry refuses:
+_plugin 'acme' registers stack 'Acme_web', whose id is not lowercase
+words joined by '-'_, or _plugin 'acme' registers a stack whose id is
+not a string (undefined)_.
+
+- **`registry.test.ts`** refuses 14 ids outside the rule (an
+  uppercase letter, each of `+ / # : , . @`, a space, a doubled, a
+  leading and a trailing `-`, a `_`, an accented letter) and 3 that
+  are no string (a number, `undefined`, `null`), each under the
+  registry's code. It refuses one from keel's own origin too, so the
+  presets T.3f generates stay under the rule. It takes an id with a
+  digit among its words.
+- **Nothing else moves.** Every shipped id passes, and so does every
+  fixture's, the plugin fixtures' among them. No golden moves.
+- **What it adds to `CI=true pnpm test`:** 19 cases, taking
+  `registry.test.ts` from 22 tests to 41, which ran in 37 ms. The run
+  (412.3 s, 202 files, 3,400 tests) passed whole, the growth axis in
+  169.1 s of its 180.
+- **The reason**, which two review rounds corrected: keel reads an id
+  as its words, lowercased and broken at every character but `a`–`z`
+  and `0`–`9`, so `Acme-Web`, `acme_web` and `acme.web` would be three
+  ids that read as `acme-web`. The rule leaves each id one spelling,
+  and keeps the separators out of the keys and hints built from an
+  id.
+- **Docs:** `docs/plugins.md` gains the two refusals' rows and that
+  paragraph, and `Stack.id`, which plugins write against, its TSDoc.
 
 #### T.1c — The presets generated from a platform × entrypoint table (M)
 

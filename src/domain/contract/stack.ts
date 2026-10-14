@@ -75,6 +75,11 @@ export interface StackService {
 
 /** A curated greenfield preset. */
 export interface Stack {
+  /**
+   * What `keel new --stack=<id>` takes: words of `a`–`z` and `0`–`9`
+   * joined by single `-`s (`acme-web`). The registry refuses any other
+   * id, naming its origin.
+   */
   readonly id: string;
   readonly description: string;
   /** Capability tags this stack contributes to the manifest at install time. */

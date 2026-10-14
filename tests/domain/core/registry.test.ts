@@ -15,6 +15,7 @@ import {
   verticalTitle,
   listStackIds,
   listVerticalIds,
+  KEEL_ORIGIN,
   pluginOrigin,
   registryOf,
   REGISTRY_ERROR_CODE,
@@ -149,6 +150,66 @@ describe('registryOf', () => {
     );
     expect(error.message).toContain('registers a stack with no id');
     expect((error as { code?: string }).code).toBe(REGISTRY_ERROR_CODE);
+  });
+
+  it.each([
+    'Acme-http',
+    'acme+http',
+    'acme/http',
+    'acme#1',
+    'acme:http',
+    'acme,http',
+    'acme http',
+    'acme--http',
+    '-acme',
+    'acme-',
+    'acme_http',
+    'acme.http',
+    'acme@http',
+    'café',
+  ])("refuses a stack id '%s', which is not lowercase words joined by '-'", (id) => {
+    const error = refusal(() =>
+      registryOf([{ origin: ACME, stacks: [stackOn(id, wellFormed('acme'))] }]),
+    );
+    expect(error.message).toContain(
+      `${ACME} registers stack '${id}', whose id is not lowercase words joined by '-'`,
+    );
+    expect((error as { code?: string }).code).toBe(REGISTRY_ERROR_CODE);
+  });
+
+  it("refuses an id outside the rule from keel's own presets, as from a plugin's", () => {
+    // A preset is generated from facets: a facet word that broke the
+    // rule must fail keel at load, not reach a user's --stack.
+    const error = refusal(() =>
+      registryOf([{ origin: KEEL_ORIGIN, stacks: [stackOn('Quarkus_cli', wellFormed('acme'))] }]),
+    );
+    expect(error.message).toContain(
+      "keel registers stack 'Quarkus_cli', whose id is not lowercase words joined by '-'",
+    );
+    expect((error as { code?: string }).code).toBe(REGISTRY_ERROR_CODE);
+  });
+
+  it.each([
+    [42, '42'],
+    [undefined, 'undefined'],
+    [null, 'null'],
+  ])(
+    'refuses a stack id that is not a string (%s), as plain JavaScript can hand it',
+    (id, said) => {
+      const stack = { ...stackOn('acme-http', wellFormed('acme')), id: id as unknown as string };
+      const error = refusal(() => registryOf([{ origin: ACME, stacks: [stack] }]));
+      expect(error.message).toContain(
+        `${ACME} registers a stack whose id is not a string (${said})`,
+      );
+      expect((error as { code?: string }).code).toBe(REGISTRY_ERROR_CODE);
+    },
+  );
+
+  it('takes a stack id with digits among its words', () => {
+    const registry = registryOf([
+      { origin: ACME, stacks: [stackOn('acme2-http', wellFormed('acme'))] },
+    ]);
+    expect(registry.stack('acme2-http')).not.toBeNull();
   });
 
   it('spells a title out of the id where a vertical declares none', () => {

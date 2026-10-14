@@ -670,20 +670,31 @@ build script committed to the repository, because that is what it is.
 Every failure names the plugin, never the engine. Before the module
 loads there is no name to quote, so those messages name the path.
 
-| What went wrong                             | What you see                                                                        |
-| ------------------------------------------- | ----------------------------------------------------------------------------------- |
-| The module throws at load                   | `keel plugin '<path>' failed to load: <the original error>`                         |
-| The directory has no entry module           | `keel plugin '<path>' has no entry module — expected keel-plugin.js …`              |
-| No plugin exported                          | `keel plugin '<path>' exports no plugin — export it as 'default' …`                 |
-| A malformed `Conflict`                      | `plugin 'x' vertical 'y' declares a malformed conflict: …`                          |
-| A dimension none of its own adapters covers | `plugin 'x' vertical 'y' declares dimension 'z', which none of its adapters covers` |
-| An adapter promoting beyond its vertical    | `plugin 'x' vertical 'y' adapter 'y/a' promotes 't', which the vertical does not …` |
-| A cycle of `reads`                          | `plugin 'x' vertical 'y' reads in a cycle: 'y' → 'z' → 'y' — …`                     |
-| A `placement` with no reason                | `plugin 'x' vertical 'y' declares a placement with no 'because' — …`                |
-| A question `shared` with anything else      | `plugin 'x' vertical 'y' adapter 'y/a' marks question 'q' shared 'w', which keel …` |
-| A vertical id of `module` or `entrypoint`   | `plugin 'x' registers vertical 'module', a word 'keel add' reads as a command …`    |
-| An id keel already ships                    | `plugin 'x' registers vertical 'y', which is already registered by keel`            |
-| An id another plugin already claimed        | `plugin 'x' registers stack 'y', which is already registered by plugin 'z'`         |
+| What went wrong                               | What you see                                                                           |
+| --------------------------------------------- | -------------------------------------------------------------------------------------- |
+| The module throws at load                     | `keel plugin '<path>' failed to load: <the original error>`                            |
+| The directory has no entry module             | `keel plugin '<path>' has no entry module — expected keel-plugin.js …`                 |
+| No plugin exported                            | `keel plugin '<path>' exports no plugin — export it as 'default' …`                    |
+| A malformed `Conflict`                        | `plugin 'x' vertical 'y' declares a malformed conflict: …`                             |
+| A dimension none of its own adapters covers   | `plugin 'x' vertical 'y' declares dimension 'z', which none of its adapters covers`    |
+| An adapter promoting beyond its vertical      | `plugin 'x' vertical 'y' adapter 'y/a' promotes 't', which the vertical does not …`    |
+| A cycle of `reads`                            | `plugin 'x' vertical 'y' reads in a cycle: 'y' → 'z' → 'y' — …`                        |
+| A `placement` with no reason                  | `plugin 'x' vertical 'y' declares a placement with no 'because' — …`                   |
+| A question `shared` with anything else        | `plugin 'x' vertical 'y' adapter 'y/a' marks question 'q' shared 'w', which keel …`    |
+| A vertical id of `module` or `entrypoint`     | `plugin 'x' registers vertical 'module', a word 'keel add' reads as a command …`       |
+| A stack id other than lowercase words and `-` | `plugin 'x' registers stack 'Acme_web', whose id is not lowercase words joined by '-'` |
+| A stack id that is not a string               | `plugin 'x' registers a stack whose id is not a string (undefined)`                    |
+| An id keel already ships                      | `plugin 'x' registers vertical 'y', which is already registered by keel`               |
+| An id another plugin already claimed          | `plugin 'x' registers stack 'y', which is already registered by plugin 'z'`            |
+
+A stack id is words of `a`–`z` and `0`–`9` joined by single `-`s
+(`acme-web`, `acme2-cli-http`). keel reads an id as its words —
+lowercased and broken at every character but `a`–`z` and `0`–`9`, as
+the nearest id an unknown `--stack` is answered with is read — so
+`Acme-Web`, `acme_web` and `acme.web` would be three ids that read as
+`acme-web`, and `AcmeWeb` one that reads as a single word. The rule leaves each id one
+spelling; and `+ / @ # , :` or a space would break the keys and hints
+keel builds from an id.
 
 `keel add module <name>` and `keel add entrypoint <cli|http>` are
 commands of their own, read off the first word, so a vertical of
