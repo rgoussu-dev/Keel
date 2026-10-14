@@ -282,6 +282,113 @@ describe('registryOf', () => {
     expect(registryOf([{ origin: ACME, verticals: [placed] }]).vertical('acme')).toBe(placed);
   });
 
+  describe("an adapter building its part in a product's services", () => {
+    /** `wellFormed('acme')` whose adapter declares `providesInServices: provision`. */
+    const providing = (provision: unknown): Vertical => {
+      const base = wellFormed('acme');
+      return {
+        ...base,
+        adapters: base.adapters.map((adapter) => ({ ...adapter, providesInServices: provision })),
+      } as unknown as Vertical;
+    };
+    const refused = (provision: unknown): Error =>
+      refusal(() => registryOf([{ origin: ACME, verticals: [providing(provision)] }]));
+    const WHERE = `${ACME} vertical 'acme' adapter 'acme/one'`;
+
+    it('refuses one naming no service, naming the plugin', () => {
+      for (const provision of [
+        { vertical: 'containerization' },
+        { vertical: 'containerization', stacks: [] },
+        { vertical: 'containerization', stacks: [], serves: [] },
+      ]) {
+        const error = refused(provision);
+        expect(error.message).toBe(
+          `${WHERE} declares 'providesInServices' naming no service — neither 'stacks' nor 'serves' lists one`,
+        );
+        expect((error as { code?: string }).code).toBe(REGISTRY_ERROR_CODE);
+      }
+    });
+
+    it('refuses stacks that are not a list of ids, naming the plugin', () => {
+      for (const stacks of ['acme-http', [1]]) {
+        const error = refused({ vertical: 'containerization', stacks });
+        expect(error.message).toBe(
+          `${WHERE} declares 'providesInServices.stacks' that is not a list of stack ids`,
+        );
+        expect((error as { code?: string }).code).toBe(REGISTRY_ERROR_CODE);
+      }
+    });
+
+    it('refuses serves that is not a list, naming the plugin', () => {
+      const error = refused({ vertical: 'containerization', serves: { requires: ['lang.go'] } });
+      expect(error.message).toBe(
+        `${WHERE} declares 'providesInServices.serves' that is not a list of predicates`,
+      );
+      expect((error as { code?: string }).code).toBe(REGISTRY_ERROR_CODE);
+    });
+
+    it('refuses a serves predicate with no requires, which would name every service', () => {
+      for (const predicate of [{}, { requires: [] }, { excludes: ['arch.spa'] }, null]) {
+        const error = refused({ vertical: 'containerization', serves: [predicate] });
+        expect(error.message).toBe(
+          `${WHERE} declares a 'providesInServices.serves' predicate with no 'requires' — it would name every service, whatever its stack`,
+        );
+        expect((error as { code?: string }).code).toBe(REGISTRY_ERROR_CODE);
+      }
+    });
+
+    it('refuses a serves predicate whose requires or excludes is not a list', () => {
+      for (const [predicate, field] of [
+        [{ requires: 'lang.go' }, 'requires'],
+        [{ requires: ['lang.go', 3] }, 'requires'],
+        [{ requires: ['lang.go'], excludes: 'arch.spa' }, 'excludes'],
+      ] as const) {
+        const error = refused({ vertical: 'containerization', serves: [predicate] });
+        expect(error.message).toBe(
+          `${WHERE} declares a 'providesInServices.serves' predicate whose '${field}' is not a list of tag patterns`,
+        );
+        expect((error as { code?: string }).code).toBe(REGISTRY_ERROR_CODE);
+      }
+    });
+
+    it('refuses a serves predicate whose pattern the matcher cannot read', () => {
+      for (const [predicate, why] of [
+        [
+          { requires: ['lang.*go'] },
+          "predicate pattern 'lang.*go' may only contain '*' at the end",
+        ],
+        [
+          { requires: ['lang.go'], excludes: ['*spa'] },
+          "predicate pattern '*spa' must not start with '*'",
+        ],
+        [{ requires: [''] }, 'predicate pattern must not be empty'],
+      ] as const) {
+        const error = refused({ vertical: 'containerization', serves: [predicate] });
+        expect(error.message).toBe(
+          `${WHERE} declares a 'providesInServices.serves' predicate that keel cannot read: ${why}`,
+        );
+        expect((error as { code?: string }).code).toBe(REGISTRY_ERROR_CODE);
+      }
+    });
+
+    it('registers one naming its services by stacks, by serves, or both', () => {
+      for (const provision of [
+        { vertical: 'containerization', stacks: ['acme-http'] },
+        { vertical: 'containerization', serves: [{ requires: ['lang.go'] }] },
+        {
+          vertical: 'containerization',
+          stacks: [],
+          serves: [{ requires: ['lang.go'], excludes: ['arch.spa'] }],
+        },
+      ]) {
+        const vertical = providing(provision);
+        expect(registryOf([{ origin: ACME, verticals: [vertical] }]).vertical('acme')).toBe(
+          vertical,
+        );
+      }
+    });
+  });
+
   it('refuses a question marked shared with anything but the project, naming the plugin', () => {
     const marked = (shared: string): Vertical => {
       const base = wellFormed('acme');

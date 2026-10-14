@@ -622,8 +622,19 @@ repository root reads — `vcs`'s hooks and changelog, `ci`'s pipeline,
 `distribution`'s release workflows — declares `placement: { scope:
 'repository', because }`, and product glue that builds something inside
 its services — the fullstack `compose.yaml`'s images — declares
-`providesInServices: { vertical, stacks }` on its adapter, which writes
-exactly those. `scope.ts` reads both off the manifests on disk
+`providesInServices: { vertical, stacks, serves }` on its adapter,
+which writes exactly those. It names a service by its stack's id
+(`stacks`), or by what the stack is: a predicate (`serves`) over the
+stack's own tags (`Stack.tags`), never a dial the stack offers; a
+stack this keel does not register is named by its id alone.
+`product-services.ts`' `servesStack` is how the scope reads the two,
+and the glue, once it reads `Ctx.services` (roadmap T.3c), matches
+its `serves` against the same stack tags, never the dials a service's
+facets carry; today it writes from its own id list. Registration
+refuses a declaration whose lists name no service, a list that is not
+one, a `serves` predicate with no `requires`, which would name every
+service, and a pattern keel cannot read. `scope.ts` reads the
+placement and the provision off the manifests on disk
 (`scopeOf`, through `ManifestStore`) and hands the planner a value: in
 a monorepo service, the product root's placed verticals and what its
 glue builds read as there already, and a placed vertical the root does
@@ -1267,6 +1278,19 @@ two of them would write is found only by comparing them:
 refuses the product (`keel.cross-scope-write`) naming the adapter that
 wrote it in each — a preview and an install alike, rather than the
 scope committed last silently replacing the other's file.
+
+An adapter at a product root is handed its services as facets, not
+ids (`Ctx.services`). The engine resolves each service the root's
+manifest records (`product-services.ts`): its path, the preset id, to
+print and never to key on, and its tags. The tags are the stack's
+own, the build system the root records for it (or the stack's first),
+and the stack's default module layout, the only one a product's
+services take. Every install, replay and converge at the root hands
+the same list, and a `Ctx` anywhere else holds none.
+`applyContributions` reads no registry: it hands the services its
+caller resolved (`productServices`), and none unless given. No shipped
+adapter reads them yet: the fullstack glue still keys on the ids it
+lists.
 
 ## The toolchain block
 

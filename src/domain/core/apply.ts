@@ -99,6 +99,7 @@ import {
   type ContributionPatch,
   type Ctx,
   type ManifestV2,
+  type ProductService,
   type Tag,
   type Tree,
 } from '../contract/composition.js';
@@ -334,6 +335,12 @@ export interface ApplyInputs {
   readonly processes: ProcessRunner;
   /** Conflict posture towards existing files; defaults to `install`. */
   readonly mode?: ApplyMode;
+  /**
+   * {@link Ctx.services} for every adapter, as the caller resolved them
+   * (`./product-services.ts` `productServices`); absent, none. Unlike
+   * an install, the applier reads no registry, so it hands only these.
+   */
+  readonly services?: readonly ProductService[];
 }
 
 export async function applyContributions(inputs: ApplyInputs): Promise<ApplyResult> {
@@ -349,6 +356,7 @@ export async function applyContributions(inputs: ApplyInputs): Promise<ApplyResu
       cwd: inputs.cwd,
       templates: inputs.templates,
       processes: inputs.processes,
+      services: inputs.services,
     });
     const contribution = await adapter.contribute(ctx);
     collectHarness(adapter, contribution, harness, inputs.mode);
@@ -704,6 +712,11 @@ export interface CtxInputs {
   readonly cwd: string;
   readonly templates: TemplateSource;
   readonly processes: ProcessRunner;
+  /**
+   * {@link Ctx.services}; absent, none. `makeCtx` resolves nothing:
+   * each caller passes the services it resolved, or hands none.
+   */
+  readonly services?: readonly ProductService[] | undefined;
 }
 
 /**
@@ -724,6 +737,7 @@ export function makeCtx(
     manifest: ctx.manifest,
     templates: ctx.templates,
     processes: ctx.processes,
+    services: ctx.services ?? [],
     answer(questionId: string): string {
       if (!declared.has(questionId)) {
         throw new Error(

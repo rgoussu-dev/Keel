@@ -89,6 +89,11 @@ const FRONTEND_IMAGES: Readonly<Record<string, string>> = {
   'web-components': 'frontend-spa',
 };
 
+const BUILT_STACKS: readonly string[] = [
+  ...Object.keys(BACKEND_IMAGES),
+  ...Object.keys(FRONTEND_IMAGES),
+];
+
 /**
  * The service stacks this adapter builds an image for, as it declares
  * them — every stack either table has a Dockerfile for.
@@ -97,7 +102,7 @@ const BUILDS: ServiceProvision = {
   // The id of `containerization`, whose part in the service this is;
   // an adapter does not import a vertical, which imports adapters.
   vertical: 'containerization',
-  stacks: [...Object.keys(BACKEND_IMAGES), ...Object.keys(FRONTEND_IMAGES)],
+  stacks: BUILT_STACKS,
 };
 
 /** The image template a table names for `service`, when the declaration lists its stack. */
@@ -105,7 +110,7 @@ function imageFor(
   table: Readonly<Record<string, string>>,
   service: ServiceRef,
 ): string | undefined {
-  return BUILDS.stacks.includes(service.stack) ? table[service.stack] : undefined;
+  return BUILT_STACKS.includes(service.stack) ? table[service.stack] : undefined;
 }
 
 /**

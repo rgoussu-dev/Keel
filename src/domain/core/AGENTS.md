@@ -3,7 +3,7 @@
 <!-- keel:purpose: the engine, the composition adapters and verticals, the stack presets, the handlers -->
 
 What lives here: the engine (`predicate`, `resolver`, `refusals`,
-`nearest-id`, `stack-spelling`, `compatibility`, `planner`, `plan-refusal`, `scope`, `add-readiness`, `profile`, `growth`, `contexts`, `converge`, `converge-run`, `dials`, `answers`,
+`nearest-id`, `stack-spelling`, `compatibility`, `planner`, `plan-refusal`, `scope`, `product-services`, `add-readiness`, `profile`, `growth`, `contexts`, `converge`, `converge-run`, `dials`, `answers`,
 `supplied-answers`, `apply`, `install`, `actions`, `docs-index`, `hook-settings`, `rank`), the composition
 `adapters/` and `verticals/`, the stack presets as data (`stack-presets.json`, a
 platform × entrypoint table `stack-table.ts` expands) with
@@ -123,8 +123,11 @@ resolves it with `stackSpelled` (`stack-spelling.ts`): the id, or the
 one preset its facets name. Every reader of an id keel produced — a
 product's services, a drill-down placement, a recorded
 `services[].stack`, converge's preset — calls `Registry.stack()`, which
-stays exact, so a corrupt record is never read leniently. The support tier is handed in as the registry is
-(roadmap T.2b): `support-tier.ts`'s rules read a `SupportSource` — the
+stays exact, so a corrupt record is never read leniently. An adapter
+has no registry, so the engine hands a product root's adapters their
+services already resolved to facets (`Ctx.services`,
+`product-services.ts`, roadmap T.3b). The support tier is handed in
+as the registry is (roadmap T.2b): `support-tier.ts`'s rules read a `SupportSource` — the
 facts, and the stacks keel vouches for — and never `STACKS`.
 `registry.ts` builds keel's own beside the shipped source
 (`shippedSupport`), and the composition root hands it to `keel.catalog`

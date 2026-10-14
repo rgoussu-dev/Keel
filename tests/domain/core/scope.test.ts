@@ -11,7 +11,7 @@
  * installed verticals are the shipped product's (`vcs`, `fullstack`),
  * so what the root gives a service is read from keel's own
  * declarations: `vcs`'s placement, and the product glue's
- * `providesInServices`.
+ * `providesInServices` — and, for `serves`, a plugin glue's.
  *
  * **Factory.** The shipped `FakeManifestStore`, and — for a manifest
  * that cannot be read — a store of the same port that throws for one
@@ -32,6 +32,7 @@ import {
   type ServiceRef,
 } from '../../../src/domain/contract/manifest.js';
 import type { ManifestStore } from '../../../src/domain/contract/ports/manifest-store.js';
+import type { Vertical } from '../../../src/domain/contract/composition.js';
 import type { Stack } from '../../../src/domain/contract/stack.js';
 import { registryOf, shippedRegistry, shippedSource } from '../../../src/domain/core/registry.js';
 import {
@@ -364,6 +365,37 @@ describe('provisionsFor', () => {
         ({ vertical }) => vertical.id,
       ),
     ).toEqual(['containerization']);
+  });
+
+  it('builds for a service a plugin glue names by its stack’s own tags, never by a dial', () => {
+    // A plugin's product glue naming Go HTTP services by what they are,
+    // and Gradle-built ones by the build system alone — a dial, which
+    // names no service.
+    const glue: Vertical = {
+      id: 'acme-glue',
+      description: 'builds images for Go HTTP services',
+      dimensions: ['only'],
+      adapters: [
+        {
+          id: 'acme-glue/compose',
+          vertical: 'acme-glue',
+          covers: ['only'],
+          predicate: {},
+          providesInServices: {
+            vertical: 'containerization',
+            serves: [{ requires: ['lang.go', 'arch.server-http'] }, { requires: ['pkg.gradle'] }],
+          },
+          contribute: () => ({}),
+        },
+      ],
+    };
+    const registry = registryOf([shippedSource, { origin: "plugin 'acme'", verticals: [glue] }]);
+    const glued = { installed: ['acme-glue'], tags: [] };
+    expect(provisionsFor(registry, glued, 'go-http').map(({ vertical }) => vertical.id)).toEqual([
+      'containerization',
+    ]);
+    expect(provisionsFor(registry, glued, 'quarkus-rest')).toEqual([]);
+    expect(provisionsFor(registry, glued, 'acme-worker')).toEqual([]);
   });
 });
 

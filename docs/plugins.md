@@ -613,12 +613,27 @@ const productGlueAdapter = {
   `scope` other than `repository`.
 - **Product glue that builds something inside its services declares
   `providesInServices`** on the adapter that writes it: the vertical
-  whose part it builds, and the service stacks it builds it for — and
-  it writes exactly those, reading its own declaration, so the two
-  cannot disagree. In a monorepo service whose stack is listed, that
+  whose part it builds, and the services it builds it for — and it
+  writes exactly those, reading its own declaration, so the two cannot
+  disagree. It names a service by its stack's id (`stacks`), by what
+  the stack is (`serves`: predicates over the stack's own tags, as
+  `{ requires: ['lang.go', 'arch.server-http'] }`), or both; either is
+  optional, and a service either names is served; registration refuses
+  a declaration whose lists name no service, a `serves` predicate with
+  no `requires`, which would name every service, and one whose
+  patterns are not a list of tag patterns keel can read. A `serves`
+  pattern matches the stack's own tags (`Stack.tags`): what it fixes,
+  a build system it offers no choice of included (`go-http`'s
+  `pkg.go-modules`), but never a dial it offers, so a pattern on one
+  (`pkg.gradle` for `quarkus-rest`) names nothing: the build system a
+  service settles on decides how its part is built, never whether. A stack keel does not register (its
+  plugin no longer loaded) is named by its id alone. Since `stacks` is
+  optional, glue reading `stacks` off a value typed `ServiceProvision`
+  needs a guard, or keeps its id list in a constant of its own and
+  declares that, as keel's own glue does. In a monorepo service it names, that
   vertical then reads as already there, and `keel add` of it adds
   nothing rather than meeting your files as `keel.path-conflict`; in
-  one whose stack is not listed it stays to add, and the product's
+  one it does not name it stays to add, and the product's
   `keel new` report says so. At the product root, `keel add` of it is
   refused naming the service that could still take it, until each
   service that could has it; then it reads as there already — an Ok
@@ -630,6 +645,19 @@ const productGlueAdapter = {
   two scopes write one file: `keel new` refuses it before it reports
   the plan, as `keel.cross-scope-write`, naming both adapters and where
   each runs — a preview and an install alike.
+
+**Glue at a product root reads its services from `ctx.services`.**
+Each is `{ path, stack, tags }`, in the order the root's manifest
+records them. `tags` is what the service was scaffolded on: its
+stack's own tags, the build system the root records for it, and its
+stack's default module layout. Decide _whether_ to build for a
+service as `serves` does, by matching your `serves` against the
+stack's own tags (`Stack.tags`), never against `ctx.services[].tags`,
+which carry the dials; read the build system and layout tags only for
+_how_ to build it. `stack` is the preset id, there to print. Anywhere but a product root the list
+is empty, and a service whose stack is not registered has no tags.
+Every `Ctx` keel builds carries the field, so a test of yours that
+builds a `Ctx` literal adds `services: []`.
 
 ---
 
@@ -672,25 +700,31 @@ build script committed to the repository, because that is what it is.
 Every failure names the plugin, never the engine. Before the module
 loads there is no name to quote, so those messages name the path.
 
-| What went wrong                               | What you see                                                                                                           |
-| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| The module throws at load                     | `keel plugin '<path>' failed to load: <the original error>`                                                            |
-| The directory has no entry module             | `keel plugin '<path>' has no entry module — expected keel-plugin.js …`                                                 |
-| No plugin exported                            | `keel plugin '<path>' exports no plugin — export it as 'default' …`                                                    |
-| A malformed `Conflict`                        | `plugin 'x' vertical 'y' declares a malformed conflict: …`                                                             |
-| A dimension none of its own adapters covers   | `plugin 'x' vertical 'y' declares dimension 'z', which none of its adapters covers`                                    |
-| An adapter promoting beyond its vertical      | `plugin 'x' vertical 'y' adapter 'y/a' promotes 't', which the vertical does not …`                                    |
-| A cycle of `reads`                            | `plugin 'x' vertical 'y' reads in a cycle: 'y' → 'z' → 'y' — …`                                                        |
-| A `placement` with no reason                  | `plugin 'x' vertical 'y' declares a placement with no 'because' — …`                                                   |
-| A question `shared` with anything else        | `plugin 'x' vertical 'y' adapter 'y/a' marks question 'q' shared 'w', which keel …`                                    |
-| A vertical id of `module` or `entrypoint`     | `plugin 'x' registers vertical 'module', a word 'keel add' reads as a command …`                                       |
-| A stack id other than lowercase words and `-` | `plugin 'x' registers stack 'Acme_web', whose id is not lowercase words joined by '-'`                                 |
-| A stack id that is not a string               | `plugin 'x' registers a stack whose id is not a string (undefined)`                                                    |
-| An id keel already ships                      | `plugin 'x' registers vertical 'y', which is already registered by keel`                                               |
-| An id another plugin already claimed          | `plugin 'x' registers stack 'y', which is already registered by plugin 'z'`                                            |
-| A stack id that reads as another stack        | `plugin 'x' registers stack 'quarkus-cli-http', which reads by its facets as 'quarkus-cli-rest', registered by keel …` |
-| A stack another's id reads as                 | `plugin 'x' registers stack 'cli', which 'quarkus-cli', registered by keel reads as by its facets …`                   |
-| A stack whose tags are not a list of strings  | `plugin 'x' registers stack 'y', whose tags are not a list of strings`                                                 |
+| What went wrong                               | What you see                                                                                                                            |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| The module throws at load                     | `keel plugin '<path>' failed to load: <the original error>`                                                                             |
+| The directory has no entry module             | `keel plugin '<path>' has no entry module — expected keel-plugin.js …`                                                                  |
+| No plugin exported                            | `keel plugin '<path>' exports no plugin — export it as 'default' …`                                                                     |
+| A malformed `Conflict`                        | `plugin 'x' vertical 'y' declares a malformed conflict: …`                                                                              |
+| A dimension none of its own adapters covers   | `plugin 'x' vertical 'y' declares dimension 'z', which none of its adapters covers`                                                     |
+| An adapter promoting beyond its vertical      | `plugin 'x' vertical 'y' adapter 'y/a' promotes 't', which the vertical does not …`                                                     |
+| A cycle of `reads`                            | `plugin 'x' vertical 'y' reads in a cycle: 'y' → 'z' → 'y' — …`                                                                         |
+| A `placement` with no reason                  | `plugin 'x' vertical 'y' declares a placement with no 'because' — …`                                                                    |
+| A `providesInServices` naming no service      | `plugin 'x' vertical 'y' adapter 'y/a' declares 'providesInServices' naming no service — neither 'stacks' nor 'serves' lists one`       |
+| `providesInServices.stacks` not a list of ids | `plugin 'x' vertical 'y' adapter 'y/a' declares 'providesInServices.stacks' that is not a list of stack ids`                            |
+| `providesInServices.serves` not a list        | `plugin 'x' vertical 'y' adapter 'y/a' declares 'providesInServices.serves' that is not a list of predicates`                           |
+| A `serves` predicate with no `requires`       | `plugin 'x' vertical 'y' adapter 'y/a' declares a 'providesInServices.serves' predicate with no 'requires' — …`                         |
+| A `serves` `requires`/`excludes` not a list   | `plugin 'x' vertical 'y' adapter 'y/a' declares a 'providesInServices.serves' predicate whose 'requires' is not a list of tag patterns` |
+| A `serves` pattern keel cannot read           | `plugin 'x' vertical 'y' adapter 'y/a' declares a 'providesInServices.serves' predicate that keel cannot read: …`                       |
+| A question `shared` with anything else        | `plugin 'x' vertical 'y' adapter 'y/a' marks question 'q' shared 'w', which keel …`                                                     |
+| A vertical id of `module` or `entrypoint`     | `plugin 'x' registers vertical 'module', a word 'keel add' reads as a command …`                                                        |
+| A stack id other than lowercase words and `-` | `plugin 'x' registers stack 'Acme_web', whose id is not lowercase words joined by '-'`                                                  |
+| A stack id that is not a string               | `plugin 'x' registers a stack whose id is not a string (undefined)`                                                                     |
+| An id keel already ships                      | `plugin 'x' registers vertical 'y', which is already registered by keel`                                                                |
+| An id another plugin already claimed          | `plugin 'x' registers stack 'y', which is already registered by plugin 'z'`                                                             |
+| A stack id that reads as another stack        | `plugin 'x' registers stack 'quarkus-cli-http', which reads by its facets as 'quarkus-cli-rest', registered by keel …`                  |
+| A stack another's id reads as                 | `plugin 'x' registers stack 'cli', which 'quarkus-cli', registered by keel reads as by its facets …`                                    |
+| A stack whose tags are not a list of strings  | `plugin 'x' registers stack 'y', whose tags are not a list of strings`                                                                  |
 
 A stack id is words of `a`–`z` and `0`–`9` joined by single `-`s
 (`acme-web`, `acme2-cli-http`). keel reads an id as its words —

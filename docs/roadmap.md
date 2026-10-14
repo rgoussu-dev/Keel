@@ -13342,7 +13342,7 @@ within its run (21.3 s). The run (414.5 s, 210 files, 3,612 tests)
 passed whole, the growth axis in 143.5 s of its 180;
 `composite.known.json` stays `{}` and no golden moved.
 
-#### T.3b — `Ctx.services` and `ServiceProvision.serves`, with no reader yet (M)
+#### T.3b — `Ctx.services` and `ServiceProvision.serves`, with no reader yet (M) ✅
 
 The engine resolves the product root's recorded services into facets
 and hands them to the adapters. No adapter reads them yet: the glue
@@ -13374,6 +13374,75 @@ keeps its tables of ids until T.3c, so nothing a project holds moves.
   fields), and CHANGELOG _Added_ (`Ctx.services`,
   `ServiceProvision.serves`) and _Changed_ (a `Ctx` literal needs
   `services`).
+
+**Landed as the plumbing alone**, in one commit, taken from the glue
+probe's patch less its glue: no adapter reads `Ctx.services` or
+declares `serves`. It takes DT7's `Ctx` half; T.3c takes the glue's. `composition.ts` gains `ProductService`, the
+required `Ctx.services` and the optional `ServiceProvision.serves`,
+and `plugin.ts` re-exports `ProductService` beside `ServiceProvision`;
+converge's private `ProductService` became `ConvergingService`, so the
+engine meets one type of that name. `product-services.ts` (73 lines)
+holds `serviceFacets`, `productServices` and `servesStack`, which reads
+`serves` only for a registered stack: an unregistered one is named by
+its id alone. `makeCtx` defaults the services to empty. `install.ts`
+resolves them once per `installVertical` and in `recordedContribution`,
+which S's replay, the `actionsOnly` pass and converge's two readings go
+through; its `registry` input, read before only to word a refusal, now
+also resolves them. `applyContributions` reads no registry: it passes
+through the services its caller hands it (`ApplyInputs.services`), and
+none unless given. `scope.ts`' `provisionsFor` asks `servesStack`.
+`registry.ts` refuses at load, as `keel.invalid-piece` naming the
+plugin, a `providesInServices` whose lists name no service (absent or
+empty alike), a `stacks` or `serves` that is not a list, a `serves`
+predicate with no `requires`, which would name every service, one
+whose `requires` or `excludes` is not a list of strings, and one with
+a pattern `validatePattern` rejects, as a conflict's are; keel's own glue
+declares `stacks` and loads. `product-compose.ts`, which the step does
+not name, moves too: it keeps its id list in a `BUILT_STACKS`
+constant, since `stacks` is now optional on the declaration it read
+the list from — the break _Changed_ names for a plugin's glue. No
+`Ctx` literal needed fixing: `tsc` and a grep of `src/`, `tests/` (the
+plugin fixtures included), `assets/` and `evals/` found none outside
+`makeCtx`.
+
+- **`product-services.test.ts`**, 20 tests on a Factory-built
+  registry of two plugin stacks and manifests from `emptyManifestV2`:
+  the facets with a recorded, a defaulted and an unknown build system,
+  and on a stack with no dial; a product's services in order, none,
+  one on an unregistered stack, and no registry; `servesStack` by
+  `stacks`, by `serves`, by both and by neither, an unregistered stack
+  by id alone (even to `{}` and an excludes-only predicate), and a dial
+  predicate that names nothing; and the `Ctx` that `makeCtx`, an
+  install at the root (on each of two adapters), its patch replay,
+  `recordedContribution`, `applyContributions` with and without
+  services, and an install elsewhere hand out.
+- **`registry.test.ts`**, seven tests: each refusal in its exact
+  sentence and code — no service (absent, `stacks: []`, both empty),
+  `stacks` not a list of ids, `serves` not a list, no `requires`
+  (`{}`, empty, excludes-only, null), a `requires` or `excludes` that
+  is not a list (`{ requires: 'lang.go' }` among them), and an
+  unreadable pattern — and a declaration by `stacks`, by `serves` and
+  by both registering. **`scope.test.ts`**, one: a plugin glue
+  declaring `serves` gives `containerization` to `go-http` by its own
+  tags, and nothing to `quarkus-rest`, whose Gradle dial alone its
+  other predicate names, nor to an unregistered stack.
+- **Held:** every golden byte for byte. `paths-new` (717 cells),
+  `paths-add`, `paths-reapply`, `paths-grow`, `converge` (3,464 cells),
+  `shared-files` and `growth` pass unchanged, as do the four grid
+  axes: brownfield's known file stays `{"I5": {}}`, and greenfield's,
+  composite's and growth's `{}`. No `*.golden.json` or `*.known.json`
+  moved.
+- **Timings**, 19 files in one run of 243.6 s at load 1.8 to 3.4:
+  `converge` 81.1 s, brownfield 74.2 s, `paths-grow` 68.0 s,
+  `paths-add` 64.4 s, `shared-files` 52.2 s, `paths-new` 50.0 s,
+  greenfield 45.8 s, the growth axis 164.3 s of its 180, composite
+  20.3 s. `CI=true pnpm test` was not run whole here.
+
+**What it adds to `CI=true pnpm test`:** `product-services.test.ts`
+(20 cases, under 0.1 s) and the new `registry.test.ts`, `scope.test.ts`
+and `apply.test.ts` cases. The run (393.6 s, 211 files, 3,640 tests),
+on T.3a, passed whole, the growth axis in 146.6 s of its 180; no golden
+moved.
 
 #### T.3c — The glue reads a service's family (M)
 
@@ -13794,7 +13863,7 @@ what the user accepted in DT1.
   image moves to the root is a plugin stack tagged like one of keel's
   families, the same reading containerization makes in the service.
   If that is read as U's _decide the image owner_, T.3c stops and
-  asks.
+  asks. Taken in T.3b (the `Ctx` half) and T.3c (the glue's half).
 
 - **DT8 — Which proofs transfer.**
   - **P1 (the harness twin) and P2 (a product's services):** measured

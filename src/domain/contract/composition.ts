@@ -394,6 +394,14 @@ export interface Ctx {
   /** External tool probes (e.g. git detection at plan time). */
   readonly processes: ProcessRunner;
   /**
+   * The services of the product whose root this is, in the order its
+   * manifest records them, each with the facets it was scaffolded on
+   * ({@link ProductService}), so product-root glue can read a service
+   * by what it is rather than by its preset id. Empty anywhere but a
+   * product root.
+   */
+  readonly services: readonly ProductService[];
+  /**
    * Returns the resolved answer for a question declared on this
    * adapter. Throws if the question id is not declared — typo'd ids
    * fail loudly rather than silently returning a default.
@@ -479,23 +487,59 @@ export interface Adapter {
 
 /**
  * What a product root's adapter builds for its services: `vertical`'s
- * part in each service scaffolded from one of `stacks`. The product
+ * part in each service scaffolded from one of `stacks`, or from a
+ * stack whose tags match one of `serves`. The product
  * glue's `compose.yaml` builds an image for each service it knows,
  * and writes that service's Dockerfile beside it — so in that service
  * `containerization` is already there, and `keel add containerization`
  * would only meet the files the root wrote.
  *
  * Declared on the adapter that writes those files, and read by the
- * adapter itself to decide which it writes, so what it declares and
+ * adapter itself (or built from the same constant it declares) to
+ * decide which it writes, so what it declares and
  * what it builds cannot disagree. A service whose stack it does not
- * list gets nothing from it and keeps the vertical to add: a plugin
+ * name, by id or by tags, gets nothing from it and keeps the vertical to add: a plugin
  * product's backend the glue has no image for.
  */
 export interface ServiceProvision {
   /** Id of the vertical whose part it builds — `containerization`. */
   readonly vertical: string;
   /** Ids of the service stacks it builds that part for. */
-  readonly stacks: readonly string[];
+  readonly stacks?: readonly string[];
+  /**
+   * The services it builds that part for, by what they are: a service
+   * whose stack's own tags (`Stack.tags`) match one of these. Read with
+   * {@link ServiceProvision.stacks}; either names a service. A stack's
+   * own tags hold what it fixes — its platform, its entrypoints, and a
+   * build system it does not offer a choice of (`go-http`'s
+   * `pkg.go-modules`) — but never a dial it offers: a pattern on one
+   * (`pkg.gradle` for `quarkus-rest`) names nothing, since the build
+   * system or the module layout a service settles on decides how its
+   * part is built, not whether. Glue deciding what it writes matches
+   * these against a stack's own tags too, never against
+   * {@link Ctx.services}' tags, which carry the dials.
+   */
+  readonly serves?: readonly Predicate[];
+}
+
+/**
+ * One service of a composite product as its root's glue reads it
+ * ({@link Ctx.services}): where it is, the preset its root records for
+ * it — to print, never to key on — and its facets.
+ */
+export interface ProductService {
+  /** Directory of the service, relative to the product root. */
+  readonly path: string;
+  /** Id of the preset the root records for the service. */
+  readonly stack: string;
+  /**
+   * The tags the service was scaffolded on: its stack's own, the
+   * build system its root records for it (the stack's default where
+   * none is recorded) and the stack's default module layout, which is
+   * the one a product's services take. Empty for a stack this keel
+   * does not register.
+   */
+  readonly tags: readonly Tag[];
 }
 
 /**

@@ -34,6 +34,7 @@ import { ENGINE_CONTRIBUTOR_ID, type Conflict, type Vertical } from '../contract
 import type { Registry } from '../contract/ports/registry.js';
 import type { Stack } from '../contract/stack.js';
 import { validateConflict } from './compatibility.js';
+import { validatePattern } from './predicate.js';
 import { stackReader } from './stack-spelling.js';
 import { isAssemblable, STACKS } from './stacks.js';
 import { SHIPPED_SUPPORT_FACTS, type SupportSource } from './support-tier.js';
@@ -303,6 +304,7 @@ function validateVertical(origin: string, vertical: Vertical): void {
   }
   validateAdapterPromotes(origin, vertical);
   validatePlacement(origin, vertical);
+  validateProvisions(origin, vertical);
   validateSharedQuestions(origin, vertical);
 }
 
@@ -348,6 +350,83 @@ function validatePlacement(origin: string, vertical: Vertical): void {
       `vertical '${vertical.id}' declares a placement with no 'because' — it is the sentence a monorepo service is refused the vertical in`,
     );
   }
+}
+
+/**
+ * What an adapter builds in a product's services
+ * (`Adapter.providesInServices`) is read as the services it names: by
+ * stack id (`stacks`), or by what a stack is (`serves`). A plugin
+ * written in plain JavaScript reaches here without the compiler's
+ * help, so a declaration whose lists name no service, a list that is
+ * not one, a `serves` predicate with no `requires` — which would name
+ * every service of every stack — and a predicate whose patterns the
+ * matcher cannot read are refused, naming the plugin, rather than read
+ * as a vertical provided where nothing builds it, or thrown unnamed
+ * from the first plan that reads a monorepo service.
+ */
+function validateProvisions(origin: string, vertical: Vertical): void {
+  for (const adapter of vertical.adapters) {
+    const provision = adapter.providesInServices;
+    if (provision === undefined) continue;
+    const where = `vertical '${vertical.id}' adapter '${adapter.id}'`;
+    const stacks: unknown = provision.stacks;
+    const serves: unknown = provision.serves;
+    if (stacks !== undefined && !isStringList(stacks)) {
+      throw refuse(
+        origin,
+        `${where} declares 'providesInServices.stacks' that is not a list of stack ids`,
+      );
+    }
+    if (serves !== undefined && !Array.isArray(serves)) {
+      throw refuse(
+        origin,
+        `${where} declares 'providesInServices.serves' that is not a list of predicates`,
+      );
+    }
+    if ((stacks?.length ?? 0) === 0 && (serves?.length ?? 0) === 0) {
+      throw refuse(
+        origin,
+        `${where} declares 'providesInServices' naming no service — neither 'stacks' nor 'serves' lists one`,
+      );
+    }
+    for (const predicate of (serves ?? []) as readonly unknown[]) {
+      validateServes(origin, where, predicate);
+    }
+  }
+}
+
+/** One `serves` predicate of the adapter `where` names: see {@link validateProvisions}. */
+function validateServes(origin: string, where: string, predicate: unknown): void {
+  const fields: { readonly requires?: unknown; readonly excludes?: unknown } =
+    typeof predicate === 'object' && predicate !== null ? predicate : {};
+  const { requires, excludes } = fields;
+  const subject = `${where} declares a 'providesInServices.serves' predicate`;
+  if (requires !== undefined && !isStringList(requires)) {
+    throw refuse(origin, `${subject} whose 'requires' is not a list of tag patterns`);
+  }
+  if (excludes !== undefined && !isStringList(excludes)) {
+    throw refuse(origin, `${subject} whose 'excludes' is not a list of tag patterns`);
+  }
+  if (requires === undefined || requires.length === 0) {
+    throw refuse(
+      origin,
+      `${subject} with no 'requires' — it would name every service, whatever its stack`,
+    );
+  }
+  for (const pattern of [...requires, ...(excludes ?? [])]) {
+    try {
+      validatePattern(pattern);
+    } catch (error) {
+      throw refuse(
+        origin,
+        `${subject} that keel cannot read: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+}
+
+function isStringList(value: unknown): value is readonly string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string');
 }
 
 /**

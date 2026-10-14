@@ -642,6 +642,16 @@ new` the terminal adds the way past it (move it aside, or start in
 
 ### Changed
 
+- **A `Ctx` built by hand needs `services`.** `Ctx.services` is
+  present on every `Ctx` keel hands an adapter, so a plugin's own test
+  that builds a `Ctx` literal adds `services: []` to type-check.
+
+- **`providesInServices.stacks` is optional.** A declaration may name
+  its services by `serves` alone, so a plugin adapter that reads
+  `stacks` off a value typed `ServiceProvision` no longer type-checks
+  as it stands: it needs a guard, or keeps its id list in a constant
+  of its own and declares that, as keel's own fullstack glue now does.
+
 - **A plugin's stack id is lowercase words joined by `-`.** A plugin
   registering a stack whose id is anything but words of `a`–`z` and
   `0`–`9` joined by single `-`s — an uppercase or accented letter, a
@@ -1387,6 +1397,27 @@ distribution iac`) — _Not for this project_, collapsed, each with the
   and refuses a stance leaking across families.
 
 ### Added
+
+- **Product glue can name a service by what it is, and reads each
+  service's facets.** A plugin adapter's `providesInServices` takes
+  `serves`, predicates over a service stack's own tags, beside
+  `stacks`, its ids. A `serves` entry of
+  `{ requires: ['lang.go', 'arch.server-http'] }` names every Go HTTP
+  service, whatever its preset is called. A service either one names
+  is served, and `stacks` is now optional. Registration refuses, as
+  `keel.invalid-piece` naming the plugin, a declaration whose lists
+  name no service, a `stacks` or `serves` that is not a list, a
+  `serves` entry with no `requires`, which would name every service,
+  and one whose `requires` or `excludes` is not a list of tag patterns
+  keel can read; a stack
+  keel does not register is named by its id alone. At a product root,
+  every adapter's `ctx.services` lists the product's services, each
+  `{ path, stack, tags }`: its directory, its preset id, and the tags
+  it was scaffolded on, its build system and module layout included.
+  Anywhere else the list is empty. keel's own fullstack glue does not
+  read either yet, so no project keel writes changes.
+  [`docs/plugins.md`](docs/plugins.md#where-a-vertical-goes-in-a-product)
+  describes both.
 
 - **`keel new --list` and `keel ui` say which presets keel's CI does not
   build.** Every setting of a preset's dials has a support tier, as the
