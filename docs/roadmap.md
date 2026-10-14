@@ -13025,7 +13025,7 @@ HEAD, the cost of walking every setting through `keel.dials` in its
 tests) passed whole, the growth axis in 170.6 s of its 180 with other
 work on the box.
 
-#### T.2e — The tier where a stack is picked (M)
+#### T.2e — The tier where a stack is picked (M) ✅
 
 - **Data:** `keel.catalog` carries the tier only on the finder's
   `EntrypointCombination.support`, the default cell of the leaf a card
@@ -13048,6 +13048,105 @@ work on the box.
   where none is, they skip, the Landed paragraph says so, and the PR's
   `e2e (web)` job is the gate. `docs/ui.md`, `docs/cli.md`, and a
   CHANGELOG _Added_ entry.
+
+**Landed as the tier on `keel.catalog`, `keel.dials`, the page and
+`--list`**, in one commit. `CatalogDeps` and `DialsDeps` gain
+`support: SupportSource`. The CLI's composition root hands both
+`shippedSupport`, whatever the plugins, and the test Factory hands it
+by default (`FactoryDeps`, overridable as `support`). `support-tier.ts`
+gains `tierOf`, which reads a settled target's dial cell, extras left
+out, and answers `supportOf`'s tier. `dials.ts`' `dialOptionsFor` now
+takes the source and answers `DialOptions.support`: null on a
+brownfield target, an unknown stack and a stack the source does not
+vouch for. `defaultTier` settles a target naming the stack alone and
+reads its tier. For a stack the source does not vouch for, a plugin's,
+it answers null before settling, so a plugin's dials are never computed
+for the catalog or `--list`. `CatalogHandler` puts that on each finder leaf
+(`EntrypointCombination.support`), cached per handler (measured, not
+held by a test: a first catalog takes 175 to 221 ms, a second 0.6 to
+1.4 ms); `StackDescriptor`
+is unchanged, and a case holds that it has no `support`. On the page,
+`finder.js` gains `tierBadge` and `withEntrypoint`. `<keel-new-form>`
+badges a drill-down card _best-effort_ where the preset choosing it
+lands on is, and a multi-select box by the preset with it ticked; the
+badge's title names the preset (`dom.js`' `badgeDoc`). Options shows a
+line (`data-role="support"`) when the settled cell is best-effort.
+`keel new --list` marks such a preset ◻ after its id, and closes with a
+line saying what the mark means, printed only where something is
+marked. `keel new`'s report carries nothing (DT9). T.2d's commit already recorded DT9 as taken here.
+
+**Measured.**
+
+- **The tiers, as shown:** 34 finder leaves, 24 first-class and 10
+  best-effort at their default setting, T.2b's ten. `--list` marks the
+  same ten, and `ui-plugin-stack` reads that mark off the binary, so the
+  composition root's wiring is held. No plugin's preset carries a tier:
+  `ui-plugin-stack`'s card has no badge, its Options no line and its
+  `--list` row no mark, and a domain case each holds it for the
+  catalog's leaf and `keel.dials` over a plugin's registry.
+- **Nothing recorded moved.** `paths-new`, the converge golden, the four
+  grid axes, `shared-files`, the growth golden, `growth-render`,
+  `preview`, `project-status` and `plugin-registration`: 12 files, 116
+  tests, in 194.4 s at a load average of 3 to 4. No golden or known file
+  was rewritten. `support-tier.premises` (24.2 s), `support-tier`,
+  `generated-docs` and every `tests/application/web` and
+  `tests/application/cli` file passed too: 26 files, 431 tests, in
+  37.3 s.
+- **The new cases:** 21, in five files. `catalog.test.ts` gains 5
+  (the shipped ten, a source's own facts, a stack the source does not
+  vouch for, a plugin's preset, no tier on a descriptor).
+  `handlers/dials.test.ts` is new, with 9 (each dial moved alone, P1,
+  P2, a product's service build system, extras, null, a source's own
+  facts, a plugin's preset). `dials.test.ts` gains 1, that
+  `defaultTier` reads no registry for a stack the source does not vouch
+  for. `finder.test.ts` gains 3, and `new-list.test.ts` is new, with 3.
+- **The browser suites,** with `KEEL_RUN_E2E=1` and Chromium:
+  `ui-stack-finder` 15 tests, `ui-compose` 18, `ui-refusal` 8 and
+  `ui-plugin-stack` 6, 47 passing in 85.1 s, where there were 44.
+  `ui-stack-finder`'s badge case also checks a language card. The new
+  `ui-compose` case moves the dials and generates nothing, so its seeds
+  stand as T.2c declared them, and its `afterAll` passed.
+- **The cost.** Settling the 34 defaults took 387 ms cold and 108 to
+  156 ms warm in plain node, over `dist/`. The first `keel.catalog` on a
+  mediator went from 2 to 16 ms at HEAD to 175 to 221 ms; a second
+  takes 0.6 to 1.4 ms, from the handler's cache. Five measured runs of
+  `keel --version` took 353 to 464 ms, and `keel new --list` 522 to
+  663 ms. `catalog.test.ts`, `finder.test.ts` and `steps.test.ts` now
+  share one mediator per file, so they settle once.
+
+**Where it departs from the step's text.**
+
+- **`--list` does not read the tier off `availableStacks`.** Settling
+  every default at wiring time would cost every command, `--version`
+  included, the 387 ms above. So `CliDeps` gains an optional
+  `defaultTier(stackId)`, which the composition root wires over
+  `shippedSupport` and only `--list` calls. Omitted, nothing is marked.
+- **The badge reads the preset a card lands on, on every drill-down
+  step.** No narrower rule reaches every leaf: `fullstack-ts`' and
+  `fullstack-go`'s leaf is a language card, since the framework and
+  entrypoint steps drop out, and a combined preset such as
+  `go-cli-http` is a set of ticked boxes. The badge sits on the
+  _Fullstack_ shape card from `quarkus-cli` too.
+- **`stackDials` stays menus only** (`DialMenus`, `DialOptions` less
+  `support`), and `dialOptionsFor` alone reads the tier. 25 test call
+  sites of `stackDials` kept their arguments; three helpers in
+  `dials.test.ts` are retyped `DialMenus`. `DialOptions` literals in
+  `target.test.ts` gained `support: null` (11 sites).
+- **Docs beyond those named:** `docs/plugins.md`, since a plugin's
+  stack renders with no tier; `src/domain/core/AGENTS.md`, which said
+  the source was yet to be handed in; `src/application/cli/AGENTS.md`,
+  on why `--list` reads the tier lazily; and `assets/AGENTS.md`, on
+  `finder.js`. `ui-plugin-stack` gained two assertions in an existing
+  case and a case reading `keel new --list` off the binary, beside the
+  two cases the step names.
+
+**What it adds to `CI=true pnpm test`:** the 21 cases above, about
+2.5 s, and some 0.2 s for each fresh mediator that asks the catalog, in
+the 19 other files outside `tests/e2e` that dispatch `keel.catalog`
+_(inference: the per-mediator cost above; how many mediators each file
+builds was not counted)_. The run (394.8 s, 209 files, 3,552 tests)
+passed whole, the growth axis in 149.4 s of its 180; `paths-new` and
+the converge golden did not move.
 
 ### T.3 — Products as per-service selections
 

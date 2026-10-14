@@ -27,11 +27,16 @@ import {
   pickFramework,
   pickLanguage,
   pickShape,
+  tierBadge,
+  withEntrypoint,
 } from '../../../assets/web/src/finder.js';
 import { expectOk, installMediator } from '../../support/factory.js';
 
+/** One mediator, so the catalog's tiers are settled once (`CatalogHandler`). */
+const mediator = installMediator();
+
 async function finder(): Promise<Catalog['finder']> {
-  const catalog: Catalog = expectOk(await installMediator().dispatch(catalogQuery()));
+  const catalog: Catalog = expectOk(await mediator.dispatch(catalogQuery()));
   return catalog.finder;
 }
 
@@ -127,7 +132,11 @@ describe('the page’s stack finder', () => {
     // framework Kotlin has, on the same runtime — so the tree is
     // written out, typed against the contract so it cannot drift from
     // it. Each wrong rung lands somewhere different here.
-    const leaf = (stack: string, entrypoints: string[]): Combination => ({ entrypoints, stack });
+    const leaf = (stack: string, entrypoints: string[]): Combination => ({
+      entrypoints,
+      stack,
+      support: null,
+    });
     const framework = (id: string, ...combinations: Combination[]): FrameworkNode => ({
       id,
       label: id,
@@ -264,7 +273,68 @@ describe('the page’s stack finder', () => {
         }
       }
     }
-    const catalog: Catalog = expectOk(await installMediator().dispatch(catalogQuery()));
+    const catalog: Catalog = expectOk(await mediator.dispatch(catalogQuery()));
     expect(catalog.stacks.filter((stack) => !reachable.has(stack.id)).map((s) => s.id)).toEqual([]);
+  });
+
+  it('badges a card by the preset it lands on, best-effort at its default setting', async () => {
+    const tree = await finder();
+    expect(tierBadge(tree, 'go-cli-http')).toBe('best-effort');
+    expect(tierBadge(tree, 'go-cli')).toBeUndefined();
+    expect(tierBadge(tree, 'nonsense')).toBeUndefined();
+    expect(tierBadge(tree, null)).toBeUndefined();
+
+    // The Fullstack shape card, from the default preset, lands on the
+    // Quarkus product; TypeScript's language card there is its leaf.
+    const here = at(tree, 'quarkus-cli');
+    expect(tierBadge(tree, pickShape(tree, 'fullstack', here))).toBe('best-effort');
+    const fullstack = at(tree, 'fullstack-go').shape;
+    expect(tierBadge(tree, pickLanguage(fullstack, 'go', here))).toBeUndefined();
+    expect(pickLanguage(fullstack, 'typescript@node', here)).toBe('fullstack-ts');
+    expect(tierBadge(tree, 'fullstack-ts')).toBe('best-effort');
+  });
+
+  it('badges a box by the preset it lands on with the box ticked', async () => {
+    const tree = await finder();
+    const go = at(tree, 'go-cli');
+    const ticked = (id: string) =>
+      pickEntrypoints(
+        go.framework,
+        withEntrypoint(encodeSelection(go.combination.entrypoints), id),
+      );
+    expect(ticked('cli')).toBe('go-cli');
+    expect(ticked('server-http')).toBe('go-cli-http');
+    expect(tierBadge(tree, ticked('server-http'))).toBe('best-effort');
+    expect(withEntrypoint('cli,server-http', 'cli')).toBe('cli,server-http');
+  });
+
+  it('gives a leaf no badge where the catalog gives it no tier, as a plugin’s', () => {
+    const tree: Catalog['finder'] = {
+      defaultStack: 'acme',
+      shapes: [
+        {
+          id: 'backend',
+          label: 'Backend',
+          doc: '',
+          languages: [
+            {
+              id: 'acme',
+              label: 'Acme',
+              doc: '',
+              runtime: null,
+              frameworks: [
+                {
+                  id: '',
+                  label: '',
+                  entrypointStep: null,
+                  combinations: [{ entrypoints: ['cli'], stack: 'acme', support: null }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    expect(tierBadge(tree, 'acme')).toBeUndefined();
   });
 });

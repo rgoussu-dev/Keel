@@ -27,8 +27,11 @@ import {
 } from '../../../assets/web/src/steps.js';
 import { expectOk, installMediator } from '../../support/factory.js';
 
+/** One mediator, so the finder's tiers are settled once (`CatalogHandler`). */
+const mediator = installMediator();
+
 async function catalog(): Promise<Catalog> {
-  return expectOk(await installMediator().dispatch(catalogQuery()));
+  return expectOk(await mediator.dispatch(catalogQuery()));
 }
 
 /**

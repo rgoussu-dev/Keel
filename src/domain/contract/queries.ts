@@ -28,6 +28,7 @@ import type { QuestionChoice } from './composition.js';
 import type { InstalledModule, ServiceRef } from './manifest.js';
 import type { TreeChange } from './ports/tree.js';
 import type { GrowAction, Refusal } from './refusal.js';
+import type { SupportTier } from './support-tier.js';
 import type { Tag } from './tags.js';
 
 /* ------------------------------------------------------------------ *
@@ -156,6 +157,15 @@ export interface EntrypointCombination {
   readonly entrypoints: readonly string[];
   /** The stack id this leaf resolves to — a `StackDescriptor.id`. */
   readonly stack: string;
+  /**
+   * How far keel vouches for this leaf at its default setting — the
+   * cell `keel.dials` settles a target naming the stack alone at — or
+   * null for a plugin's stack, which keel's CI does not vouch for. The
+   * one place the catalog carries a tier: {@link StackDescriptor} stays
+   * a flat description of a preset, and a setting's own tier is
+   * {@link DialOptions.support}.
+   */
+  readonly support: SupportTier | null;
 }
 
 /** One selectable value of a dial, as a front end would render it. */
@@ -362,6 +372,16 @@ export interface DialOptions {
    * takes it, or `dropped` where none or several would.
    */
   readonly adjustments: readonly DialAdjustment[];
+  /**
+   * How far keel vouches for the dial cell {@link DialOptions.target}
+   * settles at: `first-class` where an e2e suite builds it, or each
+   * part of it is proven byte-identical to a part a suite builds;
+   * `best-effort` where no CI job builds it as `keel new` leaves it.
+   * Null on a brownfield target, an unknown stack, and a plugin's
+   * stack. Extras are not a dial: the tier is the cell's, whatever is
+   * ticked on it.
+   */
+  readonly support: SupportTier | null;
 }
 
 /**

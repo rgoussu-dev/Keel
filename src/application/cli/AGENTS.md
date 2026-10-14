@@ -35,6 +35,11 @@ no logic.
   printed under the command it names (_After 'keel add entrypoint
   http':_), not under _Not for this project:_, with what that command
   makes of it in `hint.ts`' words (`growNote`), where the remedy lives.
+- `keel new --list` marks a stack best-effort at its default setting
+  through `CliDeps.defaultTier`, a function the composition root wires
+  over `shippedSupport`, not a column of `availableStacks`: settling
+  every default costs a few hundred milliseconds, which
+  `keel --version` and every other command would pay at startup.
 - A refusal's sentence is the domain's and the same in both phases;
   what to type next is the CLI's. `contract/hint.ts` builds the
   `hint:` line `unwrap` prints under a `RefusalError` from its fields,

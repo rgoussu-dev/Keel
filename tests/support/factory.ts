@@ -14,8 +14,8 @@ import type { Result } from '../../src/domain/kernel/result.js';
 import { DomainError } from '../../src/domain/kernel/result.js';
 import { RegistryMediator } from '../../src/domain/core/mediator.js';
 import { NewProjectHandler } from '../../src/domain/core/handlers/new-project.js';
-import { CatalogHandler } from '../../src/domain/core/handlers/catalog.js';
-import { DialsHandler } from '../../src/domain/core/handlers/dials.js';
+import { CatalogHandler, type CatalogDeps } from '../../src/domain/core/handlers/catalog.js';
+import { DialsHandler, type DialsDeps } from '../../src/domain/core/handlers/dials.js';
 import { PreviewHandler } from '../../src/domain/core/handlers/preview.js';
 import { ProjectStatusHandler } from '../../src/domain/core/handlers/project-status.js';
 import { AddEntrypointHandler } from '../../src/domain/core/handlers/add-entrypoint.js';
@@ -28,7 +28,7 @@ import { ToolchainCheckHandler } from '../../src/domain/toolchain/core/check.js'
 import { ToolchainInstallHandler } from '../../src/domain/toolchain/core/install.js';
 import type { InstallDeps } from '../../src/domain/core/handlers/deps.js';
 import { runActions, type RunActionsInputs } from '../../src/domain/core/actions.js';
-import { shippedRegistry } from '../../src/domain/core/registry.js';
+import { shippedRegistry, shippedSupport } from '../../src/domain/core/registry.js';
 import { nearbyProjects } from '../../src/domain/core/scope.js';
 import { FakeClock } from '../../src/infrastructure/commons/fake-clock.js';
 import { FakeLogger } from '../../src/infrastructure/commons/fake-logger.js';
@@ -41,9 +41,15 @@ import { fsTreeFactory } from '../../src/infrastructure/tree/fs-tree.js';
 /** The instant every factory-built clock is pinned to. */
 export const PINNED_NOW = '2026-04-26T12:00:00Z';
 
+/**
+ * What {@link installMediator} wires: the install handlers' ports, and
+ * the support source `keel.catalog` and `keel.dials` read the tier from.
+ */
+export type FactoryDeps = InstallDeps & CatalogDeps & DialsDeps;
+
 /** Builds a mediator over the install handlers with overridable ports. */
-export function installMediator(overrides: Partial<InstallDeps> = {}): Mediator {
-  const deps: InstallDeps = {
+export function installMediator(overrides: Partial<FactoryDeps> = {}): Mediator {
+  const deps: FactoryDeps = {
     trees: fsTreeFactory,
     manifests: fsManifestStore,
     prompt: rejectingPrompt,
@@ -52,6 +58,7 @@ export function installMediator(overrides: Partial<InstallDeps> = {}): Mediator 
     templates: ejsTemplateSource,
     processes: spawnProcessRunner,
     registry: shippedRegistry,
+    support: shippedSupport,
     keelVersion: '0.4.0-alpha',
     ...overrides,
   };

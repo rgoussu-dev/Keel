@@ -16,12 +16,24 @@ import { describe, expect, it } from 'vitest';
 import { catalogQuery } from '../../../../src/domain/contract/queries.js';
 import type { Catalog, StackDescriptor } from '../../../../src/domain/contract/queries.js';
 import { dialOptionsFor } from '../../../../src/domain/core/dials.js';
-import { STACKS } from '../../../../src/domain/core/stacks.js';
-import { listVerticalIds, shippedRegistry } from '../../../../src/domain/core/registry.js';
+import { STACKS, type Stack } from '../../../../src/domain/core/stacks.js';
+import type { Registry } from '../../../../src/domain/contract/ports/registry.js';
+import {
+  listVerticalIds,
+  pluginOrigin,
+  registryOf,
+  shippedRegistry,
+  shippedSource,
+  shippedSupport,
+} from '../../../../src/domain/core/registry.js';
+import type { SingleFact, SupportSource } from '../../../../src/domain/core/support-tier.js';
 import { expectOk, installMediator } from '../../../support/factory.js';
 
+/** One mediator, so the finder's tiers are settled once (`CatalogHandler`). */
+const mediator = installMediator();
+
 async function catalog(): Promise<Catalog> {
-  return expectOk(await installMediator().dispatch(catalogQuery()));
+  return expectOk(await mediator.dispatch(catalogQuery()));
 }
 
 type ShapeNode = Catalog['finder']['shapes'][number];
@@ -150,11 +162,15 @@ describe('keel.catalog', () => {
     expect(stack.buildSystems.map((option) => option.id)).toEqual(['gradle', 'maven']);
     expect(stack.peerContext).toBe(true);
 
-    const onBasic = dialOptionsFor(shippedRegistry, {
-      kind: 'new-project',
-      stack: 'quarkus-rest',
-      moduleLayout: 'basic',
-    });
+    const onBasic = dialOptionsFor(
+      shippedRegistry,
+      {
+        kind: 'new-project',
+        stack: 'quarkus-rest',
+        moduleLayout: 'basic',
+      },
+      shippedSupport,
+    );
     expect(onBasic.peerContext).toBe(false);
   });
 
@@ -164,7 +180,11 @@ describe('keel.catalog', () => {
     // thing to render a control *from*, and the dials query only ever
     // takes values off it.
     for (const stack of (await catalog()).stacks) {
-      const dials = dialOptionsFor(shippedRegistry, { kind: 'new-project', stack: stack.id });
+      const dials = dialOptionsFor(
+        shippedRegistry,
+        { kind: 'new-project', stack: stack.id },
+        shippedSupport,
+      );
       expect({ id: stack.id, builds: dials.buildSystems }).toEqual({
         id: stack.id,
         builds: stack.buildSystems,
@@ -299,5 +319,93 @@ describe('keel.catalog — the stack finder', () => {
     expect(java.frameworks.find((node) => node.id === 'quarkus')?.entrypointStep?.default).toBe(
       'cli',
     );
+  });
+});
+
+describe('keel.catalog — the tier of each leaf (T.2e)', () => {
+  /** Each leaf's preset and its tier, from a catalog over `support` and `registry`. */
+  async function tiers(
+    support: SupportSource,
+    registry: Registry = shippedRegistry,
+  ): Promise<Record<string, string | null>> {
+    const mediator = installMediator({ support, registry });
+    const { finder } = expectOk(await mediator.dispatch(catalogQuery()));
+    return Object.fromEntries(
+      everyFramework(finder).flatMap((node) =>
+        node.combinations.map((combination) => [combination.stack, combination.support]),
+      ),
+    );
+  }
+
+  /** The default cell of `go-cli-http`, as a row proving it. */
+  const goCliHttpRow: SingleFact = {
+    suite: 'a-suite',
+    stack: 'go-cli-http',
+    buildSystem: null,
+    moduleLayout: 'basic',
+    peerContext: false,
+    agentHarness: true,
+  };
+
+  it('marks the ten presets best-effort at their default setting, as keel ships them', async () => {
+    const shipped = await tiers(shippedSupport);
+    expect(
+      Object.entries(shipped)
+        .filter(([, tier]) => tier === 'best-effort')
+        .map(([stack]) => stack)
+        .sort(),
+    ).toEqual([
+      'fullstack',
+      'fullstack-micronaut',
+      'fullstack-spring',
+      'fullstack-ts',
+      'go-cli-http',
+      'micronaut-cli-rest-kotlin',
+      'quarkus-cli-rest-kotlin',
+      'rust-cli-http',
+      'spring-cli-rest',
+      'ts-cli-http',
+    ]);
+    expect(Object.values(shipped).filter((tier) => tier === 'first-class')).toHaveLength(24);
+  });
+
+  it('reads the facts it is handed, not keel’s', async () => {
+    const none = await tiers({ ...shippedSupport, facts: { singles: [], products: [] } });
+    expect(new Set(Object.values(none))).toEqual(new Set(['best-effort']));
+
+    const proven = await tiers({
+      ...shippedSupport,
+      facts: { singles: [goCliHttpRow], products: [] },
+    });
+    expect(proven['go-cli-http']).toBe('first-class');
+    expect(proven['go-cli']).toBe('best-effort');
+  });
+
+  it('gives no tier to a preset the source does not vouch for, as a plugin’s', async () => {
+    const vouched = shippedSupport.stacks.filter((stack) => stack.id !== 'go-cli');
+    const read = await tiers({ ...shippedSupport, stacks: vouched });
+    expect(read['go-cli']).toBeNull();
+    expect(read['go-http']).toBe('first-class');
+  });
+
+  it('gives no tier to a plugin’s preset, and keeps keel’s beside it', async () => {
+    const plugin: Stack = {
+      id: 'acme-widget',
+      description: 'Acme widget',
+      tags: ['lang.acme', 'arch.hexagonal', 'arch.cli'],
+      verticals: [{ id: 'acme-greeting', description: '', dimensions: [], adapters: [] }],
+    };
+    const registry = registryOf([
+      shippedSource,
+      { origin: pluginOrigin('acme'), stacks: [plugin] },
+    ]);
+    const read = await tiers(shippedSupport, registry);
+    expect(read).toHaveProperty('acme-widget', null);
+    expect(read['go-cli-http']).toBe('best-effort');
+    expect(read['go-cli']).toBe('first-class');
+  });
+
+  it('keeps the tier off the flat description of a preset', async () => {
+    for (const stack of (await catalog()).stacks) expect(stack).not.toHaveProperty('support');
   });
 });

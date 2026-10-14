@@ -23,11 +23,17 @@ import { ok, type Result } from '../../kernel/result.js';
 import type { DialOptions, DialsQuery } from '../../contract/queries.js';
 import type { Registry } from '../../contract/ports/registry.js';
 import { dialOptionsFor } from '../dials.js';
+import type { SupportSource } from '../support-tier.js';
 
-/** The one port this query needs. */
+/** What this query reads. */
 export interface DialsDeps {
   /** What this run may install — keel's own pieces plus any plugin's. */
   readonly registry: Registry;
+  /**
+   * How far keel vouches for each dial cell — handed in as the
+   * registry is, so a test chooses its own facts (roadmap T.2e).
+   */
+  readonly support: SupportSource;
 }
 
 /** Executes {@link DialsQuery}s. */
@@ -39,6 +45,6 @@ export class DialsHandler implements Handler<DialsQuery> {
   }
 
   handle(query: DialsQuery): Promise<Result<DialOptions>> {
-    return Promise.resolve(ok(dialOptionsFor(this.deps.registry, query.target)));
+    return Promise.resolve(ok(dialOptionsFor(this.deps.registry, query.target, this.deps.support)));
   }
 }

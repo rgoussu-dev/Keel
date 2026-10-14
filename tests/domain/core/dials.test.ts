@@ -30,12 +30,20 @@ import { newProjectCommand, type NewProjectTarget } from '../../../src/domain/co
 import type { Conflict, Tag, Vertical } from '../../../src/domain/contract/composition.js';
 import type { DialOptions } from '../../../src/domain/contract/queries.js';
 import { assemblyRefusal } from '../../../src/domain/core/compatibility.js';
-import { dialOptionsFor, piecesOf, stackDials } from '../../../src/domain/core/dials.js';
+import type { Registry } from '../../../src/domain/contract/ports/registry.js';
+import {
+  defaultTier,
+  dialOptionsFor,
+  piecesOf,
+  stackDials,
+  type DialMenus,
+} from '../../../src/domain/core/dials.js';
 import {
   pluginOrigin,
   registryOf,
   shippedRegistry,
   shippedSource,
+  shippedSupport,
 } from '../../../src/domain/core/registry.js';
 import { agentHarnessVertical } from '../../../src/domain/core/verticals/agent-harness.js';
 import { FakePrompt } from '../../../src/infrastructure/prompt/fake.js';
@@ -299,8 +307,11 @@ describe('the settled target', () => {
   it('settles a stack spelled by its facets at the preset it names', () => {
     // A front end other than the page posts what its user typed; the
     // reply hands back the id the install records.
-    const settled = dialOptionsFor(shippedRegistry, { kind: 'new-project', stack: 'go-rest' })
-      .target as NewProjectTarget;
+    const settled = dialOptionsFor(
+      shippedRegistry,
+      { kind: 'new-project', stack: 'go-rest' },
+      shippedSupport,
+    ).target as NewProjectTarget;
     expect(settled.stack).toBe('go-http');
   });
 
@@ -417,7 +428,7 @@ describe('a composite product', () => {
 
 describe('the extras, as the planner reads them', () => {
   /** A shipped preset's dials, settled at `extras` when given. */
-  const shipped = (stack: string, extras?: readonly string[]): DialOptions => {
+  const shipped = (stack: string, extras?: readonly string[]): DialMenus => {
     const preset = shippedRegistry.stack(stack);
     if (preset === null) throw new Error(`no shipped stack '${stack}'`);
     return stackDials(shippedRegistry, preset, {
@@ -638,12 +649,12 @@ describe('the agent harness, as a dial', () => {
     shippedSource,
     { origin: pluginOrigin('acme'), verticals: [acmeSkills] },
   ]);
-  const goCli = (dials: Partial<NewProjectTarget> = {}, on = registry): DialOptions => {
+  const goCli = (dials: Partial<NewProjectTarget> = {}, on = registry): DialMenus => {
     const preset = on.stack('go-cli');
     if (preset === null) throw new Error("no shipped stack 'go-cli'");
     return stackDials(on, preset, { kind: 'new-project', stack: 'go-cli', ...dials });
   };
-  const option = (dials: DialOptions, id: string) =>
+  const option = (dials: DialMenus, id: string) =>
     dials.verticals.find((vertical) => vertical.id === id);
 
   it('is offered on a single preset that comes with it, and carried only when left out', () => {
@@ -851,5 +862,38 @@ describe('the agent harness, as a dial', () => {
     const reactivated = stackDials(shippedRegistry, tagged, target({ agentHarness: false }));
     expect(reactivated.agentHarness).toBe(false);
     expect(reactivated.target).not.toHaveProperty('agentHarness');
+  });
+});
+
+describe('the default tier', () => {
+  /** `registry`, counting every read made of it. */
+  const counted = (registry: Registry): { registry: Registry; reads: () => number } => {
+    let reads = 0;
+    const read = <T>(value: T): T => {
+      reads += 1;
+      return value;
+    };
+    return {
+      registry: {
+        stacks: () => read(registry.stacks()),
+        verticals: () => read(registry.verticals()),
+        stack: (id) => read(registry.stack(id)),
+        vertical: (id) => read(registry.vertical(id)),
+      },
+      reads: () => reads,
+    };
+  };
+
+  it('is null for a stack the source does not vouch for, before anything settles', () => {
+    const plugin = registryOf([
+      shippedSource,
+      { origin: pluginOrigin('acme'), stacks: [stackWith([])] },
+    ]);
+    const asked = counted(plugin);
+    expect(defaultTier(asked.registry, shippedSupport, 'demo-stack')).toBeNull();
+    expect(asked.reads()).toBe(0);
+
+    expect(defaultTier(asked.registry, shippedSupport, 'go-cli')).toBe('first-class');
+    expect(asked.reads()).toBeGreaterThan(0);
   });
 });

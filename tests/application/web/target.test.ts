@@ -103,6 +103,7 @@ const jvmDials = (target: DialOptions['target']): DialOptions => ({
   extraVerticals: [],
   verticals: [],
   adjustments: [],
+  support: null,
 });
 
 async function finder(): Promise<Catalog['finder']> {
@@ -691,6 +692,7 @@ describe('an "Also scaffold" box', () => {
         extraVerticals: [],
         verticals: [],
         adjustments: [],
+        support: null,
       }),
     };
   };
@@ -769,6 +771,7 @@ describe('what a preset move could not keep', () => {
         extraVerticals: [],
         verticals: [],
         adjustments: [],
+        support: null,
       }),
     );
     expect(settled.notice).toBe(
@@ -823,6 +826,7 @@ describe('what a preset move could not keep', () => {
         extraVerticals: [],
         verticals: [],
         adjustments: [],
+        support: null,
       }),
     );
     expect(settled.notice).toBe('Moving to fullstack did not keep the agent harness off.');
@@ -844,6 +848,7 @@ describe('what a preset move could not keep', () => {
         extraVerticals: [],
         verticals: [],
         adjustments: [],
+        support: null,
       }),
     );
     expect(settled.notice).toBe('');
@@ -881,6 +886,7 @@ describe('what a preset move could not keep', () => {
         extraVerticals: [],
         verticals: [],
         adjustments: [],
+        support: null,
       }),
     };
     const moved = retarget(product, { stack: 'quarkus-rest' });
@@ -929,6 +935,7 @@ describe('what a preset move could not keep', () => {
         extraVerticals: [],
         verticals: [],
         adjustments: [],
+        support: null,
       }),
     );
     expect(settled.notice).toBe('Moving to go-cli-http did not keep build system maven.');
@@ -952,6 +959,7 @@ describe('what a preset move could not keep', () => {
         extraVerticals: [],
         verticals: [],
         adjustments: [],
+        support: null,
       }),
       await finder(),
     );
@@ -972,6 +980,7 @@ describe('what a preset move could not keep', () => {
         extraVerticals: [],
         verticals: [],
         adjustments: [],
+        support: null,
       }),
       await finder(),
     );
@@ -995,6 +1004,7 @@ describe('what a preset move could not keep', () => {
       extraVerticals: [],
       verticals: [],
       adjustments: [],
+      support: null,
     });
     // Maven for the backend moved one service off its default; npm for
     // the front end is the default, so it is nothing to lose.
@@ -1142,6 +1152,7 @@ describe('what a preset move could not keep', () => {
         extraVerticals: [],
         verticals: [],
         adjustments: [],
+        support: null,
       }),
     );
     expect(settled.notice).toBe(

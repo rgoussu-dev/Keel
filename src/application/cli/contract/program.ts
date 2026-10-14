@@ -30,6 +30,7 @@ import {
   type ProjectStatus,
 } from '../../../domain/contract/queries.js';
 import { RefusalError, type GrowAction } from '../../../domain/contract/refusal.js';
+import type { SupportTier } from '../../../domain/contract/support-tier.js';
 import type { ServeUi } from '../../web/contract/server.js';
 import { growNote, refusalHint, type HintedCommand } from './hint.js';
 import {
@@ -63,6 +64,14 @@ export interface CliDeps {
   readonly version: string;
   /** Stacks listed in `keel new`'s help text and `keel new --list`. */
   readonly availableStacks: readonly StackOption[];
+  /**
+   * How far keel vouches for a stack at its default setting, read by
+   * `keel new --list` alone, which marks a best-effort one: settling
+   * every preset's default costs a few hundred milliseconds, which no
+   * other command should pay. Null for a stack keel does not vouch
+   * for, a plugin's; omitted, nothing is marked.
+   */
+  readonly defaultTier?: (stackId: string) => SupportTier | null;
   /**
    * Verticals listed in `keel add`'s help text, and by `keel add
    * --list` where there is no project to ask about them.
@@ -167,7 +176,7 @@ export function buildProgram(deps: CliDeps): Command {
         set: string[];
       }): Promise<void> => {
         if (opts.list) {
-          printOptionList('Available stacks', deps.availableStacks, deps.logger);
+          printStackList(deps.availableStacks, deps.defaultTier ?? (() => null), deps.logger);
           return;
         }
         const dir = cwd();
@@ -546,6 +555,35 @@ function printUnresolved(unresolved: readonly UnresolvedPrefix[], log: Logger): 
 
 function formatTags(tags: readonly string[]): string {
   return tags.length > 0 ? tags.join(', ') : '(none)';
+}
+
+/** What `keel new --list` marks a best-effort stack with, as the generated docs do. */
+const BEST_EFFORT_MARK = '◻';
+
+/**
+ * `keel new --list`: every stack, a best-effort one marked
+ * {@link BEST_EFFORT_MARK} after its id, and a line saying what the
+ * mark means where any is.
+ */
+function printStackList(
+  stacks: readonly StackOption[],
+  tierOf: (stackId: string) => SupportTier | null,
+  log: Logger,
+): void {
+  const bestEffort = new Set(stacks.filter((stack) => tierOf(stack.id) === 'best-effort'));
+  printOptionList(
+    'Available stacks',
+    stacks.map((stack) => ({
+      id: bestEffort.has(stack) ? `${stack.id} ${BEST_EFFORT_MARK}` : stack.id,
+      description: stack.description,
+    })),
+    log,
+  );
+  if (bestEffort.size === 0) return;
+  log.info('');
+  log.info(
+    `${BEST_EFFORT_MARK} best-effort at its default setting: no CI job builds it as keel new leaves it (see docs/stacks/README.md#support-tiers).`,
+  );
 }
 
 /** Renders `--list` output for `keel new`/`keel add`: one id + description per line. */

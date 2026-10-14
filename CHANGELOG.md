@@ -1388,6 +1388,26 @@ distribution iac`) — _Not for this project_, collapsed, each with the
 
 ### Added
 
+- **`keel new --list` and `keel ui` say which presets keel's CI does not
+  build.** Every setting of a preset's dials has a support tier, as the
+  [stack catalog](docs/stacks/README.md#support-tiers) defines it:
+  _first-class_ where an e2e suite builds it as `keel new` leaves it, or
+  each part of it is proven identical to a part one builds;
+  _best-effort_ where no CI job builds it. `keel new --list` marks ◻ the
+  ten presets that are best-effort at their default setting —
+  `fullstack`, `fullstack-spring`, `fullstack-micronaut`,
+  `fullstack-ts`, `go-cli-http`, `rust-cli-http`, `ts-cli-http`,
+  `spring-cli-rest`, `quarkus-cli-rest-kotlin` and
+  `micronaut-cli-rest-kotlin` — and says what the mark means. In
+  `keel ui`, a drill-down card says _best-effort_ in its badge where the
+  preset choosing it lands on is, and the Options step says so of the
+  setting picked, which moves with the dials: `quarkus-cli-rest-kotlin`
+  is best-effort on Gradle, its default, and first-class on Maven. The
+  API carries the tier too: on each leaf of `keel.catalog`'s finder
+  (`support`, at its default setting) and on the `keel.dials` reply
+  (`support`, the settled cell's). A plugin's preset has no tier, and
+  `keel new`'s report carries none.
+
 - **The docs say how far keel vouches for each setting.** A new
   _Support tiers_ section in the [stack catalog](docs/stacks/README.md#support-tiers)
   gives every setting `keel new` offers a tier. A setting is

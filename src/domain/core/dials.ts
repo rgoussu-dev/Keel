@@ -47,6 +47,7 @@ import type {
   VerticalOption,
 } from '../contract/queries.js';
 import type { RefusalError } from '../contract/refusal.js';
+import type { SupportTier } from '../contract/support-tier.js';
 import { emitsFor } from './adapters/context-support.js';
 import {
   MODULITH_LAYOUT_TAG,
@@ -65,6 +66,7 @@ import {
   type ProductServiceScope,
 } from './scope.js';
 import { stackSpelled } from './stack-spelling.js';
+import { tierOf, type SupportSource } from './support-tier.js';
 import { stackTagsFor, type BuildSystemOption, type Stack } from './stacks.js';
 import { listVerticals, verticalTitle } from './registry.js';
 import type { Registry } from '../contract/ports/registry.js';
@@ -513,13 +515,49 @@ function refusalOf(
  * and not four independent menus: a form that picked its own value
  * per menu would be reimplementing that order, and the two would part
  * company the first time a rule spanned three dials.
+ *
+ * The settled target's cell carries its tier as `support` reads it
+ * (`./support-tier.ts`' {@link tierOf}): null on a brownfield target,
+ * an unknown stack, and a stack `support` does not vouch for.
  */
-export function dialOptionsFor(registry: Registry, target: InstallTarget): DialOptions {
-  if (target.kind !== 'new-project') return undialled(target);
+export function dialOptionsFor(
+  registry: Registry,
+  target: InstallTarget,
+  support: SupportSource,
+): DialOptions {
+  if (target.kind !== 'new-project') return { ...undialled(target), support: null };
   const spelling = target.stack === undefined ? null : stackSpelled(registry, target.stack);
-  if (spelling === null || spelling.kind === 'unknown') return undialled(target);
-  return stackDials(registry, spelling.stack, { ...target, stack: spelling.stack.id });
+  if (spelling === null || spelling.kind === 'unknown') {
+    return { ...undialled(target), support: null };
+  }
+  const menus = stackDials(registry, spelling.stack, { ...target, stack: spelling.stack.id });
+  return { ...menus, support: tierOf(menus.target as NewProjectTarget, support) };
 }
+
+/**
+ * The tier of `stackId` at its default setting — the cell `keel.dials`
+ * settles a target naming the stack alone at — or null where
+ * {@link dialOptionsFor} reads none. What the finder's leaves and
+ * `keel new --list` mark (roadmap T.2e).
+ *
+ * A stack `support` does not vouch for, as a plugin's, is null before
+ * anything settles: its dials are never computed, so a defect in them
+ * cannot break the catalog or `--list`.
+ */
+export function defaultTier(
+  registry: Registry,
+  support: SupportSource,
+  stackId: string,
+): SupportTier | null {
+  if (!support.stacks.some((stack) => stack.id === stackId)) return null;
+  return dialOptionsFor(registry, { kind: 'new-project', stack: stackId }, support).support;
+}
+
+/**
+ * {@link DialOptions} less its tier: the menus and the settled target,
+ * which are a function of the registry and the target alone.
+ */
+export type DialMenus = Omit<DialOptions, 'support'>;
 
 /**
  * {@link dialOptionsFor} for a stack already in hand — the whole of
@@ -533,18 +571,14 @@ export function dialOptionsFor(registry: Registry, target: InstallTarget): DialO
  * extras menu is a question about every vertical this run may
  * install, which is exactly what the registry is.
  */
-export function stackDials(
-  registry: Registry,
-  stack: Stack,
-  target: NewProjectTarget,
-): DialOptions {
+export function stackDials(registry: Registry, stack: Stack, target: NewProjectTarget): DialMenus {
   return stack.services === undefined
     ? singleDials(registry, stack, target)
     : compositeDials(registry, stack, target);
 }
 
 /** A target with no stack-level dials at all — every brownfield one. */
-function undialled(target: InstallTarget): DialOptions {
+function undialled(target: InstallTarget): DialMenus {
   return {
     target,
     buildSystems: [],
@@ -558,7 +592,7 @@ function undialled(target: InstallTarget): DialOptions {
   };
 }
 
-function singleDials(registry: Registry, preset: Stack, target: NewProjectTarget): DialOptions {
+function singleDials(registry: Registry, preset: Stack, target: NewProjectTarget): DialMenus {
   // The harness first, as `keel new` settles it: every menu below is
   // read over the preset as it will be installed.
   const agentHarness = harnessOptional(preset);
@@ -653,7 +687,7 @@ function singleDials(registry: Registry, preset: Stack, target: NewProjectTarget
  * service's selection, never bare. The top-level `extraVerticals` and
  * `verticals` read what a bare id does here.
  */
-function compositeDials(registry: Registry, stack: Stack, target: NewProjectTarget): DialOptions {
+function compositeDials(registry: Registry, stack: Stack, target: NewProjectTarget): DialMenus {
   const layout = target.layout ?? DEFAULT_REPO_LAYOUT;
   const monorepo = layout === 'monorepo';
   const chosen = readServiceBuildSystems(target.buildSystem);

@@ -4,12 +4,12 @@
  *
  * A dial cell is a preset on one setting of every dial `keel.dials`
  * offers it — the unit the e2e grid has always counted in (DT2). It is
- * _first-class_ where an e2e suite builds it, or where it is proven
- * byte-identical to a cell one builds; _best-effort_ where it composes
- * and previews under every hard invariant of the composition grid, and
- * no CI job compiles it. What the presets do not generate has no tier,
- * and neither does a plugin's stack: keel's CI vouches for keel's
- * presets only.
+ * _first-class_ where an e2e suite builds it, or each part of it is
+ * proven byte-identical to a part a suite builds; _best-effort_ where
+ * no CI job builds it as `keel new` leaves it (the composition grid
+ * holds each preset's default setting, the weekly sweep every
+ * setting). What the presets do not generate has no tier, and neither
+ * does a plugin's stack: keel's CI vouches for keel's presets only.
  *
  * The vocabulary is the contract's, because the replies that carry a
  * tier to a front end are. The facts and the rules that read them are

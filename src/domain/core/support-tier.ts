@@ -36,6 +36,7 @@
 
 import { z } from 'zod';
 import factsDocument from './support-tier.json' with { type: 'json' };
+import type { NewProjectTarget } from '../contract/commands.js';
 import type { Stack } from '../contract/stack.js';
 import type {
   CellSupport,
@@ -43,6 +44,7 @@ import type {
   ProductCell,
   SingleCell,
   SupportProof,
+  SupportTier,
 } from '../contract/support-tier.js';
 
 /**
@@ -129,6 +131,36 @@ export function supportOf(cell: DialCell, source: SupportSource): CellSupport | 
     return stack.services === undefined ? singleSupport(cell, source.facts.singles) : null;
   }
   return stack.services === undefined ? null : productSupport(cell, source);
+}
+
+/**
+ * The tier of the dial cell a settled `keel new` target names, or null
+ * where {@link supportOf} answers null — a plugin's stack among them.
+ *
+ * `target` is one `keel.dials` settled, every dial set: the cell is
+ * read off its dials alone, since extras are not a dial. This is how
+ * `keel.dials` and `keel.catalog` read the tier (roadmap T.2e).
+ */
+export function tierOf(target: NewProjectTarget, source: SupportSource): SupportTier | null {
+  const stack = source.stacks.find((candidate) => candidate.id === target.stack);
+  if (stack === undefined) return null;
+  const cell: DialCell =
+    stack.services === undefined
+      ? {
+          kind: 'single',
+          stack: stack.id,
+          buildSystem: target.buildSystem ?? null,
+          moduleLayout: target.moduleLayout ?? null,
+          peerContext: target.withPeerContext === true,
+          agentHarness: target.agentHarness !== false,
+        }
+      : {
+          kind: 'product',
+          stack: stack.id,
+          layout: target.layout ?? 'monorepo',
+          buildSystem: target.buildSystem ?? '',
+        };
+  return supportOf(cell, source)?.tier ?? null;
 }
 
 /**

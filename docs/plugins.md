@@ -772,7 +772,10 @@ is why the `Stack` vocabulary moved to
 `Vertical`'s.
 
 `keel.catalog` reads the same port, so a plugin's stack renders in
-[`keel ui`](ui.md) with no change to `keel ui`.
+[`keel ui`](ui.md) with no change to `keel ui`. It renders with no
+support tier: keel's CI vouches only for keel's presets, so its cards
+carry no _best-effort_ badge and `keel new --list` no mark
+([How far keel vouches for a preset](ui.md#how-far-keel-vouches-for-a-preset)).
 
 ---
 

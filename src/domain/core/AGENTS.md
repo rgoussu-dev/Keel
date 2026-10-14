@@ -127,10 +127,18 @@ stays exact, so a corrupt record is never read leniently. The support tier is ha
 (roadmap T.2b): `support-tier.ts`'s rules read a `SupportSource` — the
 facts, and the stacks keel vouches for — and never `STACKS`.
 `registry.ts` builds keel's own beside the shipped source
-(`shippedSupport`), for the composition root to hand to the handlers
-that show a tier (T.2e), so their tests hand in facts of their own. A
-plugin's stack is not among the stacks keel vouches for, so it has no
-tier.
+(`shippedSupport`), and the composition root hands it to `keel.catalog`
+and `keel.dials` as it hands them the registry (T.2e), so their tests
+hand in facts of their own (the Factory's `support`). A plugin's stack
+is not among the stacks keel vouches for, so it has no tier. Both read
+it through `dials.ts`: `dialOptionsFor` settles the target, then reads
+its cell's tier (`tierOf`); `stackDials` returns the menus alone
+(`DialMenus`). Settling every preset's default costs some 100 to 400 ms,
+so `CatalogHandler` settles each leaf once per handler, and the CLI
+reads `defaultTier` only for `keel new --list`. `defaultTier` answers
+null for a stack the source does not vouch for before it settles, so a
+plugin's dials never run for the catalog or `--list`. `keel new`'s
+report carries no tier (DT9).
 
 **Compatibility is a declaration, never a hand-written check.** A
 `Conflict` on the vertical or stack that owns the rule is read three

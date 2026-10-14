@@ -20,6 +20,11 @@
  * assert and what the page was verified by hand for, once, and never
  * since.
  *
+ * **The tier.** A card whose preset is best-effort at its default
+ * setting says so in its badge slot (roadmap T.2e); which preset a
+ * card lands on, and its badge, are unit-tested beside the narrowing.
+ * What is held here is the badge drawn, and moved, across re-renders.
+ *
  * **The whole binary, not the server module.** This spawns
  * `keel ui --port 0` as a child process and reads the URL it prints,
  * because the token in that URL is the page's only credential: a
@@ -45,7 +50,7 @@
  */
 
 import fs from 'fs-extra';
-import { chromium as browserType, type Browser, type Page } from 'playwright';
+import { chromium as browserType, type Browser, type Locator, type Page } from 'playwright';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { E2E_TIMEOUT_MS, mkTempDir, skipE2E } from '../support/web-e2e.js';
 import {
@@ -297,6 +302,49 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — the guided ste
       await goToStep(traffic, page, 'options');
       expect(await rendered(page, 'layout')).toBe(false);
       expect(await rendered(page, 'moduleLayout')).toBe(true);
+    },
+    E2E_TIMEOUT_MS,
+  );
+
+  it(
+    'badges a card best-effort where the preset it lands on is, and moves the badge with it',
+    async () => {
+      const badge = (group: string, value: string): Locator =>
+        page
+          .locator(`#${group} label.card`, { has: page.locator(`input[value="${value}"]`) })
+          .locator('.badge');
+
+      // From quarkus-cli, the Fullstack card lands on the Quarkus
+      // product, which no CI job builds at its default setting.
+      await goToStep(traffic, page, 'shape');
+      expect(await badge('shape', 'fullstack').textContent()).toBe('best-effort');
+      expect(await badge('shape', 'fullstack').getAttribute('title')).toMatch(
+        /^fullstack is best-effort at its default setting/,
+      );
+      expect(await badge('shape', 'backend').count()).toBe(0);
+
+      // On Kotlin, ticking HTTP lands on quarkus-cli-rest-kotlin, which
+      // its basic suite builds on Maven, not on Gradle, its default.
+      await goToStep(traffic, page, 'language');
+      await act(traffic, () => choice(page, 'language', 'kotlin@jvm').check());
+      await stackIs(page, 'quarkus-cli-kotlin');
+      await goToStep(traffic, page, 'entrypoints');
+      expect(await badge('entrypoints', 'server-http').textContent()).toBe('best-effort');
+      expect(await badge('entrypoints', 'cli').count()).toBe(0);
+
+      // Ticked, both boxes stand for the preset the form is on.
+      await act(traffic, () => adapter(page, 'server-http').click());
+      await stackIs(page, 'quarkus-cli-rest-kotlin');
+      expect(await badge('entrypoints', 'cli').textContent()).toBe('best-effort');
+      expect(await badge('entrypoints', 'server-http').textContent()).toBe('best-effort');
+
+      // Under Fullstack, the TypeScript card lands on fullstack-ts,
+      // which no CI job builds as it stands; the Go card does not.
+      await goToStep(traffic, page, 'shape');
+      await act(traffic, () => choice(page, 'shape', 'fullstack').check());
+      await goToStep(traffic, page, 'language');
+      expect(await badge('language', 'typescript@node').textContent()).toBe('best-effort');
+      expect(await badge('language', 'go').count()).toBe(0);
     },
     E2E_TIMEOUT_MS,
   );

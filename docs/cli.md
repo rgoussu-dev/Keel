@@ -31,7 +31,7 @@ keel new --stack=<id> [options]
 | `-y, --yes`               | Non-interactive — use defaults for unanswered questions. Skips the wizard and the review step entirely.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `--no-agent-harness`      | Single-service stacks: omit agent documents, cross-tool shims, skills and hooks; retain the project manifest and formatter configuration. Adopt later with `keel add agent-harness`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `--dry-run`               | Print the plan without writing any file. Interactively, the review step still runs (see below) but nothing is committed regardless of the choice made there.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| `--list`                  | List every stack id with its one-line description, then exit — nothing is scaffolded.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `--list`                  | List every stack id with its one-line description, then exit — nothing is scaffolded. A stack that is best-effort at its default setting is marked ◻ (see _How far keel vouches for a preset_ below).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `--set <k=v>`             | Preset an answer as `adapterId:questionId=value` (repeatable). Only for an adapter this run resolves — see [Answers](#answers-stickiness-and---set).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 
 Examples:
@@ -69,6 +69,35 @@ _'quarkus-cli-http' is quarkus-cli-rest — Backend or tool · Java ·
 Quarkus · CLI + HTTP server_. The same holds in a preview and a dry
 run, and in `keel ui`'s API, where `keel.dials` settles a spelled
 target at the preset's id.
+
+**How far keel vouches for a preset.** Every setting of a preset's
+dials has a support tier. It is _first-class_ where an e2e suite builds
+it as `keel new` leaves it, or each part of it is proven
+byte-identical to a part a suite builds; _best-effort_ where no CI job builds it as
+`keel new` leaves it. The composition grid in `verify` holds only each
+preset's default setting; the weekly, report-only sweep reads every
+setting. The tiers are tabled in
+[the stacks overview](stacks/README.md#support-tiers).
+`keel new --list` marks ◻ each preset that is best-effort at its
+default setting, the setting `keel new --stack=<id> --yes` scaffolds,
+and says what the mark means under the list:
+
+```text
+Available stacks:
+  fullstack ◻                  Fullstack product: quarkus-rest backend + web-components frontend, …
+  fullstack-go                 Fullstack product: go-http backend + web-components frontend, …
+  …
+  go-cli-http ◻                Go CLI + HTTP service on the stdlib, …
+
+◻ best-effort at its default setting: no CI job builds it as keel new leaves it (see docs/stacks/README.md#support-tiers).
+```
+
+The mark is the default setting's alone: `quarkus-cli-rest-kotlin` is
+marked, being best-effort on Gradle, its default, and is first-class
+with `--build-system maven`. A plugin's preset is never marked, since
+keel's CI vouches only for keel's presets. The run's own report carries
+no tier. `keel ui` shows the same tiers on its cards and its Options
+step (see [`keel ui`](ui.md#how-far-keel-vouches-for-a-preset)).
 
 **An id keel does not know.** A `--stack` that names no preset — a
 word no facet answers to, or words that name several presets or none

@@ -19,7 +19,7 @@
  * that stopped fitting them would fail the typecheck rather than
  * quietly diverge.
  *
- * @typedef {{ entrypoints: ReadonlyArray<string>, stack: string }} Combination
+ * @typedef {{ entrypoints: ReadonlyArray<string>, stack: string, support: string | null }} Combination
  * @typedef {{ kind: string, choices: ReadonlyArray<{ id: string, label: string, doc: string }>, default: string }} EntrypointStep
  * @typedef {{ id: string, label: string, entrypointStep: EntrypointStep | null, combinations: ReadonlyArray<Combination> }} FrameworkNode
  * @typedef {{ id: string, label: string, doc: string, runtime: string | null, frameworks: ReadonlyArray<FrameworkNode> }} LanguageNode
@@ -78,6 +78,43 @@ export function locate(finder, stackId) {
  */
 export function defaultStack(finder) {
   return finder?.defaultStack || null;
+}
+
+/** What a finder card's badge slot says of a best-effort preset. */
+export const BEST_EFFORT = 'best-effort';
+
+/**
+ * The badge a finder card carries: {@link BEST_EFFORT} where the
+ * preset choosing it lands on is best-effort at its default setting
+ * (`Combination.support`), and none otherwise — a first-class preset,
+ * and a plugin's, which keel's CI does not vouch for.
+ *
+ * Read off the preset a card lands on rather than the card's own
+ * facet, because that is the one thing every card of the drill-down
+ * has: a shape or a language reaching one preset is the leaf the card
+ * shows, as `fullstack-ts`' language card is.
+ *
+ * @param {Finder} finder
+ * @param {string | null} stackId the preset choosing the card lands on
+ * @returns {string | undefined}
+ */
+export function tierBadge(finder, stackId) {
+  if (!stackId) return undefined;
+  return locate(finder, stackId)?.combination.support === BEST_EFFORT ? BEST_EFFORT : undefined;
+}
+
+/**
+ * The encoded entrypoint set with `id` ticked on top of `answer` —
+ * where a box of a multi-select step lands when it is ticked, or
+ * stays when it already is.
+ *
+ * @param {string} answer encoded selection
+ * @param {string} id
+ * @returns {string}
+ */
+export function withEntrypoint(answer, id) {
+  const chosen = decodeSelection(answer);
+  return encodeSelection(chosen.includes(id) ? chosen : [...chosen, id]);
 }
 
 /**
