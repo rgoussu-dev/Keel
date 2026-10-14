@@ -12127,7 +12127,7 @@ Landed paragraph here. Two more gates apply where they are named:
 
 ### T.1 — The table
 
-#### T.1a — Every product dial setting in the paths golden (S)
+#### T.1a — Every product dial setting in the paths golden (S) ✅
 
 **The golden lands alone**, in a commit with no `src/` change, green
 on today's code. `PATHS_NEW` (`tests/support/paths-families.ts`)
@@ -12144,6 +12144,34 @@ systems.
 - **Docs:** `tests/AGENTS.md`'s paths-new bullet, the suite's header,
   `PATHS_NEW`'s note and the callers listed in `dial-walk.ts`. No
   CHANGELOG entry, since nothing a user sees moves.
+
+**Landed as the golden alone**, in one commit with no `src/` change.
+`PATHS_NEW` walks each product's dials with `walkDials`, from one seed
+per repository layout its preview offers, and records every setting it
+reaches. That is 40 product cells where there were 12: 8 each on
+`fullstack`, `fullstack-spring`, `fullstack-micronaut` and
+`fullstack-ts`, and 4 each on `fullstack-go` and `fullstack-rust`,
+whose backend offers no build-system menu. `paths-new` holds 717 cells,
+all `ok`. None of the 689 recorded before moved, and none went. The
+converge golden, which keys on it, gains the same 28 cells (3,436 →
+3,464), none of its own moved, and its round trip reads the two
+services of each, 56 scopes more, with no trip. `dial-walk.ts` lists
+the paths golden among its callers already, so its note stands.
+
+**The proof** that it catches what it is for, tried and undone: one
+flag added to the Maven builder stage of the product's compose
+`Dockerfile` (`product-compose.ts`) moves exactly six cells, each
+naming `tree:backend/Dockerfile`. They are `fullstack`,
+`fullstack-spring` and `fullstack-micronaut` with a Maven backend,
+under each frontend package manager. Before this step the same edit
+moved no cell of `paths-new`, which held products on Gradle alone.
+
+`paths-new` took 42.5 s to regenerate alone, and the converge golden
+61.9 s, at a load of 2 to 3. In `CI=true pnpm test` (409.6 s, 202
+files, 3,381 tests) they took 43.4 s and 63.9 s. In that run the
+growth axis took 169.1 s of its 180 s, with other work on the box. No
+step of T touches that axis. Should one find it past its budget, it
+lands S's shard option for `sweepGrid` first (S, _The measure_).
 
 #### T.1b — A stack id is lowercase words joined by `-` (S)
 

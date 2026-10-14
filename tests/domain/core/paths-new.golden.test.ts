@@ -19,8 +19,10 @@
  *   answered away from its default, the same keyed to the sibling its
  *   asker borrows from, and one question answered twice), so answer
  *   folding is pinned where the e2e suites' non-default answers reach it;
- * - every product under each repository layout its preview offers, with
- *   no extras.
+ * - every product on every dial setting `keel.dials` offers it — each
+ *   repository layout its preview offers × each service's build system,
+ *   walked from one seed per layout as the single-service presets' dials
+ *   are — with no extras.
  *
  * The sweep that derives them is `support/paths-families.ts`' `PATHS_NEW`,
  * which the converge golden (`converge.golden.test.ts`) reads too.

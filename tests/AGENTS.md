@@ -461,7 +461,8 @@ the converge golden (below) enumerates the same cells:
   harness on and off), the whole menu on every setting with the
   harness, each offered extra alone on the opening dials, the whole
   menu there under the grid's I9 answer bodies (`answered`, `borrowed`,
-  `twice`), and every product under each repository layout;
+  `twice`), and every product on every dial setting `keel.dials`
+  offers it: each repository layout × each service's build system;
 - `paths-add` — `keel add`: each offered extra alone on each preset's
   opening scaffold, on default answers and with every question its
   preview asks answered away from its default; each after the module

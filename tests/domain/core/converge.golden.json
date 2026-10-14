@@ -846,6 +846,291 @@
   "keel new --stack fullstack --build-system backend=gradle,frontend=npm --layout polyrepo && keel add walking-skeleton": {
     "gate": "keel.not-initialised"
   },
+  "keel new --stack fullstack --build-system backend=gradle,frontend=pnpm --layout monorepo": {
+    "scopes": {
+      "": {
+        "order": "vcs fullstack",
+        "run": ["vcs install", "fullstack install"],
+        "placement": "append/run"
+      },
+      "backend": {
+        "order": "walking-skeleton agent-harness code-style dev-env observability dev-container gateway",
+        "run": [
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-env install",
+          "observability install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      },
+      "frontend": {
+        "order": "walking-skeleton agent-harness code-style dev-container gateway",
+        "run": [
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      }
+    },
+    "wrote": {
+      "backend": {
+        "preset": "quarkus-rest",
+        "dials": ["pkg.gradle", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      },
+      "frontend": {
+        "preset": "web-components",
+        "dials": ["pkg.pnpm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      }
+    }
+  },
+  "keel new --stack fullstack --build-system backend=gradle,frontend=pnpm --layout polyrepo": {
+    "scopes": {
+      "backend": {
+        "order": "vcs walking-skeleton agent-harness code-style dev-env observability dev-container gateway",
+        "run": [
+          "vcs install",
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-env install",
+          "observability install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      },
+      "frontend": {
+        "order": "vcs walking-skeleton agent-harness code-style dev-container gateway",
+        "run": [
+          "vcs install",
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      }
+    },
+    "wrote": {
+      "backend": {
+        "preset": "quarkus-rest",
+        "dials": ["pkg.gradle", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      },
+      "frontend": {
+        "preset": "web-components",
+        "dials": ["pkg.pnpm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      }
+    }
+  },
+  "keel new --stack fullstack --build-system backend=maven,frontend=npm --layout monorepo": {
+    "scopes": {
+      "": {
+        "order": "vcs fullstack",
+        "run": ["vcs install", "fullstack install"],
+        "placement": "append/run"
+      },
+      "backend": {
+        "order": "walking-skeleton agent-harness code-style dev-env observability dev-container gateway",
+        "run": [
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-env install",
+          "observability install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      },
+      "frontend": {
+        "order": "walking-skeleton agent-harness code-style dev-container gateway",
+        "run": [
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      }
+    },
+    "wrote": {
+      "backend": {
+        "preset": "quarkus-rest",
+        "dials": ["pkg.maven", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      },
+      "frontend": {
+        "preset": "web-components",
+        "dials": ["pkg.npm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      }
+    }
+  },
+  "keel new --stack fullstack --build-system backend=maven,frontend=npm --layout polyrepo": {
+    "scopes": {
+      "backend": {
+        "order": "vcs walking-skeleton agent-harness code-style dev-env observability dev-container gateway",
+        "run": [
+          "vcs install",
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-env install",
+          "observability install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      },
+      "frontend": {
+        "order": "vcs walking-skeleton agent-harness code-style dev-container gateway",
+        "run": [
+          "vcs install",
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      }
+    },
+    "wrote": {
+      "backend": {
+        "preset": "quarkus-rest",
+        "dials": ["pkg.maven", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      },
+      "frontend": {
+        "preset": "web-components",
+        "dials": ["pkg.npm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      }
+    }
+  },
+  "keel new --stack fullstack --build-system backend=maven,frontend=pnpm --layout monorepo": {
+    "scopes": {
+      "": {
+        "order": "vcs fullstack",
+        "run": ["vcs install", "fullstack install"],
+        "placement": "append/run"
+      },
+      "backend": {
+        "order": "walking-skeleton agent-harness code-style dev-env observability dev-container gateway",
+        "run": [
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-env install",
+          "observability install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      },
+      "frontend": {
+        "order": "walking-skeleton agent-harness code-style dev-container gateway",
+        "run": [
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      }
+    },
+    "wrote": {
+      "backend": {
+        "preset": "quarkus-rest",
+        "dials": ["pkg.maven", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      },
+      "frontend": {
+        "preset": "web-components",
+        "dials": ["pkg.pnpm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      }
+    }
+  },
+  "keel new --stack fullstack --build-system backend=maven,frontend=pnpm --layout polyrepo": {
+    "scopes": {
+      "backend": {
+        "order": "vcs walking-skeleton agent-harness code-style dev-env observability dev-container gateway",
+        "run": [
+          "vcs install",
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-env install",
+          "observability install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      },
+      "frontend": {
+        "order": "vcs walking-skeleton agent-harness code-style dev-container gateway",
+        "run": [
+          "vcs install",
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      }
+    },
+    "wrote": {
+      "backend": {
+        "preset": "quarkus-rest",
+        "dials": ["pkg.maven", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      },
+      "frontend": {
+        "preset": "web-components",
+        "dials": ["pkg.pnpm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      }
+    }
+  },
   "keel new --stack fullstack-go --build-system frontend=npm --layout monorepo": {
     "scopes": {
       "": {
@@ -1692,6 +1977,101 @@
   },
   "keel new --stack fullstack-go --build-system frontend=npm --layout polyrepo && keel add walking-skeleton": {
     "gate": "keel.not-initialised"
+  },
+  "keel new --stack fullstack-go --build-system frontend=pnpm --layout monorepo": {
+    "scopes": {
+      "": {
+        "order": "vcs fullstack",
+        "run": ["vcs install", "fullstack install"],
+        "placement": "append/run"
+      },
+      "backend": {
+        "order": "walking-skeleton agent-harness code-style dev-env observability dev-container gateway",
+        "run": [
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-env install",
+          "observability install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      },
+      "frontend": {
+        "order": "walking-skeleton agent-harness code-style dev-container gateway",
+        "run": [
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      }
+    },
+    "wrote": {
+      "backend": {
+        "preset": "go-http",
+        "dials": ["layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      },
+      "frontend": {
+        "preset": "web-components",
+        "dials": ["pkg.pnpm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      }
+    }
+  },
+  "keel new --stack fullstack-go --build-system frontend=pnpm --layout polyrepo": {
+    "scopes": {
+      "backend": {
+        "order": "vcs walking-skeleton agent-harness code-style dev-env observability dev-container gateway",
+        "run": [
+          "vcs install",
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-env install",
+          "observability install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      },
+      "frontend": {
+        "order": "vcs walking-skeleton agent-harness code-style dev-container gateway",
+        "run": [
+          "vcs install",
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      }
+    },
+    "wrote": {
+      "backend": {
+        "preset": "go-http",
+        "dials": ["layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      },
+      "frontend": {
+        "preset": "web-components",
+        "dials": ["pkg.pnpm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      }
+    }
   },
   "keel new --stack fullstack-micronaut --build-system backend=gradle,frontend=npm --layout monorepo": {
     "scopes": {
@@ -2540,6 +2920,291 @@
   "keel new --stack fullstack-micronaut --build-system backend=gradle,frontend=npm --layout polyrepo && keel add walking-skeleton": {
     "gate": "keel.not-initialised"
   },
+  "keel new --stack fullstack-micronaut --build-system backend=gradle,frontend=pnpm --layout monorepo": {
+    "scopes": {
+      "": {
+        "order": "vcs fullstack",
+        "run": ["vcs install", "fullstack install"],
+        "placement": "append/run"
+      },
+      "backend": {
+        "order": "walking-skeleton agent-harness code-style dev-env observability dev-container gateway",
+        "run": [
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-env install",
+          "observability install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      },
+      "frontend": {
+        "order": "walking-skeleton agent-harness code-style dev-container gateway",
+        "run": [
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      }
+    },
+    "wrote": {
+      "backend": {
+        "preset": "micronaut-rest",
+        "dials": ["pkg.gradle", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      },
+      "frontend": {
+        "preset": "web-components",
+        "dials": ["pkg.pnpm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      }
+    }
+  },
+  "keel new --stack fullstack-micronaut --build-system backend=gradle,frontend=pnpm --layout polyrepo": {
+    "scopes": {
+      "backend": {
+        "order": "vcs walking-skeleton agent-harness code-style dev-env observability dev-container gateway",
+        "run": [
+          "vcs install",
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-env install",
+          "observability install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      },
+      "frontend": {
+        "order": "vcs walking-skeleton agent-harness code-style dev-container gateway",
+        "run": [
+          "vcs install",
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      }
+    },
+    "wrote": {
+      "backend": {
+        "preset": "micronaut-rest",
+        "dials": ["pkg.gradle", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      },
+      "frontend": {
+        "preset": "web-components",
+        "dials": ["pkg.pnpm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      }
+    }
+  },
+  "keel new --stack fullstack-micronaut --build-system backend=maven,frontend=npm --layout monorepo": {
+    "scopes": {
+      "": {
+        "order": "vcs fullstack",
+        "run": ["vcs install", "fullstack install"],
+        "placement": "append/run"
+      },
+      "backend": {
+        "order": "walking-skeleton agent-harness code-style dev-env observability dev-container gateway",
+        "run": [
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-env install",
+          "observability install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      },
+      "frontend": {
+        "order": "walking-skeleton agent-harness code-style dev-container gateway",
+        "run": [
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      }
+    },
+    "wrote": {
+      "backend": {
+        "preset": "micronaut-rest",
+        "dials": ["pkg.maven", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      },
+      "frontend": {
+        "preset": "web-components",
+        "dials": ["pkg.npm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      }
+    }
+  },
+  "keel new --stack fullstack-micronaut --build-system backend=maven,frontend=npm --layout polyrepo": {
+    "scopes": {
+      "backend": {
+        "order": "vcs walking-skeleton agent-harness code-style dev-env observability dev-container gateway",
+        "run": [
+          "vcs install",
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-env install",
+          "observability install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      },
+      "frontend": {
+        "order": "vcs walking-skeleton agent-harness code-style dev-container gateway",
+        "run": [
+          "vcs install",
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      }
+    },
+    "wrote": {
+      "backend": {
+        "preset": "micronaut-rest",
+        "dials": ["pkg.maven", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      },
+      "frontend": {
+        "preset": "web-components",
+        "dials": ["pkg.npm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      }
+    }
+  },
+  "keel new --stack fullstack-micronaut --build-system backend=maven,frontend=pnpm --layout monorepo": {
+    "scopes": {
+      "": {
+        "order": "vcs fullstack",
+        "run": ["vcs install", "fullstack install"],
+        "placement": "append/run"
+      },
+      "backend": {
+        "order": "walking-skeleton agent-harness code-style dev-env observability dev-container gateway",
+        "run": [
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-env install",
+          "observability install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      },
+      "frontend": {
+        "order": "walking-skeleton agent-harness code-style dev-container gateway",
+        "run": [
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      }
+    },
+    "wrote": {
+      "backend": {
+        "preset": "micronaut-rest",
+        "dials": ["pkg.maven", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      },
+      "frontend": {
+        "preset": "web-components",
+        "dials": ["pkg.pnpm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      }
+    }
+  },
+  "keel new --stack fullstack-micronaut --build-system backend=maven,frontend=pnpm --layout polyrepo": {
+    "scopes": {
+      "backend": {
+        "order": "vcs walking-skeleton agent-harness code-style dev-env observability dev-container gateway",
+        "run": [
+          "vcs install",
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-env install",
+          "observability install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      },
+      "frontend": {
+        "order": "vcs walking-skeleton agent-harness code-style dev-container gateway",
+        "run": [
+          "vcs install",
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      }
+    },
+    "wrote": {
+      "backend": {
+        "preset": "micronaut-rest",
+        "dials": ["pkg.maven", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      },
+      "frontend": {
+        "preset": "web-components",
+        "dials": ["pkg.pnpm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      }
+    }
+  },
   "keel new --stack fullstack-rust --build-system frontend=npm --layout monorepo": {
     "scopes": {
       "": {
@@ -3386,6 +4051,101 @@
   },
   "keel new --stack fullstack-rust --build-system frontend=npm --layout polyrepo && keel add walking-skeleton": {
     "gate": "keel.not-initialised"
+  },
+  "keel new --stack fullstack-rust --build-system frontend=pnpm --layout monorepo": {
+    "scopes": {
+      "": {
+        "order": "vcs fullstack",
+        "run": ["vcs install", "fullstack install"],
+        "placement": "append/run"
+      },
+      "backend": {
+        "order": "walking-skeleton agent-harness code-style dev-env observability dev-container gateway",
+        "run": [
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-env install",
+          "observability install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      },
+      "frontend": {
+        "order": "walking-skeleton agent-harness code-style dev-container gateway",
+        "run": [
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      }
+    },
+    "wrote": {
+      "backend": {
+        "preset": "rust-http",
+        "dials": ["layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      },
+      "frontend": {
+        "preset": "web-components",
+        "dials": ["pkg.pnpm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      }
+    }
+  },
+  "keel new --stack fullstack-rust --build-system frontend=pnpm --layout polyrepo": {
+    "scopes": {
+      "backend": {
+        "order": "vcs walking-skeleton agent-harness code-style dev-env observability dev-container gateway",
+        "run": [
+          "vcs install",
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-env install",
+          "observability install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      },
+      "frontend": {
+        "order": "vcs walking-skeleton agent-harness code-style dev-container gateway",
+        "run": [
+          "vcs install",
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      }
+    },
+    "wrote": {
+      "backend": {
+        "preset": "rust-http",
+        "dials": ["layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      },
+      "frontend": {
+        "preset": "web-components",
+        "dials": ["pkg.pnpm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      }
+    }
   },
   "keel new --stack fullstack-spring --build-system backend=gradle,frontend=npm --layout monorepo": {
     "scopes": {
@@ -4234,6 +4994,291 @@
   "keel new --stack fullstack-spring --build-system backend=gradle,frontend=npm --layout polyrepo && keel add walking-skeleton": {
     "gate": "keel.not-initialised"
   },
+  "keel new --stack fullstack-spring --build-system backend=gradle,frontend=pnpm --layout monorepo": {
+    "scopes": {
+      "": {
+        "order": "vcs fullstack",
+        "run": ["vcs install", "fullstack install"],
+        "placement": "append/run"
+      },
+      "backend": {
+        "order": "walking-skeleton agent-harness code-style dev-env observability dev-container gateway",
+        "run": [
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-env install",
+          "observability install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      },
+      "frontend": {
+        "order": "walking-skeleton agent-harness code-style dev-container gateway",
+        "run": [
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      }
+    },
+    "wrote": {
+      "backend": {
+        "preset": "spring-rest",
+        "dials": ["pkg.gradle", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      },
+      "frontend": {
+        "preset": "web-components",
+        "dials": ["pkg.pnpm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      }
+    }
+  },
+  "keel new --stack fullstack-spring --build-system backend=gradle,frontend=pnpm --layout polyrepo": {
+    "scopes": {
+      "backend": {
+        "order": "vcs walking-skeleton agent-harness code-style dev-env observability dev-container gateway",
+        "run": [
+          "vcs install",
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-env install",
+          "observability install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      },
+      "frontend": {
+        "order": "vcs walking-skeleton agent-harness code-style dev-container gateway",
+        "run": [
+          "vcs install",
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      }
+    },
+    "wrote": {
+      "backend": {
+        "preset": "spring-rest",
+        "dials": ["pkg.gradle", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      },
+      "frontend": {
+        "preset": "web-components",
+        "dials": ["pkg.pnpm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      }
+    }
+  },
+  "keel new --stack fullstack-spring --build-system backend=maven,frontend=npm --layout monorepo": {
+    "scopes": {
+      "": {
+        "order": "vcs fullstack",
+        "run": ["vcs install", "fullstack install"],
+        "placement": "append/run"
+      },
+      "backend": {
+        "order": "walking-skeleton agent-harness code-style dev-env observability dev-container gateway",
+        "run": [
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-env install",
+          "observability install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      },
+      "frontend": {
+        "order": "walking-skeleton agent-harness code-style dev-container gateway",
+        "run": [
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      }
+    },
+    "wrote": {
+      "backend": {
+        "preset": "spring-rest",
+        "dials": ["pkg.maven", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      },
+      "frontend": {
+        "preset": "web-components",
+        "dials": ["pkg.npm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      }
+    }
+  },
+  "keel new --stack fullstack-spring --build-system backend=maven,frontend=npm --layout polyrepo": {
+    "scopes": {
+      "backend": {
+        "order": "vcs walking-skeleton agent-harness code-style dev-env observability dev-container gateway",
+        "run": [
+          "vcs install",
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-env install",
+          "observability install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      },
+      "frontend": {
+        "order": "vcs walking-skeleton agent-harness code-style dev-container gateway",
+        "run": [
+          "vcs install",
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      }
+    },
+    "wrote": {
+      "backend": {
+        "preset": "spring-rest",
+        "dials": ["pkg.maven", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      },
+      "frontend": {
+        "preset": "web-components",
+        "dials": ["pkg.npm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      }
+    }
+  },
+  "keel new --stack fullstack-spring --build-system backend=maven,frontend=pnpm --layout monorepo": {
+    "scopes": {
+      "": {
+        "order": "vcs fullstack",
+        "run": ["vcs install", "fullstack install"],
+        "placement": "append/run"
+      },
+      "backend": {
+        "order": "walking-skeleton agent-harness code-style dev-env observability dev-container gateway",
+        "run": [
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-env install",
+          "observability install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      },
+      "frontend": {
+        "order": "walking-skeleton agent-harness code-style dev-container gateway",
+        "run": [
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      }
+    },
+    "wrote": {
+      "backend": {
+        "preset": "spring-rest",
+        "dials": ["pkg.maven", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      },
+      "frontend": {
+        "preset": "web-components",
+        "dials": ["pkg.pnpm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      }
+    }
+  },
+  "keel new --stack fullstack-spring --build-system backend=maven,frontend=pnpm --layout polyrepo": {
+    "scopes": {
+      "backend": {
+        "order": "vcs walking-skeleton agent-harness code-style dev-env observability dev-container gateway",
+        "run": [
+          "vcs install",
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-env install",
+          "observability install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      },
+      "frontend": {
+        "order": "vcs walking-skeleton agent-harness code-style dev-container gateway",
+        "run": [
+          "vcs install",
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      }
+    },
+    "wrote": {
+      "backend": {
+        "preset": "spring-rest",
+        "dials": ["pkg.maven", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      },
+      "frontend": {
+        "preset": "web-components",
+        "dials": ["pkg.pnpm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      }
+    }
+  },
   "keel new --stack fullstack-ts --build-system backend=npm,frontend=npm --layout monorepo": {
     "scopes": {
       "": {
@@ -5080,6 +6125,291 @@
   },
   "keel new --stack fullstack-ts --build-system backend=npm,frontend=npm --layout polyrepo && keel add walking-skeleton": {
     "gate": "keel.not-initialised"
+  },
+  "keel new --stack fullstack-ts --build-system backend=npm,frontend=pnpm --layout monorepo": {
+    "scopes": {
+      "": {
+        "order": "vcs fullstack",
+        "run": ["vcs install", "fullstack install"],
+        "placement": "append/run"
+      },
+      "backend": {
+        "order": "walking-skeleton agent-harness code-style dev-env observability dev-container gateway",
+        "run": [
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-env install",
+          "observability install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      },
+      "frontend": {
+        "order": "walking-skeleton agent-harness code-style dev-container gateway",
+        "run": [
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      }
+    },
+    "wrote": {
+      "backend": {
+        "preset": "ts-http",
+        "dials": ["pkg.npm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      },
+      "frontend": {
+        "preset": "web-components",
+        "dials": ["pkg.pnpm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      }
+    }
+  },
+  "keel new --stack fullstack-ts --build-system backend=npm,frontend=pnpm --layout polyrepo": {
+    "scopes": {
+      "backend": {
+        "order": "vcs walking-skeleton agent-harness code-style dev-env observability dev-container gateway",
+        "run": [
+          "vcs install",
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-env install",
+          "observability install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      },
+      "frontend": {
+        "order": "vcs walking-skeleton agent-harness code-style dev-container gateway",
+        "run": [
+          "vcs install",
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      }
+    },
+    "wrote": {
+      "backend": {
+        "preset": "ts-http",
+        "dials": ["pkg.npm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      },
+      "frontend": {
+        "preset": "web-components",
+        "dials": ["pkg.pnpm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      }
+    }
+  },
+  "keel new --stack fullstack-ts --build-system backend=pnpm,frontend=npm --layout monorepo": {
+    "scopes": {
+      "": {
+        "order": "vcs fullstack",
+        "run": ["vcs install", "fullstack install"],
+        "placement": "append/run"
+      },
+      "backend": {
+        "order": "walking-skeleton agent-harness code-style dev-env observability dev-container gateway",
+        "run": [
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-env install",
+          "observability install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      },
+      "frontend": {
+        "order": "walking-skeleton agent-harness code-style dev-container gateway",
+        "run": [
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      }
+    },
+    "wrote": {
+      "backend": {
+        "preset": "ts-http",
+        "dials": ["pkg.pnpm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      },
+      "frontend": {
+        "preset": "web-components",
+        "dials": ["pkg.npm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      }
+    }
+  },
+  "keel new --stack fullstack-ts --build-system backend=pnpm,frontend=npm --layout polyrepo": {
+    "scopes": {
+      "backend": {
+        "order": "vcs walking-skeleton agent-harness code-style dev-env observability dev-container gateway",
+        "run": [
+          "vcs install",
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-env install",
+          "observability install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      },
+      "frontend": {
+        "order": "vcs walking-skeleton agent-harness code-style dev-container gateway",
+        "run": [
+          "vcs install",
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      }
+    },
+    "wrote": {
+      "backend": {
+        "preset": "ts-http",
+        "dials": ["pkg.pnpm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      },
+      "frontend": {
+        "preset": "web-components",
+        "dials": ["pkg.npm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      }
+    }
+  },
+  "keel new --stack fullstack-ts --build-system backend=pnpm,frontend=pnpm --layout monorepo": {
+    "scopes": {
+      "": {
+        "order": "vcs fullstack",
+        "run": ["vcs install", "fullstack install"],
+        "placement": "append/run"
+      },
+      "backend": {
+        "order": "walking-skeleton agent-harness code-style dev-env observability dev-container gateway",
+        "run": [
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-env install",
+          "observability install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      },
+      "frontend": {
+        "order": "walking-skeleton agent-harness code-style dev-container gateway",
+        "run": [
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      }
+    },
+    "wrote": {
+      "backend": {
+        "preset": "ts-http",
+        "dials": ["pkg.pnpm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      },
+      "frontend": {
+        "preset": "web-components",
+        "dials": ["pkg.pnpm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      }
+    }
+  },
+  "keel new --stack fullstack-ts --build-system backend=pnpm,frontend=pnpm --layout polyrepo": {
+    "scopes": {
+      "backend": {
+        "order": "vcs walking-skeleton agent-harness code-style dev-env observability dev-container gateway",
+        "run": [
+          "vcs install",
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-env install",
+          "observability install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      },
+      "frontend": {
+        "order": "vcs walking-skeleton agent-harness code-style dev-container gateway",
+        "run": [
+          "vcs install",
+          "walking-skeleton install",
+          "agent-harness install",
+          "code-style install",
+          "dev-container install",
+          "gateway install"
+        ],
+        "placement": "append/run"
+      }
+    },
+    "wrote": {
+      "backend": {
+        "preset": "ts-http",
+        "dials": ["pkg.pnpm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      },
+      "frontend": {
+        "preset": "web-components",
+        "dials": ["pkg.pnpm", "layout.basic"],
+        "harness": true,
+        "given": ["gateway"],
+        "extras": ["gateway"]
+      }
+    }
   },
   "keel new --stack go-cli --module-layout basic": {
     "scopes": {
