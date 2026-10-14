@@ -11,10 +11,13 @@
  * a candidate's id spells, then what its own tags and the words the
  * finder offers them in say (`arch.server-http` is an "HTTP server —
  * a REST endpoint"), then what a product's services say — each typed
- * word counted once, where it weighs most. Edit distance breaks a tie,
- * and is the whole reading only when no word matches at all —
- * `quarkuscli`, `persistance` — where it must be close for anything to
- * be named.
+ * word counted once, where it weighs most. A typed word that runs
+ * several of the candidates' id words together is read as those words
+ * first: `quarkuscli` is `quarkus cli`, and `gocli-http` is
+ * `go cli http`. Edit distance breaks a tie, and is the whole reading
+ * only when no word matches at all, even split — `qurkuscli` is
+ * `quarkus-cli` by spelling alone — where it must be close for
+ * anything to be named: `nope` names nothing.
  *
  * Words, never tags: nothing here is printed but an id the registry
  * holds, and the words come from what the registry already says about
@@ -59,7 +62,11 @@ export function nearestId(typed: string, candidates: readonly IdCandidate[]): st
     own: candidate.own.flatMap(wordsOf),
     related: candidate.related.flatMap(wordsOf),
   }));
-  const wanted = telling([...new Set(wordsOf(spelled))], read);
+  const vocabulary = new Set(read.flatMap((candidate) => candidate.spelling));
+  const wanted = telling(
+    [...new Set(wordsOf(spelled).flatMap((word) => split(word, vocabulary)))],
+    read,
+  );
   const scored = read.map((candidate) => {
     let score = 0;
     let onId = 0;
@@ -121,9 +128,12 @@ export function nearestVertical(
   verticals: readonly Pick<Vertical, 'id' | 'title'>[],
   typed: string,
 ): string | null {
-  // A list typed as one id (`ci,persistence`) is several: naming one of
-  // them as what was meant would drop the others.
+  // A list typed as one id (`ci,persistence`, or the ids spelled whole
+  // and run together, `ci-persistence`, `vcsci`) is several: naming one
+  // of them as what was meant would drop the others.
   if (typed.includes(',')) return null;
+  const ids = new Set(verticals.map((vertical) => wordsOf(vertical.id).join('')));
+  if (split(wordsOf(typed).join(''), ids).length > 1) return null;
   return nearestId(
     typed,
     verticals.map((vertical) => ({ id: vertical.id, own: [vertical.title ?? ''], related: [] })),
@@ -190,6 +200,37 @@ function answers(typed: string, words: readonly string[]): boolean {
       (Math.min(typed.length, word.length) >= 5 &&
         editDistance(typed, word) <= (Math.max(typed.length, word.length) >= 8 ? 2 : 1)),
   );
+}
+
+/**
+ * A word typed run together as the fewest words of `vocabulary` it is
+ * made of, end to end (`quarkuscli` is `quarkus`, `cli`), or the word
+ * itself where it is one of them or nothing splits it.
+ */
+function split(word: string, vocabulary: ReadonlySet<string>): readonly string[] {
+  if (vocabulary.has(word)) return [word];
+  const longest = Math.max(0, ...[...vocabulary].map((known) => known.length));
+  // fewest[i]: how few words make up word.slice(i), Infinity where none
+  // do; next[i]: where the first of them ends.
+  const fewest = Array.from({ length: word.length + 1 }, () => Infinity);
+  const next = Array.from({ length: word.length + 1 }, () => 0);
+  fewest[word.length] = 0;
+  for (let start = word.length - 1; start >= 0; start -= 1) {
+    for (let end = Math.min(word.length, start + longest); end > start; end -= 1) {
+      const count = (fewest[end] ?? Infinity) + 1;
+      if (count < (fewest[start] ?? Infinity) && vocabulary.has(word.slice(start, end))) {
+        fewest[start] = count;
+        next[start] = end;
+      }
+    }
+  }
+  if (fewest[0] === Infinity) return [word];
+  const parts: string[] = [];
+  for (let start = 0; start < word.length; start = next[start] ?? word.length) {
+    parts.push(word.slice(start, next[start]));
+  }
+  // A word typed twice over (`gogo`) is a stutter, not two facets.
+  return new Set(parts).size === parts.length ? parts : [word];
 }
 
 /** Lowercase words of two characters or more; a lone letter names nothing. */

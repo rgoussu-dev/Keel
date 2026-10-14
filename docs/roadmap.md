@@ -13760,7 +13760,7 @@ dispatches, now in a file per family.
 3,669 tests) passed whole, `machinery.test.ts`'s 15 tests in 1.2 s,
 the growth axis in 140.2 s of its 180.
 
-#### T.3e — Nearest-id reads run-together words (S)
+#### T.3e — Nearest-id reads run-together words (S) ✅
 
 `nearest-id.ts` splits a typed word that runs several candidate words
 together (`quarkuscli` reads as `quarkus cli`) before scoring.
@@ -13780,6 +13780,79 @@ together (`quarkuscli` reads as `quarkus cli`) before scoring.
   together is split first, and edit distance applies only where
   nothing splits. Also `nearest-id.ts`'s module note, and CHANGELOG
   _Fixed_.
+
+**Landed as one function in `nearest-id.ts`**, in one commit. `split`
+reads a typed word that is not itself a candidate's id word as the
+fewest id words that make it up, end to end, and leaves it whole where
+none do, or where a word comes twice (`gogo` is a stutter, not two
+facets). The words are the candidates' id spellings only, not their
+tags or a product's services, as the research's prototype had them.
+The prototype split greedily, longest word first, which can strand a
+word a shorter first word would have let through; the fewest-words
+split cannot. On the typos measured below both name 768 right; the
+research's 768 is the greedy split's. The split tries no slice longer than the longest
+id word and keeps a back-pointer per position, so `go` typed 2,500
+times reads in about 140 ms, where a first draft took 16.8 s.
+
+**Measured on today's 34 presets**, with the research's own typo
+generator (`probes2/spelling/nearest.scratch.ts`, copied verbatim into
+a scratch test run against the worktree): every id with a letter
+dropped or two swapped, a word dropped or two swapped, and its dashes
+dropped. That is 996 typos, of which `stackSpelled` resolves 72 and
+refuses 924, the research's figures.
+
+- **Named right:** 739 of 924 before, 768 after. 29 suggestions moved,
+  all 29 from wrong to right, none the other way. Each was an id with
+  one word fewer: `gocli-http` read as `go-http`, `fullstackts` as
+  `fullstack`, `quarkus-clirest` as `quarkus-rest`. 21 are JVM ids,
+  and two each Go, Rust, TypeScript and the products (`fullstackgo`,
+  `fullstackts`).
+- **Not moved:** the other 156 misses. They slip inside a short word
+  (`quarkus-cl-rest`, `quarkus-cli-rst`), or drop the word that tells
+  a framework (`cli-rest`), which no split reads.
+- **Verticals:** 265 typos of the 14 vertical ids, by the same
+  generator, keep every suggestion: 257 right before and after.
+- **Time:** the 924 readings took 1.12 s before and 0.94 s after, one
+  run each.
+- **Words nothing named before:** the two-letter id words split too,
+  so `gorest` now names `go-http`, `tsrest` `ts-http`, and `gots` (Go
+  and TypeScript, which no id spells together) `go-cli` on the
+  tie-breaks. `gogo` names nothing, as before.
+
+**In the unit table**, six run-together typos join `nearestStack`'s
+cases: `quarkus-clirest`, `springcli-rest-kotlin`,
+`micronaut-restkotlin`, `gocli-http`, `rust-clihttp` and
+`fullstackts`. Three `nearestId` cases on hand-made ids hold the split
+itself: `kitetailgamma` names `kite-tail-gamma-long`, where the greedy
+split strands `ailgamma` after `kitet` and the whole word names
+`kite-gamma`; `kitetail` names `kite-tail` over `kitetai`, one slip
+from it whole; and `abcdefgamma` names `abcdef-gamma`, where a split
+into the most words (`ab cdef gamma`) names `ab-cdef-zeta` — checked
+against that mutant, which fails it alone. Three more pin `gogo`
+(null), `gots` (`go-cli`) and the time a 5,000-letter word takes
+(under 2 s). Two `nearestVertical` cases hold that `agentharness` and
+`codestyle`, named right by edit distance before, stay named once
+split; and two vertical ids typed together, `vcsci` or
+`ci-persistence`, name nothing, as the comma list `ci,persistence`
+already did — split, they would name one and drop the other. Against
+HEAD's `nearest-id.ts` ten cases fail: the six, two of the hand-made
+ones, `gots` and the vertical lists. The file went from 37 to 52
+tests, and every case it held still passes. The 12 products are not
+registered, so the six typos they would misdirect wait for T.3f.
+
+**Docs:** `docs/cli.md`'s _An id keel does not know_ (the split first,
+edit distance only where no word matches and nothing splits), the
+module note, `docs/plugins.md`'s stack-id rule (which no longer calls
+its word-breaking the nearest id's whole reading), and a CHANGELOG
+_Fixed_ entry. The unreleased _Added_ entry for the nearest id gave
+`quarkuscli` as edit distance's example, which the split made false;
+it now gives `qurkuscli`, which matches no word and splits into none.
+
+**What it adds to `CI=true pnpm test`:** 15 cases in
+`nearest-id.test.ts`, which runs its 52 in 210 ms.
+
+**The full run:** `CI=true pnpm test` (372.7 s, 212 files, 3,684
+tests) passed whole, the growth axis in 137.8 s of its 180.
 
 #### T.3f — Twelve products, best-effort (L)
 

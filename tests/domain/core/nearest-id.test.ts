@@ -44,6 +44,15 @@ describe('nearestStack', () => {
     ['kotlin-quarkus-rest', 'quarkus-rest-kotlin'],
     ['Quarkus-CLI', 'quarkus-cli'],
     ['quarkuscli', 'quarkus-cli'],
+    // Words run together are split into the ids' words before they are
+    // read. Read whole, each counted for nothing, which named the id
+    // with one word fewer.
+    ['quarkus-clirest', 'quarkus-cli-rest'],
+    ['springcli-rest-kotlin', 'spring-cli-rest-kotlin'],
+    ['micronaut-restkotlin', 'micronaut-rest-kotlin'],
+    ['gocli-http', 'go-cli-http'],
+    ['rust-clihttp', 'rust-cli-http'],
+    ['fullstackts', 'fullstack-ts'],
     // A slip inside a word.
     ['quarkus-cli-kotin', 'quarkus-cli-kotlin'],
     ['micronaunt-cli', 'micronaut-cli'],
@@ -84,6 +93,9 @@ describe('nearestVertical', () => {
     ['container', 'containerization'],
     ['infra', 'iac'],
     ['harness', 'agent-harness'],
+    // Words run together, split as a stack's are.
+    ['agentharness', 'agent-harness'],
+    ['codestyle', 'code-style'],
     // Two neighbours swapped are one slip, not two.
     ['vsc', 'vcs'],
     ['ica', 'iac'],
@@ -94,9 +106,13 @@ describe('nearestVertical', () => {
   it('names nothing where nothing is near', () => {
     expect(nearestVertical(verticals, 'nope')).toBeNull();
     expect(nearestVertical(verticals, 'nonsense-vertical')).toBeNull();
-    // A list typed as one id is several, and naming one of them would
-    // drop the rest.
+  });
+
+  it('names nothing for several vertical ids typed as one', () => {
+    // Naming one of them would drop the rest.
     expect(nearestVertical(verticals, 'ci,persistence')).toBeNull();
+    expect(nearestVertical(verticals, 'ci-persistence')).toBeNull();
+    expect(nearestVertical(verticals, 'vcsci')).toBeNull();
   });
 
   it('does not read a short word as any short id it could be edited into', () => {
@@ -137,6 +153,55 @@ describe('nearestId', () => {
       { id: 'delta', own: [], related: [] },
     ];
     expect(nearestId('kite', candidates)).toBe('kite-tail');
+  });
+
+  it('splits a word run together where the longest first word would strand the rest', () => {
+    const candidates = [
+      { id: 'kite-tail-gamma-long', own: [], related: [] },
+      { id: 'kitet-x', own: [], related: [] },
+      { id: 'tail-gamma', own: [], related: [] },
+      { id: 'kite-gamma', own: [], related: [] },
+      { id: 'delta', own: [], related: [] },
+    ];
+    // `kite` + `tail` + `gamma`. Longest first takes `kitet` and strands
+    // `ailgamma`; read whole, only `gamma`'s ids are near.
+    expect(nearestId('kitetailgamma', candidates)).toBe('kite-tail-gamma-long');
+  });
+
+  it('reads a word that splits two ways as the fewer words', () => {
+    const candidates = [
+      { id: 'abcdef-gamma', own: [], related: [] },
+      { id: 'ab-cdef-zeta', own: [], related: [] },
+      { id: 'delta', own: [], related: [] },
+    ];
+    // `abcdef` + `gamma`; as `ab` + `cdef` + `gamma` it would name
+    // `ab-cdef-zeta`, which spells two of the three.
+    expect(nearestId('abcdefgamma', candidates)).toBe('abcdef-gamma');
+  });
+
+  it('reads a run-together word as its parts over an id one slip from it whole', () => {
+    const candidates = [
+      { id: 'kite-tail', own: [], related: [] },
+      { id: 'kitetai', own: [], related: [] },
+      { id: 'delta', own: [], related: [] },
+    ];
+    expect(nearestId('kitetail', candidates)).toBe('kite-tail');
+  });
+
+  it('reads a word typed twice over as one word, never two', () => {
+    expect(nearestStack(shippedRegistry, 'gogo')).toBeNull();
+  });
+
+  it('splits two-letter id words too, and lets the rest of the reading choose', () => {
+    // `go` and `ts` both count; no id spells both, so the tie-breaks
+    // name the nearest of those that spell one.
+    expect(nearestStack(shippedRegistry, 'gots')).toBe('go-cli');
+  });
+
+  it('stays quick on a long run of id words', () => {
+    const started = performance.now();
+    nearestStack(shippedRegistry, 'go'.repeat(2500));
+    expect(performance.now() - started).toBeLessThan(2000);
   });
 
   it('names nothing from an empty registry', () => {

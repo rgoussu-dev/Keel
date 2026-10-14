@@ -758,10 +758,11 @@ loads there is no name to quote, so those messages name the path.
 
 A stack id is words of `a`–`z` and `0`–`9` joined by single `-`s
 (`acme-web`, `acme2-cli-http`). keel reads an id as its words —
-lowercased and broken at every character but `a`–`z` and `0`–`9`, as
-the nearest id an unknown `--stack` is answered with is read — so
-`Acme-Web`, `acme_web` and `acme.web` would be three ids that read as
-`acme-web`, and `AcmeWeb` one that reads as a single word. The rule
+lowercased and broken at every character but `a`–`z` and `0`–`9` —
+so `Acme-Web`, `acme_web` and `acme.web` would be three ids that read
+as `acme-web`, and `AcmeWeb` one that reads as a single word. (An
+unknown `--stack` is read further: a word it runs together is split
+into the registered ids' words before the nearest id is named.) The rule
 leaves each id one spelling; and `+ / @ # , :` or a space would break
 the keys and hints keel builds from an id.
 

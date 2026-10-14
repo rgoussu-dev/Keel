@@ -14,6 +14,22 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Fixed
 
+- **An unknown `--stack` typed with words run together is answered
+  with the id it spells.** `keel new --stack=gocli-http` was answered
+  _did you mean 'go-http'?_: `gocli` is no id's word, so only `http`
+  counted, and the id with the fewest other words won. A typed
+  word that runs several of the ids' words together is now split into
+  them before it is read, so `gocli-http` names `go-cli-http`,
+  `quarkus-clirest` names `quarkus-cli-rest` and `fullstackts` names
+  `fullstack-ts`. Edit distance is the whole reading only where no word
+  matches and nothing splits. Of 924 typos of keel's 34 ids that name
+  no preset — a letter dropped or two swapped, a word dropped or two
+  swapped, the dashes dropped — 768 are now answered with the id they
+  came from, against 739. An unknown vertical made of several vertical
+  ids typed as one (`ci-persistence`, `vcsci`) is answered with the
+  list alone, as `ci,persistence` already was, where it named one of
+  them and dropped the rest.
+
 - **`keel add walking-skeleton --reapply` keeps what observability,
   persistence, code-style, the gateway and each added context wrote
   into the files it rewrites.** A re-render put the bootstrap's files
@@ -1631,7 +1647,7 @@ entrypoint http` on a CLI project, or `keel add entrypoint cli` on an
   spells, then what its tags and entrypoint say (`java-cli` →
   `quarkus-cli`), then what a product's services say (`go-spa` →
   `fullstack-go`), and edit distance only where no word matches
-  (`quarkuscli`); an id near nothing names nothing. An
+  (`qurkuscli`); an id near nothing names nothing. An
   unknown vertical in `--with` or `keel add` is answered the same way
   (`keel.unknown-vertical`), by its id and its title (`container` →
   `containerization`, `persistance` → `persistence`). The page shows

@@ -106,13 +106,18 @@ first, the one it most likely meant: _"unknown stack
 'quarkus-cli-kotin' — did you mean 'quarkus-cli-kotlin'? Available:
 …"_. The nearest id is read by **facet words first** — what an id
 spells, then what its tags and the entrypoint's words say, then what a
-product's services say — and by edit distance only where no word
-matches (`quarkuscli`). An id near nothing is refused with the list
-alone. An unknown vertical, in
+product's services say. A word that runs several of the ids' words
+together is split into them first: `quarkuscli` is _quarkus cli_, and
+`gocli-http` names `go-cli-http`, where `gocli`, read whole, counted
+for nothing and left `go-http`. Edit distance breaks a tie, and is the
+whole reading only where no word matches and nothing splits. An id
+near nothing is refused with the list alone. An unknown vertical, in
 `--with` or `keel add`, is answered the same way under
 `keel.unknown-vertical`, read by its id and its title's words
 (`container` finds `containerization`, the Container image;
-`persistance` finds `persistence`).
+`persistance` finds `persistence`). Several vertical ids typed as one
+— `ci,persistence`, `ci-persistence`, `vcsci` — name none of them,
+since naming one would drop the rest.
 
 **A directory that is not empty.** `keel new` needs only that no keel
 project holds the directory — no manifest there, and none above it
