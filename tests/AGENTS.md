@@ -49,7 +49,8 @@ it guards:
   passed. The same file holds `composition-sweep.yml` to running
   `tests/sweep/` opted in, with no `if:` to skip it and no
   `continue-on-error` to pass it red, and to a schedule and dispatch
-  only (the weekly sweep, below).
+  only (the weekly sweep, below). It reads the matrix through
+  `support/ci-shards.ts`, which T.2b's guards share.
 - `version-pins.test.ts` — `assets/composition/version-pins.json` against
   the templates. Extend the registry, never the sweep's blind spots; see
   [`assets/`](../assets/AGENTS.md).

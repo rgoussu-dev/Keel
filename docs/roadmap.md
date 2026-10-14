@@ -12589,7 +12589,7 @@ plugin, since the check reads them at load where an engine
 
 ### T.2 — The support tier
 
-#### T.2a — The shard parser, shared (S)
+#### T.2a — The shard parser, shared (S) ✅
 
 A refactor with no new check. The parser `ci-workflow.test.ts` reads
 the e2e matrix with moves into `tests/support/ci-shards.ts`
@@ -12597,6 +12597,15 @@ the e2e matrix with moves into `tests/support/ci-shards.ts`
 so T.2b's guards read the matrix the way that suite does.
 `tests/AGENTS.md`'s `ci-workflow.test.ts` bullet names the module. No
 CHANGELOG entry.
+
+**Landed as the move alone**, in one commit with no `src/` change.
+`tests/support/ci-shards.ts` holds the `Shard` shape, `e2eShards()`
+and `claimedFiles()`, with the behaviour `ci-workflow.test.ts` gave
+them, now readonly and documented, and that suite imports them; its
+five tests pass unchanged. `mise-toolchain.test.ts` keeps its own read
+of the e2e job, which needs its steps too. Nothing else moves.
+`CI=true pnpm test` (356.1 s, 204 files, 3,478 tests) passed whole,
+the growth axis in 138.3 s of its 180.
 
 #### T.2b — The tier as data, and its guards (L)
 

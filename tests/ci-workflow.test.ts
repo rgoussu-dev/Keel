@@ -30,31 +30,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
+import { claimedFiles, e2eShards as shards } from './support/ci-shards.js';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const workflowPath = path.join(repoRoot, '.github', 'workflows', 'ci.yml');
 const sweepPath = path.join(repoRoot, '.github', 'workflows', 'composition-sweep.yml');
 const e2eDir = path.join(repoRoot, 'tests', 'e2e');
-
-interface Shard {
-  id: string;
-  tools: string;
-  files: string;
-}
-
-/**
- * The shard list as CI will actually expand it — parsed, not
- * regex-matched, so a change to the workflow's shape surfaces here as a
- * failure rather than as a quietly empty result.
- */
-const shards = (): Shard[] => {
-  const workflow = parse(fs.readFileSync(workflowPath, 'utf8')) as {
-    jobs: { e2e: { strategy: { matrix: { shard: Shard[] } } } };
-  };
-  return workflow.jobs.e2e.strategy.matrix.shard;
-};
-
-const claimedFiles = (shard: Shard): string[] => shard.files.trim().split(/\s+/);
 
 describe('the CI e2e matrix', () => {
   it('claims every suite in tests/e2e/', () => {
