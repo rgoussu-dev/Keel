@@ -356,9 +356,21 @@ describe('provisionsFor', () => {
     ]);
   });
 
-  it('builds nothing for a stack the root does not list, and gives nothing the root lacks', () => {
+  it.each(['spring-rest-kotlin', 'quarkus-cli-rest', 'go-cli-http'])(
+    'builds the image of %s, a preset of a family the root builds, though no product ships it',
+    (stack) => {
+      expect(
+        provisionsFor(shippedRegistry, root, stack).map(({ vertical, by }) => [vertical.id, by]),
+      ).toEqual([
+        ['vcs', 'repository'],
+        ['containerization', 'product'],
+      ]);
+    },
+  );
+
+  it('builds nothing for a stack no family of the root names, and gives nothing the root lacks', () => {
     expect(
-      provisionsFor(shippedRegistry, root, 'spring-rest-kotlin').map(({ vertical }) => vertical.id),
+      provisionsFor(shippedRegistry, root, 'quarkus-cli').map(({ vertical }) => vertical.id),
     ).toEqual(['vcs']);
     expect(
       provisionsFor(shippedRegistry, { installed: ['fullstack'], tags: [] }, 'go-http').map(

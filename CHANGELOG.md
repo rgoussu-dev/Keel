@@ -642,6 +642,36 @@ new` the terminal adds the way past it (move it aside, or start in
 
 ### Changed
 
+- **keel's product glue serves any stack tagged like a family it
+  builds.** In a monorepo product, the `fullstack` glue picks a
+  service's image and its run hint in the product README by what the
+  service is, where it picked them from a list of preset ids. A family
+  is the predicate keel's own `containerization` adapter selects on:
+  Quarkus, Spring or Micronaut with `arch.server-http`, Go, Rust or
+  TypeScript on Node with `arch.server-http`, and web-components with
+  `arch.spa`. The glue declares them as `providesInServices.serves`.
+  So a plugin's stack whose own tags match one (`lang.go` +
+  `arch.server-http`), as any service of a product, now reads
+  `containerization` as there already in it, and gets keel's image and
+  a run hint rather than _see its README_: always for Go and Rust; for
+  TypeScript on Node and web-components with pnpm under `pkg.pnpm`
+  and npm otherwise; and for Quarkus, Spring and Micronaut only on
+  `pkg.gradle` or `pkg.maven`: on any other build system the glue
+  refuses with `keel.unbuildable-service`, naming the service and its
+  stack, as the service's own image adapter could not build it either.
+  The service records no Gradle or Maven build: build it with Gradle
+  or Maven (offer one among the stack's build systems and pick it for
+  the service), or give the product a glue of its own. A plugin product that relied on keel's glue
+  skipping such a backend gives the product a glue of its own. Every
+  service a family matches gets its Dockerfile, a middle one of three
+  included, and a one-service product gets its one.
+  A backend with a CLI beside its HTTP server runs the HTTP one: its
+  Gradle hint names the project
+  (`./gradlew :application:rest:executable:quarkusDev`), a Go one runs
+  `./cmd/http`, a Rust one `cargo build && ./target/debug/*-http`, and
+  a TypeScript one `dev:rest`. No product keel ships today has such a
+  backend, and the six it ships keep every byte.
+
 - **A `Ctx` built by hand needs `services`.** `Ctx.services` is
   present on every `Ctx` keel hands an adapter, so a plugin's own test
   that builds a `Ctx` literal adds `services: []` to type-check.
@@ -650,7 +680,7 @@ new` the terminal adds the way past it (move it aside, or start in
   its services by `serves` alone, so a plugin adapter that reads
   `stacks` off a value typed `ServiceProvision` no longer type-checks
   as it stands: it needs a guard, or keeps its id list in a constant
-  of its own and declares that, as keel's own fullstack glue now does.
+  of its own and declares that.
 
 - **A plugin's stack id is lowercase words joined by `-`.** A plugin
   registering a stack whose id is anything but words of `a`–`z` and
@@ -1414,8 +1444,9 @@ distribution iac`) — _Not for this project_, collapsed, each with the
   every adapter's `ctx.services` lists the product's services, each
   `{ path, stack, tags }`: its directory, its preset id, and the tags
   it was scaffolded on, its build system and module layout included.
-  Anywhere else the list is empty. keel's own fullstack glue does not
-  read either yet, so no project keel writes changes.
+  Anywhere else the list is empty. keel's own fullstack glue now
+  declares `serves`, one predicate per family it builds, and reads
+  `ctx.services` (see _Changed_).
   [`docs/plugins.md`](docs/plugins.md#where-a-vertical-goes-in-a-product)
   describes both.
 

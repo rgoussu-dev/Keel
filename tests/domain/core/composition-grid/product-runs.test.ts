@@ -57,7 +57,7 @@ const cargoManifest = (...binaries: readonly string[]): string =>
 const packageJson = (...scripts: readonly string[]): string =>
   JSON.stringify({ scripts: Object.fromEntries(scripts.map((script) => [script, 'vite'])) });
 
-/** One backend per runner a product's run hint uses, as keel's glue writes them, or will. */
+/** One backend per runner a product's run hint uses, as keel's glue writes them. */
 const BACKENDS = {
   gradle: { hint: './gradlew quarkusDev', files: { 'build.gradle.kts': '' } },
   'gradle, a qualified task': {

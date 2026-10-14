@@ -126,7 +126,9 @@ product's services, a drill-down placement, a recorded
 stays exact, so a corrupt record is never read leniently. An adapter
 has no registry, so the engine hands a product root's adapters their
 services already resolved to facets (`Ctx.services`,
-`product-services.ts`, roadmap T.3b). The support tier is handed in
+`product-services.ts`, roadmap T.3b), and the fullstack glue picks
+each one's image and run hint by family off them, never by id
+(`adapters/product-families.ts`, T.3c). The support tier is handed in
 as the registry is (roadmap T.2b): `support-tier.ts`'s rules read a `SupportSource` — the
 facts, and the stacks keel vouches for — and never `STACKS`.
 `registry.ts` builds keel's own beside the shipped source

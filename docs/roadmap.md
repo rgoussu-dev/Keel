@@ -13444,7 +13444,7 @@ and `apply.test.ts` cases. The run (393.6 s, 211 files, 3,640 tests),
 on T.3a, passed whole, the growth axis in 146.6 s of its 180; no golden
 moved.
 
-#### T.3c — The glue reads a service's family (M)
+#### T.3c — The glue reads a service's family (M) ✅
 
 The glue picks a service's image and run hint by family, by predicate,
 the way the service's own containerization adapter does, where it
@@ -13489,6 +13489,122 @@ picked them from tables of preset ids.
   and run hint by id (the table's header, `docs/development.md`,
   `docs/composition.md`), and CHANGELOG _Changed_ (keel's glue serves
   any stack tagged like a family it builds).
+
+**Landed as the glue alone**, in one commit, taken from the glue
+probe's patch less the plumbing T.3b landed. It takes DT7's glue half.
+`adapters/product-families.ts` (168 lines) holds the seven families,
+`familyOf`, a module-private `nodePm` and the `keel.unbuildable-service`
+code, each family's predicate the one its `containerization` adapter
+selects on. `product-compose.ts` drops its four id tables,
+`BUILT_STACKS` among them (107 lines left), reads `Ctx.services`,
+declares `serves`, the families' predicates, and writes a Dockerfile
+for every service a family matches, each once: a one-service product
+gets its one, and the middle service of a three-service product its
+own. `product-docs.ts` hands the README template each service with its
+`runHint`, or _see its README_ where no family matches, and the
+template drops its table of seven ids and prints the hint with `<%-`.
+`container-image.ts`' `jvmBuildSystem` and `jvmRestFramework` take any
+value with `tags`, so the glue passes them a service. The frontend
+image no longer receives `backendService`, which no template reads.
+
+Where a family cannot read a dial, it answers as the service's own
+image adapter does. A Node service (TypeScript or web-components)
+installs and runs with pnpm under `pkg.pnpm` and npm otherwise, as
+`ts-http-image.ts` does. A JVM service on neither `pkg.gradle` nor
+`pkg.maven`, which only a plugin's stack can be, is refused as a
+`DomainError` coded `keel.unbuildable-service` naming the service and
+its stack: its own image adapter could not name the artifact either
+(`jvmBuildSystem` throws), and no image is not an answer, since the
+scope already reads `containerization` as there.
+
+The composite-scope fixture's plugin product declares a glue of its
+own: keel's, with every non-frontend service's files filtered out, and
+declared by `stacks: ['web-components']`. `scope.test.ts`'s service
+that the root builds nothing for is `quarkus-cli`, where it was
+`spring-rest-kotlin`, and `spring-rest-kotlin`, `quarkus-cli-rest` and
+`go-cli-http` now read `containerization` as the product's. On HEAD's
+tests, four cases fail under the family glue (three in
+`composite-scope.test.ts`, one in `scope.test.ts`), and pass with the
+fixture and the id changed.
+
+- **`product-families.test.ts`**, 23 cases in 60 ms. The families'
+  predicates equal `containerization`'s adapters' predicates in order;
+  every single-service preset that serves HTTP or an SPA matches
+  exactly one family by `matches`, the one whose image its framework
+  or language implies; no family's `requires` or `excludes` names
+  anything but a `lang`, `runtime`, `framework` or `arch` tag. 15
+  exact hints, among them four Maven `-pl` hints the composite axis
+  cannot reach (`quarkus-rest`, `spring-cli-rest`,
+  `spring-cli-rest-kotlin`, `micronaut-cli-rest`), three qualified
+  Gradle tasks, `GO_ENV=dev go run ./cmd/http`,
+  `cargo build && ./target/debug/*-http`, `pnpm run dev:rest`,
+  `npm run dev:rest` and `pnpm run dev`. A Node service with no
+  `pkg.*` tag runs and builds with npm; a Spring one on `pkg.bazel` is
+  refused with `keel.unbuildable-service` by both its hint and its
+  image. Then keel's glue adapters themselves, over the real
+  templates: the README prints `cargo build && ./target/debug/*-http`
+  with no `&amp;`; a backend on `lang.elixir` gets no file under
+  `backend/`, the README's _see its README_, and `containerization`
+  stays to add there (`provisionsFor` gives `vcs` alone); a Kotlin
+  CLI + REST backend on Maven copies
+  `application/rest/executable/target/application-rest-executable-0.1.0-SNAPSHOT.jar`;
+  and one service is written once, three each get theirs.
+- **Held:** every golden byte for byte. `paths-new` (717 cells, the
+  40 product dial cells among them), `paths-add`, `paths-reapply`,
+  `paths-grow`, `converge`, `shared-files` and `growth` pass
+  unchanged, as do the four grid axes and `product-runs.test.ts`:
+  brownfield's known file stays `{"I5": {}}`, and greenfield's,
+  composite's and growth's `{}`. I13 holds on the six shipped
+  products. No `*.golden.json` or `*.known.json` moved.
+- **The 12 pairings, unregistered.** A scratch copy of the composite
+  axis over keel's registry plus 12 copies of `fullstack`, each with
+  one pairing as its backend, ran once on the family glue and once on
+  the id glue, HEAD's `product-compose.ts`, `product-docs.ts` and
+  README template put back. The file was removed after. It ran before
+  the review fixes above, none of which changes a two-service product
+  whose services each record their build system, which every pairing
+  is.
+  - **Family glue:** 4,968 cells, 0 violations of any of the nine
+    invariants, I13 included. The shipped products' 1,656 cells equal
+    `composite.golden.json`. Each pairing's 276 cells carry its
+    shipped twin product's verdict (Quarkus on `fullstack`, Spring on
+    `fullstack-spring`, Micronaut on `fullstack-micronaut`, and the Go,
+    Rust and TypeScript ones on theirs): 3,312 of 3,312.
+  - **Id glue:** 4,980 cells. I13 is violated on exactly the 12
+    monorepo scaffolds of the pairings, and nothing else on any
+    invariant. Against the family glue's run, 12 cells change, each
+    `add:<pairing>/monorepo+containerization`, `keel.wrong-scope` →
+    `ok`. The other differences are keys: each pairing's monorepo
+    backend no longer offers `containerization` in its menu (12 cells
+    gone), and its first `ready` card, which the refresh cells sweep,
+    is `persistence` where it was `containerization` (168 refresh keys
+    each way). Both are as on the shipped products.
+  - **Time:** 50.3 s on the family glue and 49.2 s on the id glue, at
+    a load near 8.
+- **Timings**, after the review fixes, of the 12 golden and grid
+  files. One run of 189.4 s, at a load of 0.6 at its start and 3.8 at
+  its end, held the adapters' tests, `scope`, composite-scope and nine
+  of them: the growth axis 128.1 s of its 180, `converge` 65.3 s,
+  brownfield 63.8 s, `shared-files` 44.3 s, greenfield 40.2 s,
+  `paths-new` 38.5 s, composite 18.8 s and `product-runs` 0.6 s. A
+  second of 58.2 s, at a load of 3.2 to 4.1, held the other four:
+  `paths-grow` 55.3 s, `paths-add` 51.2 s, `growth` 18.1 s and
+  `paths-reapply` 16.7 s. `CI=true pnpm test` was not run whole here.
+- **Not built here:** no image was built in Docker in this step. The
+  glue probe built `go-cli-http`, `micronaut-cli-rest-kotlin` on
+  Gradle, `ts-cli-http`, and, before S, `quarkus-cli-rest` and
+  `spring-cli-rest-kotlin` on Gradle and `rust-cli-http`, on the same
+  templates. The Maven CLI + HTTP image is unbuilt; its artifact path
+  is the shipped Maven REST one _(inference)_.
+
+**What it adds to `CI=true pnpm test`:** `product-families.test.ts`,
+23 cases in under 0.1 s, and three `scope.test.ts` cases. No golden or
+grid cell moves.
+
+**What it adds to `CI=true pnpm test`:** `product-families.test.ts`
+and the new `scope.test.ts` and `composite-scope.test.ts` cases, well
+under a second. The run (403.5 s, 212 files, 3,666 tests) passed
+whole, the growth axis in 151.1 s of its 180; no golden moved.
 
 #### T.3d — The weekly sweep, split by family (S)
 
@@ -13864,6 +13980,11 @@ what the user accepted in DT1.
   families, the same reading containerization makes in the service.
   If that is read as U's _decide the image owner_, T.3c stops and
   asks. Taken in T.3b (the `Ctx` half) and T.3c (the glue's half).
+  T.3c took it as read: the root's glue still builds the image of
+  each service it serves, and no shipped product's image moved (0 of
+  its 40 dial cells). A plugin stack tagged like a family is served as
+  keel's own would be, a JVM one only on Gradle or Maven, which
+  CHANGELOG _Changed_ names.
 
 - **DT8 — Which proofs transfer.**
   - **P1 (the harness twin) and P2 (a product's services):** measured

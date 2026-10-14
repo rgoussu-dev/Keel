@@ -1089,9 +1089,11 @@ the operator's machine would report it as a harness finding.
   [`src/domain/core/stack-presets.json`](../src/domain/core/stack-presets.json)
   — an entrypoint set a platform row takes, or a backend id in the
   product rule; a new platform is a row, with its tags and the dials it
-  offers. A new backend in the product rule also needs its image in
-  `src/domain/core/adapters/product-compose.ts` and its run hint in the
-  product README template, both keyed by id for now. Add it to
+  offers. A new backend in the product rule gets its image and its run
+  hint from the product glue by family, read off its tags
+  (`src/domain/core/adapters/product-families.ts`): one tagged like a
+  family keel builds needs no glue edit, and a new platform's needs a
+  family there. Add it to
   `tests/domain/core/stack-registry.golden.json` in the same change;
   that file is the frozen picture of what users see, and the guard
   beside it fails in `verify` when the two disagree. A new platform

@@ -630,7 +630,7 @@ const productGlueAdapter = {
   plugin no longer loaded) is named by its id alone. Since `stacks` is
   optional, glue reading `stacks` off a value typed `ServiceProvision`
   needs a guard, or keeps its id list in a constant of its own and
-  declares that, as keel's own glue does. In a monorepo service it names, that
+  declares that. In a monorepo service it names, that
   vertical then reads as already there, and `keel add` of it adds
   nothing rather than meeting your files as `keel.path-conflict`; in
   one it does not name it stays to add, and the product's
@@ -652,12 +652,42 @@ records them. `tags` is what the service was scaffolded on: its
 stack's own tags, the build system the root records for it, and its
 stack's default module layout. Decide _whether_ to build for a
 service as `serves` does, by matching your `serves` against the
-stack's own tags (`Stack.tags`), never against `ctx.services[].tags`,
-which carry the dials; read the build system and layout tags only for
-_how_ to build it. `stack` is the preset id, there to print. Anywhere but a product root the list
+stack's own tags (`Stack.tags`), never against a dial in
+`ctx.services[].tags`; read the build system and layout tags only for
+_how_ to build it. A predicate that names no dial reads the same on
+either, since a service's tags are its stack's own plus its dials. `stack` is the preset id, there to print. Anywhere but a product root the list
 is empty, and a service whose stack is not registered has no tags.
 Every `Ctx` keel builds carries the field, so a test of yours that
 builds a `Ctx` literal adds `services: []`.
+
+**keel's own product glue serves by family.** `fullstack` declares
+`serves`, one predicate per family it has an image for: Quarkus,
+Spring and Micronaut, each with `arch.server-http`; Go, Rust, and
+TypeScript on Node, each with `arch.server-http`; and web-components
+with `arch.spa`. Each is the predicate keel's own `containerization`
+adapter for that family selects on, and none names a dial. So a stack
+of yours whose own tags match one of them (`lang.go` +
+`arch.server-http`), as any service of a product under keel's glue,
+reads `containerization` as there already, and gets keel's image for
+it and its run hint in the product README, on these terms:
+
+- **Go, Rust:** always; neither image nor hint reads a dial.
+- **TypeScript on Node, web-components:** always; the service installs
+  and runs with pnpm where it records `pkg.pnpm`, and with npm on any
+  other build system or none, as keel's own image for it does.
+- **Quarkus, Spring, Micronaut:** only where the service records
+  `pkg.gradle` or `pkg.maven`, which pick the builder stage, the
+  artifact and the run command. On any other build system or none,
+  keel's own image could not name the artifact either, so the
+  product's `keel new`, and any later run of its glue, refuses with
+  `keel.unbuildable-service`, naming the service and its stack: it
+  records no Gradle or Maven build. Build it with Gradle or Maven —
+  offer one among the stack's `buildSystems` and pick it for the
+  service — or give the product a glue of its own.
+
+A service no family matches gets neither: its image stays to add, and
+the README points at the service's own. To build something else for
+such a stack, give your product a glue of its own.
 
 ---
 

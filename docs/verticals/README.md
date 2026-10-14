@@ -121,8 +121,9 @@ Reading a cell:
   [`fullstack`](fullstack.md) glue builds each service's image
   (`compose.yaml` + a Dockerfile beside each) and declares so. That is
   why `vcs` and `containerization` come with such a service, and
-  `keel add containerization` there adds nothing, saying so (a plugin
-  backend the glue does not know keeps it to add). A pipeline and a release are
+  `keel add containerization` there adds nothing, saying so (a service no
+  family the glue builds matches, such as a plugin's backend on another
+  platform, keeps it to add). A pipeline and a release are
   read only at the repository root: `ci` and `distribution` declare
   that placement, so a monorepo service refuses them — and `iac`,
   which needs `distribution` — as belonging elsewhere, and the product

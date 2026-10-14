@@ -21,13 +21,30 @@ docker compose up --build
 
 brings the whole product up — backend and frontend — from one command
 at the root. Which services get an image is **declared**, not only
-done: `product-compose` lists the service stacks it has a Dockerfile
-for (`providesInServices`) and writes one exactly for those. So inside
+done: `product-compose` names the families it has a Dockerfile for
+(`providesInServices`), by what a service is rather than its preset id,
+and writes one exactly for the services they match, wherever each sits
+among the product's services. A family is a
+predicate over the stack's tags, the one that family's own
+`containerization` adapter selects on: Quarkus, Spring or Micronaut
+serving HTTP, Java or Kotlin, with a CLI beside it or not; Go, Rust or
+TypeScript on Node serving HTTP; and the web-components SPA. The
+family also gives the README's run hint for the service. A Node
+service installs with pnpm under `pkg.pnpm` and npm otherwise; a JVM
+one on neither Gradle nor Maven (only a plugin's stack can be) is
+refused as `keel.unbuildable-service`, since no image can name its
+artifact: it records no Gradle or Maven build, so build it with Gradle
+or Maven — offer one among the stack's build systems and pick it for
+the service — or give the product a glue of its own. So inside
 such a service `containerization` reads as there already — `keel add
 containerization` there is an Ok that adds nothing, saying the product
-root builds it — and a service whose stack the glue does not know (a
-plugin's backend) keeps it to add; the product's `keel new` report says
-so. The SPA follows the
+root builds it — and a service no family matches (a plugin's backend
+on another platform) keeps it to add, with a run hint pointing at its
+own README; the product's `keel new` report says so. A backend with a
+CLI beside its HTTP server runs the HTTP one: its image builds or
+copies that assembly, and its Gradle run hint names the project
+(`./gradlew :application:rest:executable:quarkusDev`), since both
+assemblies apply the same plugin. The SPA follows the
 [assets-image shape](containerization.md#the-spa-ships-as-an-assets-image):
 its image populates a named volume as an init container, and an
 unmodified official nginx serves the volume, proxying `/api` to the

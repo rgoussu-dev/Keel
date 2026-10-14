@@ -336,9 +336,10 @@ platform (a language on a runtime and framework, with the build
 systems it offers) by the entrypoint sets it takes, and a rule that
 crosses those cells into products. `quarkus-cli-rest` is the Quarkus
 Java row's `cli+http` cell; `fullstack-go` is the product rule's
-`go-http` backend. Adding a stack is a cell there, a platform a row;
-a product's new backend also needs its image and run hint, which the
-product glue keys by id for now.
+`go-http` backend. Adding a stack is a cell there, a platform a row.
+A product's new backend needs no glue edit when its tags match a
+family the product glue builds: the glue picks its image and its run
+hint by family, never by id.
 [`src/domain/core/stack-table.ts`](../src/domain/core/stack-table.ts)
 expands the table into a preset document, and
 [`src/domain/core/stacks.ts`](../src/domain/core/stacks.ts) holds the
@@ -628,9 +629,10 @@ which writes exactly those. It names a service by its stack's id
 stack's own tags (`Stack.tags`), never a dial the stack offers; a
 stack this keel does not register is named by its id alone.
 `product-services.ts`' `servesStack` is how the scope reads the two,
-and the glue, once it reads `Ctx.services` (roadmap T.3c), matches
-its `serves` against the same stack tags, never the dials a service's
-facets carry; today it writes from its own id list. Registration
+and keel's fullstack glue writes from the same `serves`: it matches
+each family's predicate against `Ctx.services`, whose tags are the
+stack's own plus its dials, and no family names a dial, so both read
+one answer. Registration
 refuses a declaration whose lists name no service, a list that is not
 one, a `serves` predicate with no `requires`, which would name every
 service, and a pattern keel cannot read. `scope.ts` reads the
@@ -1288,9 +1290,11 @@ and the stack's default module layout, the only one a product's
 services take. Every install, replay and converge at the root hands
 the same list, and a `Ctx` anywhere else holds none.
 `applyContributions` reads no registry: it hands the services its
-caller resolved (`productServices`), and none unless given. No shipped
-adapter reads them yet: the fullstack glue still keys on the ids it
-lists.
+caller resolved (`productServices`), and none unless given. The
+fullstack glue reads them: it picks each service's image and run hint
+by family (`adapters/product-families.ts`), each family a predicate
+over the tags, the one the service's own `containerization` adapter
+selects on.
 
 ## The toolchain block
 

@@ -52,7 +52,10 @@ export const JVM_BUILD_ROOT: Readonly<Record<JvmBuildSystem, string>> = {
  * Throws when neither `pkg.gradle` nor `pkg.maven` is present — a
  * JVM image cannot name its artifact without knowing the build.
  */
-export function jvmBuildSystem(manifest: ManifestV2, requesterId: string): JvmBuildSystem {
+export function jvmBuildSystem(
+  manifest: Pick<ManifestV2, 'tags'>,
+  requesterId: string,
+): JvmBuildSystem {
   if (manifest.tags.includes('pkg.gradle')) return 'gradle';
   if (manifest.tags.includes('pkg.maven')) return 'maven';
   throw new Error(
@@ -109,7 +112,10 @@ export type JvmRestFramework = 'quarkus' | 'spring' | 'micronaut';
  * Throws when no `framework.*` tag keel knows is present — the
  * artifact a JVM build produces cannot be named without it.
  */
-export function jvmRestFramework(manifest: ManifestV2, requesterId: string): JvmRestFramework {
+export function jvmRestFramework(
+  manifest: Pick<ManifestV2, 'tags'>,
+  requesterId: string,
+): JvmRestFramework {
   if (manifest.tags.includes('framework.quarkus')) return 'quarkus';
   if (manifest.tags.includes('framework.spring')) return 'spring';
   if (manifest.tags.includes('framework.micronaut')) return 'micronaut';

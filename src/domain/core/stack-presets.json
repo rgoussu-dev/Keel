@@ -59,10 +59,10 @@
     "",
     "Adding a platform is a row, and an entrypoint set a cell; adding a",
     "product is its backend's id in the `stacks` of the rule's `backend`",
-    "service, once `adapters/product-compose.ts` gives that backend an",
-    "image and the product README template its run hint (both keyed by",
-    "id until epic T's T.3c). Either reaches every menu and the finder",
-    "by itself."
+    "service. The product glue gives that backend its image and its run",
+    "hint by family, read off its tags (`adapters/product-families.ts`),",
+    "so a backend tagged like a family keel builds needs no glue edit.",
+    "Either reaches every menu and the finder by itself."
   ],
   "entrypoints": [
     { "word": "cli", "tag": "arch.cli" },

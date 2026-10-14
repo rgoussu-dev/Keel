@@ -516,8 +516,10 @@ export interface ServiceProvision {
    * (`pkg.gradle` for `quarkus-rest`) names nothing, since the build
    * system or the module layout a service settles on decides how its
    * part is built, not whether. Glue deciding what it writes matches
-   * these against a stack's own tags too, never against
-   * {@link Ctx.services}' tags, which carry the dials.
+   * these against a stack's own tags too, never against a dial in
+   * {@link Ctx.services}' tags: those are the stack's own plus its
+   * dials, so a predicate that names no dial reads the same on either,
+   * which is how keel's own glue matches them.
    */
   readonly serves?: readonly Predicate[];
 }

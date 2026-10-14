@@ -10,8 +10,9 @@
  * the one place a recorded ref becomes those facets: the scope reads
  * an image as there already through it (`./scope.ts` `provisionsFor`
  * asks {@link servesStack}), and the adapters are handed the same
- * facets (`Ctx.services`), so that once the glue keys on them (roadmap
- * T.3c) what it builds and what the scope reads are one answer.
+ * facets (`Ctx.services`), which the glue keys on
+ * (`./adapters/product-families.ts`), so what it builds and what the
+ * scope reads are one answer.
  */
 
 import type { ProductService, ServiceProvision } from '../contract/composition.js';
@@ -25,9 +26,10 @@ import { stackTagsFor } from './stacks.js';
  * The facets of the service `ref` names, scaffolded from `stack`: the
  * stack's tags, the recorded build system's `pkg.*` tag — the stack's
  * default where none is recorded, as for a manifest predating the
- * choice; none for an id the stack does not offer, so glue that needs
- * one fails loudly — and the stack's default module layout, the only
- * one a product's services take.
+ * choice; none for an id the stack does not offer, where glue reads
+ * the service as its own image adapter would (a Node family falls
+ * back to npm, a JVM one refuses it) — and the stack's default module
+ * layout, the only one a product's services take.
  */
 export function serviceFacets(
   stack: Stack,
