@@ -12381,7 +12381,7 @@ to 5.7 ms (zod's first parse included; 0.2 to 0.3 ms warm).
   which told a contributor to write a preset out, and a CHANGELOG
   _Changed_ entry after "The stack registry is data".
 
-#### T.1d — A facet spelling names its preset (M)
+#### T.1d — A facet spelling names its preset (M) ✅
 
 A typed `--stack` resolves in this order:
 
@@ -12456,6 +12456,65 @@ anywhere.
   note (it suggests, and `stack-spelling` resolves); the `--stack`
   help; and a CHANGELOG _Added_ entry, which says which spellings were
   refused and now scaffold. DT3 and DT4 are taken here.
+
+**Landed as the reading and its two front doors**, in one commit.
+`stack-spelling.ts` (182 lines) answers `stackSpelled(registry,
+typed)` with the registered id, the one preset its facets name, or
+nothing; `stackReader(stacks)` builds the reading once for many
+lookups, where `stackSpelled` reads the registry afresh, once a run.
+Its words come from the drill-down's places, so a plugin's language is
+a word as keel's are; a word two facets answer to names neither, `rest`
+and `ts` included, so a plugin's `framework.ts` makes `cli-ts` refuse
+rather than read one way by a guess, and `ts-cli` stays an id. A word
+holding a `-` is read longest first. `stage` in `new-project.ts` and
+`keel.dials` ask it; `Registry.stack()` stays exact, the rule now in
+the core `AGENTS.md`. A spelled run goes on under the preset's id, and
+its note, worded in `refusals.ts` from the finder's own summary
+(`pathSummary`, now shared with the drill-down's resolution line),
+comes first in the report.
+
+- **Measured** on the shipped registry: the vocabulary is 19 words;
+  43,795 sets of up to six of them read as one preset 753 times and as
+  two 0 times, in 181 ms; every one of the 34 ids, read by its facets
+  alone, names itself. No shipped set reads as two, so the "exactly
+  one" half is held on a registry with a twin of `quarkus-cli`
+  registered beside it.
+- **Recorded is canonical**, held by a test: `kotlin-quarkus-rest`
+  writes the 66 files `quarkus-rest-kotlin` does and
+  `fullstack-go-http` the 133 `fullstack-go` does, byte for byte,
+  manifest included. Another holds the note first: `quarkus-http`
+  with `--with iac` reports the spelled note, then the prerequisite's,
+  and `quarkus-rest` the prerequisite's alone.
+- **The refused side, word for word:** `go-spa`, `cli-spa`,
+  `java-cli`, `quarkus-kotlin` and `fullstack-quarkus-rest-kotlin`
+  go through `keel new` and come back `keel.unknown-stack`, the whole
+  sentence pinned, nearest id and list included. The three
+  `new-project.test.ts` cases that pinned a refusal now resolve with
+  the note, and `dials.test.ts` settles `go-rest` at `go-http`. No
+  golden moves: no cell types a spelling.
+- **The words ids spell that no tag does** (`ID_WORDS`: `rest`, `ts`)
+  are held to the table: a test derives them from the rows' `words`
+  and the words of the id patterns no tag says, and expects exactly
+  them.
+- **`stack-spelling.test.ts`** has 34 cases: 16 resolutions, 10
+  refusals, every id as itself, the twin, three plugin cases (a tag
+  with an empty last segment says no word, where it once hung the
+  reading), every id naming itself by its facets, the 43,795 sets, and
+  the table's words. `nearest-id.test.ts` leads with what still reaches
+  it (`java-cli`, `go-spa`), and `docs/cli.md`'s drill-down and the
+  README name the facet form.
+- **What it adds to `CI=true pnpm test`:** one file of 34 cases
+  (441 ms) and 14 cases elsewhere, 48 tests in all. The run (361.7 s,
+  204 files, 3,466 tests) passed whole, the growth axis in 137.3 s of
+  its 180.
+- **Docs:** `docs/cli.md`'s `--stack` row and section, `docs/ui.md`'s
+  `target` and refusal example, the `nearest-id.ts` note and examples
+  (it suggests, `stack-spelling` resolves), the notes' order on
+  `InstallReport.notes`, the preview's notes and `refusals.ts`, the
+  `stack` field on `NewProjectCommand`, `NewProjectTarget` and
+  `DialOptions.target`, the core `AGENTS.md`, the `--stack` help, a
+  CHANGELOG _Added_ entry, and the earlier nearest-id entry's examples,
+  which now resolve. DT4 is recorded as taken.
 
 #### T.1e — A plugin cannot take a keel spelling (S)
 
@@ -12882,7 +12941,9 @@ T.4e to T.4g.
   - the language-jump notice in `target.test.ts`, `dials.test.ts` and
     `finder.test.ts`, retargeted to a backend → frontend move, since
     every back-end language has a product now;
-  - `steps.test.ts` and `ui-stack-finder`.
+  - `steps.test.ts` and `ui-stack-finder`;
+  - `stack-spelling.test.ts`'s sweep, 753 sets naming one preset
+    becoming 1,217, still 0 naming two.
 
   The browser suites run. The greenfield axis meets the 12 here for
   the first time in the repository, and its known file stays `{}`.
@@ -13107,9 +13168,9 @@ what the user accepted in DT1.
     exactly one stack.
 
   **Recommend (b),** with T.1e refusing a plugin id that reads as
-  another stack. Shape inference (a front and a back entrypoint read
-  as _Fullstack_) is left out: it would read `cli-spa` as
-  `fullstack-cli`.
+  another stack. Taken in T.1d. Shape inference (a front and a back
+  entrypoint read as _Fullstack_) is left out: it would read `cli-spa`
+  as `fullstack-cli`.
 
 - **DT5 — What is refused.**
   - (a) What the engine's coverage refuses. It lets `rust` +

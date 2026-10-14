@@ -3,7 +3,7 @@
 <!-- keel:purpose: the engine, the composition adapters and verticals, the stack presets, the handlers -->
 
 What lives here: the engine (`predicate`, `resolver`, `refusals`,
-`nearest-id`, `compatibility`, `planner`, `plan-refusal`, `scope`, `add-readiness`, `profile`, `growth`, `contexts`, `converge`, `converge-run`, `dials`, `answers`,
+`nearest-id`, `stack-spelling`, `compatibility`, `planner`, `plan-refusal`, `scope`, `add-readiness`, `profile`, `growth`, `contexts`, `converge`, `converge-run`, `dials`, `answers`,
 `supplied-answers`, `apply`, `install`, `actions`, `docs-index`, `hook-settings`, `rank`), the composition
 `adapters/` and `verticals/`, the stack presets as data (`stack-presets.json`, a
 platform × entrypoint table `stack-table.ts` expands) with
@@ -116,7 +116,13 @@ what goes in — keel's own pieces, plus whatever `infrastructure/registry/`
 loaded from `<cwd>/.keel/plugins`. A handler that imports `STACKS` or
 `SHIPPED_VERTICALS` directly has re-made the catalog a property of the
 build, which is exactly what a plugin cannot extend. See
-`docs/plugins.md`.
+`docs/plugins.md`. A front door taking a stack a user typed — `stage`
+(`keel new`, `keel.preview`, the page's install) and `keel.dials` —
+resolves it with `stackSpelled` (`stack-spelling.ts`): the id, or the
+one preset its facets name. Every reader of an id keel produced — a
+product's services, a drill-down placement, a recorded
+`services[].stack`, converge's preset — calls `Registry.stack()`, which
+stays exact, so a corrupt record is never read leniently.
 
 **Compatibility is a declaration, never a hand-written check.** A
 `Conflict` on the vertical or stack that owns the rule is read three

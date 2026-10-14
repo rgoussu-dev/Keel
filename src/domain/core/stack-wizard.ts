@@ -500,6 +500,22 @@ export function pathFor(
   );
 }
 
+/**
+ * A drill-down path in the finder's words — `Backend or tool · Java ·
+ * Quarkus · CLI + HTTP server` — what the drill-down's resolution line
+ * and a spelled `--stack`'s note say a preset is.
+ */
+export function pathSummary(path: WizardAxes): string {
+  return [
+    shapeLabel(path.shape).split(' — ')[0],
+    languageLabel(path.language),
+    path.framework === null || path.framework === '' ? null : frameworkLabel(path.framework),
+    entrypointsLabel(path.entrypoints),
+  ]
+    .filter((part) => part !== null && part !== '')
+    .join(' · ');
+}
+
 /** Human-readable label of a language node, for menus and messages. */
 export function languageLabel(language: string): string {
   const named = LANGUAGE_LABELS[language];

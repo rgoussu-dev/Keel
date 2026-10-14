@@ -55,10 +55,11 @@
  *
  * The sentences a supplied answer no adapter reads is refused with
  * (`./supplied-answers.ts`) live here too, for the same reason: both
- * front doors speak them. So do the notes a run reports what it
- * decided with: what it was asked for and found already there, the
- * prerequisites it added, the order it installed in, what a re-render
- * leaves in place, the refreshes it proposes.
+ * front doors speak them. So do the notes a run reports what it decided
+ * with: the preset a stack spelled by its facets names, what it was
+ * asked for and found already there, the prerequisites it added, the
+ * order it installed in, what a re-render leaves in place, the
+ * refreshes it proposes.
  */
 
 import { DomainError } from '../kernel/result.js';
@@ -76,7 +77,7 @@ import {
 import { conflictsOf, violatedBy } from './compatibility.js';
 import { matchesPattern } from './predicate.js';
 import { verticalTitle } from './registry.js';
-import { ENTRYPOINTS } from './stack-wizard.js';
+import { ENTRYPOINTS, pathSummary, type WizardPath } from './stack-wizard.js';
 import { BUILD_SYSTEMS } from './stacks.js';
 
 /**
@@ -602,6 +603,16 @@ export function settledAnswerSentence(key: string): string {
  */
 export function reapplyFrozenSentence(adapterId: string, vertical: Vertical): string {
   return `--set cannot change ${adapterId}'s answers: re-rendering '${vertical.id}' reads them as the manifest recorded them, and changing one is not supported yet`;
+}
+
+/**
+ * The note a stack named by its facets gives: "'quarkus-cli-http' is
+ * quarkus-cli-rest — Backend or tool · Java · Quarkus · CLI + HTTP
+ * server". The run goes on under the preset's own id, which the report
+ * and every record carry; the note says which, in the finder's words.
+ */
+export function spelledStackNote(typed: string, path: WizardPath): string {
+  return `'${typed}' is ${path.stackId} — ${pathSummary(path)}`;
 }
 
 /**

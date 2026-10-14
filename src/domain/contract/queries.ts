@@ -277,7 +277,8 @@ export interface DialOptions {
    * front end that re-derived it would be a second implementation of
    * the resolution order the handler already runs, and the two would
    * disagree the first time a rule moved. A caller adopts this target
-   * and posts it back verbatim.
+   * and posts it back verbatim. A stack named by its facets is settled
+   * at the preset's own id (`go-rest` comes back as `go-http`).
    *
    * Dials are **set** rather than left absent, which is what stops
    * the install asking about them: a stack-level dial the install
@@ -690,13 +691,13 @@ export interface InstallPreview {
   /** Harness elements omitted because the project has no agent-harness; absent when none. */
   readonly skippedHarnessElements?: number;
   /**
-   * What the run decided that the request did not spell out, one
-   * sentence each — the install report's own notes
-   * (`InstallReport.notes`): the prerequisites it adds and what needs
-   * them, the order it installs in when the one named could not be
-   * kept, a vertical already there, what a re-render moved a vertical
-   * off and leaves in place, each re-render it proposes. Absent when
-   * there is nothing to say.
+   * What the run decided that the request did not spell out, one sentence
+   * each — the install report's own notes (`InstallReport.notes`): the
+   * preset a stack spelled by its facets names, the prerequisites it adds
+   * and what needs them, the order it installs in when the one named
+   * could not be kept, a vertical already there, what a re-render moved a
+   * vertical off and leaves in place, each re-render it proposes. Absent
+   * when there is nothing to say.
    */
   readonly notes?: readonly string[];
   /**

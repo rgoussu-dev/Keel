@@ -1,9 +1,12 @@
 /**
  * The id a mistyped `--stack` or vertical most likely meant.
  *
- * Scenario: a user types an id no piece is registered under — the
- * spellings the audit found users guessing (`quarkus-cli-http`,
- * `go-rest`, `fullstack-quarkus`), plain slips, and noise.
+ * Scenario: a user types an id no piece is registered under and no
+ * preset's facets name — facet words that together name nothing
+ * (`java-cli`, `go-spa`), plain slips, and noise. The reading itself
+ * is also held on the facet spellings the audit found users guessing
+ * (`quarkus-cli-http`, `go-rest`): a front door now resolves those by
+ * `stack-spelling` first, but the reading must still point at them.
  * Factory: the shipped registry, and a registry of hand-made pieces
  * where the reading itself is the subject. Port: none — the reading is
  * a pure function of the registry.
@@ -21,7 +24,13 @@ import { shippedRegistry } from '../../../src/domain/core/registry.js';
 
 describe('nearestStack', () => {
   it.each([
-    // A facet in the family's other spelling: the JVM presets say `rest`.
+    // Facet words that together name no preset, as reach this reading.
+    ['java-cli', 'quarkus-cli'],
+    ['go-spa', 'fullstack-go'],
+    ['quarkus-kotlin', 'quarkus-cli-kotlin'],
+    ['fullstack-quarkus-rest-kotlin', 'quarkus-rest-kotlin'],
+    // A facet in the family's other spelling — resolved before this
+    // reading by `stack-spelling`, held here as the reading's own.
     ['quarkus-cli-http', 'quarkus-cli-rest'],
     ['micronaut-http', 'micronaut-rest'],
     // …and Go, Rust and TypeScript say `http`.
@@ -137,9 +146,9 @@ describe('nearestId', () => {
 
 describe('unknownIdSentence', () => {
   it('names the nearest id first, then every id there is', () => {
-    expect(unknownIdSentence('stack', 'go-rest', 'go-http', 'available: go-cli, go-http')).toBe(
-      "unknown stack 'go-rest' — did you mean 'go-http'? Available: go-cli, go-http",
-    );
+    expect(
+      unknownIdSentence('stack', 'java-cli', 'quarkus-cli', 'available: go-cli, quarkus-cli'),
+    ).toBe("unknown stack 'java-cli' — did you mean 'quarkus-cli'? Available: go-cli, quarkus-cli");
   });
 
   it('keeps the plain list where nothing is near', () => {

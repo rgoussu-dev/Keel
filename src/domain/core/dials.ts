@@ -64,6 +64,7 @@ import {
   type PresetService,
   type ProductServiceScope,
 } from './scope.js';
+import { stackSpelled } from './stack-spelling.js';
 import { stackTagsFor, type BuildSystemOption, type Stack } from './stacks.js';
 import { listVerticals, verticalTitle } from './registry.js';
 import type { Registry } from '../contract/ports/registry.js';
@@ -515,8 +516,9 @@ function refusalOf(
  */
 export function dialOptionsFor(registry: Registry, target: InstallTarget): DialOptions {
   if (target.kind !== 'new-project') return undialled(target);
-  const stack = target.stack === undefined ? null : registry.stack(target.stack);
-  return stack === null ? undialled(target) : stackDials(registry, stack, target);
+  const spelling = target.stack === undefined ? null : stackSpelled(registry, target.stack);
+  if (spelling === null || spelling.kind === 'unknown') return undialled(target);
+  return stackDials(registry, spelling.stack, { ...target, stack: spelling.stack.id });
 }
 
 /**

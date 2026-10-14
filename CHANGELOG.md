@@ -1373,6 +1373,26 @@ distribution iac`) — _Not for this project_, collapsed, each with the
 
 ### Added
 
+- **`--stack` takes a preset's facets, in any order.**
+  `keel new --stack=kotlin-spring-http` scaffolds `spring-rest-kotlin`:
+  where the words of a typed id — a language, a framework, its
+  entrypoints, and `fullstack` for a product, named by its backend —
+  name exactly one preset, that is the preset. An id leaves its family's
+  default unsaid (Java under Quarkus, Spring and Micronaut; Quarkus,
+  Java and the HTTP server in a product), and either of `rest` and
+  `http` names the HTTP server, so `quarkus-cli-http` is
+  `quarkus-cli-rest`, `go-rest` is `go-http`, `fullstack-quarkus` is
+  `fullstack` and `fullstack-go-http` is `fullstack-go`, whatever their
+  case and the spaces around them. Each of those was refused as an
+  unknown stack; each now scaffolds, and the report says so first:
+  _'quarkus-cli-http' is quarkus-cli-rest — Backend or tool · Java ·
+  Quarkus · CLI + HTTP server_. What runs, and what is recorded, is the
+  preset's own id, so the project is byte for byte the one its id makes.
+  The preview and a dry run say the same, and `keel.dials` settles a
+  spelled target at the preset's id. Words that name no preset — or,
+  among a plugin's stacks, more than one — are refused as before, with
+  the nearest id first (`quarkus-cli-kotin`, `java-cli`).
+
 - **A project's entrypoints can grow: `keel add entrypoint <cli|http>`.**
   A project's entrypoints were fixed at `keel new`: `keel add
 observability` on a CLI project was refused, its hint naming the
@@ -1485,17 +1505,15 @@ entrypoint http` on a CLI project, or `keel add entrypoint cli` on an
   `docs/verticals/distribution.md` now says so.
 
 - **An unknown `--stack` or vertical id names the one it most likely
-  meant.** `keel new --stack=quarkus-cli-http` answered with the 34
-  ids there are and left the reader to spot `quarkus-cli-rest`. The
-  refusal now names it first — _unknown stack 'quarkus-cli-http' — did
-  you mean 'quarkus-cli-rest'? Available: …_ — still
-  `keel.unknown-stack`, still writing nothing. Preset ids grew family
-  by family, so a guess is usually a real facet in the family's other
-  word, and the nearest id is read by facet words before spelling:
-  what an id spells, then what its tags and entrypoint say
-  (`go-rest` → `go-http`), then what a product's services say
-  (`fullstack-quarkus` → `fullstack`), and edit distance only where no
-  word matches (`quarkuscli`); an id near nothing names nothing. An
+  meant.** `keel new --stack=java-cli` answered with the 34 ids there
+  are and left the reader to spot `quarkus-cli`. The refusal now names
+  it first — _unknown stack 'java-cli' — did you mean 'quarkus-cli'?
+  Available: …_ — still `keel.unknown-stack`, still writing nothing.
+  The nearest id is read by facet words before spelling: what an id
+  spells, then what its tags and entrypoint say (`java-cli` →
+  `quarkus-cli`), then what a product's services say (`go-spa` →
+  `fullstack-go`), and edit distance only where no word matches
+  (`quarkuscli`); an id near nothing names nothing. An
   unknown vertical in `--with` or `keel add` is answered the same way
   (`keel.unknown-vertical`), by its id and its title (`container` →
   `containerization`, `persistance` → `persistence`). The page shows

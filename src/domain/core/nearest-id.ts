@@ -3,25 +3,29 @@
  * unknown `--stack` or vertical id is answered with, beside the list
  * of every id there is.
  *
- * Preset ids grew family by family, so the spelling a user guesses is
- * often a real facet in the wrong word: `quarkus-cli-http` (the JVM
- * presets say `rest` where Go, Rust and TypeScript say `http`),
- * `fullstack-quarkus` (the Quarkus product is plain `fullstack`),
- * `go-rest`. Edit distance alone reads those as far from everything,
- * and a list of 34 ids leaves the user to spot the one they meant. So
- * the reading is by **facet words first**: what a candidate's id
- * spells, then what its own tags and the words the finder offers them
- * in say (`arch.server-http` is an "HTTP server — a REST endpoint"),
- * then what a product's services say — each typed word counted once,
- * where it weighs most. Edit distance breaks a tie, and is the whole
- * reading only when no word matches at all — `quarkuscli`,
- * `persistance` — where it must be close for anything to be named.
+ * A guess is usually made of real facet words that, together, name no
+ * preset: `java-cli` (every JVM id says its framework), `go-spa` (Go
+ * has no front end; its product does). Edit distance alone reads those
+ * as far from everything, and a list of 34 ids leaves the user to spot
+ * the one they meant. So the reading is by **facet words first**: what
+ * a candidate's id spells, then what its own tags and the words the
+ * finder offers them in say (`arch.server-http` is an "HTTP server —
+ * a REST endpoint"), then what a product's services say — each typed
+ * word counted once, where it weighs most. Edit distance breaks a tie,
+ * and is the whole reading only when no word matches at all —
+ * `quarkuscli`, `persistance` — where it must be close for anything to
+ * be named.
  *
  * Words, never tags: nothing here is printed but an id the registry
  * holds, and the words come from what the registry already says about
  * its pieces, so a plugin's stack or vertical is suggested by the same
  * reading as keel's own. A word every candidate answers to
  * (`hexagonal`) tells them apart by nothing, and is not counted.
+ *
+ * It suggests and never resolves. A `--stack` whose words name exactly
+ * one preset by its facets is that preset (`./stack-spelling.ts`), so a
+ * stack id reaches this reading only once the facets name none, or
+ * more than one.
  */
 
 import type { Tag, Vertical } from '../contract/composition.js';
@@ -128,7 +132,7 @@ export function nearestVertical(
 
 /**
  * The sentence an unknown id is refused with: `unknown stack
- * 'go-rest' — did you mean 'go-http'? Available: …` where one is near
+ * 'java-cli' — did you mean 'quarkus-cli'? Available: …` where one is near
  * enough to name, `unknown stack 'nope'; available: …` where none is.
  * `available` is the list's own clause, lowercase (`available: a, b`).
  */

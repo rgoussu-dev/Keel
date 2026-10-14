@@ -66,7 +66,9 @@ front end wired together; answer _backend_ and pick both `CLI` and
 domain, both entrypoints. Every menu is derived from the presets
 still reachable, a step whose answer is already settled is skipped
 outright, and no menu can walk you into a combination that doesn't
-exist ([details](docs/cli.md#finding-a-stack-the-drill-down)).
+exist ([details](docs/cli.md#finding-a-stack-the-drill-down)). Or
+name the preset by its facets, in any order: `--stack=kotlin-spring-http`
+is `spring-rest-kotlin`.
 
 keel is **project-scoped only**: it writes into your project directory
 and never touches `~/.claude` or any global configuration. The

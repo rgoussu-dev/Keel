@@ -604,7 +604,10 @@ an unknown stack, a half-filled target and a combination already
 illegal all get menus back, because a menu that will not answer where
 the target is broken is a menu that cannot be used to fix it.
 
-`target` is one of:
+`target` is one of the following. Its `stack` takes a preset's id or
+its facets' words, as `--stack` does (see the [CLI](cli.md)); `dials`
+settles a spelled one at the preset's id, so `go-rest` comes back as
+`go-http`.
 
 ```jsonc
 { "kind": "new-project", "stack": "quarkus-rest",
@@ -772,7 +775,7 @@ A refusal comes back as **422** with the domain's own error code:
 {
   "error": {
     "code": "keel.unknown-stack",
-    "message": "unknown stack 'go-rest' — did you mean 'go-http'? Available: …"
+    "message": "unknown stack 'quarkus-cli-kotin' — did you mean 'quarkus-cli-kotlin'? Available: …"
   }
 }
 ```

@@ -117,7 +117,7 @@ export function buildProgram(deps: CliDeps): Command {
     )
     .option(
       '-s, --stack <id>',
-      'stack preset id (prompted when omitted and interactive; defaults to quarkus-cli otherwise)',
+      'stack preset id, or its facets in any order, e.g. kotlin-spring-http (prompted when omitted and interactive; defaults to quarkus-cli otherwise)',
     )
     .option('-y, --yes', 'non-interactive — use defaults for unanswered questions', false)
     .option('--dry-run', 'print the plan without writing any file', false)

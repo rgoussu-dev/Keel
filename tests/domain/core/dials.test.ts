@@ -30,7 +30,7 @@ import { newProjectCommand, type NewProjectTarget } from '../../../src/domain/co
 import type { Conflict, Tag, Vertical } from '../../../src/domain/contract/composition.js';
 import type { DialOptions } from '../../../src/domain/contract/queries.js';
 import { assemblyRefusal } from '../../../src/domain/core/compatibility.js';
-import { piecesOf, stackDials } from '../../../src/domain/core/dials.js';
+import { dialOptionsFor, piecesOf, stackDials } from '../../../src/domain/core/dials.js';
 import {
   pluginOrigin,
   registryOf,
@@ -294,6 +294,14 @@ describe('the settled target', () => {
     const settled = stackDials(shippedRegistry, stackWith([]), target({ moduleLayout: 'modulith' }))
       .target as NewProjectTarget;
     expect(settled.moduleLayout).toBe('modulith');
+  });
+
+  it('settles a stack spelled by its facets at the preset it names', () => {
+    // A front end other than the page posts what its user typed; the
+    // reply hands back the id the install records.
+    const settled = dialOptionsFor(shippedRegistry, { kind: 'new-project', stack: 'go-rest' })
+      .target as NewProjectTarget;
+    expect(settled.stack).toBe('go-http');
   });
 
   it('pins nothing a stack with no dials does not have', () => {
