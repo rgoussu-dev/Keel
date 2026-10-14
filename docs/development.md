@@ -293,19 +293,21 @@ whichever of the three is missing.
   services under both repository layouts, grows every
   single-entrypoint backend preset with `keel add entrypoint` on every
   dial setting and holds it to its twin, and holds the invariants of
-  roadmap epics Q, R and S over them: a golden of every verdict, and a
-  known-violations file that can only shrink. On brownfield's
+  roadmap epics Q, R, S and T over them: a golden of every verdict,
+  and a known-violations file that can only shrink. On brownfield's
   scaffolds and in composite's services it holds each `keel add`,
   `--reapply` and `--refresh` (and, on a modulith scaffold,
   `keel add module`) to its dry-run install (I9), and the recorded
   composition to a fixed point (I11); on brownfield's opening dials,
   each extra and the harness arriving later to what one run leaves,
-  every file and the manifest byte for byte (I12). How to read and
-  regenerate it is in [`tests/AGENTS.md`](../tests/AGENTS.md). What it
-  leaves out to stay fast — every dial setting but a preset's opening
-  one where it previews, every extras set, every pair's arrival order,
-  every answer choice — is the weekly
-  [composition sweep](#the-composition-sweep).
+  every file and the manifest byte for byte (I12); and at each
+  monorepo product root, what its `compose.yaml` builds and mounts,
+  and each run line of its `README.md`, to what its services hold
+  (I13). How to read and regenerate it is in
+  [`tests/AGENTS.md`](../tests/AGENTS.md). What it leaves out to stay
+  fast — every dial setting but a preset's opening one where it
+  previews, every extras set, every pair's arrival order, every answer
+  choice — is the weekly [composition sweep](#the-composition-sweep).
 
 ### End-to-end tests
 
@@ -519,7 +521,10 @@ recorded there too:
   `beforeAll`, which the runner attributes to no test: its own tests
   cover nothing, so it could kill no mutant, and a mutant only it
   reaches would count as static — Ignored under `ignoreStatic`,
-  rather than reported as uncovered. The shared-file byte golden
+  rather than reported as uncovered. The one file there that is no
+  axis, `product-runs.test.ts`, holds the grid's own I13 helper on
+  trees built by hand and asserts nothing of `src/`, so leaving it out
+  costs the score nothing. The shared-file byte golden
   (`tests/domain/core/shared-files.golden.test.ts`) runs its installs
   in a `beforeAll` too, and is left out for the same reason, as are
   the growth golden and its render guard

@@ -13150,7 +13150,7 @@ the converge golden did not move.
 
 ### T.3 — Products as per-service selections
 
-#### T.3a — I13: a monorepo product runs as its root says (S)
+#### T.3a — I13: a monorepo product runs as its root says (S) ✅
 
 `tests/support/composition-grid.ts` gains I13, with the wording in
 _The measure_, and `HARD` lists it. `holdProductRuns` reads the root's
@@ -13192,6 +13192,155 @@ on a scaffold copy, each of these goes red:
 - `cargo run` with two binaries;
 - _see its README_;
 - an escaped `&amp;&amp;`.
+
+**Landed as the invariant alone**, in one commit with no `src/`
+change. `tests/support/composition-grid.ts` gains I13 in `INVARIANTS`,
+worded as _The measure_ words it, and in `HARD`, and
+`holdProductRuns`, which the composite axis calls on each scaffold as
+soon as it is written. It reads `compose.yaml` with `yaml`. A README
+line whose first word is `cd` is a run line, read up to its comment.
+It fails on an HTML entity anywhere in it, or on a `cd` to no
+directory of the product. Each `&&` step after the `cd`, its leading
+assignments dropped, goes to a table of runners keyed by its first
+word, and a word the table lacks fails the line. These readings are
+stricter than the step's list:
+
+- `go run` needs a `.go` file in the package, not just a directory,
+  and `go build` fails.
+- `./target/debug/*X` needs exactly one binary ending in `X`, since a
+  glob over two runs the first with the second as its argument. It
+  also needs a debug `cargo build` step before it on the line, since a
+  fresh checkout has no binary. A build with `--release`, `-r`, or a
+  `--profile` other than `dev` writes to another directory, so it does
+  not count.
+- `./gradlew` needs a task, and checks every task it is given. `-pl`
+  checks every module of a comma list.
+- The `cd` names one directory, relative (not `/…` or `~…`), inside
+  the root and not the root itself, and a step follows it. A compose
+  build context must be relative too.
+- A run line is plain. A control operator but `&&` (`;`, `|`, `||`, a
+  lone `&`) fails it, since the steps it chains would go unread. So do
+  a substitution (a backtick, `$(`), a redirection (`<`, `>`), a quote
+  and a backslash.
+- Where `compose.yaml` exists, the README has a run line, and one
+  starts in each context the compose file builds.
+- A compose service with no body (`db:`) fails, rather than throwing.
+  A long-form volume's `./` source is checked as a short-form one is.
+
+A Cargo binary is a `[[bin]]`'s name, or the package's where none is
+declared, so `cargo run` holds on one binary, declared or not. Only
+declared targets count: no `src/main.rs` or `src/bin/*.rs` is
+discovered, and a `[lib]`-only package counts its name as a binary.
+
+**What it reads:**
+
+- **Today's six products**, on the composite axis: 11 tests pass,
+  where there were 10 (one per invariant held). The golden's 1,656
+  verdicts and `composite.known.json`'s `{}` do not move. The six
+  monorepo roots hold I13, and the six polyrepo roots hold trivially.
+  The axis was run again once the readings added in review were in,
+  with the same result. It now throws if a monorepo root has no
+  `compose.yaml` or a polyrepo root has one, so I13 cannot hold a
+  monorepo root by default. The scratch probes below ran before the
+  review's readings.
+- **Every product dial cell**, the 40 that `paths-new` records,
+  walked with `walkDials` in a scratch probe: 20 have a
+  `compose.yaml`, and none is red.
+- **The 12 pairings**, registered over today's glue in a scratch
+  registry: exactly their 12 monorepo cells are red, each on two
+  clauses, no `backend/Dockerfile` and a hint of _see its README_.
+  Their 12 polyrepo cells hold, and so do the six shipped products
+  beside them.
+- **Under T.3c's glue**, the glue probe's 10 kept scaffolds of three
+  pairings all hold: `micronaut-cli-rest-kotlin` on Gradle and on
+  Maven, `rust-cli-http`, and `ts-cli-http` on npm and on pnpm, each
+  beside both frontend package managers. Their hints include
+  `-pl application/rest/executable` and
+  `cargo build && ./target/debug/*-http`.
+
+**The proof**, on copies of real scaffolds, each changed once: 18 of
+18 go red.
+
+- `fullstack`: a removed `backend/Dockerfile`; a removed
+  bind-mounted `frontend/nginx.conf`; the task qualified as
+  `:application:api:quarkusDev`; the frontend's `dev` script renamed;
+  _see its README_; `make run`.
+- `fullstack-rust`: a second `[[bin]]` under `cargo run`;
+  `cargo build &amp;&amp; cargo run`.
+- `fullstack-ts`'s `dev:rest` renamed; `fullstack-go`'s
+  `go run ./cmd/api`.
+- The glue probe's `rust-cli-http` with `cargo run` over its two
+  binaries, with `&amp;&amp;`, with _see its README_, with no
+  `backend/Dockerfile` and with no `nginx.conf`; its
+  `micronaut-cli-rest-kotlin` with `:application:api:run` on Gradle
+  and `-pl application/api` on Maven; its `ts-cli-http` with
+  `dev:rest` renamed.
+
+Three controls hold: `:application:rest:executable:quarkusDev`, the
+project that exists; the two binaries under
+`cargo build && ./target/debug/*-http`; and `cargo build && cargo run`
+unescaped.
+
+**Kept in `verify`:** `product-runs.test.ts`, beside the axes, holds
+the same clauses on product roots built by hand, 59 cases in 289 to
+1,640 ms at a load of 6 to 9.
+
+- Eight roots hold. Seven are one per runner shape: Gradle, a
+  qualified Gradle task, Maven with `-pl` behind an assignment, Go
+  behind one, `cargo run` on one binary,
+  `cargo build && ./target/debug/*-http` on two, and pnpm. The eighth
+  runs one of the two binaries by its exact name. A polyrepo root with no `compose.yaml` holds too.
+- Thirty-nine changes fail. The step's seven. A long-form `build`
+  naming a `Dockerfile` its context lacks, an absolute build context,
+  and a long-form bind mount whose source is missing. A `cd` to a
+  directory the product lacks, to a file, to the root itself, out of
+  it, to an absolute path and to a home path; a bare `cd backend`;
+  `cd a b`. A compose-built service no run line starts
+  in; a README with no run line, and none at all; a service with no
+  body. `./gradlew` with no task, and a second task whose project is
+  missing. A Maven module with no POM, and a `-pl` list with one
+  missing. A Go package the service lacks, one with no `.go` file, and
+  `go build`. `cargo build` with no `Cargo.toml`, a glob matching two
+  binaries, a glob and an exact name no `[[bin]]` declares, a built
+  binary run with no `cargo build` before it, and one after a build
+  with `--release`, `-r`, `--profile release` and
+  `--profile=release`. `make run`.
+- Eleven characters no plain run line holds fail, one case each: `;`,
+  `|`, `||`, a lone `&`, a backtick, `$(`, `>`, `<`, a single quote,
+  an unterminated double quote, a trailing backslash.
+- Each case fails on one clause alone. A `cd` case adds a third run
+  line, so the two the compose file needs stay. An entity is read out
+  before the operator check, so `&amp;&amp;` fails on the entity
+  clause only.
+- Forty-one clauses were each weakened in `holdProductRuns` in turn,
+  then put back: every clause the step lists, each stricter reading
+  above, each group of plain-line characters, each release flag, both
+  sides of the binary's name check (the glob and the exact name), the
+  `Dockerfile`, the Maven POM and the dropped assignments. Each turned
+  red the cases written for it, and no other. Where a weakening
+  over-accepts, those are holding roots: the two behind an assignment,
+  and the two Cargo roots that run a binary of two.
+
+**Cost:** `holdProductRuns` took 1.8 to 7.3 ms on five monorepo
+roots, 16.1 ms on the first, which loads the parser _(inference)_, and
+0.1 ms on a polyrepo one.
+The composite axis took 21.7 and 22.5 s with it and 17.2 and 25.0 s
+without, at a load of 10 to 13: inside the noise. Greenfield,
+brownfield and the sweep's machinery pass unchanged beside it. Growth,
+which this step does not touch, overran its 180 s sweep when all four
+axes ran at once on a box at a load of 10 to 13, and passed alone in
+164.3 s at a load of 15 to 20.
+
+**Docs** as the step names them, and `vitest.stryker.config.ts`'s
+note and the mutation-testing paragraph of `docs/development.md` that
+mirrors it, since the grid directory they leave out now holds a file
+that is no axis. No CHANGELOG entry.
+
+**What it adds to `CI=true pnpm test`:** `product-runs.test.ts`, 59
+cases in about 0.6 s, and I13 on the composite axis's monorepo roots,
+within its run (21.3 s). The run (414.5 s, 210 files, 3,612 tests)
+passed whole, the growth axis in 143.5 s of its 180;
+`composite.known.json` stays `{}` and no golden moved.
 
 #### T.3b — `Ctx.services` and `ServiceProvision.serves`, with no reader yet (M)
 

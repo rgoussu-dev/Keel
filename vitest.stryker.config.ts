@@ -31,7 +31,10 @@ import base from './vitest.config';
  *     the grid could kill none; and under `ignoreStatic` a mutant
  *     only the grid reaches would be scored Ignored rather than
  *     NoCoverage, hiding the very holes the score exists to show.
- *     Its verdicts are pinned by its own golden in `verify`.
+ *     Its verdicts are pinned by its own golden in `verify`. The one
+ *     file there that is no axis, `product-runs.test.ts`, holds a
+ *     helper of the grid's own (I13) on trees built by hand and asserts
+ *     nothing of `src/`, so leaving it out costs the score nothing.
  *   - `tests/domain/core/shared-files.golden.test.ts`, for the same
  *     reason: it runs every install in a `beforeAll`, and its tests
  *     only compare the hashes recorded there. It holds those hashes

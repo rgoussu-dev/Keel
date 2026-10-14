@@ -2,8 +2,9 @@
  * The composition grid: every cell of keel's composition surface,
  * dispatched through the real mediator, and the ratchet that holds
  * epic Q's invariants over them (`docs/roadmap.md` → "The measure:
- * the composition grid"), epic R's I10 ("The measure", under R), and
- * epic S's I11 and I12 ("The measure", under S).
+ * the composition grid"), epic R's I10 ("The measure", under R),
+ * epic S's I11 and I12 ("The measure", under S), and epic T's I13
+ * ("The measure", under T).
  *
  * **Scenario.** Cells are derived, never listed: stacks and verticals
  * from `keel.catalog`, the extras menu from `keel.dials`, the
@@ -15,9 +16,11 @@
  * seeded-user-file axis before `keel add` ({@link SEEDED_BEFORE_ADD}),
  * because what a user keeps in a project is not something a registry
  * can know — before `keel new` it is whatever the scaffold would write
- * ({@link seededBeforeNew}) — and the identity samples I9
+ * ({@link seededBeforeNew}) — the identity samples I9
  * answers with ({@link answerBodies}), because a free-form answer's
- * shape is not something a question declares.
+ * shape is not something a question declares, and the runners a
+ * product's run hint may use ({@link RUNNERS}), because what Gradle or
+ * Cargo needs in a directory is not something keel declares.
  *
  * **Factory.** {@link installMediator} over the real templates and
  * filesystem, with a {@link FakeProcessRunner} and a deferred-action
@@ -27,8 +30,9 @@
  * ({@link Grid.queued}).
  *
  * **Port.** `Mediator.dispatch`, and nothing else. The oracle is
- * always the engine's own answer — a preview, or an install — never a
- * re-derivation over tags. A test that re-derived the gate from
+ * the engine's own answer — a preview, or an install — never a
+ * re-derivation over tags. I13 alone reads the files a scaffold wrote
+ * rather than a verdict ({@link holdProductRuns}). A test that re-derived the gate from
  * `assemblyRefusal` is how an offered extra that throws got past the
  * test claiming the menu and the gate agree.
  *
@@ -55,6 +59,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import fs from 'fs-extra';
+import { parse as parseYaml } from 'yaml';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import type { Action, ResultOf } from '../../src/domain/kernel/action.js';
 import type { Mediator } from '../../src/domain/kernel/mediator.js';
@@ -101,6 +106,7 @@ export const INVARIANTS = {
   I10: 'keel new X, and on a modulith keel new X with a keel add module history, then keel add entrypoint e leaves the tree, manifest and queued actions (less the repository setup) that keel new of the twin, given the same history, leaves on the same dials — or is refused as growth reads it',
   I11: 'a project re-rendered whole — one keel add --reapply naming every recorded vertical keel add can name, as a dry run — comes back Ok, resolves an adapter of every vertical it names, and stages nothing; and each of those re-rendered alone, by keel add v --reapply or by --refresh v beside an add, comes back Ok and resolves an adapter of it — by --reapply, staging nothing',
   I12: 'arriving later equals one run: keel new X then keel add y (with the refresh its preview proposes) leaves every file of keel new X --with y, its manifest byte for byte; and keel new X --no-agent-harness, with or without --with y, then keel add agent-harness leaves those of keel new X, with or without --with y',
+  I13: "a monorepo product runs as its root says: every service the root's compose.yaml builds finds its Dockerfile under its context, every file it mounts from the root is there, and each development command the root README.md gives names what its service holds — a Gradle project, a Maven module, a Go package, an npm script, a Cargo manifest, a single Cargo binary",
 } as const;
 
 /** One of {@link INVARIANTS}. */
@@ -126,7 +132,10 @@ export type Invariant = keyof typeof INVARIANTS;
  * alone, growth's twins, and the whole menus where the dev environment
  * is an extra.
  * I12 landed hard with S.8, when every caller came to record what it
- * adds where one run records it.
+ * adds where one run records it. I13 landed hard with T.3a, green on
+ * every product keel shipped then, so a product registered before its
+ * glue can build and run it fails the grid rather than joining a known
+ * file.
  */
 export const HARD: readonly Invariant[] = [
   'I1',
@@ -140,6 +149,7 @@ export const HARD: readonly Invariant[] = [
   'I10',
   'I11',
   'I12',
+  'I13',
 ];
 
 /**
@@ -892,6 +902,283 @@ export async function holdRerenders(
     }
   }
   await holdFixedPoint(grid, `fixed:${scope}`, recorded, cwd);
+}
+
+/**
+ * Holds the product root in `root`, scaffolded, to I13 as the cell
+ * `cell`: a monorepo product runs as its root says.
+ *
+ * - Every service its `compose.yaml` builds — `build: <context>`, or
+ *   `{ context, dockerfile }` — finds that `Dockerfile` (so named where
+ *   unnamed) under its context, a relative one. A service with no body
+ *   fails.
+ * - Every file a service mounts from the root, a volume whose source,
+ *   short-form or long, starts `./`, is there.
+ * - Its `README.md` has a `cd <service> && <command>` line, and one
+ *   for each context the compose file builds.
+ * - Every such line names a directory of the product, relative (not
+ *   `/…` or `~…`), inside the root and not the root itself, and each
+ *   step of the command, split on `&&` with any leading `VAR=value`
+ *   dropped, names what its runner needs there ({@link RUNNERS}). A
+ *   `./target/debug/…` step needs a debug `cargo build` step before it
+ *   (no `--release`, `-r`, or `--profile` but `dev`). A runner the
+ *   table does not know fails the line. So does an HTML entity
+ *   anywhere in it, since what a reader pastes into a shell is then
+ *   not what the glue meant, and any of {@link OPERATOR}'s characters,
+ *   since a run line in a README is plain.
+ *
+ * A root with no `compose.yaml`, a polyrepo product's, builds nothing
+ * and holds trivially. It records no verdict, so no golden moves. What
+ * it sees that no verdict does: a `compose.yaml` that builds a
+ * directory the glue wrote no image for composes, previews and installs
+ * Ok, and only `docker compose up --build` fails on it.
+ *
+ * @returns whether the root has a `compose.yaml` to hold, so a caller
+ *   can tell a monorepo root held from one that held trivially.
+ */
+export async function holdProductRuns(grid: Grid, cell: string, root: string): Promise<boolean> {
+  const composeFile = path.join(root, 'compose.yaml');
+  if (!(await fs.pathExists(composeFile))) return false;
+  const compose = (parseYaml(await fs.readFile(composeFile, 'utf8')) ?? {}) as Compose;
+  const held: boolean[] = [];
+  const contexts: string[] = [];
+  for (const service of Object.values(compose.services ?? {})) {
+    if (service === null) {
+      held.push(false);
+      continue;
+    }
+    if (service.build !== undefined) {
+      held.push(await builds(root, service.build));
+      contexts.push(insideOf(root, contextOf(service.build)));
+    }
+    for (const volume of service.volumes ?? []) held.push(await mounts(root, volume));
+  }
+  const readme = path.join(root, 'README.md');
+  const lines = (await fs.pathExists(readme))
+    ? (await fs.readFile(readme, 'utf8')).split('\n')
+    : [];
+  const runLines = lines.flatMap((line) => RUN_LINE.exec(line)?.[1] ?? []);
+  held.push(runLines.length > 0);
+  const served = new Set(runLines.map((run) => insideOf(root, wordsOf(run)[1] ?? '')));
+  for (const context of contexts) held.push(served.has(context));
+  for (const run of runLines) held.push(await runsAt(root, run));
+  if (held.includes(false)) grid.violate('I13', cell);
+  return true;
+}
+
+/** A root `compose.yaml`, as far as {@link holdProductRuns} reads one. */
+interface Compose {
+  readonly services?: Readonly<
+    Record<
+      string,
+      {
+        readonly build?: ComposeBuild;
+        readonly volumes?: readonly (string | { readonly source?: string })[];
+      } | null
+    >
+  >;
+}
+
+/** A compose service's `build`, in its short form or its long one. */
+type ComposeBuild = string | { readonly context?: string; readonly dockerfile?: string };
+
+/** A README line that changes into a directory and runs something there, less its comment. */
+const RUN_LINE = /^\s*(cd\s.*?)(?:\s+#.*)?$/;
+
+/** A named or numeric character reference, as `<%=` escapes `&` into one. */
+const ENTITY = /&(?:[a-z][a-z0-9]*|#\d+|#x[\da-f]+);/i;
+
+/** Every {@link ENTITY} in a line. */
+const ENTITIES = new RegExp(ENTITY.source, 'gi');
+
+/**
+ * What a plain run line never holds: a control operator other than
+ * `&&` (`;`, `|`, `||`, a lone `&`), whose steps would go unread; a
+ * substitution (a backtick, `$(`); a redirection (`<`, `>`); a quote;
+ * or a backslash.
+ */
+const OPERATOR = /[;|`<>'"\\]|\$\(|(?<!&)&(?!&)/;
+
+/** A shell variable assignment, as a run hint prefixes its runner with one. */
+const ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/;
+
+function contextOf(build: ComposeBuild): string {
+  return (typeof build === 'string' ? build : build.context) ?? '.';
+}
+
+async function builds(root: string, build: ComposeBuild): Promise<boolean> {
+  if (!isRelative(contextOf(build))) return false;
+  const dockerfile = (typeof build === 'string' ? undefined : build.dockerfile) ?? 'Dockerfile';
+  return fs.pathExists(path.join(root, contextOf(build), dockerfile));
+}
+
+function isRelative(dir: string): boolean {
+  return !path.isAbsolute(dir) && !dir.startsWith('~');
+}
+
+function insideOf(root: string, dir: string): string {
+  return path.relative(root, path.join(root, dir));
+}
+
+async function mounts(
+  root: string,
+  volume: string | { readonly source?: string },
+): Promise<boolean> {
+  const source = typeof volume === 'string' ? volume.split(':')[0] : volume.source;
+  // A named volume, or a path that is not the product's: nothing of the root's to find.
+  if (source === undefined || !source.startsWith('./')) return true;
+  return fs.pathExists(path.join(root, source));
+}
+
+/**
+ * Whether the run line `line` (`cd <dir> && <step> && …`) changes into a
+ * directory of the product at `root` and runs, in it, only steps whose
+ * runner finds what it needs there.
+ */
+async function runsAt(root: string, line: string): Promise<boolean> {
+  if (ENTITY.test(line)) return false;
+  // Read less its entities, so an entity fails the line on the clause above alone.
+  if (OPERATOR.test(line.replace(ENTITIES, ''))) return false;
+  const [into = [], ...steps] = line.split('&&').map(wordsOf);
+  const [verb, dir, ...rest] = into;
+  if (verb !== 'cd' || dir === undefined || rest.length > 0 || steps.length === 0) return false;
+  if (!isRelative(dir)) return false;
+  const service = path.join(root, dir);
+  const inside = insideOf(root, dir);
+  if (inside === '' || inside.startsWith('..') || !(await isDirectory(service))) return false;
+  let built = false;
+  for (const [runner = '', ...args] of steps) {
+    if (DEBUG_BINARY.test(runner) && !built) return false;
+    if (!(await runs(service, runner, args))) return false;
+    built ||= runner === 'cargo' && isDebugBuild(args);
+  }
+  return true;
+}
+
+/** Whether `cargo <args>` builds into `target/debug`: a build on the `dev` profile. */
+function isDebugBuild(args: readonly string[]): boolean {
+  if (args[0] !== 'build' || args.includes('--release') || args.includes('-r')) return false;
+  const at = args.indexOf('--profile');
+  const named = args.find((arg) => arg.startsWith('--profile='))?.slice('--profile='.length);
+  const profile = at < 0 ? named : args[at + 1];
+  return profile === undefined || profile === 'dev';
+}
+
+/** A step's words, its leading `VAR=value` assignments dropped. */
+function wordsOf(step: string): readonly string[] {
+  const words = step.trim().split(/\s+/).filter(Boolean);
+  const first = words.findIndex((word) => !ASSIGNMENT.test(word));
+  return first < 0 ? [] : words.slice(first);
+}
+
+/**
+ * What each runner a product's run hint uses needs in the service it
+ * runs in, by the step's first word. A runner this does not list — a
+ * pointer to a README, say — runs nothing, so a family whose hint uses
+ * a new one teaches it here, or I13 fails its product.
+ */
+const RUNNERS: ReadonlyMap<string, (dir: string, args: readonly string[]) => Promise<boolean>> =
+  new Map([
+    ['./gradlew', gradleRuns],
+    ['./mvnw', mavenRuns],
+    ['go', goRuns],
+    ['npm', scriptRuns],
+    ['pnpm', scriptRuns],
+    ['cargo', cargoRuns],
+  ]);
+
+/** The path of a binary `cargo build` leaves, by its name or, globbed, the end of it. */
+const DEBUG_BINARY = /^\.\/target\/debug\/(\*?)([^*/]+)$/;
+
+async function runs(dir: string, runner: string, args: readonly string[]): Promise<boolean> {
+  const binary = DEBUG_BINARY.exec(runner);
+  if (binary !== null) return builtBinary(dir, binary[1] === '*', binary[2] ?? '');
+  return (await RUNNERS.get(runner)?.(dir, args)) ?? false;
+}
+
+/** `./gradlew <task>…`: each task's project (`:a:b:task` → `a/b`) has a build file. */
+async function gradleRuns(dir: string, args: readonly string[]): Promise<boolean> {
+  const tasks = args.filter((arg) => !arg.startsWith('-'));
+  for (const task of tasks) {
+    const project = path.join(dir, ...task.split(':').slice(0, -1));
+    const kotlin = await fs.pathExists(path.join(project, 'build.gradle.kts'));
+    if (!kotlin && !(await fs.pathExists(path.join(project, 'build.gradle')))) return false;
+  }
+  return tasks.length > 0;
+}
+
+/** `./mvnw … -pl <module>[,…] <goal>`: each module it names, or the project, has a POM. */
+async function mavenRuns(dir: string, args: readonly string[]): Promise<boolean> {
+  const at = args.indexOf('-pl');
+  const modules = at < 0 ? ['.'] : (args[at + 1] ?? '').split(',');
+  for (const name of modules) {
+    if (name === '' || !(await fs.pathExists(path.join(dir, name, 'pom.xml')))) return false;
+  }
+  return true;
+}
+
+/** `go run <package>`: the package, a directory holding Go source. */
+async function goRuns(dir: string, args: readonly string[]): Promise<boolean> {
+  const [verb, pkg] = args;
+  if (verb !== 'run' || pkg === undefined) return false;
+  const files = await fs.readdir(path.join(dir, pkg)).catch((): string[] => []);
+  return files.some((file) => file.endsWith('.go'));
+}
+
+/** `npm run <script>`, or pnpm's: the service's `package.json` has the script. */
+async function scriptRuns(dir: string, args: readonly string[]): Promise<boolean> {
+  const [verb, script] = args;
+  const manifest = path.join(dir, 'package.json');
+  if (verb !== 'run' || script === undefined || !(await fs.pathExists(manifest))) return false;
+  const { scripts = {} } = (await fs.readJson(manifest)) as {
+    readonly scripts?: Readonly<Record<string, string>>;
+  };
+  return Object.hasOwn(scripts, script);
+}
+
+/**
+ * `cargo build`: a Cargo manifest. `cargo run`: one declaring a single
+ * binary, since with two it cannot tell which to run.
+ */
+async function cargoRuns(dir: string, args: readonly string[]): Promise<boolean> {
+  const binaries = await cargoBinaries(dir);
+  if (binaries === null) return false;
+  return args[0] === 'build' || (args[0] === 'run' && binaries.length === 1);
+}
+
+/** `./target/debug/<name>`, or `*<end>`: exactly one binary the manifest declares, so named. */
+async function builtBinary(dir: string, glob: boolean, name: string): Promise<boolean> {
+  const binaries = (await cargoBinaries(dir)) ?? [];
+  const named = binaries.filter((binary) => (glob ? binary.endsWith(name) : binary === name));
+  return named.length === 1;
+}
+
+/**
+ * The binaries the Cargo manifest in `dir` declares — each `[[bin]]`'s
+ * name, or the package's where it declares none — or null where there
+ * is no manifest. Read line by line: keel's manifests name each on a
+ * line of its own. It reads declared targets only: it discovers no
+ * `src/main.rs` or `src/bin/*.rs`, and a `[lib]`-only package still
+ * counts its own name as a binary.
+ */
+async function cargoBinaries(dir: string): Promise<readonly string[] | null> {
+  const manifest = path.join(dir, 'Cargo.toml');
+  if (!(await fs.pathExists(manifest))) return null;
+  const bins: string[] = [];
+  let pkg: string | undefined;
+  let table = '';
+  for (const line of (await fs.readFile(manifest, 'utf8')).split('\n')) {
+    const header = /^\s*(\[\[?[^\]"]+\]\]?)\s*(?:#.*)?$/.exec(line)?.[1];
+    if (header !== undefined) table = header;
+    const name = /^\s*name\s*=\s*"([^"]*)"/.exec(line)?.[1];
+    if (name !== undefined && table === '[[bin]]') bins.push(name);
+    if (name !== undefined && table === '[package]') pkg = name;
+  }
+  return bins.length > 0 ? bins : pkg === undefined ? [] : [pkg];
+}
+
+async function isDirectory(dir: string): Promise<boolean> {
+  return (await fs.stat(dir).catch(() => null))?.isDirectory() === true;
 }
 
 /**

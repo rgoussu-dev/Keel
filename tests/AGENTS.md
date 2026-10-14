@@ -103,8 +103,8 @@ it guards:
 `domain/core/composition-grid/` sweeps keel's whole composition surface
 through the real mediator, over `support/composition-grid.ts`: the
 measure behind roadmap epic Q, whose invariants (I1–I9) it
-holds, epic R's I10, and epic S's I11 and I12. Four suites, split so
-vitest runs them in parallel:
+holds, epic R's I10, epic S's I11 and I12, and epic T's I13. Four
+suites, split so vitest runs them in parallel:
 
 - `greenfield` — every stack × every vertical as its one extra, held
   against the `keel.dials` menu (I2 offered ⇒ Ok, I3 accepted ⇒
@@ -186,7 +186,29 @@ vitest runs them in parallel:
   product root is not: its glue, `fullstack`, is a row no `keel add`
   names, and the root is roadmap epic U's. There the sweep only throws
   unless `nameableOf` leaves out the glue and nothing else, the one
-  place it drops a row.
+  place it drops a row. Each scaffold's root is held to I13 as soon as
+  it is written (`holdProductRuns`): every service its `compose.yaml`
+  builds finds its `Dockerfile` under its context, every file a
+  service mounts from the root, short-form or long, is there, a build
+  context or a `cd` that is absolute fails, a service with no body
+  fails, and its `README.md` has a `cd <service> && …` line for each
+  context the compose file builds. Each such line `cd`s into one
+  relative directory inside the root, not the root itself, and each
+  step after it, split on `&&` with any leading `VAR=value` dropped,
+  names what its runner needs there — a Gradle project, a Maven
+  module, a Go package, an npm script, a Cargo manifest, a single
+  Cargo binary, built by a debug `cargo build` earlier on the line. A runner
+  it does not know, an HTML entity, or a character no plain run line
+  holds fails the line: `;`, `|`, `&` but in `&&`, a backtick, `$(`,
+  `<`, `>`, a quote, a backslash. A polyrepo root has no
+  `compose.yaml`, and holds trivially; the axis throws if a monorepo
+  root has none, or a polyrepo one has one. It reads files, not a verdict,
+  so the golden gains no key. The axis scaffolds default build
+  systems, all Gradle on the JVM, so no cell reaches the Maven clause:
+  `product-runs.test.ts`, beside the axes, holds every clause both
+  ways on product roots built by hand, 59 cases in about a second. Each failing case fails on one clause alone, so weakening
+  that clause alone turns it red; a new clause gets a case that does
+  the same.
 - `growth` — every single-entrypoint backend preset the stack finder
   lists, on every dial setting `keel.dials` offers it (build system,
   module layout, the peer context, each again with the agent harness
@@ -263,10 +285,11 @@ the record can only shrink. Beside each suite:
   the day it landed too, with S.1b, on the projects whose recorded
   composition was a fixed point already — widened hard by S.7 to each
   vertical re-rendered alone, growth's twins and the whole menus where
-  the dev environment is an extra — and I12 hard from the day it
-  landed, with S.8. Every known file is empty now but brownfield's I5
-  key; growth's holds only hard invariants, and is `{}` because
-  `sweepGrid` reads each axis's known file whatever it holds.
+  the dev environment is an extra — I12 hard from the day it landed,
+  with S.8, and I13 hard from the day it landed, with T.3a. Every
+  known file is empty now but brownfield's I5 key; growth's holds only
+  hard invariants, and is `{}` because `sweepGrid` reads each axis's
+  known file whatever it holds.
 - brownfield's I5 reads `greenfield.golden.json`, so when a change moves
   both, regenerate greenfield first. Where either side refuses, it
   previews the greenfield twin again (`Grid.twin`, which records
