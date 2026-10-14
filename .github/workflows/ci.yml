@@ -448,7 +448,7 @@ jobs:
               tests/e2e/add-module-go.test.ts
               tests/e2e/fullstack-go.test.ts
               tests/e2e/fullstack-go-cli.test.ts
-          # Eight files, one shard — and unlike every earlier revision
+          # Nine files, one shard — and unlike every earlier revision
           # of this comment, that is now a choice with a cost rather
           # than a free one.
           #
@@ -465,8 +465,8 @@ jobs:
           # and run alone it would be faster, so a split lands this
           # job well short of what "max of the two halves" suggests.
           # Kept as one shard until someone measures the uncontended
-          # cost instead of estimating it; that is the one thing the
-          # decision still turns on.
+          # cost instead of estimating it, and, since roadmap T.4f, the
+          # shard's throughput beside it.
           #
           # `tools:` stays `cargo`, and the persistence cell is why
           # that is worth stating: `tools:` is what a shard installs
@@ -490,12 +490,22 @@ jobs:
           # compile in a `CARGO_HOME` of its own. It runs beside the
           # persistence file rather than after it (inference); the
           # shard's time on a PR's run is what says so.
+          #
+          # `fullstack-rust-cli` (roadmap T.4f) is `fullstack-rust` with
+          # the CLI beside its server, another cold axum compile. With
+          # it and the combo cell the shard carries more cargo work than
+          # its workers absorb in parallel, so its wall is no longer the
+          # persistence file's alone: the research's packing model puts
+          # it near 203–209 s, throughput-bound, and still well inside
+          # the e2e phase's critical path (inference, until a PR's run
+          # measures it).
           - id: rust
             tools: cargo
             files: >-
               tests/e2e/walking-skeleton-rust.test.ts
               tests/e2e/combo-basic-rust-cli-http.test.ts
               tests/e2e/fullstack-rust.test.ts
+              tests/e2e/fullstack-rust-cli.test.ts
               tests/e2e/modulith-rust-cli.test.ts
               tests/e2e/modulith-rust-http.test.ts
               tests/e2e/modulith-rust-peer-context.test.ts

@@ -51,7 +51,6 @@ describe('keel new --list', () => {
       'fullstack-micronaut-cli',
       'fullstack-micronaut-cli-kotlin',
       'fullstack-micronaut-kotlin',
-      'fullstack-rust-cli',
       'fullstack-spring',
       'fullstack-spring-cli',
       'fullstack-spring-cli-kotlin',

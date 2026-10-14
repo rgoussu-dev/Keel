@@ -151,7 +151,7 @@ describe('the support tier premises', () => {
     }
   }, SWEEP_TIMEOUT);
 
-  it('reads the shipped tier as measured: 83 cells first-class each way, 4 products', () => {
+  it('reads the shipped tier as measured: 83 cells first-class each way, 5 products', () => {
     // The figures T.2b recorded, the products' as T.3f's twelve took
     // them from 40 cells to 128; a rule that stopped reading a dial
     // (the peer context, the stack) would move them before any page did.
@@ -191,8 +191,8 @@ describe('the support tier premises', () => {
       'on best-effort': 67,
       'on suite': 83,
       'product best-effort 1': 32,
-      'product best-effort 2': 92,
-      'product first-class 0': 4,
+      'product best-effort 2': 91,
+      'product first-class 0': 5,
     });
   });
 

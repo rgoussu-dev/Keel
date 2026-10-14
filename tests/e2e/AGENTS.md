@@ -80,9 +80,12 @@ modulith suite is `-modulith`, `-persistence` and `-maven`.
   `modulith-rust-{cli,http}.test.ts` plus `modulith-rust-peer-context`,
   which is not a cell — it is the Rust counterpart of
   `modulith-baseline`, the one suite proving the peer-context adapter
-  family is additive. All of it stays in the single `rust` shard:
-  measured on the shipped shape that shard is already floor-bound by its
-  slowest file, so a split would buy attribution and no wall clock.
+  family is additive. All of it stays in the single `rust` shard, by
+  choice: with the combo cell and `fullstack-rust-cli` (roadmap T.4c
+  and T.4f) its nine files are throughput-bound rather than floored by
+  one, near 203–209 s and still inside the e2e phase's critical path
+  _(inference, until a PR's run measures it)_. `ci.yml`'s comment
+  weighs what a split would cost.
 - **Go, the TypeScript stacks and `web-components` follow the same
   shape, and their grids are small.** Go is 2 stacks × 1 build system
   (`modulith-go-{cli,http}`); each TypeScript stack is 1 stack × 2

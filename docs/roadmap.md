@@ -14455,7 +14455,7 @@ time waits for one. The suite took 57.3 s on a cold shared Go home and
 skips there and four tests re-read their figures. The full run, on
 T.4d: 3,703 tests in 408.9 s, green.
 
-#### T.4f — `fullstack-rust-cli` built (S)
+#### T.4f — `fullstack-rust-cli` built (S) ✅
 
 `fullstack-rust-cli.test.ts`, in `rust`, as T.4e. It answers
 `projectName backend`, so its binaries are named for the service.
@@ -14465,6 +14465,46 @@ path _(inference)_.
 
 - **Same commit:** as T.4e, on `rust` (8 files become 9, and its floor
   is no longer the persistence suite alone).
+
+**Landed as one suite and its row**, in one commit.
+`fullstack-rust-cli.test.ts` (82 lines) is `fullstack-rust.test.ts`
+on the Rust CLI + HTTP backend: it scaffolds the product on its
+default dials through `scaffoldProduct`, faking the backend's
+`cargo check` and the frontend's install and answering
+`projectName backend`, checks that neither ran (no `node_modules`, no
+`target`) and the compose build contexts, runs `cargo test` and
+`cargo build`, greets through the `backend` binary with
+`driveGreetCli`, and boots `backend-http` to drive
+`driveGatewayContract`. No helper changed.
+
+- **Its row** in `support-tier.json`, `products`, beside
+  `fullstack-rust`'s: product settings first-class go from 4 to 5 of
+  128, and the presets best-effort at their default from 18 to 17.
+- **The tests the row moves:** `new-list`'s and `catalog`'s marked
+  lists drop `fullstack-rust-cli`, `catalog` counts 29 first-class,
+  and `support-tier.premises` re-reads its tally.
+- **`ci.yml`:** the file joins `rust`, whose comment counts nine
+  files, with a paragraph saying the shard's wall is no longer the
+  persistence file's alone, 203 to 209 s by the research's packing
+  model _(inference)_; `tests/e2e/AGENTS.md`'s Rust grid says the
+  same, where it said the shard was floored by its slowest file.
+- **`docs/stacks/fullstack.md`**, the CHANGELOG's twelve-products
+  entry and its unreleased tier entries name `fullstack-rust-cli`
+  first-class too: 5 of 128 product settings, 17 presets marked.
+- **Generated regions:** both `stack-matrix` copies drop
+  `fullstack-rust-cli`'s ◻; its monorepo npm row in `support-tiers`
+  reads first-class, and the `frontend=pnpm` row gains the backend's ✅
+  while staying ◻.
+- **CHANGELOG** _Changed_.
+
+**Measured locally**, not on CI: there is no PR, so the `rust` shard's
+time waits for one. The suite took 37.5 s alone from an empty Cargo
+home at a load near 1, 81.6 s beside `fullstack-rust` in one run, and
+44.0 s in this commit's run.
+
+**What it adds to `CI=true pnpm test`:** nothing it runs; the e2e file
+skips there and three tests re-read their figures. The full run, on
+T.4e: 3,703 tests in 449.6 s, green.
 
 #### T.4g — `fullstack-ts-cli` built (S)
 

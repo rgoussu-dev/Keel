@@ -718,6 +718,13 @@
       "builds": ["backend"]
     },
     {
+      "suite": "fullstack-rust-cli",
+      "stack": "fullstack-rust-cli",
+      "layout": "monorepo",
+      "buildSystem": "frontend=npm",
+      "builds": ["backend"]
+    },
+    {
       "suite": "fullstack",
       "stack": "fullstack",
       "layout": "monorepo",

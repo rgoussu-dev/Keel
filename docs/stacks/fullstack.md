@@ -30,8 +30,9 @@ A product is named by its backend: `fullstack` plus the backend's id,
 less `quarkus`, `rest` and `http`, which every product says already.
 The first six were the only ones until the product rule listed every
 single-service preset that serves HTTP. The composition grid holds the
-twelve after them to every invariant. `fullstack-go-cli` is
-first-class at its default setting, its suite building it; the others
+twelve after them to every invariant. `fullstack-go-cli` and
+`fullstack-rust-cli` are first-class at their default setting, a suite
+building each; the others
 are [best-effort](README.md#support-tiers) on every setting, no CI job
 building one.
 
