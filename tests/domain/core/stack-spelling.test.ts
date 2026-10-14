@@ -142,7 +142,7 @@ describe("a plugin's stacks", () => {
     const tsCli = shipped('ts-cli');
     const registry = withPlugin({
       ...tsCli,
-      id: 'ts-node-cli',
+      id: 'acme-ts-cli',
       tags: [...tsCli.tags, 'framework.ts'],
     });
     expect(stackSpelled(registry, 'cli-ts')).toEqual({ kind: 'unknown' });

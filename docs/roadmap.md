@@ -12516,7 +12516,7 @@ comes first in the report.
   CHANGELOG _Added_ entry, and the earlier nearest-id entry's examples,
   which now resolve. DT4 is recorded as taken.
 
-#### T.1e — A plugin cannot take a keel spelling (S)
+#### T.1e — A plugin cannot take a keel spelling (S) ✅
 
 After claiming every id, `registryOf` reads each pair of stacks. A
 stack whose id reads by its facets as another stack is refused,
@@ -12540,6 +12540,52 @@ wrong preset. The ids still resolve.
 - **Docs:** a row in `docs/plugins.md`'s refusal table, and a
   CHANGELOG _Changed_ entry: a plugin stack whose id reads as another
   stack is refused at load.
+
+**Landed as the refusal alone**, in one commit. Once every id is
+claimed, `registryOf` judges each plugin stack against keel's presets,
+then against keel's presets and each earlier plugin stack in turn,
+both ways: its id reading as the other, and the other's id reading as
+it, each with its own sentence naming both origins, under
+`keel.invalid-piece`. Every stack is placed over the whole registry,
+so a plugin composite is judged wherever its services sit, but each
+pair is read in its own words only — `stackReader` gains a
+`vocabulary` argument for it — which three review rounds turned up:
+read over every stack, a `framework.go` on the stack itself, a sibling
+or an earlier plugin made `go` name two facets and hid that a `cli-go`
+reads as keel's `go-cli`, so what registered hung on load order; read
+over the pair alone, a composite over two plugin services was never
+placed. keel's presets alone are not read: each id reads as itself and
+no other, which `stack-spelling.test.ts` holds. `validateStack` now
+refuses a stack whose `tags` are not a list of strings, naming the
+plugin, since the check reads them at load where an engine
+`TypeError` would otherwise end every command.
+
+- **Cost**, once per run: a registry with one plugin stack builds in
+  11 to 17 ms cold, its first build in a process, and 1.1 to 1.5 ms
+  warm against 0.4 to 0.6 ms for keel's alone (median of 100).
+- **`registry.test.ts`:** `quarkus-cli-http`, `java-quarkus-cli`,
+  `cli-go` on a `framework.go` and a bare `cli` are refused, word for
+  word; so is `cli-go` with the `framework.go` on a sibling, and on an
+  earlier plugin's stack; a second plugin's `cli-python` after the
+  first's `python-cli` is refused naming the first, and a bare `cli`
+  that the first's `python-cli` reads as, the other way; a plugin
+  composite `go` over its own two services, which keel's `go-http`
+  reads as, is refused in either order; `acme-cli` and `gin-http`
+  register, and `go-rest` still reads as `go-http` beside them; a
+  stack whose tags are missing, or hold a number, is refused naming
+  it.
+- **One fixture clashed:** T.1d's in-memory `ts-node-cli` in
+  `stack-spelling.test.ts` read as keel's `ts-cli` and is now
+  `acme-ts-cli`, keeping its point (`framework.ts` makes `ts` name two
+  facets). The plugin suites, which load fixtures from disk, pass
+  unchanged.
+- **Docs:** `docs/plugins.md`'s three rows, its "nothing is shadowed"
+  line and the paragraph on which ids register, the module header,
+  `Stack.id`, and a CHANGELOG _Changed_ entry. DT4's other half, the
+  refusal, is in place.
+- **What it adds to `CI=true pnpm test`:** 12 cases, `registry.test.ts`
+  going from 41 tests to 53 (145 ms). The run (361.9 s, 204 files,
+  3,478 tests) passed whole, the growth axis in 142.3 s of its 180.
 
 ### T.2 — The support tier
 

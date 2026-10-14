@@ -79,7 +79,8 @@ export interface Stack {
   /**
    * What `keel new --stack=<id>` takes: words of `a`–`z` and `0`–`9`
    * joined by single `-`s (`acme-web`). The registry refuses any other
-   * id, naming its origin.
+   * id, naming its origin — and a plugin's stack whose id and another
+   * stack's read as one another by their facets (`registry.ts`).
    */
   readonly id: string;
   readonly description: string;

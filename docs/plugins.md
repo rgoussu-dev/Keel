@@ -655,7 +655,9 @@ What this step does about it:
   entirely — for running keel over a repository you have not read.
 - **Nothing is shadowed by accident.** A plugin claiming an id keel
   already ships is refused, naming both claimants, rather than
-  silently replacing the shipped piece.
+  silently replacing the shipped piece — as is a plugin stack whose id
+  and another's read as one another by their facets, which would take
+  what users type for it.
 
 What it does **not** do: sandbox execution, prompt for permission,
 verify a signature, or restrict what a plugin's deferred actions may
@@ -670,31 +672,52 @@ build script committed to the repository, because that is what it is.
 Every failure names the plugin, never the engine. Before the module
 loads there is no name to quote, so those messages name the path.
 
-| What went wrong                               | What you see                                                                           |
-| --------------------------------------------- | -------------------------------------------------------------------------------------- |
-| The module throws at load                     | `keel plugin '<path>' failed to load: <the original error>`                            |
-| The directory has no entry module             | `keel plugin '<path>' has no entry module — expected keel-plugin.js …`                 |
-| No plugin exported                            | `keel plugin '<path>' exports no plugin — export it as 'default' …`                    |
-| A malformed `Conflict`                        | `plugin 'x' vertical 'y' declares a malformed conflict: …`                             |
-| A dimension none of its own adapters covers   | `plugin 'x' vertical 'y' declares dimension 'z', which none of its adapters covers`    |
-| An adapter promoting beyond its vertical      | `plugin 'x' vertical 'y' adapter 'y/a' promotes 't', which the vertical does not …`    |
-| A cycle of `reads`                            | `plugin 'x' vertical 'y' reads in a cycle: 'y' → 'z' → 'y' — …`                        |
-| A `placement` with no reason                  | `plugin 'x' vertical 'y' declares a placement with no 'because' — …`                   |
-| A question `shared` with anything else        | `plugin 'x' vertical 'y' adapter 'y/a' marks question 'q' shared 'w', which keel …`    |
-| A vertical id of `module` or `entrypoint`     | `plugin 'x' registers vertical 'module', a word 'keel add' reads as a command …`       |
-| A stack id other than lowercase words and `-` | `plugin 'x' registers stack 'Acme_web', whose id is not lowercase words joined by '-'` |
-| A stack id that is not a string               | `plugin 'x' registers a stack whose id is not a string (undefined)`                    |
-| An id keel already ships                      | `plugin 'x' registers vertical 'y', which is already registered by keel`               |
-| An id another plugin already claimed          | `plugin 'x' registers stack 'y', which is already registered by plugin 'z'`            |
+| What went wrong                               | What you see                                                                                                           |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| The module throws at load                     | `keel plugin '<path>' failed to load: <the original error>`                                                            |
+| The directory has no entry module             | `keel plugin '<path>' has no entry module — expected keel-plugin.js …`                                                 |
+| No plugin exported                            | `keel plugin '<path>' exports no plugin — export it as 'default' …`                                                    |
+| A malformed `Conflict`                        | `plugin 'x' vertical 'y' declares a malformed conflict: …`                                                             |
+| A dimension none of its own adapters covers   | `plugin 'x' vertical 'y' declares dimension 'z', which none of its adapters covers`                                    |
+| An adapter promoting beyond its vertical      | `plugin 'x' vertical 'y' adapter 'y/a' promotes 't', which the vertical does not …`                                    |
+| A cycle of `reads`                            | `plugin 'x' vertical 'y' reads in a cycle: 'y' → 'z' → 'y' — …`                                                        |
+| A `placement` with no reason                  | `plugin 'x' vertical 'y' declares a placement with no 'because' — …`                                                   |
+| A question `shared` with anything else        | `plugin 'x' vertical 'y' adapter 'y/a' marks question 'q' shared 'w', which keel …`                                    |
+| A vertical id of `module` or `entrypoint`     | `plugin 'x' registers vertical 'module', a word 'keel add' reads as a command …`                                       |
+| A stack id other than lowercase words and `-` | `plugin 'x' registers stack 'Acme_web', whose id is not lowercase words joined by '-'`                                 |
+| A stack id that is not a string               | `plugin 'x' registers a stack whose id is not a string (undefined)`                                                    |
+| An id keel already ships                      | `plugin 'x' registers vertical 'y', which is already registered by keel`                                               |
+| An id another plugin already claimed          | `plugin 'x' registers stack 'y', which is already registered by plugin 'z'`                                            |
+| A stack id that reads as another stack        | `plugin 'x' registers stack 'quarkus-cli-http', which reads by its facets as 'quarkus-cli-rest', registered by keel …` |
+| A stack another's id reads as                 | `plugin 'x' registers stack 'cli', which 'quarkus-cli', registered by keel reads as by its facets …`                   |
+| A stack whose tags are not a list of strings  | `plugin 'x' registers stack 'y', whose tags are not a list of strings`                                                 |
 
 A stack id is words of `a`–`z` and `0`–`9` joined by single `-`s
 (`acme-web`, `acme2-cli-http`). keel reads an id as its words —
 lowercased and broken at every character but `a`–`z` and `0`–`9`, as
 the nearest id an unknown `--stack` is answered with is read — so
 `Acme-Web`, `acme_web` and `acme.web` would be three ids that read as
-`acme-web`, and `AcmeWeb` one that reads as a single word. The rule leaves each id one
-spelling; and `+ / @ # , :` or a space would break the keys and hints
-keel builds from an id.
+`acme-web`, and `AcmeWeb` one that reads as a single word. The rule
+leaves each id one spelling; and `+ / @ # , :` or a space would break
+the keys and hints keel builds from an id.
+
+A stack id and another's must not read as one another by their
+facets. `keel new --stack=quarkus-cli-http` names `quarkus-cli-rest`,
+since its words — Quarkus, a CLI, an HTTP server — are that preset's,
+so a plugin stack registered as `quarkus-cli-http` or
+`java-quarkus-cli` would take what users type for one of keel's; and a
+bare `cli` on Quarkus's tags is what keel's `quarkus-cli` reads as, so
+that id's spellings would name two stacks. Each pair is judged alone,
+in the words of keel's presets and of the earlier stack only, so a tag
+that makes a keel word name two facets (a `framework.go`, on the stack
+itself, a sibling or another plugin's) cannot hide a clash: a `cli-go`
+is refused as keel's `go-cli` whatever is loaded beside it. A word no facet answers to
+(`acme-cli`), a language keel does not ship (`python-cli`) or a
+framework it does not (`gin-http`) registers, and its own spellings
+resolve: `cli-python` names `python-cli`. Once registered, a plugin tag
+whose last word is a facet word on another axis makes that word name
+two facets, so a spelling with it reads as no stack — refused, with the
+nearest id — and every id still resolves.
 
 `keel add module <name>` and `keel add entrypoint <cli|http>` are
 commands of their own, read off the first word, so a vertical of

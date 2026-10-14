@@ -658,6 +658,21 @@ new` the terminal adds the way past it (move it aside, or start in
   break the keys and hints keel builds from an id. Every stack keel
   ships already complies. `docs/plugins.md` lists both refusals.
 
+- **A plugin's stack cannot take a spelling of another.** A plugin stack
+  whose id and an earlier stack's read as one another by their facets is
+  refused when keel loads it, naming both: _plugin 'acme' registers
+  stack 'quarkus-cli-http', which reads by its facets as
+  'quarkus-cli-rest', registered by keel — a typed --stack must read one
+  way; rename it_, or, for a bare `cli` that keel's `quarkus-cli` reads
+  as, _which 'quarkus-cli', registered by keel reads as by its facets_.
+  `--stack` takes a preset's facets in any order, and an id is taken
+  before any spelling, so such a stack would quietly take what users
+  type for one of keel's, or leave a keel id's spellings naming two. An
+  id with a word no facet answers to (`acme-cli`), or a language or
+  framework keel does not ship, still registers. A plugin stack whose
+  `tags` are not a list of strings is refused too, naming it.
+  `docs/plugins.md` lists the refusals.
+
 - **A re-render that moves a vertical onto another adapter names the
   files the first one wrote, which keel leaves in place.** On
   `quarkus-cli-rest` and its Kotlin twin under Gradle, distribution

@@ -95,10 +95,15 @@ export function stackSpelled(registry: Registry, typed: string): StackSpelling {
  * names, by its facets alone — every stack it reads as, where the
  * drill-down places each, and none for a word no facet answers to. A
  * registered id is not looked up here; {@link stackSpelled} does that
- * first.
+ * first. Its words are those of `vocabulary`'s places — `stacks`'
+ * own, unless a caller judging a registration names whose words judge
+ * it (`registry.ts`).
  */
-export function stackReader(stacks: readonly Stack[]): (typed: string) => readonly WizardPath[] {
-  const spellings = spellingsOf(stacks);
+export function stackReader(
+  stacks: readonly Stack[],
+  vocabulary: readonly Stack[] = stacks,
+): (typed: string) => readonly WizardPath[] {
+  const spellings = spellingsOf(stacks, vocabulary);
   return (typed) => facetReading(spellings, typed);
 }
 
@@ -115,7 +120,7 @@ function facetReading(spellings: Spellings, typed: string): readonly WizardPath[
     .map((stack) => stack.path);
 }
 
-function spellingsOf(stacks: readonly Stack[]): Spellings {
+function spellingsOf(stacks: readonly Stack[], vocabulary: readonly Stack[]): Spellings {
   const paths = wizardPaths(stacks);
   const named = new Map<string, Set<string>>();
   const say = (word: string, facet: string): void => {
@@ -123,7 +128,7 @@ function spellingsOf(stacks: readonly Stack[]): Spellings {
     if (word === '') return;
     named.set(word, new Set([...(named.get(word) ?? []), facet]));
   };
-  for (const path of paths) {
+  for (const path of vocabulary === stacks ? paths : wizardPaths(vocabulary)) {
     for (const facet of facetsOf(path)) say(facet.slice(facet.indexOf(':') + 1), facet);
   }
   for (const entry of ENTRYPOINTS) say(entry.word, `entrypoint:${entry.id}`);

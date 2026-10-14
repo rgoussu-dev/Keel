@@ -14,17 +14,19 @@
  * ("conflict 'x': 'when' must name at least one tag") sends someone
  * to read keel's source for a rule keel did not write.
  *
- * **The checks are the ones that can be made without tags.** A
- * malformed {@link Conflict}, a dimension no adapter of its own
- * vertical ever covers, an adapter promoting what its vertical does
- * not declare, and a cycle of `reads` are all statically wrong — no
- * assembly makes them right — so they fail at registration, before a
- * user has answered a single question. The last is the one check
- * across pieces, so it runs once every source is in. Everything that
- * depends on the tag set in hand (does *this* assembly cover *that*
- * dimension, does it violate a rule) stays where it was, in the
- * resolver and in `compatibility.ts`: those answers are properties of
- * a run, not of a piece.
+ * **The checks are the ones that need no run's tag set.** A malformed
+ * {@link Conflict}, a dimension no adapter of its own vertical ever
+ * covers, an adapter promoting what its vertical does not declare, and
+ * a cycle of `reads` are all statically wrong — no assembly makes them
+ * right — so they fail at registration, before a user has answered a
+ * single question. The last is a check across pieces, so it runs once
+ * every source is in, as does the one check that reads where the
+ * drill-down places a stack: a plugin stack whose id and another's read
+ * as one another by their facets, which would make a typed `--stack`
+ * read two ways. Everything that depends on the tag set in hand (does
+ * *this* assembly cover *that* dimension, does it violate a rule) stays
+ * where it was, in the resolver and in `compatibility.ts`: those
+ * answers are properties of a run, not of a piece.
  */
 
 import { DomainError } from '../kernel/result.js';
@@ -32,6 +34,7 @@ import { ENGINE_CONTRIBUTOR_ID, type Conflict, type Vertical } from '../contract
 import type { Registry } from '../contract/ports/registry.js';
 import type { Stack } from '../contract/stack.js';
 import { validateConflict } from './compatibility.js';
+import { stackReader } from './stack-spelling.js';
 import { isAssemblable, STACKS } from './stacks.js';
 import { SHIPPED_VERTICALS } from './verticals/index.js';
 
@@ -125,6 +128,7 @@ export function registryOf(sources: readonly RegistrySource[]): Registry {
   }
 
   const stackList = [...stacks.values()];
+  refuseSpellingClashes(stackList, stackOrigins);
   const verticalList = [...verticals.values()];
   validateReads(knownVerticals(sources, verticalList, verticalOrigins));
   return {
@@ -133,6 +137,61 @@ export function registryOf(sources: readonly RegistrySource[]): Registry {
     stack: (id) => stacks.get(id) ?? null,
     vertical: (id) => verticals.get(id) ?? null,
   };
+}
+
+/**
+ * Refuses a plugin stack whose id and an earlier stack's read as one
+ * another by their facets — `quarkus-cli-http` beside keel's
+ * `quarkus-cli-rest`, or a bare `cli` that keel's `quarkus-cli` would
+ * read as — naming it, the other and both origins.
+ *
+ * A typed `--stack` that is not an id is read by its facet words
+ * (`./stack-spelling.ts`), and a registered id is taken first. So a
+ * stack registered under a spelling of another would quietly take what
+ * users type for that one, and a stack another's id reads as would make
+ * that id's spellings name two; refused, a typed id reads one way. The
+ * same rule as {@link claim}'s: never shadow by accident.
+ *
+ * Each pair is judged alone, in the words of keel's presets and of the
+ * earlier stack only: a word another plugin's tags — or the stack's
+ * own — make name two facets (a `framework.go`) cannot hide a clash, so
+ * what registers does not hang on load order. Every stack is placed
+ * over the whole registry, so a plugin composite is judged wherever its
+ * services sit. keel's presets alone are not read: each id
+ * reads as itself and no other, which `stack-spelling.test.ts` holds.
+ */
+function refuseSpellingClashes(
+  stacks: readonly Stack[],
+  origins: ReadonlyMap<string, string>,
+): void {
+  const keel = stacks.filter((stack) => origins.get(stack.id) === KEEL_ORIGIN);
+  const said = (id: string): string => `'${id}', registered by ${origins.get(id) ?? ''}`;
+  stacks.forEach((stack, at) => {
+    if (origins.get(stack.id) === KEEL_ORIGIN) return;
+    const plugins = stacks.slice(0, at).filter((other) => origins.get(other.id) !== KEEL_ORIGIN);
+    for (const judges of [keel, ...plugins.map((other) => [...keel, other])]) {
+      // Every stack is placed — a composite only once its services
+      // are in — but read in the pair's words alone.
+      const read = stackReader(stacks, judges);
+      const judged = new Set(judges.map((other) => other.id));
+      const as = read(stack.id).find((path) => judged.has(path.stackId));
+      if (as !== undefined) {
+        throw refuse(
+          origins.get(stack.id) ?? '',
+          `registers stack '${stack.id}', which reads by its facets as ${said(as.stackId)} — a typed --stack must read one way; rename it`,
+        );
+      }
+      const reader = judges.find((other) =>
+        read(other.id).some((path) => path.stackId === stack.id),
+      );
+      if (reader !== undefined) {
+        throw refuse(
+          origins.get(stack.id) ?? '',
+          `registers stack '${stack.id}', which ${said(reader.id)} reads as by its facets — a typed --stack must read one way; rename it`,
+        );
+      }
+    }
+  });
 }
 
 /** The registry over keel's own pieces and nothing else. */
@@ -179,6 +238,10 @@ function validateStack(origin: string, stack: Stack): void {
       origin,
       `registers stack '${stack.id}', whose id is not lowercase words joined by '-'`,
     );
+  }
+  const tags: unknown = stack.tags;
+  if (!Array.isArray(tags) || !tags.every((tag) => typeof tag === 'string')) {
+    throw refuse(origin, `registers stack '${stack.id}', whose tags are not a list of strings`);
   }
   validateConflicts(origin, `stack '${stack.id}'`, stack);
   for (const vertical of stack.verticals) validateVertical(origin, vertical);
