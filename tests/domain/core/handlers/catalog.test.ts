@@ -286,13 +286,33 @@ describe('keel.catalog — the stack finder', () => {
   it('puts a product’s framework choice under its backend’s language', async () => {
     const java = await language('fullstack', 'java@jvm');
     expect(java.frameworks.map((node) => node.id)).toEqual(['micronaut', 'quarkus', 'spring']);
-    expect(java.frameworks.flatMap((node) => node.combinations.map((c) => c.stack))).toEqual([
-      'fullstack-micronaut',
-      'fullstack',
-      'fullstack-spring',
+    expect(
+      java.frameworks.map((node) => node.combinations.map((combination) => combination.stack)),
+    ).toEqual([
+      ['fullstack-micronaut', 'fullstack-micronaut-cli'],
+      ['fullstack', 'fullstack-cli'],
+      ['fullstack-spring', 'fullstack-spring-cli'],
     ]);
-    // One combination each, so a product never asks for entrypoints.
-    for (const node of java.frameworks) expect(node.entrypointStep).toBeNull();
+    // Two combinations each, a backend with and without a CLI beside
+    // its HTTP server, so a JVM product asks for its entrypoints.
+    for (const node of java.frameworks) {
+      expect(node.entrypointStep?.kind).toBe('select');
+      expect(node.entrypointStep?.default).toBe('server-http,spa');
+      expect(node.entrypointStep?.choices.map((choice) => choice.label)).toEqual([
+        'HTTP server + Browser SPA',
+        'CLI + HTTP server + Browser SPA',
+      ]);
+    }
+  });
+
+  it('asks every product language for its entrypoints', async () => {
+    for (const id of (await shape('fullstack')).languages.map((node) => node.id)) {
+      for (const node of (await language('fullstack', id)).frameworks) {
+        expect(node.combinations, `${id} ${node.id}`).toHaveLength(2);
+        expect(node.entrypointStep?.kind).toBe('select');
+        expect(node.entrypointStep?.default).toBe('server-http,spa');
+      }
+    }
   });
 
   it('names the runtime a language targets, so a page never takes an id apart', async () => {
@@ -347,7 +367,7 @@ describe('keel.catalog — the tier of each leaf (T.2e)', () => {
     agentHarness: true,
   };
 
-  it('marks the ten presets best-effort at their default setting, as keel ships them', async () => {
+  it('marks the 22 presets best-effort at their default setting, as keel ships them', async () => {
     const shipped = await tiers(shippedSupport);
     expect(
       Object.entries(shipped)
@@ -356,9 +376,21 @@ describe('keel.catalog — the tier of each leaf (T.2e)', () => {
         .sort(),
     ).toEqual([
       'fullstack',
+      'fullstack-cli',
+      'fullstack-cli-kotlin',
+      'fullstack-go-cli',
+      'fullstack-kotlin',
       'fullstack-micronaut',
+      'fullstack-micronaut-cli',
+      'fullstack-micronaut-cli-kotlin',
+      'fullstack-micronaut-kotlin',
+      'fullstack-rust-cli',
       'fullstack-spring',
+      'fullstack-spring-cli',
+      'fullstack-spring-cli-kotlin',
+      'fullstack-spring-kotlin',
       'fullstack-ts',
+      'fullstack-ts-cli',
       'go-cli-http',
       'micronaut-cli-rest-kotlin',
       'quarkus-cli-rest-kotlin',

@@ -92,14 +92,15 @@ describe('the wizard’s steps', () => {
     ]);
   });
 
-  it('keeps the framework step but not the adapters one for a product', async () => {
-    // Six fullstack presets, three of them Java: the framework is a
-    // real choice, and both entrypoints come with the product.
+  it('keeps the framework and adapters steps for a product', async () => {
+    // Eighteen fullstack presets, six of them Java: the framework is a
+    // real choice, and so is a CLI beside the backend's HTTP server.
     expect(ids(stepsFor(await greenfield('fullstack')))).toEqual([
       'directory',
       'shape',
       'language',
       'framework',
+      'entrypoints',
       'options',
       'questions',
       'review',

@@ -59,6 +59,9 @@ describe('stackSpelled', () => {
     ['fullstack-quarkus', 'fullstack'],
     ['fullstack-go-http', 'fullstack-go'],
     ['fullstack-spring-rest', 'fullstack-spring'],
+    ['fullstack-quarkus-cli-rest', 'fullstack-cli'],
+    ['fullstack-quarkus-rest-kotlin', 'fullstack-kotlin'],
+    ['fullstack-kotlin-spring-cli-http', 'fullstack-spring-cli-kotlin'],
     // Case and the spaces around it are forgiven.
     ['Quarkus-CLI', 'quarkus-cli'],
     [' go-http ', 'go-http'],
@@ -86,9 +89,11 @@ describe('stackSpelled', () => {
     ['java-cli'],
     ['spring'],
     ['quarkus-kotlin'],
-    // No preset at all: Go has no front end, Kotlin no product.
+    // No preset at all: Go has no front end, a product has a backend,
+    // and its backend speaks one language.
     ['go-spa'],
-    ['fullstack-quarkus-rest-kotlin'],
+    ['fullstack-web-components'],
+    ['fullstack-kotlin-go'],
     // Two entrypoints from both ends: only a product says `fullstack`.
     ['cli-spa'],
   ])('names no preset for %s', (typed) => {
@@ -163,7 +168,7 @@ describe('stackReader', () => {
     }
   });
 
-  it('never reads a set of words as two presets, and reads 753 of them as one', () => {
+  it('never reads a set of words as two presets, and reads 1,217 of them as one', () => {
     // Every word the reading knows, in sets of up to six: what a typed
     // spelling names must not depend on which of two presets is meant.
     // The count of those naming one keeps the sweep from passing on a
@@ -178,7 +183,7 @@ describe('stackReader', () => {
       if (presets.length === 1) named++;
     }
     expect(ambiguous).toEqual([]);
-    expect(named).toBe(753);
+    expect(named).toBe(1217);
   });
 
   it("knows beyond the tags only the table's own words: its rows' `words`, and ids' other words", () => {

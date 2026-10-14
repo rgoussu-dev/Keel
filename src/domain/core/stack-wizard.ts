@@ -3,7 +3,7 @@
  * framework → user-side adapters**, resolving to a stack id the
  * ordinary `--stack` path already knows how to install.
  *
- * The 34-entry stack list is a fine reference and a poor menu. A
+ * The 46-entry stack list is a fine reference and a poor menu. A
  * newcomer knows they want "a backend, in Kotlin, on Spring, with a
  * CLI and an HTTP endpoint" long before they know that spelling is
  * `spring-cli-rest-kotlin`. This module turns the catalog inside out

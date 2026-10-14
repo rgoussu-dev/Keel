@@ -62,7 +62,8 @@ Micronaut; Quarkus, Java and the HTTP server in a product), and the
 Quarkus product is plain `fullstack`. Where the words name exactly one
 preset, that is the preset: `quarkus-cli-http` is `quarkus-cli-rest`,
 `kotlin-quarkus-rest` is `quarkus-rest-kotlin`, `go-rest` is
-`go-http`, `fullstack-go-http` is `fullstack-go`, whatever their case
+`go-http`, `fullstack-go-http` is `fullstack-go`,
+`fullstack-quarkus-cli-rest` is `fullstack-cli`, whatever their case
 and the spaces around them. The run goes on under the preset's id —
 what the report and every record carry — and says so first:
 _'quarkus-cli-http' is quarkus-cli-rest — Backend or tool · Java ·
@@ -84,10 +85,12 @@ and says what the mark means under the list:
 
 ```text
 Available stacks:
-  fullstack ◻                  Fullstack product: quarkus-rest backend + web-components frontend, …
-  fullstack-go                 Fullstack product: go-http backend + web-components frontend, …
+  fullstack ◻                       Fullstack product: quarkus-rest backend + web-components frontend, …
+  fullstack-cli ◻                   Fullstack product: quarkus-cli-rest backend + web-components frontend, …
   …
-  go-cli-http ◻                Go CLI + HTTP service on the stdlib, …
+  fullstack-go                      Fullstack product: go-http backend + web-components frontend, …
+  …
+  go-cli-http ◻                     Go CLI + HTTP service on the stdlib, …
 
 ◻ best-effort at its default setting: no CI job builds it as keel new leaves it (see docs/stacks/README.md#support-tiers).
 ```
@@ -262,7 +265,7 @@ order they resolve.
 
 #### Finding a stack: the drill-down
 
-There are 34 presets. Knowing you want "a backend, in Kotlin, on
+There are 46 presets. Knowing you want "a backend, in Kotlin, on
 Spring, with a CLI and an HTTP endpoint" is easy; knowing that is
 spelled `spring-cli-rest-kotlin` is not, though its facets in any
 order — `--stack=kotlin-spring-cli-http` — name it too (see _A preset
@@ -291,8 +294,10 @@ starts:
    **composed** preset — one project, one domain, both entrypoints
    (`quarkus-cli-rest`, `go-cli-http`, `ts-cli-http`, …) — and never
    to two services; two services is the fullstack shape, which was
-   the first question. Skipped where the answers above reach only one
-   combination, as a fullstack product does.
+   the first question. On that shape it is one choice of two, _HTTP
+   server + Browser SPA_ or _CLI + HTTP server + Browser SPA_: whether
+   the backend carries a CLI beside its server. Skipped where the
+   answers above reach only one combination.
 
 **Why shape comes first, and why the adapters come last.** Shape is
 the widest cut there is and it is the one a newcomer already knows

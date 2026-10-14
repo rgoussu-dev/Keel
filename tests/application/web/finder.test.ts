@@ -104,12 +104,14 @@ describe('the page’s stack finder', () => {
     expect(pickShape(tree, 'frontend', here)).toBe('web-components');
   });
 
-  it('lands a language the new shape lacks on its kin with the same framework', async () => {
+  it('carries a backend to its own product, its language and entrypoints with it', async () => {
     const tree = await finder();
     const here = at(tree, 'spring-cli-rest-kotlin');
-    // No product is written in Kotlin. Java on Spring is one step
-    // away; Go — first, because languages sort by label — is not.
-    expect(pickShape(tree, 'fullstack', here)).toBe('fullstack-spring');
+    // Every backend that serves HTTP has a product, so nothing is left
+    // behind; the kin a missing language lands on is held over a
+    // finder of its own, below.
+    expect(pickShape(tree, 'fullstack', here)).toBe('fullstack-spring-cli-kotlin');
+    expect(pickShape(tree, 'fullstack', at(tree, 'spring-cli'))).toBe('fullstack-spring-cli');
   });
 
   it('lands a front end moving to the backend where a blank form opens', async () => {
@@ -235,10 +237,13 @@ describe('the page’s stack finder', () => {
 
   it('reports a language the move had to leave behind, and the one it landed on', async () => {
     const tree = await finder();
-    const jump = languageJump(tree, 'spring-cli-rest-kotlin', 'fullstack-spring');
-    expect(jump?.shape.id).toBe('fullstack');
+    // Every back-end language has a product, so the jump is a backend
+    // moving to the front end, where only the browser is.
+    const jump = languageJump(tree, 'spring-cli-rest-kotlin', 'web-components');
+    expect(jump?.shape.id).toBe('frontend');
     expect(jump?.from.label).toBe('Kotlin');
-    expect(jump?.to.label).toBe('Java');
+    expect(jump?.to.label).toBe('TypeScript (browser)');
+    expect(languageJump(tree, 'spring-cli-rest-kotlin', 'fullstack-spring-cli-kotlin')).toBeNull();
     expect(languageJump(tree, 'web-components', 'quarkus-cli')?.to.id).toBe('java@jvm');
   });
 
@@ -285,12 +290,18 @@ describe('the page’s stack finder', () => {
     expect(tierBadge(tree, null)).toBeUndefined();
 
     // The Fullstack shape card, from the default preset, lands on the
-    // Quarkus product; TypeScript's language card there is its leaf.
+    // Quarkus product with a CLI beside its server; Go's language card
+    // there on Go's, and from an HTTP server on the one Go product a
+    // suite builds.
     const here = at(tree, 'quarkus-cli');
-    expect(tierBadge(tree, pickShape(tree, 'fullstack', here))).toBe('best-effort');
+    expect(pickShape(tree, 'fullstack', here)).toBe('fullstack-cli');
+    expect(tierBadge(tree, 'fullstack-cli')).toBe('best-effort');
     const fullstack = at(tree, 'fullstack-go').shape;
-    expect(tierBadge(tree, pickLanguage(fullstack, 'go', here))).toBeUndefined();
-    expect(pickLanguage(fullstack, 'typescript@node', here)).toBe('fullstack-ts');
+    expect(pickLanguage(fullstack, 'go', here)).toBe('fullstack-go-cli');
+    expect(tierBadge(tree, 'fullstack-go-cli')).toBe('best-effort');
+    const server = at(tree, 'quarkus-rest');
+    expect(tierBadge(tree, pickLanguage(fullstack, 'go', server))).toBeUndefined();
+    expect(pickLanguage(fullstack, 'typescript@node', server)).toBe('fullstack-ts');
     expect(tierBadge(tree, 'fullstack-ts')).toBe('best-effort');
   });
 

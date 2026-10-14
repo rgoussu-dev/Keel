@@ -16,10 +16,12 @@
  * only by typing its id.
  *
  * The **behaviour over synthetic catalogs** covers the shapes the
- * shipped registry happens not to have, notably a combination whose
- * entrypoint subsets are incomplete — which is where the multi-select
- * would be able to express a dead end, and where the step falls back
- * to spelling the combinations out.
+ * shipped registry happens not to have. Since T.3f's products the
+ * shipped registry does reach a combination whose entrypoint subsets
+ * are incomplete — every fullstack framework, where the step falls back
+ * to spelling the combinations out — and the synthetic catalogs keep
+ * the rest: a hole inside a checkbox group, where the multi-select
+ * would be able to express a dead end.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -156,7 +158,12 @@ describe('the drill-down grid over the shipped registry', () => {
         }
       }
     }
-    expect(asked).toEqual(['fullstack/java@jvm', 'backend/java@jvm', 'backend/kotlin@jvm']);
+    expect(asked).toEqual([
+      'fullstack/java@jvm',
+      'fullstack/kotlin@jvm',
+      'backend/java@jvm',
+      'backend/kotlin@jvm',
+    ]);
   });
 
   it('never asks a frontend anything past the shape, there being one preset', () => {

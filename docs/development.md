@@ -706,7 +706,7 @@ or `choices`, a name the catalog lacks, or a list that names none,
 fails the run rather than sweeping nothing:
 
 ```sh
-KEEL_RUN_SWEEP=1 pnpm vitest run tests/sweep                                   # every preset: under an hour on CI
+KEEL_RUN_SWEEP=1 pnpm vitest run tests/sweep                                   # every preset: 29–48 min on CI at 34 presets; unmeasured at 46
 KEEL_RUN_SWEEP=1 KEEL_SWEEP_STACKS=go-http,ts-cli pnpm vitest run tests/sweep  # two presets, about half a minute
 KEEL_RUN_SWEEP=1 KEEL_SWEEP_STACKS=fullstack pnpm vitest run tests/sweep/arrival.test.ts
 KEEL_RUN_SWEEP=1 pnpm vitest run tests/sweep/extras.spring.test.ts             # one family's extras
@@ -737,11 +737,13 @@ speed varied by 1.6 times. Each run swept the same counts, with
 - `choices` took 6.2 to 9.3 minutes: 6,418 answers to 4,022
   questions.
 
-Split by family, the four `extras` files share those counts. Each
-framework's file holds 80 settings: 29,476 dispatches for Quarkus and
-28,624 each for Spring and Micronaut. `extras.test.ts` holds 100
-settings and 49,712 dispatches. The split's wall time has yet to be
-measured on CI. The workflow's limit is three hours. Swept alone, a
+Split by family, the four `extras` files share the lane, and the
+twelve products registered since have grown it to 46 presets, 428
+settings, 75,072 sets and 347,624 dispatches. Each framework's file
+holds ten presets and 104 settings: 90,008 dispatches for Quarkus and
+85,120 each for Spring and Micronaut. `extras.test.ts` holds 16
+presets, 116 settings and 87,376 dispatches. The split's wall time has
+yet to be measured on CI. The workflow's limit is three hours. Swept alone, a
 preset takes from seconds to some eleven minutes —
 `KEEL_SWEEP_STACKS=fullstack`, a product with a build-system dial in
 each service, nearly all of it `extras` — and

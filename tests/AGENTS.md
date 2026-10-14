@@ -94,7 +94,7 @@ it guards:
   cell `keel.dials` offers, each single-service cell without the agent
   harness is its twin with it, less the agent files (P1), and every
   product service with one key (`serviceKeys`) has the same files, its
-  manifest among them, and queues the same actions (P2). Its 340
+  manifest among them, and queues the same actions (P2). Its 428
   scaffolds run in memory in a `beforeAll`, so mutation testing leaves
   it out.
 
@@ -308,14 +308,16 @@ and history, which both directions share — 384 real `keel add module`
 runs, 320 real adds, 960 dry-run dispatches for I9, and since S.7 a
 status read and a dry-run whole re-render on each of the 160 twins for
 I11, some 7 s paired with the axis before it, less than the load swings
-it by; the JVM's are the heaviest), greenfield ~23 s, of which I8's
+it by; the JVM's are the heaviest), greenfield about 45 s alone (1,699
+keys since T.3f's twelve products), of which I8's
 orderings are about 3.5 s and I9's bodies — some 260 whole-menu
 dispatches — about 14 s, brownfield about 53 s alone and 58 s
 in the full suite (1,891 cells, 1,208 of them S.1b's I9 and I11 cells
 and 180 S.7's, 28 real modulith scaffolds and 10 whole-menu ones
 beside the 28 opening ones, and S.8's 628 real I12 runs), and
-composite about 11 to 15 s alone and 13 to 18 s in the full suite
-(1,656 cells, 984 of them S.1b's).
+composite about 47 s alone at a load average near 5 (4,968 cells
+since T.3f's twelve products, 3,312 of them theirs; 1,656 before, 984
+of those S.1b's).
 
 **The weekly sweep beside it.** The grid's preview axes read each
 preset's opening dials only, each extra alone and the whole menu, and

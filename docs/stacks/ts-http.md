@@ -275,5 +275,5 @@ says so instead of scaffolding something inert.
 
 - [Stack catalog](README.md) · [CLI reference](../cli.md) ·
   [Composition model](../composition.md)
-- Fullstack twin: [`fullstack-ts`](fullstack.md)
+- Fullstack twins: [`fullstack-ts` and `fullstack-ts-cli`](fullstack.md)
 - Frontend counterpart: [`web-components`](web-components.md)

@@ -13854,7 +13854,7 @@ it now gives `qurkuscli`, which matches no word and splits into none.
 **The full run:** `CI=true pnpm test` (372.7 s, 212 files, 3,684
 tests) passed whole, the growth axis in 137.8 s of its 180.
 
-#### T.3f — Twelve products, best-effort (L)
+#### T.3f — Twelve products, best-effort (L) ✅
 
 The product rule lists 12 more backends, appended:
 
@@ -13932,6 +13932,133 @@ T.4e to T.4g.
   - a CHANGELOG _Added_ entry.
 - **The weekly sweep goes from 2 red tests to 4** (_The measure_).
   The Landed paragraph records the counts.
+
+**Landed as the twelve backends appended to the product rule**, in one
+commit, with no code beside the table. `stack-presets.json`'s backend
+`stacks` gains them in the order above, and the `unsaid` rule names
+them exactly as DT6 does: `fullstack-kotlin` through
+`fullstack-rust-cli`, registered after the six shipped products, so
+`serviceGiving` reads each shipped service as before. The table's
+comment drops its _were it listed_. Nothing in `src/` but the table,
+four TSDoc counts and one TSDoc example (`queries.ts`'s `runtime`)
+changed: T.3c's glue serves the twelve by family.
+
+- **Goldens, by additions only.** A script compared every key of every
+  `*.golden.json` and `*.known.json` before and after: 0 values moved,
+  and every new key is a new cell.
+
+  | Golden           | Cells or entries | Bytes added |
+  | ---------------- | ---------------- | ----------- |
+  | `stack-registry` | 34 → 46          | 7,332       |
+  | `paths-new`      | 717 → 805        | 362,756     |
+  | `paths-add`      | 1,326 → 2,334    | 4,221,278   |
+  | `paths-reapply`  | 731 → 1,091      | 1,494,966   |
+  | `converge`       | 3,464 → 4,920    | 581,872     |
+  | composite axis   | 1,656 → 4,968    | 239,052     |
+  | greenfield axis  | 1,335 → 1,699    | 20,118      |
+
+  That is 6.9 MB in all. `paths-grow`, `shared-files`, `growth`,
+  `planner-readiness`, the harness and run-skill goldens, and the
+  brownfield and growth axes gained nothing. The four known files did
+  not move: brownfield `{"I5": {}}`, the rest `{}`. Greenfield gained
+  364 keys, where the scratch run on the id glue counted 412. Each of
+  the 3,312 new composite cells and 364 greenfield cells carries the
+  verdict of the same cell on its shipped twin product (Quarkus on
+  `fullstack`, Spring and Micronaut on theirs, Go, Rust and TypeScript
+  on theirs), checked by script. I13 holds on all 18 products.
+
+- **What a user sees.** `keel new --list` prints 49 lines, where it
+  printed 37: a header, 46 ids, a blank line and the legend, with 22
+  marked ◻ where 10 were. The finder places all 46, 18 under
+  _Fullstack_. Each JVM framework there has two combinations, and so
+  an Adapters step, a `select` of _HTTP server + Browser SPA_
+  (default) and _CLI + HTTP server + Browser SPA_. Kotlin gains a
+  fullstack framework step. `spring-cli` moved to _Fullstack_ lands on
+  `fullstack-spring-cli`, and `quarkus-cli`, the default, on
+  `fullstack-cli`, which is best-effort, so the Fullstack card's badge
+  now names `fullstack-cli`. The terminal's drill-down asks for
+  entrypoints under _Fullstack_ wherever a language has two products,
+  Go among them. The language jump is now only a move between a
+  backend and the front end: _Go has no frontend preset, so the
+  language is now TypeScript (browser)._
+- **The tests that moved**, each to the measured value:
+  - `stack-spelling.test.ts`: 1,217 sets read as one preset, 0 as two.
+    `fullstack-quarkus-rest-kotlin` now reads as `fullstack-kotlin`,
+    joined by `fullstack-quarkus-cli-rest` → `fullstack-cli` and
+    `fullstack-kotlin-spring-cli-http` →
+    `fullstack-spring-cli-kotlin`. `fullstack-web-components` and
+    `fullstack-kotlin-go` take its place among the unknown.
+  - `new-project.test.ts`: `cli-spa` is refused naming
+    `fullstack-cli` first, where it named `go-cli`;
+    `fullstack-kotlin-go` names `fullstack-kotlin`. The fullstack
+    drill-down answers `entrypoints` (`server-http,spa`) after the
+    language.
+  - `catalog.test.ts`: each JVM product framework holds two
+    combinations and a `select` step; 22 presets are best-effort at
+    their default, 24 first-class.
+  - `stack-wizard.test.ts`: `fullstack/kotlin@jvm` asks a framework.
+  - `steps.test.ts`: the fullstack rail has an `entrypoints` step.
+  - `finder.test.ts`, `target.test.ts`, `dials.test.ts` and
+    `ui-stack-finder`: the jump retargeted to a backend → frontend
+    move; the kin a missing language lands on stays held over the
+    synthetic finder; the badges follow `fullstack-cli` and
+    `fullstack-go-cli`.
+  - `new-list.test.ts`: 22 marked.
+  - `support-tier.premises.test.ts`: the product tally is 2
+    first-class, 32 best-effort with one service unbuilt and 94 with
+    two, 128 cells where it was 2, 10 and 28 of 40. The single-service
+    tally did not move (81 and 69 each way).
+- **Docs:** `docs/stacks/fullstack.md` (eighteen rows, the naming rule
+  and the tier), each family page's _Fullstack twins_, `README.md`'s
+  count (46) and its product example, `docs/cli.md`'s count, its
+  adapters step and a spelling example, `docs/ui.md`'s language step,
+  adapters step, shape move and jump example, `finder.js`'s TSDoc,
+  `docs/development.md`'s per-file sweep counts, `tests/AGENTS.md`'s
+  premises and composite counts, and the counts in
+  `stack-wizard.ts`, `new-project.ts` and `catalog.ts` (its 46
+  defaults settle in 137 to 671 ms, measured five times). The
+  generated regions were regenerated: both `stack-matrix` copies fill
+  the _Product, CLI + HTTP server_ column, `support-tiers` gains 88
+  product rows, and `compatibility-matrix` and `stack-defaults` list
+  the 18. CHANGELOG _Added_ leads with the twelve; the tier entries
+  under it now count 22 presets and 128 product settings.
+- **Met on T.3e's rebase:** `nearest-id.ts`'s module note counts 46
+  ids, and the six typos the products misdirect join
+  `nearest-id.test.ts`'s table: `quarkuscli-kotlin`,
+  `quarkusrest-kotlin` and the same on Spring and Micronaut, each read
+  whole as `fullstack-kotlin` before T.3e's split and as the id it
+  came from after. Measured with T.3e's generator on the 46: of the 34
+  earlier ids' 924 typos, 733 named right before the split and 768
+  with it; of the twelve's 470, 359 and 383 — the plan's figures.
+  T.3e's CHANGELOG _Fixed_ entry gives these, since both land in the
+  same release.
+- **The weekly sweep**, counted by its own loop with only the dial
+  walk dispatched (19.9 s): 46 presets, 428 settings, 277,088 subsets,
+  75,072 sets and 347,624 dispatches, none capped, as _The measure_
+  projected. Each JVM file takes ten presets and 104 settings
+  (Quarkus 90,008 dispatches, Spring and Micronaut 85,120 each), and
+  `extras.test.ts` 16 presets, 116 settings and 87,376 dispatches.
+  Not run: the sweep itself, so its 2 → 4 red tests are not measured
+  here _(inference from the research)_.
+- **Timings**, of the 13 golden and grid files in one run of 235.6 s
+  ending at a load of 5.1: growth axis 140.5 s, `converge` 77.5 s,
+  `paths-add` 71.1 s, brownfield 64.6 s, `paths-grow` 58.6 s, composite
+  56.9 s, greenfield 54.0 s, `paths-new` 50.3 s, `shared-files` 43.0 s,
+  `paths-reapply` 26.1 s, `growth` 19.1 s, `product-runs` 0.5 s. The
+  composite axis alone took 46.6 s at a load near 4.7, against T.3c's
+  18.8 s in company. The four browser suites (`ui-stack-finder`,
+  `ui-compose`, `ui-refusal`, `ui-plugin-stack`) passed 47 tests in
+  74.5 s with `KEEL_RUN_E2E=1`, and 69.9 s on the rebased step.
+
+**What it adds to `CI=true pnpm test`:** 12 tests, and the cells the
+goldens and the grid gain: 3,312 composite, 364 greenfield, 1,456
+`converge`, 1,008 `paths-add`, 360 `paths-reapply` and 88 `paths-new`.
+The composite axis alone went from about 15 s to about 47 s, and
+greenfield from 32 s to 43–45 s.
+
+**The full run, on T.3e:** `CI=true pnpm test` (402.5 s, 212 files,
+3,696 tests) passed whole, against T.3e's 372.7 s, the growth axis in
+129.9 s of its 180 and the composite axis in 52.8 s.
 
 ### T.4 — The cheap builds, in the shards there are
 

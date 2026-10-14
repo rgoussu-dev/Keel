@@ -28,7 +28,7 @@ describe('nearestStack', () => {
     ['java-cli', 'quarkus-cli'],
     ['go-spa', 'fullstack-go'],
     ['quarkus-kotlin', 'quarkus-cli-kotlin'],
-    ['fullstack-quarkus-rest-kotlin', 'quarkus-rest-kotlin'],
+    ['fullstack-kotlin-go', 'fullstack-kotlin'],
     // A facet in the family's other spelling — resolved before this
     // reading by `stack-spelling`, held here as the reading's own.
     ['quarkus-cli-http', 'quarkus-cli-rest'],
@@ -53,6 +53,14 @@ describe('nearestStack', () => {
     ['gocli-http', 'go-cli-http'],
     ['rust-clihttp', 'rust-cli-http'],
     ['fullstackts', 'fullstack-ts'],
+    // Read whole, `quarkuscli` counts for nothing and `kotlin` alone
+    // names the product that spells it least: `fullstack-kotlin`.
+    ['quarkuscli-kotlin', 'quarkus-cli-kotlin'],
+    ['quarkusrest-kotlin', 'quarkus-rest-kotlin'],
+    ['springcli-kotlin', 'spring-cli-kotlin'],
+    ['springrest-kotlin', 'spring-rest-kotlin'],
+    ['micronautcli-kotlin', 'micronaut-cli-kotlin'],
+    ['micronautrest-kotlin', 'micronaut-rest-kotlin'],
     // A slip inside a word.
     ['quarkus-cli-kotin', 'quarkus-cli-kotlin'],
     ['micronaunt-cli', 'micronaut-cli'],

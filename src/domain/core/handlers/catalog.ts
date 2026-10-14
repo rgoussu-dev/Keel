@@ -86,8 +86,8 @@ export interface CatalogDeps {
  */
 export class CatalogHandler implements Handler<CatalogQuery> {
   /**
-   * Each leaf's tier, read once: settling 34 defaults costs some
-   * 100 to 400 ms, and neither the registry nor the facts move
+   * Each leaf's tier, read once: settling 46 defaults costs some
+   * 140 to 670 ms, and neither the registry nor the facts move
    * between queries.
    */
   #tiers: Map<string, SupportTier | null> | null = null;

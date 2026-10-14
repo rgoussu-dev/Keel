@@ -263,4 +263,4 @@ go run ./cmd/my-service
 
 - [Stack catalog](README.md) · [CLI reference](../cli.md) ·
   [Composition model](../composition.md)
-- Fullstack twin: [`fullstack-go`](fullstack.md)
+- Fullstack twins: [`fullstack-go` and `fullstack-go-cli`](fullstack.md)

@@ -65,7 +65,7 @@ into one and the page scrolls as an ordinary document.
 | **What to build** | _(new project)_ Fullstack, backend or frontend. The widest question there is, and the first one — same as the terminal wizard's.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | **Language**      | _(new project)_ The languages that shape reaches. On a fullstack product, the backend's.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | **Framework**     | _(new project)_ Quarkus, Spring or Micronaut — only where the shape and language leave more than one.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| **Adapters**      | _(new project)_ CLI, HTTP server, SPA. Picking more than one gives the **composed** preset, never two services.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| **Adapters**      | _(new project)_ CLI, HTTP server, SPA. Picking more than one gives the **composed** preset, never two services. On a fullstack product, a choice of _HTTP server + Browser SPA_ or _CLI + HTTP server + Browser SPA_.                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | **Project**       | _(keel project)_ Where the four steps above would be, nothing to ask: what the project already is, read back from its manifest — the preset it reads as, what it builds, its language, framework and adapters, its build system and module layout, a product's services, its bounded contexts, and what it has installed. In words, never tags. See [Options on a keel project](#options-on-a-keel-project).                                                                                                                                                                                                                                             |
 | **Options**       | On a new project, the stack's dials: build system, module layout, the repository layout of a composite, and `--with-peer-context` — and **Also scaffold**: the verticals to install alongside (`--with`), on a product one group per service (`--with backend:persistence`), and on a single project the agent harness to leave out (`--no-agent-harness`). Which controls exist comes from the catalog; what may be on them comes from `keel.dials`, which also says when the setting picked is [best-effort](#how-far-keel-vouches-for-a-preset). On a keel project, the same **Also scaffold** group over what it has — or a bounded context instead. |
 | **Questions**     | Everything the composition adapters ask, grouped under **Details** by the adapter that asked. Conditional, so the list changes as you choose.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
@@ -86,8 +86,8 @@ run is never in a state that cannot be generated. The rail is a map,
 not a gate — "just show me the plan" is one click, not four screens.
 
 **A step with one answer is not a step.** A language reaching one
-framework has no framework step; a fullstack product has no adapters
-step; the frontend shape reaches one preset, so it has neither. That
+framework has no framework step; a set of answers reaching one
+combination has no adapters step; the frontend shape reaches one preset, so it has neither. That
 is the same rule the terminal wizard skips a question under, run over
 the same tree. Options is never one of them: a preset that pins its
 build system and layout still has its extras to offer, and what
@@ -292,9 +292,9 @@ to use.
   two-service product names no single language, so before there was a
   shape axis it appeared on no facet and was reachable only by id.
 - **Language** — Java, Kotlin, Go, Rust or TypeScript for a backend.
-  On the fullstack shape it is the backend service's, and only Java,
-  Go, Rust and TypeScript have a product; the frontend shape has one
-  language, TypeScript in the browser.
+  On the fullstack shape it is the backend service's, and every one of
+  them has a product; the frontend shape has one language, TypeScript
+  in the browser.
 - **Framework** — Quarkus, Spring or Micronaut. Absent where the
   shape and language chosen leave only one, which is everywhere
   outside the JVM.
@@ -302,22 +302,26 @@ to use.
   preset (`quarkus-cli-rest`, `go-cli-http`): one project, one domain,
   both entrypoints, never two services. Emptying it is refused rather
   than resolved — the control snaps back, since no preset has no way
-  in.
+  in. On the fullstack shape it is a choice of two, _HTTP server +
+  Browser SPA_ or _CLI + HTTP server + Browser SPA_: whether the
+  backend carries a CLI beside its server.
 
 **Stepping back keeps what still fits.** Move the shape from backend
-to fullstack with Java + Spring chosen and you land on
-`fullstack-spring`, not back at square one; come out of a product into
+to fullstack with `spring-rest` chosen and you land on
+`fullstack-spring`, and from `spring-cli` on `fullstack-spring-cli`,
+not back at square one; come out of a product into
 a backend and the half of its entrypoints a backend can still take —
 `server-http` of `server-http + spa` — comes with you.
 
 Where the new shape does not have your language at all, the move lands
 on its nearest kin rather than on whichever language sorts first: one
-with the same framework (Kotlin + Spring moved to fullstack is Java +
-Spring, `fullstack-spring`), then one on the same runtime, then the
+with the same framework, then one on the same runtime, then the
 default preset's (the browser front end moved to a backend lands on
-`quarkus-cli`, where a blank page opens). A line under the **Preset**
-picker says so — _Kotlin has no fullstack preset, so the language is
-now Java._ — rather than let the language change without a word.
+`quarkus-cli`, where a blank page opens). Every back-end language has
+a product, so today that is a move between a backend and the front
+end. A line under the **Preset** picker says so — _Go has no frontend
+preset, so the language is now TypeScript (browser)._ — rather than
+let the language change without a word.
 
 **A new preset keeps your choices.** Every move that lands on another
 preset — an adapter ticked, a framework switched, a shape moved —
@@ -393,7 +397,7 @@ setting:
 - **On the drill-down's cards.** A card says _best-effort_ in its badge
   slot where the preset choosing it lands on is best-effort at its
   default setting. From `quarkus-cli`, the _Fullstack_ card is badged,
-  since it lands on `fullstack`. On **Adapters**, a box is badged by
+  since it lands on `fullstack-cli`. On **Adapters**, a box is badged by
   the preset you get with it ticked: on `quarkus-cli-kotlin`, the _HTTP
   server_ box is badged, since ticking it lands on
   `quarkus-cli-rest-kotlin`. The badge's tooltip names the preset. Each

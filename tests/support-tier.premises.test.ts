@@ -70,7 +70,7 @@ import { newProjectCommandLine } from './support/paths-golden.js';
 const SCRATCH = path.join(path.sep, 'keel-premises');
 
 /**
- * Some 340 scaffolds, about 20 s on four cores; `verify` runs this
+ * Some 430 scaffolds, about 25 s on four cores; `verify` runs this
  * beside the rest of the suite, so the budget is far above that and far
  * below a hang.
  */
@@ -152,7 +152,8 @@ describe('the support tier premises', () => {
   }, SWEEP_TIMEOUT);
 
   it('reads the shipped tier as measured: 81 cells first-class each way, 2 products', () => {
-    // The figures T.2b recorded; a rule that stopped reading a dial
+    // The figures T.2b recorded, the products' as T.3f's twelve took
+    // them from 40 cells to 128; a rule that stopped reading a dial
     // (the peer context, the stack) would move them before any page did.
     const tally = new Map<string, number>();
     const count = (key: string): void => void tally.set(key, (tally.get(key) ?? 0) + 1);
@@ -189,8 +190,8 @@ describe('the support tier premises', () => {
       'off harness-twin': 81,
       'on best-effort': 69,
       'on suite': 81,
-      'product best-effort 1': 10,
-      'product best-effort 2': 28,
+      'product best-effort 1': 32,
+      'product best-effort 2': 94,
       'product first-class 0': 2,
     });
   });

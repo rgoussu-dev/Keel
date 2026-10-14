@@ -475,7 +475,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
    * interactive nor supplied.
    *
    * The single most consequential choice a `keel new` run makes, and
-   * a flat list of 34 ids is a poor way to make it — so interactively
+   * a flat list of 46 ids is a poor way to make it — so interactively
    * it is asked as up to four narrowing questions rather than one
    * wide one: **shape → language → framework → user-side adapters**,
    * each menu derived from the tags of the stacks still reachable

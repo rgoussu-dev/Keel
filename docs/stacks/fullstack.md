@@ -5,16 +5,36 @@ a REST backend and the [`web-components`](web-components.md) SPA —
 scaffolded together and wired through the
 [gateway seam](../verticals/gateway.md).
 
-| Stack                 | Backend service            | Frontend service |
-| --------------------- | -------------------------- | ---------------- |
-| `fullstack`           | [`quarkus-rest`](jvm.md)   | `web-components` |
-| `fullstack-spring`    | [`spring-rest`](jvm.md)    | `web-components` |
-| `fullstack-micronaut` | [`micronaut-rest`](jvm.md) | `web-components` |
-| `fullstack-go`        | [`go-http`](go.md)         | `web-components` |
-| `fullstack-rust`      | [`rust-http`](rust.md)     | `web-components` |
-| `fullstack-ts`        | [`ts-http`](ts-http.md)    | `web-components` |
+| Stack                            | Backend service                       | Frontend service |
+| -------------------------------- | ------------------------------------- | ---------------- |
+| `fullstack`                      | [`quarkus-rest`](jvm.md)              | `web-components` |
+| `fullstack-spring`               | [`spring-rest`](jvm.md)               | `web-components` |
+| `fullstack-micronaut`            | [`micronaut-rest`](jvm.md)            | `web-components` |
+| `fullstack-go`                   | [`go-http`](go.md)                    | `web-components` |
+| `fullstack-rust`                 | [`rust-http`](rust.md)                | `web-components` |
+| `fullstack-ts`                   | [`ts-http`](ts-http.md)               | `web-components` |
+| `fullstack-kotlin`               | [`quarkus-rest-kotlin`](jvm.md)       | `web-components` |
+| `fullstack-cli`                  | [`quarkus-cli-rest`](jvm.md)          | `web-components` |
+| `fullstack-cli-kotlin`           | [`quarkus-cli-rest-kotlin`](jvm.md)   | `web-components` |
+| `fullstack-spring-kotlin`        | [`spring-rest-kotlin`](jvm.md)        | `web-components` |
+| `fullstack-spring-cli`           | [`spring-cli-rest`](jvm.md)           | `web-components` |
+| `fullstack-spring-cli-kotlin`    | [`spring-cli-rest-kotlin`](jvm.md)    | `web-components` |
+| `fullstack-micronaut-kotlin`     | [`micronaut-rest-kotlin`](jvm.md)     | `web-components` |
+| `fullstack-micronaut-cli`        | [`micronaut-cli-rest`](jvm.md)        | `web-components` |
+| `fullstack-micronaut-cli-kotlin` | [`micronaut-cli-rest-kotlin`](jvm.md) | `web-components` |
+| `fullstack-go-cli`               | [`go-cli-http`](go.md)                | `web-components` |
+| `fullstack-ts-cli`               | [`ts-cli-http`](ts-http.md)           | `web-components` |
+| `fullstack-rust-cli`             | [`rust-cli-http`](rust.md)            | `web-components` |
 
-All six select the **same** frontend gateway adapters, because the
+A product is named by its backend: `fullstack` plus the backend's id,
+less `quarkus`, `rest` and `http`, which every product says already.
+The first six were the only ones until the product rule listed every
+single-service preset that serves HTTP. The twelve after them are
+[best-effort](README.md#support-tiers) on every setting: the
+composition grid holds them to every invariant, and no CI job builds
+one.
+
+All eighteen select the **same** frontend gateway adapters, because the
 seam is driven by peer tags, not by the backend's language or
 framework — see
 [peers in the composition model](../composition.md#peer-tags-and-products).
@@ -47,7 +67,7 @@ The usual per-service answers, plus one product-level choice:
 | Question                 | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Repository layout        | `monorepo` (default): one repository, `backend/` + `frontend/` side by side, git initialised once at the root, a product README tying them together. `polyrepo`: a repository per service, no shared root. Pin with `--layout`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| Build system per service | Each service whose stack offers a choice is asked its own: `gradle` (default) or `maven` for a JVM backend, `npm` (default) or `pnpm` for `ts-http` and the frontend. Pin with `--build-system path=id` pairs, comma-separated (`--build-system backend=maven,frontend=pnpm`). The compose Dockerfiles, the product README's run hints, and the service's own manifest all follow the choice.                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Build system per service | Each service whose stack offers a choice is asked its own: `gradle` (default) or `maven` for a JVM backend, `npm` (default) or `pnpm` for a TypeScript backend (`ts-http`, `ts-cli-http`) and the frontend. Pin with `--build-system path=id` pairs, comma-separated (`--build-system backend=maven,frontend=pnpm`). The compose Dockerfiles, the product README's run hints, and the service's own manifest all follow the choice.                                                                                                                                                                                                                                                                                                                                                               |
 | Extras per service       | Not asked; named with `--with path:id` pairs (`--with backend:persistence,frontend:dev-env`), or in `keel ui` under each service's **Also scaffold**. Each service's extras install in that service, planned there as on a single stack — `backend:persistence` writes what `keel add persistence` in `backend/` would. An id named without a service goes to the one service that can take it, is set aside with a note where the services that could have it have it already (`--with code-style`), and is refused, naming the services, where both could take it (`--with toolchain`) or none can — but for a pipeline or a release on a monorepo product, whose place is the repository root, where keel installs none yet (`keel.uncoverable-vertical`). See [`keel new --with`](../cli.md). |
 
 ## What gets generated

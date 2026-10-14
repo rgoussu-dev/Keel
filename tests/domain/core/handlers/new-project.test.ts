@@ -490,10 +490,10 @@ describe('keel.new-project (keel new)', () => {
    */
   it.each([
     ['go-spa', 'fullstack-go'],
-    ['cli-spa', 'go-cli'],
+    ['cli-spa', 'fullstack-cli'],
     ['java-cli', 'quarkus-cli'],
     ['quarkus-kotlin', 'quarkus-cli-kotlin'],
-    ['fullstack-quarkus-rest-kotlin', 'quarkus-rest-kotlin'],
+    ['fullstack-kotlin-go', 'fullstack-kotlin'],
   ])('refuses --stack=%s, naming %s first', async (typed, nearest) => {
     const error = expectErr(
       await installMediator().dispatch(
@@ -1480,6 +1480,7 @@ describe('keel.new-project stack selection', () => {
     const prompt = new FakePrompt({
       shape: 'fullstack',
       language: 'go',
+      entrypoints: 'server-http,spa',
       layout: 'monorepo',
       'buildSystem:frontend': 'npm',
       modulePath: 'example.com/demo',
@@ -1502,11 +1503,39 @@ describe('keel.new-project stack selection', () => {
       ),
     );
     expect(report.subject).toBe('fullstack-go');
-    // Go has one framework and the product one entrypoint set, so two
-    // of the four steps answer themselves.
-    expect(prompt.asked.slice(0, 2)).toEqual(['shape', 'language']);
+    // Go has one framework, so that step answers itself; its two
+    // products, over `go-http` and `go-cli-http`, differ by entrypoints.
+    expect(prompt.asked.slice(0, 3)).toEqual(['shape', 'language', 'entrypoints']);
     expect(prompt.asked).not.toContain('framework');
-    expect(prompt.asked).not.toContain('entrypoints');
+  });
+
+  it('drills down to a product over a CLI backend when its entrypoints say so', async () => {
+    const prompt = new FakePrompt({
+      shape: 'fullstack',
+      language: 'go',
+      entrypoints: 'cli,server-http,spa',
+      layout: 'monorepo',
+      'buildSystem:frontend': 'npm',
+      modulePath: 'example.com/demo',
+      npmScope: 'demo',
+      projectName: 'demo',
+      remote: '',
+      commitHook: 'yes',
+      changelog: 'yes',
+      defaultBranch: 'main',
+      // `observability/monitoring-compose` declares a question under
+      // this id; the wizard's own flat list is not asked here.
+      stack: 'granular',
+      extraVerticals: '',
+      'keel.review': 'proceed',
+    });
+    const mediator = installMediator({ prompt });
+    const report = expectOk(
+      await mediator.dispatch(
+        newProjectCommand({ cwd, answers: {}, interactive: true, dryRun: true }),
+      ),
+    );
+    expect(report.subject).toBe('fullstack-go-cli');
   });
 
   it('falls through to the flat preset list from the first menu’s escape hatch', async () => {

@@ -6,7 +6,7 @@
  * A guess is usually made of real facet words that, together, name no
  * preset: `java-cli` (every JVM id says its framework), `go-spa` (Go
  * has no front end; its product does). Edit distance alone reads those
- * as far from everything, and a list of 34 ids leaves the user to spot
+ * as far from everything, and a list of 46 ids leaves the user to spot
  * the one they meant. So the reading is by **facet words first**: what
  * a candidate's id spells, then what its own tags and the words the
  * finder offers them in say (`arch.server-http` is an "HTTP server —

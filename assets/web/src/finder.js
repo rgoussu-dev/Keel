@@ -92,7 +92,7 @@ export const BEST_EFFORT = 'best-effort';
  * Read off the preset a card lands on rather than the card's own
  * facet, because that is the one thing every card of the drill-down
  * has: a shape or a language reaching one preset is the leaf the card
- * shows, as `fullstack-ts`' language card is.
+ * shows, as the frontend shape's card is (`web-components`).
  *
  * @param {Finder} finder
  * @param {string | null} stackId the preset choosing the card lands on
@@ -142,10 +142,10 @@ export function pickShape(finder, shapeId, from) {
  * being asked to, or null when it changed none.
  *
  * A jump is a move onto another shape that does not offer the old
- * language at all — Kotlin moving to fullstack, where no product is
- * written in Kotlin. The language could not come along then, whichever
- * control made the move, and the one thing worse than landing on Java
- * is landing there without a word. A move within a shape never jumps:
+ * language at all — Go moving to the frontend, where the browser's is
+ * the only one. The language could not come along then, whichever
+ * control made the move, and the one thing worse than landing on
+ * another language is landing there without a word. A move within a shape never jumps:
  * a language changed there is a language someone picked.
  *
  * @param {Finder} finder
@@ -217,8 +217,9 @@ function descend(finder, shape, from) {
  * The language a move onto `shape` lands on: `from`'s own where the
  * shape offers it, and otherwise the nearest kin it does —
  *
- *   1. one with `from`'s framework, so Kotlin on Spring moving to
- *      fullstack lands on Java on Spring, where `fullstack-spring` is.
+ *   1. one with `from`'s framework, so a JVM language the shape lacks
+ *      lands on another on the same framework, as Kotlin on Spring did
+ *      on Java's `fullstack-spring` before Kotlin had a product.
  *      "No framework" is not a framework: two languages sharing only
  *      the absence of one are not kin;
  *   2. then one on `from`'s runtime;
@@ -229,7 +230,8 @@ function descend(finder, shape, from) {
  * the shape shares nothing with where the move came from nor with the
  * default — the frontend shape today, whose one language is the
  * browser's. It used to be the only resort, and languages sort by
- * label, which put a Kotlin backend moving to fullstack on Go.
+ * label, which put a Kotlin backend moving to fullstack on Go, before
+ * Kotlin had a product.
  */
 function languageIn(shape, from, home) {
   const framework = from?.framework.id ?? '';

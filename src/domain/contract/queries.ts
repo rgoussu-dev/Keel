@@ -109,8 +109,8 @@ export interface LanguageNode {
    *
    * Reported beside the id rather than left in it, so a front end
    * that has to tell kin from strangers — Kotlin moving to a shape
-   * that offers only Java lands on Java, not on whatever sorts first —
-   * never has to take the id apart to find out.
+   * that offered only Java would land on Java, not on whatever sorts
+   * first — never has to take the id apart to find out.
    */
   readonly runtime: string | null;
   /**
