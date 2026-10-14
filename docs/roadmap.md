@@ -37,9 +37,10 @@ section below records: `keel new`, `keel add` with `--refresh` and
 `--reapply`, `keel add entrypoint` and `keel add module` are callers of
 one operation, which keeps what later verticals wrote through a
 re-render, records where one run records, and says what a re-render
-leaves. **T** and **U** wait on
-decisions of their own and are not yet sliced into issues or ordered
-against the backlog.
+leaves. **T** (facets over presets) is planned in its own section
+below, on a support tier the user decided, and lands one commit per
+step. **U** waits on decisions of its own and is not yet sliced into
+issues or ordered against the backlog.
 
 [#67]: https://github.com/rgoussu-dev/keel/issues/67
 [#68]: https://github.com/rgoussu-dev/keel/issues/68
@@ -4387,7 +4388,9 @@ Each taken as the audit recommended; the step that carries it is named.
 - **T — Facets over presets.** Presets generated from a platform ×
   entrypoint table with ids kept as aliases (all 34 regenerate
   exactly); products as per-service selections. Only with a data
-  support tier for cells no e2e suite proves.
+  support tier for cells no e2e suite proves. Planned; its own
+  section, _T — Facets over presets_, below, records it; what "ids
+  kept as aliases" means is its DT3.
 - **U — A release story for monorepo products.** Decide the image
   owner, one root Tree across scopes, a product-level pipeline,
   `keel add service`.
@@ -11786,6 +11789,1039 @@ recommendation.
   records it. A row already there stays where it is.
 - **One e2e suite per cell, and presets as the entry vocabulary.** S
   adds no cell.
+
+---
+
+## T — Facets over presets
+
+**Proposed 2026-10-14 from research passes over `babae29` and
+`93275d5`** (R's merge, then S's). None of the passes edited the
+repository. The research was costed before S landed, and the support
+tier was decided on those costs (DT1). It was then measured again
+over S, which moved what a new cell costs but none of what T stands
+on. Q's _Successors_ named this epic:
+
+> Presets generated from a platform × entrypoint table with ids kept
+> as aliases (all 34 regenerate exactly); products as per-service
+> selections. Only with a data support tier for cells no e2e suite
+> proves.
+
+T adds cells, which Q, R and S did not: the twelve product pairings no
+preset carries today. Every shipped preset keeps its id and its bytes
+on every dial setting, and a byte golden lands before any code to
+hold that (T.1a).
+
+**Goal.** A preset is a named facet selection, and keel says how far
+it vouches for each one.
+
+- **The presets are a table.** The 28 single-service presets are
+  generated from a table of 10 platforms × the entrypoint sets each
+  takes, and the products from a rule over their services. The 34
+  ids stay as they are and stay the ids keel records. Any spelling
+  of a preset's facets, in any order, names it:
+  `keel new --stack=kotlin-spring-http` is `spring-rest-kotlin`.
+- **Products are per-service selections.** A product is one back cell
+  that serves HTTP plus the web-components frontend. Six of the
+  eighteen such back cells have a product today. T opens the other
+  twelve, the Kotlin ones and the CLI + HTTP ones, once the product
+  glue reads a service's facets rather than its id.
+- **Every dial cell has a support tier**, as data:
+  - _first-class_: an e2e suite builds it, or it is proven
+    byte-identical to a cell one builds;
+  - _best-effort_: it composes and previews under every hard
+    invariant of the grid, and no CI job compiles it;
+  - _refused_: the table does not generate it.
+
+  The tier is shown in the docs and on `keel ui`'s cards. It is
+  honest about today's cells as well as T's new ones: 107 of the 190
+  harness-on dial cells keel offers are best-effort today, among them
+  every product cell but two.
+
+### How the research was run
+
+**Before S, over `babae29`.**
+
+- **Seven readers**, each over one scope: what a preset is; the facet
+  space, enumerated by scripts against the live registry; the
+  composition grid; the weekly sweep; the e2e suites and CI's
+  timings, read from GitHub Actions; the docs matrix and `keel ui`;
+  and how T stands to S.
+- **A synthesis** of the tier options and their costs, checked by
+  three adversarial verifiers. One worked the numbers, one the CI
+  claims and one the roadmap's own wording, and they corrected the
+  synthesis on 23 of 74 claims. Where a figure below came from that
+  pass, it is the verifiers' figure.
+- **Three design probes**, each a prototype in a scratch copy:
+  - the table generator, applied to a `git archive` of HEAD and run
+    under the full suite;
+  - the tier data, with a capture of every `keel new` that the e2e
+    suites dispatch (138 scaffolds in 115 files);
+  - a per-file byte golden. S's paths golden made this one redundant
+    (DT13).
+
+**After S, over `93275d5`.** Five probes measured what S moved:
+
+- what keys on the paths golden, and what one more product costs
+  there;
+- the product glue keyed by facets, built in Docker for one new JVM
+  backend, the Go one and the TypeScript one;
+- facet spellings;
+- the weekly sweep, from its first three CI runs;
+- the six cheap suites, each run green against HEAD.
+
+Every figure is measured unless it is marked _(inference)_. Local
+timings come from a shared four-core box, and CI's from GitHub
+Actions runs, which are named where they are cited.
+
+### The finding that shaped it
+
+**The presets are a table already.**
+
+- **Tags, verticals, `projects` and dials follow from two
+  coordinates.** For every single-service preset they are a function
+  of its platform (language, runtime and framework) and its set of
+  entrypoints, 28 of 28.
+- **The ids follow a grammar**, with two irregularities. The JVM
+  spells HTTP `rest` and leaves Java unsaid. `web-components` is
+  named after its framework.
+- **The data is three lists.** A table of 10 platforms, 3 entrypoints
+  and one product rule rebuilds all 34 presets deep-equal, in today's
+  order, with the same referenced objects.
+  `stack-registry.golden.json` does not move, and neither does any
+  default scaffold: 40 trees and 3,341 files.
+- **Only two things stay literal.** The descriptions are partly
+  irregular: the 18 JVM ones fit one template and the six products
+  another, while the ten Go, Rust, TypeScript and web-components ones
+  are prose. They stay literals in the table. The other literal is
+  the order, which only the registry golden reads. A rule reproduces
+  it.
+
+**The single-service space has no holes, and the products have
+twelve.**
+
+- **Single-service.** 10 platforms × the 7 non-empty entrypoint sets
+  is 70 cells. 28 of them are shipped: 9 back-end platforms × {CLI,
+  HTTP, CLI + HTTP}, and web-components × {SPA}. The other 42 all mix
+  sides: an SPA on a back-end platform, or a CLI or HTTP server on
+  web-components.
+- **Products.** 18 single-service presets serve HTTP, and 6 of them
+  are a product's backend. The 12 that are not:
+  - `quarkus-rest-kotlin`, and its Spring and Micronaut twins (3);
+  - `quarkus-cli-rest`, and its Spring and Micronaut twins (3);
+  - `quarkus-cli-rest-kotlin`, and its Spring and Micronaut twins (3);
+  - `go-cli-http`, `rust-cli-http` and `ts-cli-http` (3).
+- **Product dial cells.** Opening the 12 takes products from 40 dial
+  cells (repository layout × each service's build system) to 128.
+
+**The engine cannot refuse a cell, so legality has to be data.**
+Coverage refusals catch some of the side-mixing cells: `go` with an
+SPA, web-components with a CLI, TypeScript on Node with an SPA. Other
+cells pass coverage and scaffold. A synthetic `rust` +
+`framework.quarkus` + CLI preset writes 36 files, and a Go CLI + SPA
+preset writes 35. An adapter ignores a tag it does not require.
+
+**The product glue is keyed by preset id, and the grid cannot see the
+result.**
+
+- **The keying.** `product-compose.ts` picks a backend's Dockerfile
+  from a table of six preset ids, and the product README's run hints
+  come from a table of seven.
+- **What a new pairing gets.** Registered today, all 12 pairings pass
+  every invariant of the grid. Each one writes a `compose.yaml` that
+  says `build: ./backend` beside a backend with no `Dockerfile`.
+- **Keyed by facets instead,** the same 12 get the right image. The
+  probe built three in Docker:
+  - `micronaut-cli-rest-kotlin` on Gradle, which serves the greeting
+    from its `-all.jar`;
+  - `go-cli-http`, which builds `./cmd/http`;
+  - `ts-cli-http`, which runs `application/rest/src/main.ts`.
+
+  The six shipped products keep every byte on all 40 of their dial
+  cells.
+
+**What e2e proves today is less than "one e2e suite per cell".** The
+dial cell is the roadmap's own unit (J: "a stack _and_ a build system
+… 24 cells"; `tests/e2e/AGENTS.md`). The capture of every e2e scaffold,
+settled through `keel.dials`, found:
+
+- **Harness-on cells.** Of the 190 (150 single-service, 40 product):
+  - 81 have a suite of their own;
+  - 23 are built only by a suite that changes them first: an
+    `add-module-*` suite, which rewrites 3 or 4 of the cell's build
+    and wiring files before its one build;
+  - 3 products are partly built;
+  - 83 are never built: 46 single-service cells (30 JVM, 4 Go,
+    4 Rust, 8 TypeScript or web-components) and 37 products.
+- **Harness-off cells.** None of the 150 is scaffolded by any suite.
+- **Defaults.** Ten presets are not built at their default setting:
+  - four products: `fullstack`, `fullstack-spring`,
+    `fullstack-micronaut` and `fullstack-ts`;
+  - `go-cli-http` and `rust-cli-http`;
+  - four combined-entrypoint presets whose basic suite builds the
+    other build system: `quarkus-cli-rest-kotlin`, `spring-cli-rest`
+    and `micronaut-cli-rest-kotlin` on Maven, `ts-cli-http` on pnpm.
+
+**Two proofs transfer.**
+
+- **P1, the harness twin.** In 150 of 150 pairs, a scaffold with
+  `--no-agent-harness` is the scaffold with the harness, less the
+  agent files:
+  - `AGENTS.md` and `CLAUDE.md`, at the root and per directory;
+  - `.claude/` hooks, skills and settings;
+  - `.gemini/` and `.aider.conf.yml`.
+
+  The only file both hold that differs is the manifest. Exec bits and
+  queued actions are identical. A harness-off cell builds what its
+  twin builds.
+
+- **P2, a product's services.** A product's `frontend/` falls into
+  exactly 4 byte classes, by package manager × repository layout.
+  Each class holds on every product and every backend build system,
+  and on 18 products when the 12 pairings are registered. A product's
+  `backend/` depends only on the product, its build system and the
+  layout. So a product suite only has to build its backend.
+  `fullstack.test.ts` already builds the npm·monorepo frontend.
+
+A product's backend is not its single-service preset, so no proof
+transfers between them. The CORS source, the contract and, in a
+monorepo, the `Dockerfile` differ. That is the code a product backend
+has to compile.
+
+### What stands in the way
+
+The research found each of these. The step named resolves it.
+
+1. **The paths golden pins products on default build systems only:**
+   12 of their 40 dial cells. T.1a widens it before any code moves.
+2. **A stack id has no charset.** `stacks.ts` accepts `+`, `/`, `@`,
+   `#`, `,` and `:`. The grid's keys and the docs renderer split on
+   those characters, and a facet spelling splits on `-`. T.1b sets
+   the charset.
+3. **Aliases cannot be registered stacks.** Two were registered as
+   copies of the presets they name:
+   - `quarkus-http`, a copy of `quarkus-rest`, read back through the
+     drill-down as itself, since `wizardPaths` sorts by id;
+   - `fullstack-quarkus` lost the product's `given: ["gateway"]`.
+
+   S's round trip then broke on 22 scopes. A spelling must be read,
+   never listed (T.1d, DT3).
+
+4. **A plugin can shadow a spelling.** A plugin preset called
+   `quarkus-cli-http` would take a spelling users type for
+   `quarkus-cli-rest`. T.1e refuses it at load.
+5. **Nothing records which suite builds which cell**, and the
+   basic-layout suites' names are irregular: `walking-skeleton.test.ts`
+   builds `quarkus-cli`. Reading a suite's literals finds the cell for
+   only 123 of 138 scaffolds. The other 15 take a dial from a helper's
+   default. So the tier is declared in data and checked twice:
+   statically in `verify` (T.2a), and in the e2e job by what each
+   suite actually dispatches (T.2b).
+6. **Two copies of the platform × entrypoint table are hand-written**
+   (`README.md`, `docs/stacks/README.md`). No test guards them, and
+   they have already drifted. T.2c generates both.
+7. **The tier cannot ride `keel new`'s report.** The paths golden
+   digests every report. A best-effort note would move 299 of its
+   717 `keel new` cells. T.2d carries the tier on `keel.catalog` and
+   `keel.dials`, which no golden pins (DT9).
+8. **The glue reads ids, and an adapter cannot reach the registry.**
+   The Registration note forbids an adapter importing the shipped
+   registry. So the engine resolves each recorded service to its
+   facets and hands them in through `Ctx` (T.3b, DT7).
+9. **The product README escapes its hints.** `<%=` would render the
+   Rust CLI + HTTP hint as `cargo build &amp;&amp; …` inside a shell
+   fence. None of today's hints holds such a character, so the switch
+   to `<%-` moves no byte (T.3b). I13 refuses an entity (T.3a).
+10. **The weekly sweep has one `extras` file**, and one file is one
+    core. Its three CI runs took 29.4, 37.5 and 47.9 minutes of the
+    job's 180. With 18 products, one file is projected at 83 to 134
+    minutes, and 104 to 168 with three forks contending
+    _(inference)_. T.3c splits it by family first.
+11. **Registering products moves nearest-id's suggestions.** 6 of 996
+    typos of shipped ids would turn to `fullstack-kotlin`. T.3d reads
+    run-together words first: 768 of 924 right, against 739 today.
+12. **The cheap product suites need the products and the glue.** On
+    today's glue, a CLI + HTTP product builds `./backend` with no
+    `Dockerfile`, and its suite's compose check fails. So T.4d comes
+    after T.3e.
+
+### The measure
+
+- **The paths golden, widened first (T.1a).** S's `paths-new` pins
+  every single-service preset on every dial setting, the harness on
+  and off, absolutely. T.1a adds the 28 product dial cells it lacks:
+  717 cells, of which 0 move. From then on, every T step leaves every
+  cell of every shipped preset byte-identical, tree, manifest,
+  actions and report. A cell that moves is a defect in the step,
+  fixed in the code, never regenerated away. Only T.3e adds cells,
+  and it adds them alone.
+- **`stack-registry.golden.json`.** 34 entries, unchanged until
+  T.3e, which appends 12.
+- **The grid.** The four known files stay as they are: brownfield
+  `{"I5": {}}`, and greenfield, composite and growth `{}`. I10, I11
+  and I12 stay hard. T adds one invariant, hard from the day it
+  lands:
+  - **I13: a monorepo product runs as its root says (T.3a).** Every
+    service the root's `compose.yaml` builds finds its `Dockerfile`
+    under its context. Every file it mounts from the root is there.
+    Each development command the root `README.md` gives names what
+    its service holds: a Gradle project, a Maven module, a Go
+    package, an npm script, a single Cargo binary.
+
+    It is green on today's 6 products. It is red on exactly the 12
+    pairings under today's glue, and green on them under T.3b's.
+
+- **The tier guards.**
+  - In `verify` (T.2a): every e2e file proves a declared cell, or
+    has a declared role that proves none. Every claimed cell is one
+    `keel.dials` reaches, and is claimed once. The shard that runs a
+    proving suite installs its toolchain. P1's and P2's premises hold
+    on every cell.
+  - In the e2e job (T.2b): each suite scaffolds exactly the cells it
+    claims.
+- **Tier counts.**
+
+  |                        | Single, harness on | Single, harness off (P1) | Products                      |
+  | ---------------------- | ------------------ | ------------------------ | ----------------------------- |
+  | Today, first-class     | 81 of 150          | 81 of 150                | 2 of 40                       |
+  | After T.4, first-class | 83 of 150          | 83 of 150                | 3 of 40, plus 3 of the 88 new |
+
+  Presets best-effort at their default go from 10 to 7. The three
+  promoted are `go-cli-http`, `rust-cli-http` and `fullstack-ts`.
+
+- **The weekly sweep (T.3c, then T.3e).**
+  - T.3c's counts are today's, summed over four files: 340 settings,
+    96,160 subsets, 28,288 sets and 136,436 dispatches.
+  - T.3e takes them to 46 presets, 428 settings, 75,072 sets and
+    347,624 extras dispatches. The projected job is 42 to 66 minutes,
+    53 to 88 with contention _(inference)_.
+  - The sweep reports today with 2 red tests: Q3.4's findings 2 and 3
+    on `quarkus-cli-rest` and its Kotlin twin. T.3e makes them 4,
+    through the backends of `fullstack-cli` and `fullstack-cli-kotlin`
+    (the first measured, the second inferred). T does not fix them.
+- **Budget.** `CI=true pnpm test` took 367 s here under load. Growth,
+  the longest axis, took 140.6 s of its 180 s, and T does not touch
+  it. Opening the 12 products (T.3e) costs:
+
+  | Golden or axis       | Cells         | Time alone      |
+  | -------------------- | ------------- | --------------- |
+  | `paths-new`          | +88           | +8.1 s          |
+  | `paths-add`          | +1,008        | +15.4 s         |
+  | `paths-reapply`      | +360          | +6.5 s          |
+  | the converge reading | +1,456        | +9.3 s          |
+  | the composite axis   | 1,656 → 4,968 | about 15 → 46 s |
+
+  The goldens grow by some 6.6 MB _(inference: per-cell averages)_.
+  The cells come from the catalog, as S's rule wants, so there is no
+  hand rule to trim them. That cost is what opening twelve products
+  means after S.
+
+**Each step lands as** one commit that passes `pnpm lint`,
+`pnpm typecheck` and `CI=true pnpm test`. The same commit carries its
+docs, its CHANGELOG entry where a user can see the change, and its
+Landed paragraph here. Two more gates apply where they are named:
+
+- where a step changes what `keel ui` shows, the browser suites with
+  `KEEL_RUN_E2E=1`;
+- where a step adds or changes an e2e suite or what one builds, those
+  suites.
+
+### T.1 — The table
+
+#### T.1a — Every product dial setting in the paths golden (S)
+
+**The golden lands alone**, in a commit with no `src/` change, green
+on today's code. `PATHS_NEW` (`tests/support/paths-families.ts`)
+records each product on every dial setting `keel.dials` offers it:
+each repository layout × each service's build system, walked by
+`dial-walk.ts`'s `walkDials`, as the single-service presets already
+are. Today it records each product only on its default build
+systems.
+
+- **Cells:** 28 added, to 717, all `ok`, none moved. The converge
+  golden keys on `PATHS_NEW` and gains the same 28. Its round trip
+  goes from 697 scopes to 753, with no trip.
+- **Cost:** `paths-new` takes about 3.5 s more alone (33.8 → 37.3 s).
+- **Docs:** `tests/AGENTS.md`'s paths-new bullet, the suite's header,
+  `PATHS_NEW`'s note and the callers listed in `dial-walk.ts`. No
+  CHANGELOG entry, since nothing a user sees moves.
+
+#### T.1b — A stack id is lowercase words joined by `-` (S)
+
+`registryOf` refuses a stack whose id does not match
+`^[a-z0-9]+(?:-[a-z0-9]+)*$`, naming its origin. It runs at the one
+gate every origin passes (`validateStack`), since a plugin registers
+`Stack` objects, not the preset schema. All 34 shipped ids comply,
+and so do the 46 that T.3e will make. The cost is one more refusal in
+`docs/plugins.md`'s error table and a CHANGELOG _Changed_ entry: a
+plugin id with an uppercase letter, `_` or `.` is refused from now on.
+
+#### T.1c — The presets generated from a platform × entrypoint table (M)
+
+`src/domain/core/stack-presets.json` becomes a table, about 200 lines
+where there are 615, and a new pure module, `stack-table.ts`, expands
+it into the preset document `stacks.ts` already resolves.
+`StackPresetsSchema` and `resolveStackPresets` do not change, so a
+generated preset passes exactly the validation a written one does.
+
+- **The table:**
+  - `entrypoints`: `cli`, `http` and `spa`, each with its tag and its
+    `projects`. A test ties them to `ENTRYPOINTS`, which
+    `stack-table.ts` cannot import without a cycle.
+  - `singles`: the tags, layouts and verticals every single-service
+    cell shares. A vertical marked `with: "http"` goes only to cells
+    that serve HTTP (`dev-env`, `observability`).
+  - `platforms`: 10 rows. Each holds an id pattern
+    (`quarkus-{entrypoints}-kotlin`), the words its ids use (the JVM's
+    `{"http": "rest"}`), its tags and build systems, and `cells`: the
+    entrypoint sets it takes, each with its literal description.
+  - `products`: one rule. `fullstack-{backend}`, less the words
+    `quarkus`, `rest` and `http`, over the backend ids it lists, with
+    `gateway` on both services.
+- **The order rule** reproduces today's without an order list:
+  - rows whose tags differ only in `lang.*` are grouped;
+  - within a group, one-entrypoint cells come before combined ones.
+- **Holds green:** the registry golden, every paths golden, the
+  converge golden, the grid's goldens and the known files, byte for
+  byte. A new `stack-table.test.ts` covers each rule on small tables.
+- **Docs:** the table's own header, written anew. It explains rows,
+  cells, the patterns, the product rule, the order rule, and why an
+  id is permanent: a product root records its services' ids. Also
+  `stacks.ts`'s note, `src/domain/core/AGENTS.md`,
+  `docs/composition.md`, `docs/development.md`, `CONTRIBUTING.md`,
+  and a CHANGELOG _Changed_ entry beside "The stack registry is data".
+
+#### T.1d — A facet spelling names its preset (M)
+
+A typed `--stack` resolves in this order:
+
+1. the registered id, exactly as today;
+2. otherwise, the one preset its facet words name;
+3. otherwise, today's `keel.unknown-stack` refusal, word for word.
+
+The reading is a new pure module, `stack-spelling.ts`, over the
+drill-down. A stack's facets are the atoms of its `wizardPaths` place:
+its shape, language, runtime, framework and each entrypoint. A
+product's facets are its engine's language and framework plus its
+services' entrypoints. The words are every language, runtime and
+framework tag word the drill-down places, a plugin's included, plus
+the entrypoint words and `fullstack`. Two words are spelled by ids but
+by no tag: `rest` and `ts`. A typed set of facets T names stack S
+when the facets S's own id spells ⊆ T ⊆ S's facets, for exactly one
+S. An id leaves its family's default unsaid (Java under Quarkus, and
+Quarkus, Java and HTTP in a product), so no default is listed
+anywhere.
+
+- **Measured:** 753 word sets resolve on the shipped registry, and
+  1,217 with the 12 products. There are 0 ambiguities over 43,795
+  sets. Every registered id read by its facets alone names itself:
+  34 of 34, and 46 of 46.
+- **Who asks it:**
+  - `new-project.ts`'s `stage`, which covers `keel new`, `keel.preview`
+    and the page's install;
+  - `keel.dials`, which settles a spelling at its id for an API
+    client.
+
+  `Registry.stack()` stays exact. Its other callers read recorded ids,
+  where a lenient lookup would hide a corrupt manifest.
+
+- **Recorded is canonical.** The report's subject and a product's
+  `services[].stack` are the preset's id. A spelled run writes the
+  same tree, manifest included: `fullstack-go-http` against
+  `fullstack-go` (133 files), `kotlin-quarkus-rest` against
+  `quarkus-rest-kotlin` (66), `quarkus-cli-http` against
+  `quarkus-cli-rest` (72), 0 differ.
+- **The note** is the only difference. It is worded in `refusals.ts`
+  and put first in the report: _'quarkus-cli-http' is quarkus-cli-rest
+  — Backend or tool · Java · Quarkus · CLI + HTTP server_. No golden
+  cell types a spelling, so no golden moves.
+- **Changes what a user typed before:** `quarkus-cli-http`,
+  `fullstack-quarkus` and `go-rest` were refused and now resolve, as
+  do `Quarkus-CLI` and an id typed with spaces around it. Three
+  `new-project.test.ts` cases become resolutions. The examples in
+  `docs/cli.md` and `docs/ui.md` change. `keel new --list` does not: each id is already the shortest
+  spelling of itself. The `--stack` help names the form, with
+  `kotlin-spring-http` as its example.
+
+#### T.1e — A plugin cannot take a keel spelling (S)
+
+After claiming every id, `registryOf` reads each pair of stacks. A
+stack whose id reads by its facets as another stack is refused,
+naming both origins:
+
+> plugin 'acme' registers stack 'quarkus-cli-http', which reads by its
+> facets as 'quarkus-cli-rest', registered by keel
+
+The same holds for `java-quarkus-cli`, a bare `cli`, and
+`fullstack-quarkus-rest`. A plugin id with a word no facet spells
+(`acme-cli`), a new language (`python-cli`) or a new framework
+(`gin-http`) registers, and its own spellings resolve. In the suite's
+plugin fixtures there are 0 clashes. `registryOf` takes 1.5 ms where
+it took 0.9.
+
+### T.2 — The support tier
+
+#### T.2a — The tier as data, and its guards (M)
+
+- **Types** in `src/domain/contract/support-tier.ts`:
+  - `SupportTier`: `first-class` or `best-effort`.
+  - `DialCell`: either a single-service cell (stack, build system,
+    module layout, peer context, harness) or a product cell (stack,
+    repository layout, the build systems as `path=id` pairs).
+  - `CellSupport`: the tier, its proof (a suite, the harness twin, or
+    the services' suites), and `unbuilt`, the services no suite
+    compiles.
+- **Facts** in `src/domain/core/support-tier.json`, loaded and
+  validated as the table is. They are rows of the form _suite S builds
+  cell C_, with every dial explicit, so a default that moves never
+  moves a claim. Today that is 81 single-service rows and 3 product
+  rows, each product row naming the services it builds. A suite name
+  ships only as provenance, for the docs: nothing at run time
+  resolves it.
+- **Rules** in `support-tier.ts`:
+  - `supportOf(cell)` reads the facts, then P1 for a harness-off cell,
+    and P2 for a product's services, each keyed by its stack, build
+    system, layout, extras and siblings' `projects`.
+  - A cell no row and no rule proves is best-effort.
+  - A plugin's preset has no tier (null): keel's CI vouches for
+    keel's presets only.
+  - A cell `keel.dials` never settles to has no tier, since `keel new`
+    refuses it first.
+- **The roles of the suites that prove no cell** live with the tests,
+  not with keel: `tests/support/e2e-roles.ts`. There are 39 today:
+  - 28 `add-module` suites;
+  - 5 that add a vertical first;
+  - `code-style-jvm`, an aspect of `walking-skeleton`'s cell;
+  - `dev-compose`, which builds nothing;
+  - the 4 `ui-*` suites.
+- **Guards**, a new `tests/support-tier.test.ts` in `verify`. The
+  shard parser moves out of `ci-workflow.test.ts` into
+  `tests/support/ci-shards.ts`, which both read.
+  - **G1:** every e2e file is either a row's suite or a role, never
+    both, and every name has a file.
+  - **G2:** the shard that claims a proving suite provisions its
+    toolchain (Gradle and a JDK, Maven and a JDK, Go, Cargo). Today
+    nothing checks this, and a suite in the wrong shard skips and
+    reads as a pass. Measured: 0 gaps.
+  - **G3:** every claimed cell is a cell of the paths golden.
+  - **G4:** no cell is claimed twice (J's one suite per cell).
+  - **G5:** P1's and P2's premises hold on every cell, read from
+    scaffolds the guard makes in memory, since the paths golden digests
+    per entry, not per file. That is some 15 s of worker time in
+    `verify`, off the critical path.
+- **Docs:** `tests/AGENTS.md` (eight guard suites, where there were
+  seven), the root `AGENTS.md`'s count, and `tests/e2e/AGENTS.md` (a
+  new suite declares the cells it proves). Also
+  `src/domain/core/AGENTS.md`, for the one deliberate read of the
+  shipped presets. No CHANGELOG entry: the data is not shown yet.
+
+#### T.2b — Each suite builds the cell it claims (M)
+
+Every e2e helper and suite scaffolds through `e2eMediator`
+(`tests/support/e2e-cell.ts`), in place of `installMediator`. There
+are 20 sites today: 11 in the helpers and 9 in the suites.
+
+- **The check.** On `keel.new-project`, the wrapper settles the target
+  through `keel.dials` and asserts the cell is one the running file
+  claims, as a row or a role. A file-level `afterAll` asserts that a
+  proving suite scaffolded every cell it claims.
+- **The static half, in `verify` (D0):** no `installMediator(` appears
+  in `tests/e2e` or the e2e helpers.
+- **The dynamic half, in the e2e job (D1).** Locally, the step runs
+  every e2e file with the scaffold captured, as the research did:
+  138 scaffolds in about a minute, with no build. The PR's e2e run
+  checks it for real.
+
+#### T.2c — The tier in the docs (M)
+
+`tests/support/generated-docs.ts` renders three more regions:
+
+- **`stack-matrix`, twice:** in `README.md` and in
+  `docs/stacks/README.md`, in place of the two hand-written tables
+  that have drifted apart.
+  - Rows are platforms, from the finder's languages and frameworks.
+    Columns are the entrypoint sets, then _Product (+ web-components
+    frontend)_.
+  - A cell is the preset id, marked ◻ where it is best-effort at its
+    default setting. `—` means the table does not generate it.
+  - The labels the registry lacks (framework versions, Go's stdlib,
+    Rust's axum, each family's page) sit in a test-side map. The
+    renderer throws on a platform with no label, or a label that
+    reaches no preset.
+- **`support-tiers`,** in `docs/stacks/README.md`:
+  - one row per single-service preset × build system, across basic,
+    modulith, and modulith with the peer context. Each cell is ✅ and
+    its suite, or ◻ with the suite that builds it after changing it,
+    where one does;
+  - one row per product × layout × build systems, with what proves
+    each service;
+  - one sentence for `--no-agent-harness` (P1);
+  - one sentence saying that no cell's deployment glue (`Dockerfile`,
+    `compose.yaml`) is ever built.
+
+CHANGELOG _Added_: the docs say how far keel vouches for each setting.
+
+#### T.2d — The tier where a stack is picked (M)
+
+- **Data:** `keel.catalog` carries each preset's tier at its default
+  setting (`StackDescriptor.support`, and the finder's
+  `EntrypointCombination.support`). `keel.dials` carries the tier of
+  the cell it settles (`DialOptions.support`).
+- **The page:** the finder puts _best-effort_ in the card's badge slot
+  (`dom.js`), which no finder card uses today. Options says it for the
+  setting picked.
+- **The terminal:** `keel new --list` marks a preset that is
+  best-effort at its default setting.
+- **Not in the report.** `keel new`'s report carries no tier (DT9).
+- **Held by:** the catalog's and the dials' unit tests, a finder unit
+  test, one `ui-stack-finder` case for the badge, and one `ui-compose`
+  case for Options. `docs/ui.md`, `docs/cli.md`, and a CHANGELOG
+  _Added_ entry.
+
+### T.3 — Products as per-service selections
+
+#### T.3a — I13: a monorepo product runs as its root says (S)
+
+`tests/support/composition-grid.ts` gains I13, with the wording in
+_The measure_, and `HARD` lists it. `holdProductRuns` reads the root's
+`compose.yaml` with the `yaml` package, already a dependency. For each
+`build`, the `Dockerfile` must be under its context. Each short-form
+volume from `./` must exist. Each `cd <dir> && <cmd>` line of the
+README must name a directory and what its runner needs in it:
+
+- `./gradlew`: the qualified project's build file;
+- `./mvnw`: the `-pl` module's POM;
+- `go run`: the package;
+- `npm run` or `pnpm run`: the script;
+- `cargo run`: at most one `[[bin]]`;
+- `./target/debug/*X`: a binary whose name ends in `X`.
+
+An HTML entity, or a runner it does not know, fails the line. A
+polyrepo root has no `compose.yaml` and holds trivially. The composite
+axis checks it right after each monorepo scaffold.
+`composite.known.json` stays `{}`: the known-shape test compares its
+keys with the axis's invariants less the hard ones.
+
+**The proof that it catches what it is for**, in the Landed paragraph:
+on a scaffold copy, each of these goes red:
+
+- a removed `backend/Dockerfile`;
+- a removed bind-mounted `nginx.conf`;
+- a wrong Gradle project;
+- a renamed npm script;
+- `cargo run` with two binaries;
+- _see its README_;
+- an escaped `&amp;&amp;`.
+
+#### T.3b — The product glue reads a service's facets (M)
+
+The engine resolves the product root's recorded services into facets
+and hands them to the adapters. The glue then picks a family by
+predicate, the way a service's own containerization adapter does.
+
+- **Contract** (`composition.ts`, additive and visible to plugins):
+  - `Ctx.services`: `{ path, stack, tags }` per service, empty
+    anywhere but a product root. The `stack` id is printed, never
+    keyed on.
+  - `ServiceProvision.serves`: predicates, beside the `stacks` list a
+    plugin may still declare. A service is served when its id is in
+    `stacks` or its tags match one of `serves`.
+- **The engine:**
+  - `product-services.ts`: `serviceFacets` is the stack's tags with
+    its recorded build system, or its first, and its default layout,
+    the only layout a product's services take. `productServices`
+    reads a manifest. `servesStack` decides `stacks` or `serves`.
+  - `install.ts` and `apply.ts` pass the services into `Ctx`, and so
+    does the replay S added.
+  - `scope.ts`'s _provided_ reading asks `servesStack`, so a service's
+    status and the root's write give one answer.
+- **The glue:** `adapters/product-families.ts`.
+  - **The families.** Seven, each with the predicate the matching
+    containerization adapter selects on:
+    - Quarkus, Spring and Micronaut, each with `arch.server-http`;
+    - Go, Rust, and TypeScript on Node, each with `arch.server-http`;
+    - web-components with `arch.spa`.
+  - **Build and run.** The build system picks the builder stage and
+    the package manager.
+  - **CLI + HTTP backends.** A JVM image runs
+    `application/rest/executable`'s artifact. A Gradle run hint is
+    qualified (`:application:rest:executable:quarkusDev`) exactly when
+    a CLI sits beside it, since both assemblies apply the same plugin.
+    Go builds `./cmd/http`. Rust runs `*-http`, and its hint is
+    `cargo build && ./target/debug/*-http` where two binaries make
+    `cargo run` ambiguous. TypeScript runs `dev:rest`.
+- **`README.md.ejs`** prints each service's hint with `<%-`.
+- **Holds green:** 0 of the 40 shipped product cells move, and nor
+  does any other golden. A new `product-families.test.ts` holds that
+  the predicates equal containerization's, that no family names a
+  dial, and 11 exact hints.
+
+  On 18 synthetic products the grid then reads 0 violations of any
+  invariant, I13 included, and each pairing carries its shipped twin
+  product's verdict on all 276 of its cells. The one move is the
+  monorepo `add …+containerization` cell, `keel.wrong-scope` → `ok`,
+  as on the shipped products.
+
+- **Changes for plugins:** a plugin stack whose tags match a family
+  (say `lang.go` + `arch.server-http`) now gets keel's product image,
+  and reads containerization as _provided_. The `composite-scope`
+  fixture that relied on keel's glue skipping `spring-rest-kotlin`
+  declares a glue of its own. `docs/plugins.md`, `docs/composition.md`,
+  `docs/verticals/fullstack.md`, and CHANGELOG _Added_ (`Ctx.services`,
+  `ServiceProvision.serves`) and _Changed_.
+
+#### T.3c — The weekly sweep, split by family (S)
+
+Test-only, no `src/` change. `extras` becomes four files, each a
+header and one call, over the body today's file holds
+(`tests/support/extras-sweep.ts`):
+
+- `extras.quarkus.test.ts`, `extras.spring.test.ts` and
+  `extras.micronaut.test.ts` each take one framework's presets and
+  products, Kotlin included;
+- `extras.test.ts` takes every preset whose family no sibling file
+  claims.
+
+A product's family is its backend's (`familyOf`). The directory is the
+list: a new platform lands in `extras.test.ts` with no edit, and a
+file `extras.<family>.test.ts` gives its family a fork of its own.
+`machinery.test.ts` holds that the partition covers the catalog, once
+each, and that no family file is empty. `ci-workflow.test.ts` needs no
+edit, since it holds one `vitest run tests/sweep` step and lists no
+file.
+
+- **Proof:** the four files' totals sum to today's single file's
+  (above).
+- **Projected:** 22 to 32 minutes on today's 34 presets, against 29 to
+  48 measured _(inference)_.
+- **Measuring it** needs the workflow dispatched on the branch, which
+  is the user's call. The PR says so.
+
+`docs/development.md`, `tests/AGENTS.md`, `.github/AGENTS.md` and the
+workflow's comments drop the single file's 57 minutes for the CI
+figures.
+
+#### T.3d — Nearest-id reads run-together words (S)
+
+`nearest-id.ts` splits a typed word that runs several candidate words
+together (`quarkuscli` reads as `quarkus cli`) before scoring.
+
+- **Typos of shipped ids named right:** 739 of 924 today, 768 with
+  the fix.
+- **With the 12 products:** typos of the new ids go from 359 to 383
+  of 470.
+- **Where:** the unit table, 17 of 17 as before, and new cases for
+  the six typos the products would otherwise misdirect.
+- **Docs:** CHANGELOG _Fixed_.
+
+#### T.3e — Twelve products, best-effort (L)
+
+The product rule lists 12 more backends, appended:
+
+- `quarkus-rest-kotlin`, `quarkus-cli-rest` and
+  `quarkus-cli-rest-kotlin`;
+- the same three on Spring and on Micronaut;
+- `go-cli-http`, `ts-cli-http` and `rust-cli-http`.
+
+They are named by the rule (DT6):
+
+- `fullstack-kotlin`, `fullstack-cli` and `fullstack-cli-kotlin`;
+- `fullstack-spring-kotlin`, `fullstack-spring-cli` and
+  `fullstack-spring-cli-kotlin`;
+- the same three as Spring's on Micronaut
+  (`fullstack-micronaut-kotlin`, …);
+- `fullstack-go-cli`, `fullstack-ts-cli` and `fullstack-rust-cli`.
+
+Each is best-effort on all its cells. No tier row names one until
+T.4d.
+
+- **Goldens grow by additions only:**
+  - the registry golden, 12 entries;
+  - `paths-new` 88, `paths-add` 1,008 and `paths-reapply` 360 cells;
+  - the converge reading, 1,456;
+  - the composite axis, 1,656 → 4,968;
+  - greenfield, about 400 keys.
+
+  The 34 shipped presets' cells move in none of them. I13 holds on
+  all 18 products. The known files do not move.
+
+- **What a user sees:**
+  - `keel new --list` grows from 35 lines to 47;
+  - the finder places all 46, with 18 under _Fullstack_, Kotlin among
+    them; the fullstack Adapters step becomes a choice between _HTTP
+    server + Browser SPA_ and _CLI + HTTP server + Browser SPA_;
+  - moving `spring-cli` to _Fullstack_ lands on
+    `fullstack-spring-cli`, and the Kotlin jump notice is gone;
+  - a product root's Project step reads each new product back.
+- **What moves in the tests:** `ui-stack-finder` (the move and the
+  notice), `finder.test.ts` and `steps.test.ts`. The browser suites
+  run.
+- **Docs:** `docs/stacks/fullstack.md`'s product table and its "All
+  six", the README and `docs/cli.md` counts (34 → 46), `docs/ui.md`,
+  the two `stack-matrix` regions, the spelling examples, and a
+  CHANGELOG _Added_ entry.
+- **The weekly sweep goes from 2 red tests to 4** (_The measure_).
+  The Landed paragraph records the counts.
+
+### T.4 — The cheap builds, in the shards there are
+
+#### T.4a — The product e2e helpers (S)
+
+A refactor with no new cell. `tests/support/product-e2e.ts` gathers
+what three product suites each copy:
+
+- faking an action by scope (`stubInScopes`), since both services'
+  installs share one action id;
+- `scaffoldProduct`;
+- `driveGatewayContract`;
+- `expectComposeBuildContexts`.
+
+Go's and Rust's CLI greeting check becomes `driveGreetCli`, and the
+TypeScript REST server's start and stop become `withRestAssembly`.
+`fullstack`, `fullstack-go` and `fullstack-rust` move onto them, and
+run green locally. `fullstack-go` takes the shared Go home.
+
+#### T.4b — `go-cli-http` and `rust-cli-http` built (S)
+
+Two new suites, each the family's walking skeleton retargeted:
+
+- `combo-basic-go-cli-http.test.ts`, in the `go` shard;
+- `combo-basic-rust-cli-http.test.ts`, in the `rust` shard.
+
+Each builds and tests the crate or module, greets through its CLI, and
+drives the HTTP contract and health through its server. The first is
+15 to 60 s on CI _(inference)_ and the second 75 to 110 s.
+
+- **The shards:** go goes from about 117 s to 120–137 s. Rust goes from
+  about 164 s to 203–209 s and becomes throughput-bound, still more
+  than 260 s inside the critical path.
+- **Same commit:** both rows in `support-tier.json`; `ci.yml`'s
+  `files` and its two stale comments (each says "Six files", where
+  there are 8 and 7); `tests/e2e/AGENTS.md`'s combo grid, 21 → 23;
+  and the generated regions.
+- **Docs:** CHANGELOG _Changed_: two presets read first-class.
+
+#### T.4c — `fullstack-ts` built (S)
+
+`fullstack-ts.test.ts`, in `web-combo`.
+
+- **What it does:** builds the backend, faking only the frontend's
+  install (P2), and checks `compose.yaml`'s build contexts. It then
+  runs the backend's typecheck and tests, and drives the gateway
+  contract against its REST server: the CORS origin, the greetings, a
+  400 and the preflight.
+- **Time:** 23 s locally, 26 to 40 s on CI _(inference)_. `web-combo`
+  goes from about 34 s to 48–60 s.
+- **Same commit:** the row, `ci.yml`, and the comment that miscounts
+  `web`.
+
+#### T.4d — The three non-JVM CLI + HTTP products built (M)
+
+`fullstack-go-cli.test.ts` (`go`), `fullstack-rust-cli.test.ts`
+(`rust`) and `fullstack-ts-cli.test.ts` (`web-combo`). Each is the
+same shape as T.4c, plus the CLI. Rust answers `projectName backend`,
+so its binaries are named for the service. Each prototype passed
+against a synthetic registry. Their rows land here, and the three
+products read first-class at their default cell. A
+`tests/e2e/AGENTS.md` paragraph on products says:
+
+- one file per product, at its default cell;
+- the backend is built and the frontend proven by P2;
+- the compose contexts are checked and never built;
+- the JVM products have no suite (DT12).
+
+### Decisions on record
+
+The support tier was the user's to decide, and DT1 is in their words.
+The others list the options where they were open, with the one taken.
+
+- **DT1 — The support tier.** The user, on the options and costs the
+  research put to them: _"I'll follow your recommendation."_ That
+  recommendation, spelled out:
+  - The tier's unit is the dial cell (DT2).
+  - _First-class_ is a cell with an e2e suite of its own, or one
+    proven byte-identical to such a cell (P1, P2).
+  - _Best-effort_ is grid-only: held to every hard invariant and never
+    compiled on CI. It is marked in the generated docs and on
+    `keel ui`'s finder cards.
+  - _Refused_ is what the table does not generate (DT5).
+  - The twelve product pairings open as best-effort, after the glue
+    reads facets (T.3b, T.3e).
+  - The cheap builds go in shards that exist: `go-cli-http`,
+    `rust-cli-http`, `fullstack-ts`, and the three non-JVM CLI + HTTP
+    products.
+  - The JVM products stay best-effort until the user decides on
+    shards (DT12).
+  - The 34 ids stay keel's ids, and a facet spelling is the alias
+    (DT3).
+
+  The user's constraints go with it. The known files stay as they
+  are, I10 stays hard, and every shipped preset keeps its bytes, held
+  by a golden that lands first. `keel new --stack=<id>` keeps working
+  for every shipped id. T stops and asks before:
+  - dropping or renaming a shipped preset;
+  - adding an e2e shard;
+  - starting U.
+
+- **DT2 — The tier's unit.**
+  - (a) The preset. That would mark 10 presets and hide 83
+    never-built cells inside first-class ones.
+  - (b) The dial cell: the roadmap's own cell (J, `tests/e2e/AGENTS.md`).
+
+  **Taken: (b).**
+
+- **DT3 — "Ids kept as aliases".**
+  - (a) Facet spellings canonical, the 34 ids their aliases, as the
+    line reads. Every product root's bytes would move, because its
+    manifest, `AGENTS.md` and `README.md` spell its services' ids. So
+    would every grid key, against the user's "every shipped preset
+    keeps its bytes".
+  - (b) The 34 ids canonical, and any facet spelling an input that
+    resolves to them, never recorded and never listed.
+  - (c) Registered alias stacks. These break S's round trip (22
+    scopes) and the drill-down.
+
+  **Taken: (b), a deviation from the line's wording,** stated here.
+  Every id keeps working, and what the line wanted, a preset named by
+  its facets, holds in both directions.
+
+- **DT4 — How a spelling is read.**
+  - (a) An alias list per preset, as data. It is a hand list, a few
+    spellings each, and a plugin cannot share it.
+  - (b) Derived from the drill-down: spelled ⊆ typed ⊆ facets, for
+    exactly one stack.
+
+  **Taken: (b),** with T.1e refusing a plugin id that reads as
+  another stack. Shape inference (a front and a back entrypoint read
+  as _Fullstack_) is left out: it would read `cli-spa` as
+  `fullstack-cli`.
+
+- **DT5 — What is refused.**
+  - (a) What the engine's coverage refuses. It lets `rust` +
+    `framework.quarkus` + CLI scaffold.
+  - (b) What the table does not generate: the 42 side-mixing
+    single-service cells, products of any other shape, and a dial
+    setting `keel.dials` does not offer.
+
+  **Taken: (b).**
+
+- **DT6 — A product's shape and name.**
+  - **Shape:** one back cell that serves HTTP, plus web-components.
+    The glue assumes two services, and other shapes are U's.
+  - **Name:** `fullstack` plus the backend id's words, less `quarkus`,
+    `rest` and `http`. This reproduces all six shipped ids.
+  - **The alternative:** keeping the entrypoint words
+    (`fullstack-go-cli-http`). It names products inconsistently with
+    `fullstack-go`, and nearest-id finds the intended product 40 times
+    in 52 against 48.
+
+  **Taken: the name above.** A spelling such as
+  `fullstack-quarkus-cli-rest` resolves to `fullstack-cli` (T.1d).
+
+- **DT7 — How the glue reads a service.**
+  - (a) Add 12 ids to its tables. Every new backend would mean three
+    edits, against this epic's point.
+  - (b) Record each service's tags in the root manifest. That moves
+    the shipped products' bytes.
+  - (c) The engine resolves recorded ids to facets and hands them in
+    through `Ctx`, and the glue declares families by predicate.
+
+  **Taken: (c).** A plugin stack tagged like keel's is now served,
+  which is the same reading containerization makes in the service.
+
+- **DT8 — Which proofs transfer.**
+  - **P1 (the harness twin) and P2 (a product's services):** measured
+    on every cell, and checked in `verify` (G5).
+  - **Variant-built cells:** best-effort. An `add-module` suite builds
+    its cell only after rewriting 3 or 4 of its build and wiring
+    files, which is J's redundancy argument the other way round.
+  - **A product backend against its single-service preset:** no
+    transfer, since they differ in the code a product compiles.
+
+- **DT9 — Where the tier shows.**
+  - (a) A note in `keel new`'s report. It moves 299 of 717 cells of
+    the paths golden, and a note per run for a fact about a setting.
+  - (b) `keel.catalog`, `keel.dials`, the finder's badge, Options,
+    `keel new --list` and the generated docs.
+
+  **Taken: (b).**
+
+- **DT10 — How a suite's claim is checked.**
+  - (a) Static, from the suite's literals. This finds 123 of 138.
+  - (b) Static guards in `verify` and a dynamic check in the e2e job,
+    on what each suite dispatches.
+
+  **Taken: (b).**
+
+- **DT11 — The weekly sweep and best-effort cells.** Best-effort cells
+  are catalog cells, and the sweep reads the catalog, so they are
+  swept. `extras` is split by family first (T.3c).
+  - **Rejected, a job matrix:** the guard allows one sweep step, and
+    it triples the runner minutes.
+  - **Rejected, numbered balanced shards:** the names say nothing.
+    They are the fallback if one family outgrows its file.
+
+- **DT12 — The JVM products' builds.** _Open; the user decides._
+  - (a) About six `jvm-product-<framework>-<language>` shards. These
+    are new shards, so they need the user's word. They also add six
+    jobs to a matrix that already queues against the 40-job cap.
+  - (b) As (a), after collapsing the 24 `jvm-add-module-*` shards to
+    6, the one-edit move `ci.yml` documents. That frees 18 slots.
+  - (c) Stay best-effort.
+
+  **Taken for T: (c),** as DT1 says. A JVM product image builds in
+  2 to 5 minutes _(inference from one Docker build)_.
+
+- **DT13 — The byte golden that lands first.**
+  - (a) A new per-file golden: 380 cells, 966 kB, and 15 s in
+    `verify`.
+  - (b) S's `paths-new`, widened to the 28 product cells it lacks. It
+    already pins every single-service setting, the harness on and
+    off, tree, manifest, actions and report.
+
+  **Taken: (b).** It names the top-level entry that moved, where (a)
+  names the file, and it costs 3.5 s.
+
+### Not in scope for T
+
+- **Changing a facet of an existing project:** its build system,
+  layout, language or framework, or removing an entrypoint. That needs
+  L's merge base. Adding an entrypoint is R's.
+- **Products of another shape:** backend only, two backends, a CLI
+  service, a frontend other than web-components, or `keel add service`.
+  These are U's, as is a product root's converge and its release
+  story.
+- **Per-service module layout or peer context in a product.** That is
+  9 times the settings per JVM product. Each product alone would then
+  take longer in the sweep than its 90-minute per-preset limit.
+- **New platforms or entrypoints.** A third back-end entrypoint would
+  roughly triple the growth axis, past its 180 s budget.
+- **Building any JVM product** (DT12). Also left for the user's word,
+  since each costs runner minutes or a shard:
+  - building the pristine cell in each `add-module` job, which would
+    promote 23 cells at about 30 to 60 s a job _(inference)_;
+  - the four combined-entrypoint presets whose basic suite took the
+    other build system;
+  - the Go and Rust combined-entrypoint moduliths;
+  - `ts-cli-http` on npm.
+- **Building a `Dockerfile` or running `compose`** for any product.
+  First-class never covers deployment glue, and the docs say so.
+- **A tier in `keel new`'s report** (DT9), and recording a preset id
+  anywhere (S's DS2).
+- **Q3.4's findings 2 and 3**, which the sweep keeps reporting
+  (_The measure_).
+
+### Deliberately kept
+
+- **The manifest records tags, not a preset id.** A spelling is read,
+  never stored.
+- **Presets as the entry vocabulary.** The 34 ids stay keel's ids, and
+  `keel new --stack=<id>` works for each.
+- **One e2e suite per first-class cell** (J). Best-effort is the
+  exception T's line licenses, stated as data rather than as a gap.
+- **The known files, and I10, I11 and I12 hard.**
+- **`keel new` and `keel add`, two front doors of one operation**
+  (DS1).
+- **D12: a refresh is proposed, never automatic.**
 
 ---
 
