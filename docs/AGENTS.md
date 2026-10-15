@@ -9,25 +9,29 @@ per stack family (prerequisites, questions, generated tree);
 `cli.md`, `composition.md`, `plugins.md`, `ui.md`, `development.md`,
 `release.md`, `roadmap.md`.
 
-**A new stack, vertical or CLI flag updates the matching page(s) and the
-README matrix in the same change.** A doc landing a release later is a
-doc that was never written.
+**A new stack, vertical or CLI flag updates the matching page(s) in the
+same change, and regenerates the stack matrix.** A doc landing a release
+later is a doc that was never written.
 
-**Two tables here are generated, not written:** the compatibility
-matrix in `verticals/README.md` and the defaults table in
-`stacks/README.md`, each between `<!-- generated:<name>:begin -->` and
-`<!-- generated:<name>:end -->`. Edit `tests/support/generated-docs.ts`,
-never the region; the prose around a region is written by hand and
-survives regeneration. After the grid's goldens move, run
-`KEEL_UPDATE_GOLDEN=1 pnpm exec vitest run tests/generated-docs.test.ts`
-— `verify` fails until you do. The matrix takes its rows in the order
-of the catalog table above it, so a new vertical gets its catalog row
-first; the renderer refuses one it cannot place.
+**Five tables in three files are generated, not written:** the
+compatibility matrix in `verticals/README.md`; the stack matrix, in the
+root `README.md` and in `stacks/README.md`; and the defaults table and
+the support tiers in `stacks/README.md`. Each sits between
+`<!-- generated:<name>:begin -->` and `<!-- generated:<name>:end -->`.
+Edit `tests/support/generated-docs.ts`, never the region; the prose
+around a region is written by hand and survives regeneration. After the
+grid's goldens, the presets, `src/domain/core/support-tier.json` or
+`tests/support/e2e-roles.ts` (a `variant` suite's seeds) move, run `KEEL_UPDATE_GOLDEN=1 pnpm exec vitest run tests/generated-docs.test.ts`
+— `verify` fails until you do. The compatibility matrix takes its rows
+in the order of the catalog table above it, so a new vertical gets its
+catalog row first; the renderer refuses one it cannot place. The stack
+matrix names each platform from `PLATFORM_LABELS` in that module, and
+refuses a platform it has no label for.
 
 ## Where each kind of prose belongs
 
 - **`README.md`** (repo root) is the engaging front door — quickstart,
-  stack matrix, per-family "How to" sections, verticals table. Keep it
+  the generated stack matrix, per-family "How to" sections, verticals table. Keep it
   scannable; depth belongs here.
 - **`docs/`** is the depth. Contribution workflow (forks) lives in
   `CONTRIBUTING.md`, not here.

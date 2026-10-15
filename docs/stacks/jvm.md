@@ -365,5 +365,5 @@ usable as beans without the all-open compiler plugin.
 
 - [Stack catalog](README.md) · [CLI reference](../cli.md) ·
   [Composition model](../composition.md)
-- Fullstack twins: [`fullstack`, `fullstack-spring`,
-  `fullstack-micronaut`](fullstack.md)
+- Fullstack twins: [one per preset here that serves HTTP, twelve in
+  all, from `fullstack` to `fullstack-micronaut-cli-kotlin`](fullstack.md)

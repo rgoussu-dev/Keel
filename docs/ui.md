@@ -59,17 +59,17 @@ the plan column scroll independently, so the plan holds its own screen
 however long the step beside it runs. Under 62rem the two collapse
 into one and the page scrolls as an ordinary document.
 
-| Step              | What it asks                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Directory**     | A path field and a folder browser. A directory that does not exist yet is fine — it is marked _will be created_. What is there decides the rest of the rail: an empty directory is a new project (`keel new`), one holding a keel manifest a project to add to (`keel add`).                                                                                                                                                                                                                                                                               |
-| **What to build** | _(new project)_ Fullstack, backend or frontend. The widest question there is, and the first one — same as the terminal wizard's.                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| **Language**      | _(new project)_ The languages that shape reaches. On a fullstack product, the backend's.                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| **Framework**     | _(new project)_ Quarkus, Spring or Micronaut — only where the shape and language leave more than one.                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| **Adapters**      | _(new project)_ CLI, HTTP server, SPA. Picking more than one gives the **composed** preset, never two services.                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| **Project**       | _(keel project)_ Where the four steps above would be, nothing to ask: what the project already is, read back from its manifest — the preset it reads as, what it builds, its language, framework and adapters, its build system and module layout, a product's services, its bounded contexts, and what it has installed. In words, never tags. See [Options on a keel project](#options-on-a-keel-project).                                                                                                                                               |
-| **Options**       | On a new project, the stack's dials: build system, module layout, the repository layout of a composite, and `--with-peer-context` — and **Also scaffold**: the verticals to install alongside (`--with`), on a product one group per service (`--with backend:persistence`), and on a single project the agent harness to leave out (`--no-agent-harness`). Which controls exist comes from the catalog; what may be on them comes from `keel.dials`. On a keel project, the same **Also scaffold** group over what it has — or a bounded context instead. |
-| **Questions**     | Everything the composition adapters ask, grouped under **Details** by the adapter that asked. Conditional, so the list changes as you choose.                                                                                                                                                                                                                                                                                                                                                                                                              |
-| **Review**        | Every choice the run will make — the extras among them — each with a _change_ link back to its step, how many questions you answered rather than left on their defaults (on a keel project's add as on a new project), and the Generate button. Nothing is written before you press it.                                                                                                                                                                                                                                                                    |
+| Step              | What it asks                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Directory**     | A path field and a folder browser. A directory that does not exist yet is fine — it is marked _will be created_. What is there decides the rest of the rail: an empty directory is a new project (`keel new`), one holding a keel manifest a project to add to (`keel add`).                                                                                                                                                                                                                                                                                                                                                                             |
+| **What to build** | _(new project)_ Fullstack, backend or frontend. The widest question there is, and the first one — same as the terminal wizard's.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| **Language**      | _(new project)_ The languages that shape reaches. On a fullstack product, the backend's.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| **Framework**     | _(new project)_ Quarkus, Spring or Micronaut — only where the shape and language leave more than one.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| **Adapters**      | _(new project)_ CLI, HTTP server, SPA. Picking more than one gives the **composed** preset, never two services. On a fullstack product, a choice of _HTTP server + Browser SPA_ or _CLI + HTTP server + Browser SPA_.                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| **Project**       | _(keel project)_ Where the four steps above would be, nothing to ask: what the project already is, read back from its manifest — the preset it reads as, what it builds, its language, framework and adapters, its build system and module layout, a product's services, its bounded contexts, and what it has installed. In words, never tags. See [Options on a keel project](#options-on-a-keel-project).                                                                                                                                                                                                                                             |
+| **Options**       | On a new project, the stack's dials: build system, module layout, the repository layout of a composite, and `--with-peer-context` — and **Also scaffold**: the verticals to install alongside (`--with`), on a product one group per service (`--with backend:persistence`), and on a single project the agent harness to leave out (`--no-agent-harness`). Which controls exist comes from the catalog; what may be on them comes from `keel.dials`, which also says when the setting picked is [best-effort](#how-far-keel-vouches-for-a-preset). On a keel project, the same **Also scaffold** group over what it has — or a bounded context instead. |
+| **Questions**     | Everything the composition adapters ask, grouped under **Details** by the adapter that asked. Conditional, so the list changes as you choose.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| **Review**        | Every choice the run will make — the extras among them — each with a _change_ link back to its step, how many questions you answered rather than left on their defaults (on a keel project's add as on a new project), and the Generate button. Nothing is written before you press it.                                                                                                                                                                                                                                                                                                                                                                  |
 
 Two things sit outside the rail because they are true at every step:
 the **Preset** picker under it, which names the id the answers so far
@@ -86,8 +86,8 @@ run is never in a state that cannot be generated. The rail is a map,
 not a gate — "just show me the plan" is one click, not four screens.
 
 **A step with one answer is not a step.** A language reaching one
-framework has no framework step; a fullstack product has no adapters
-step; the frontend shape reaches one preset, so it has neither. That
+framework has no framework step; a set of answers reaching one
+combination has no adapters step; the frontend shape reaches one preset, so it has neither. That
 is the same rule the terminal wizard skips a question under, run over
 the same tree. Options is never one of them: a preset that pins its
 build system and layout still has its extras to offer, and what
@@ -292,9 +292,9 @@ to use.
   two-service product names no single language, so before there was a
   shape axis it appeared on no facet and was reachable only by id.
 - **Language** — Java, Kotlin, Go, Rust or TypeScript for a backend.
-  On the fullstack shape it is the backend service's, and only Java,
-  Go, Rust and TypeScript have a product; the frontend shape has one
-  language, TypeScript in the browser.
+  On the fullstack shape it is the backend service's, and every one of
+  them has a product; the frontend shape has one language, TypeScript
+  in the browser.
 - **Framework** — Quarkus, Spring or Micronaut. Absent where the
   shape and language chosen leave only one, which is everywhere
   outside the JVM.
@@ -302,22 +302,26 @@ to use.
   preset (`quarkus-cli-rest`, `go-cli-http`): one project, one domain,
   both entrypoints, never two services. Emptying it is refused rather
   than resolved — the control snaps back, since no preset has no way
-  in.
+  in. On the fullstack shape it is a choice of two, _HTTP server +
+  Browser SPA_ or _CLI + HTTP server + Browser SPA_: whether the
+  backend carries a CLI beside its server.
 
 **Stepping back keeps what still fits.** Move the shape from backend
-to fullstack with Java + Spring chosen and you land on
-`fullstack-spring`, not back at square one; come out of a product into
+to fullstack with `spring-rest` chosen and you land on
+`fullstack-spring`, and from `spring-cli` on `fullstack-spring-cli`,
+not back at square one; come out of a product into
 a backend and the half of its entrypoints a backend can still take —
 `server-http` of `server-http + spa` — comes with you.
 
 Where the new shape does not have your language at all, the move lands
 on its nearest kin rather than on whichever language sorts first: one
-with the same framework (Kotlin + Spring moved to fullstack is Java +
-Spring, `fullstack-spring`), then one on the same runtime, then the
+with the same framework, then one on the same runtime, then the
 default preset's (the browser front end moved to a backend lands on
-`quarkus-cli`, where a blank page opens). A line under the **Preset**
-picker says so — _Kotlin has no fullstack preset, so the language is
-now Java._ — rather than let the language change without a word.
+`quarkus-cli`, where a blank page opens). Every back-end language has
+a product, so today that is a move between a backend and the front
+end. A line under the **Preset** picker says so — _Go has no frontend
+preset, so the language is now TypeScript (browser)._ — rather than
+let the language change without a word.
 
 **A new preset keeps your choices.** Every move that lands on another
 preset — an adapter ticked, a framework switched, a shape moved —
@@ -375,6 +379,38 @@ implementation of a vocabulary that is not its to know, and it would
 drift from the terminal's the first time a tag moved. Which steps
 exist is derived the same way, in `assets/web/src/steps.js`, from the
 same tree.
+
+## How far keel vouches for a preset
+
+Every setting of a preset's dials has a support tier. It is
+_first-class_ where an e2e suite builds it as `keel new` leaves it, or
+each part of it is proven byte-identical to a part a suite builds. It is
+_best-effort_ where no CI job builds it as `keel new` leaves it; the
+composition grid in `verify` holds only each preset's default setting,
+and the weekly, report-only sweep reads every setting. A plugin's
+preset has no tier: keel's CI vouches only for keel's presets. The
+tiers are tabled in [the stacks overview](stacks/README.md#support-tiers).
+
+The page says so in two places, and says nothing for a first-class
+setting:
+
+- **On the drill-down's cards.** A card says _best-effort_ in its badge
+  slot where the preset choosing it lands on is best-effort at its
+  default setting. From `quarkus-cli`, the _Fullstack_ card is badged,
+  since it lands on `fullstack-cli`. On **Adapters**, a box is badged by
+  the preset you get with it ticked: on `quarkus-cli-kotlin`, the _HTTP
+  server_ box is badged, since ticking it lands on
+  `quarkus-cli-rest-kotlin`. The badge's tooltip names the preset. Each
+  leaf of `Catalog.finder` carries its tier (`support`), and the card
+  reads it there.
+- **On Options, for the setting picked.** A line says the setting is
+  best-effort, from the `support` of the `keel.dials` reply: the tier
+  of the cell the target settles at. It moves with the dials:
+  `quarkus-cli-rest-kotlin` is best-effort on Gradle, its default, and
+  first-class on Maven. The extras you tick do not move it, since they
+  are not a dial.
+
+`keel new --list` marks the same presets (see the [CLI](cli.md)).
 
 ## The dials are narrowed by the same rules
 
@@ -594,7 +630,7 @@ CLI uses. Useful if you would rather script it than click it.
 | `GET  /api/catalog` | —                          | `keel.catalog` — stacks, verticals, dials, finder                   |
 | `GET  /api/project` | `?path=<abs>`              | `keel.project-status`                                               |
 | `GET  /api/browse`  | `?path=<abs>`              | directory listing for the picker                                    |
-| `POST /api/dials`   | `{ target }`               | `keel.dials` — legal menus + the settled target                     |
+| `POST /api/dials`   | `{ target }`               | `keel.dials` — legal menus + the settled target and its tier        |
 | `POST /api/preview` | `{ cwd, target, answers }` | `keel.preview` — writes nothing                                     |
 | `POST /api/install` | the identical body         | `keel new` / `keel add` / `keel add module` / `keel add entrypoint` |
 
@@ -604,7 +640,10 @@ an unknown stack, a half-filled target and a combination already
 illegal all get menus back, because a menu that will not answer where
 the target is broken is a menu that cannot be used to fix it.
 
-`target` is one of:
+`target` is one of the following. Its `stack` takes a preset's id or
+its facets' words, as `--stack` does (see the [CLI](cli.md)); `dials`
+settles a spelled one at the preset's id, so `go-rest` comes back as
+`go-http`.
 
 ```jsonc
 { "kind": "new-project", "stack": "quarkus-rest",
@@ -772,7 +811,7 @@ A refusal comes back as **422** with the domain's own error code:
 {
   "error": {
     "code": "keel.unknown-stack",
-    "message": "unknown stack 'go-rest' — did you mean 'go-http'? Available: …"
+    "message": "unknown stack 'quarkus-cli-kotin' — did you mean 'quarkus-cli-kotlin'? Available: …"
   }
 }
 ```

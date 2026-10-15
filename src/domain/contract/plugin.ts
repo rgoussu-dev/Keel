@@ -111,6 +111,7 @@ export type {
   HookSpec,
   Placement,
   Predicate,
+  ProductService,
   Question,
   QuestionChoice,
   Region,

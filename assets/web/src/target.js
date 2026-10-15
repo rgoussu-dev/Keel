@@ -76,7 +76,7 @@
  * @typedef {{ installed: ReadonlyArray<{ id: string }>, available: ReadonlyArray<{ id: string, requires: ReadonlyArray<string> }>, provided?: ReadonlyArray<{ id: string }> }} Status
  * @typedef {{ id: string, change: string, because: string, service?: string }} Adjustment
  * @typedef {{ path: string, buildSystems: ReadonlyArray<Option>, verticals?: ReadonlyArray<VerticalOption> }} ServiceDials
- * @typedef {{ target: object, buildSystems: ReadonlyArray<Option>, moduleLayouts: ReadonlyArray<Option>, services: ReadonlyArray<ServiceDials>, verticals?: ReadonlyArray<VerticalOption>, adjustments?: ReadonlyArray<Adjustment> }} Dials
+ * @typedef {{ target: object, buildSystems: ReadonlyArray<Option>, moduleLayouts: ReadonlyArray<Option>, services: ReadonlyArray<ServiceDials>, verticals?: ReadonlyArray<VerticalOption>, adjustments?: ReadonlyArray<Adjustment>, support?: string | null }} Dials
  * @typedef {{ from: string, dials: Record<string, unknown> }} Carried
  * @typedef {{ adapter: string, question: string, value: string, identity: boolean }} Held
  * @typedef {{ target: Target, answers: Answers, dials: Dials | null, generation: number, carried: Carried | null, notice: string, held: ReadonlyArray<Held>, identity: ReadonlyArray<string> }} Run

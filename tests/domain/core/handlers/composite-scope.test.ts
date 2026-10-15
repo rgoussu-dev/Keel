@@ -8,7 +8,7 @@
  *
  * **Scenario.** Real products scaffolded into a temporary directory —
  * `fullstack` under both repository layouts, and a plugin's product
- * whose backend the product glue has no image for — then asked from
+ * whose backend its own glue has no image for — then asked from
  * the root, from a service, and from a directory beside them. And
  * `keel new` asked for a service's own extras (`--with
  * backend:persistence`), held to scaffolding then adding them there,
@@ -50,7 +50,9 @@ import {
   type AvailableVerticalDescriptor,
   type ProjectStatus,
 } from '../../../../src/domain/contract/queries.js';
-import type { Vertical } from '../../../../src/domain/contract/composition.js';
+import type { Adapter, Vertical } from '../../../../src/domain/contract/composition.js';
+import { productComposeAdapter } from '../../../../src/domain/core/adapters/product-compose.js';
+import { fullstackVertical } from '../../../../src/domain/core/verticals/fullstack.js';
 import { PathConflictError, RefusalError } from '../../../../src/domain/contract/refusal.js';
 import type { Stack } from '../../../../src/domain/contract/stack.js';
 import type { RunActionsInputs } from '../../../../src/domain/core/actions.js';
@@ -89,8 +91,9 @@ afterEach(async () => {
 const at = (...segments: string[]) => path.join(cwd, ...segments);
 
 /**
- * A plugin's product: keel's own fullstack glue over a backend preset
- * the glue has no image for, and — for the greenfield half of
+ * A plugin's product: its own fullstack glue — keel's, building the
+ * frontend's image alone — over a backend it has no image for, and —
+ * for the greenfield half of
  * placement — a pipeline among the backend's own extras. Beside it,
  * `acme-trio`: two such backends and the frontend, so a vertical two
  * services could take meets one the root builds it for.
@@ -99,16 +102,47 @@ function pluginProduct(): Registry {
   const fullstack = STACKS['fullstack'] as Stack;
   const ci = shippedRegistry.vertical('ci');
   const gateway = shippedRegistry.vertical('gateway');
-  if (ci === null || gateway === null) throw new Error('the shipped registry lost a vertical');
+  const vcs = shippedRegistry.vertical('vcs');
+  if (ci === null || gateway === null || vcs === null) {
+    throw new Error('the shipped registry lost a vertical');
+  }
+  // The plugin's own glue: keel's, but building the frontend's image
+  // alone, and declaring it by the one stack id it serves.
+  const compose: Adapter = {
+    ...productComposeAdapter,
+    id: 'acme-fullstack/product-compose',
+    vertical: 'acme-fullstack',
+    providesInServices: { vertical: 'containerization', stacks: ['web-components'] },
+    async contribute(ctx) {
+      const { files = [] } = await productComposeAdapter.contribute(ctx);
+      const unserved = ctx.services
+        .filter((service) => service.stack !== 'web-components')
+        .map((service) => `${service.path}/`);
+      return {
+        files: files.filter((file) => !unserved.some((dir) => file.path.startsWith(dir))),
+      };
+    },
+  };
+  const glue: Vertical = {
+    ...fullstackVertical,
+    id: 'acme-fullstack',
+    adapters: fullstackVertical.adapters.map((adapter) =>
+      adapter.id === productComposeAdapter.id
+        ? compose
+        : { ...adapter, id: `acme-${adapter.id}`, vertical: 'acme-fullstack' },
+    ),
+  };
   return registryOf([
     shippedSource,
     {
       origin: "plugin 'acme'",
+      verticals: [glue],
       stacks: [
         {
           ...fullstack,
           id: 'acme-product',
           description: 'A Kotlin Spring backend behind the web-components frontend.',
+          verticals: [vcs, glue],
           services: [
             { path: 'backend', stack: 'spring-rest-kotlin', extraVerticals: [gateway, ci] },
             { path: 'frontend', stack: 'web-components', extraVerticals: [gateway] },
@@ -118,6 +152,7 @@ function pluginProduct(): Registry {
           ...fullstack,
           id: 'acme-trio',
           description: 'Two Kotlin Spring services behind the web-components frontend.',
+          verticals: [vcs, glue],
           services: [
             { path: 'backend', stack: 'spring-rest-kotlin' },
             { path: 'worker', stack: 'spring-rest-kotlin' },

@@ -147,6 +147,7 @@ import { convergeOf } from '../converge.js';
 import { converge } from '../converge-run.js';
 import { admissionNotes, admit, type AdmittedSet } from '../plan-refusal.js';
 import { nearestStack, nearestVertical, unknownIdSentence } from '../nearest-id.js';
+import { stackSpelled } from '../stack-spelling.js';
 import { stackTagsFor, type BuildSystemOption, type Stack } from '../stacks.js';
 import {
   assemblableStacks,
@@ -167,6 +168,7 @@ import {
   normaliseEntrypoints,
   pathFor,
   pathOf,
+  pathSummary,
   shapeChoices,
   shapeLabel,
   wizardPaths,
@@ -178,6 +180,7 @@ import {
   alreadyIncludedNote,
   crossScopeWriteError,
   routedExtraNote,
+  spelledStackNote,
   unbuiltInServiceNote,
   type ScopeWriter,
 } from '../refusals.js';
@@ -397,8 +400,11 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     if (above !== null) return err(enclosedBy(above, command.cwd));
     const resolved = await this.resolveStackId(command, prompt);
     if (!resolved.ok) return resolved;
-    const registered = this.deps.registry.stack(resolved.value);
-    if (!registered) return err(unknownStackError(this.deps.registry, resolved.value));
+    const spelling = stackSpelled(this.deps.registry, resolved.value);
+    if (spelling.kind === 'unknown') {
+      return err(unknownStackError(this.deps.registry, resolved.value));
+    }
+    const registered = spelling.stack;
     // The harness before any other dial, as `keel.dials` settles it
     // (`harnessOptional`): every menu after this is read over the
     // preset as it will be installed.
@@ -439,9 +445,18 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
       staged.value.scopes.flatMap((scope) => scope.reads),
     );
     if (stray !== null) return err(stray);
+    // A spelling read as a preset says so before anything the run decided.
+    const notes = [
+      ...(spelling.kind === 'spelled' ? [spelledStackNote(resolved.value, spelling.path)] : []),
+      ...(staged.value.report.notes ?? []),
+    ];
     return ok({
       ...staged.value,
-      report: { ...staged.value.report, ...(plan.length > 0 ? { resolvedAdapters: plan } : {}) },
+      report: {
+        ...staged.value.report,
+        ...(notes.length > 0 ? { notes } : {}),
+        ...(plan.length > 0 ? { resolvedAdapters: plan } : {}),
+      },
     });
   }
 
@@ -460,7 +475,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
    * interactive nor supplied.
    *
    * The single most consequential choice a `keel new` run makes, and
-   * a flat list of 34 ids is a poor way to make it — so interactively
+   * a flat list of 46 ids is a poor way to make it — so interactively
    * it is asked as up to four narrowing questions rather than one
    * wide one: **shape → language → framework → user-side adapters**,
    * each menu derived from the tags of the stacks still reachable
@@ -544,18 +559,7 @@ export class NewProjectHandler implements Handler<NewProjectCommand> {
     // pick — "both" means one hexagon with two ways in, not two
     // services — so the run says which preset it landed on rather
     // than leaving it to be inferred from the file list.
-    this.deps.logger.info(
-      `keel new: ${[
-        shapeLabel(chosen.shape).split(' — ')[0],
-        languageLabel(language),
-        chosen.framework === null || chosen.framework === ''
-          ? null
-          : frameworkLabel(chosen.framework),
-        entrypointsLabel(entrypoints),
-      ]
-        .filter((part) => part !== null && part !== '')
-        .join(' · ')} → ${chosen.stackId}`,
-    );
+    this.deps.logger.info(`keel new: ${pathSummary(chosen)} → ${chosen.stackId}`);
     return ok(chosen.stackId);
   }
 
@@ -1732,9 +1736,9 @@ function cancelledError(): DomainError {
 }
 
 /**
- * The refusal of a `--stack` no preset is registered under: the id it
- * most likely meant, where one is near enough to name, and every id
- * there is.
+ * The refusal of a `--stack` that is no registered id and names no one
+ * preset by its facets: the id it most likely meant, where one is near
+ * enough to name, and every id there is.
  */
 function unknownStackError(registry: Registry, id: string): DomainError {
   return new DomainError(

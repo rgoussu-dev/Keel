@@ -20,6 +20,11 @@
  * assert and what the page was verified by hand for, once, and never
  * since.
  *
+ * **The tier.** A card whose preset is best-effort at its default
+ * setting says so in its badge slot (roadmap T.2e); which preset a
+ * card lands on, and its badge, are unit-tested beside the narrowing.
+ * What is held here is the badge drawn, and moved, across re-renders.
+ *
  * **The whole binary, not the server module.** This spawns
  * `keel ui --port 0` as a child process and reads the URL it prints,
  * because the token in that URL is the page's only credential: a
@@ -45,7 +50,7 @@
  */
 
 import fs from 'fs-extra';
-import { chromium as browserType, type Browser, type Page } from 'playwright';
+import { chromium as browserType, type Browser, type Locator, type Page } from 'playwright';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { E2E_TIMEOUT_MS, mkTempDir, skipE2E } from '../support/web-e2e.js';
 import {
@@ -180,13 +185,16 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — the guided ste
 
       await goToStep(traffic, page, 'shape');
       await act(traffic, () => choice(page, 'shape', 'fullstack').check());
-      // Java + Spring carried across; the entrypoints could not, a
-      // product having its own.
-      await stackIs(page, 'fullstack-spring');
+      // Java + Spring carried across, and the CLI with them: Spring's
+      // product with a CLI beside its server.
+      await stackIs(page, 'fullstack-spring-cli');
 
       // A product is two services, so the repository-layout dial is
-      // there and the adapters step is not.
-      expect(await hasStep(page, 'entrypoints')).toBe(false);
+      // there; the adapters step is a choice of the two products.
+      await goToStep(traffic, page, 'entrypoints');
+      expect(await picked(page, 'entrypoints', 'cli,server-http,spa')).toBe(true);
+      await act(traffic, () => choice(page, 'entrypoints', 'server-http,spa').check());
+      await stackIs(page, 'fullstack-spring');
       await goToStep(traffic, page, 'options');
       expect(await rendered(page, 'layout')).toBe(true);
     },
@@ -256,23 +264,23 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — the guided ste
       expect(await valueOf(page, 'moduleLayout')).toBe('modulith');
       expect(await page.locator('[data-role="preset-notice"]').textContent()).toBe('');
 
-      // No product is written in Kotlin: the shape move lands on Java,
-      // keeping Quarkus, and the line under the preset says both that
-      // and which dials a product has no room for.
+      // No front end is written in Kotlin: the shape move lands on the
+      // browser's one preset, and the line under the preset says both
+      // that and which dial it has no room for.
       await goToStep(traffic, page, 'language');
       await act(traffic, () => choice(page, 'language', 'kotlin@jvm').check());
       await stackIs(page, 'quarkus-cli-rest-kotlin');
       await goToStep(traffic, page, 'shape');
-      await act(traffic, () => choice(page, 'shape', 'fullstack').check());
-      await stackIs(page, 'fullstack');
+      await act(traffic, () => choice(page, 'shape', 'frontend').check());
+      await stackIs(page, 'web-components');
       expect(await page.locator('[data-role="preset-notice"]').textContent()).toBe(
-        'Kotlin has no fullstack preset, so the language is now Java. ' +
-          'Moving to fullstack did not keep build system maven or module layout modulith.',
+        'Kotlin has no frontend preset, so the language is now TypeScript (browser). ' +
+          'Moving to web-components did not keep build system maven.',
       );
 
       // The next move retires the line.
       await goToStep(traffic, page, 'options');
-      await act(traffic, () => control(page, 'layout').selectOption('polyrepo'));
+      await act(traffic, () => control(page, 'buildSystem').selectOption('pnpm'));
       expect(await page.locator('[data-role="preset-notice"]').textContent()).toBe('');
     },
     E2E_TIMEOUT_MS,
@@ -297,6 +305,55 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — the guided ste
       await goToStep(traffic, page, 'options');
       expect(await rendered(page, 'layout')).toBe(false);
       expect(await rendered(page, 'moduleLayout')).toBe(true);
+    },
+    E2E_TIMEOUT_MS,
+  );
+
+  it(
+    'badges a card best-effort where the preset it lands on is, and moves the badge with it',
+    async () => {
+      const badge = (group: string, value: string): Locator =>
+        page
+          .locator(`#${group} label.card`, { has: page.locator(`input[value="${value}"]`) })
+          .locator('.badge');
+
+      // From quarkus-cli, the Fullstack card lands on the Quarkus
+      // product with a CLI, which no CI job builds.
+      await goToStep(traffic, page, 'shape');
+      expect(await badge('shape', 'fullstack').textContent()).toBe('best-effort');
+      expect(await badge('shape', 'fullstack').getAttribute('title')).toMatch(
+        /^fullstack-cli is best-effort at its default setting/,
+      );
+      expect(await badge('shape', 'backend').count()).toBe(0);
+
+      // On Kotlin, ticking HTTP lands on quarkus-cli-rest-kotlin, which
+      // its basic suite builds on Maven, not on Gradle, its default.
+      await goToStep(traffic, page, 'language');
+      await act(traffic, () => choice(page, 'language', 'kotlin@jvm').check());
+      await stackIs(page, 'quarkus-cli-kotlin');
+      await goToStep(traffic, page, 'entrypoints');
+      expect(await badge('entrypoints', 'server-http').textContent()).toBe('best-effort');
+      expect(await badge('entrypoints', 'cli').count()).toBe(0);
+
+      // Ticked, both boxes stand for the preset the form is on.
+      await act(traffic, () => adapter(page, 'server-http').click());
+      await stackIs(page, 'quarkus-cli-rest-kotlin');
+      expect(await badge('entrypoints', 'cli').textContent()).toBe('best-effort');
+      expect(await badge('entrypoints', 'server-http').textContent()).toBe('best-effort');
+
+      // Under Fullstack, on the products without a CLI, the Java card
+      // lands on fullstack, whose backend no CI job builds; the Go and
+      // TypeScript cards, on fullstack-go and fullstack-ts, do not.
+      await goToStep(traffic, page, 'shape');
+      await act(traffic, () => choice(page, 'shape', 'fullstack').check());
+      await stackIs(page, 'fullstack-cli-kotlin');
+      await goToStep(traffic, page, 'entrypoints');
+      await act(traffic, () => choice(page, 'entrypoints', 'server-http,spa').check());
+      await stackIs(page, 'fullstack-kotlin');
+      await goToStep(traffic, page, 'language');
+      expect(await badge('language', 'java@jvm').textContent()).toBe('best-effort');
+      expect(await badge('language', 'typescript@node').count()).toBe(0);
+      expect(await badge('language', 'go').count()).toBe(0);
     },
     E2E_TIMEOUT_MS,
   );

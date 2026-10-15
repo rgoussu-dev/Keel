@@ -10,7 +10,8 @@
  * have, they spare the user from naming every tag and vertical by
  * hand.
  *
- * These are **types only**; the presets keel ships live in
+ * These are **types only**; the presets keel ships are generated from
+ * the table in `domain/core/stack-presets.json` and resolved by
  * `domain/core/stacks.ts`. They sit in the contract because the
  * {@link Registry} port (`./ports/registry.ts`) names them, and a
  * port may not reach into `domain/core` — which is the same reason
@@ -75,6 +76,12 @@ export interface StackService {
 
 /** A curated greenfield preset. */
 export interface Stack {
+  /**
+   * What `keel new --stack=<id>` takes: words of `a`–`z` and `0`–`9`
+   * joined by single `-`s (`acme-web`). The registry refuses any other
+   * id, naming its origin — and a plugin's stack whose id and another
+   * stack's read as one another by their facets (`registry.ts`).
+   */
   readonly id: string;
   readonly description: string;
   /** Capability tags this stack contributes to the manifest at install time. */
@@ -98,8 +105,10 @@ export interface Stack {
   readonly verticals: readonly Vertical[];
   /**
    * Peer tags this stack projects onto sibling services when composed
-   * into a product (e.g. `peer.api.rest` for a REST backend). Declared
-   * explicitly — never derived — so the tag vocabulary stays greppable.
+   * into a product (e.g. `peer.api.rest` for a REST backend). Never
+   * inferred from the stack's tags: keel's presets take them from their
+   * entrypoints' rows in `stack-presets.json`, where each peer tag is
+   * written once, so the tag vocabulary stays greppable.
    */
   readonly projects?: readonly Tag[];
   /** Present on composite stacks: the services to scaffold. */

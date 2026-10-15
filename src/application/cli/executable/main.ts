@@ -30,8 +30,10 @@ import {
   pluginOrigin,
   registryOf,
   shippedSource,
+  shippedSupport,
   type RegistrySource,
 } from '../../../domain/core/registry.js';
+import { defaultTier } from '../../../domain/core/dials.js';
 import { consoleLogger } from '../../../infrastructure/commons/console-logger.js';
 import { systemClock } from '../../../infrastructure/commons/system-clock.js';
 import { fsManifestStore } from '../../../infrastructure/manifest/fs-manifest-store.js';
@@ -87,7 +89,9 @@ async function run(argv: string[]): Promise<void> {
   // Plugins are loaded before anything is wired, because what they
   // register is what the rest of the graph is built over: the
   // registry the handlers read, the template source their adapters
-  // render through, and the stack list the `--help` line prints.
+  // render through, and the stack list the `--help` line prints. The
+  // support tier is keel's own, whatever the plugins: keel's CI
+  // vouches for keel's presets only.
   const plugins = await discoverPlugins(cwd);
   const registry = registryOf([shippedSource, ...plugins.map(sourceOf)]);
   announce(plugins);
@@ -101,6 +105,7 @@ async function run(argv: string[]): Promise<void> {
     templates: templateSourceFor(ejsTemplateSource, assetRootsOf(plugins)),
     processes: spawnProcessRunner,
     registry,
+    support: shippedSupport,
     keelVersion,
     home: os.homedir(),
   };
@@ -128,6 +133,7 @@ async function run(argv: string[]): Promise<void> {
     logger: consoleLogger,
     version: keelVersion,
     availableStacks: listStacks(registry),
+    defaultTier: (stack: string) => defaultTier(registry, shippedSupport, stack),
     availableVerticals: listVerticals(registry),
     serveUi: uiServer(mediator),
   });

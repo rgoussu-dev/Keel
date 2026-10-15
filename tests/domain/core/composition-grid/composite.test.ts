@@ -52,6 +52,26 @@
  *     sweep only checks that the reading of what `keel add` can name
  *     leaves the glue out, and nothing else.
  *
+ * And right after each scaffold, against the files it wrote rather than
+ * a verdict, so no golden moves:
+ *
+ *   - **A monorepo product runs as its root says** (I13,
+ *     `holdProductRuns`): every service its `compose.yaml` builds finds
+ *     its `Dockerfile` under its context, every file a service mounts
+ *     from the root is there, its `README.md` has a `cd <service> && …`
+ *     line for each context it builds, and each such line names what
+ *     that service holds — a Gradle project, a Maven module, a Go
+ *     package, an npm script, a Cargo manifest, a single Cargo binary.
+ *     A runner it does not know, an HTML entity, or a character no
+ *     plain run line holds (a control operator but `&&`, a
+ *     substitution, a redirection, a quote, a backslash) fails it. A
+ *     polyrepo root has no `compose.yaml`, and holds trivially; the
+ *     axis throws if a monorepo root has none, or a polyrepo one has
+ *     one, so I13 never holds a monorepo root by default. The axis scaffolds each service on its default
+ *     build system, all Gradle on the JVM, so no cell reaches the
+ *     Maven clause: `product-runs.test.ts` holds each clause on trees
+ *     built by hand.
+ *
  * And before anything is scaffolded, each service's own extras menu —
  * what `keel new --with <path>:<id>` takes, as `keel.dials` reads it
  * per service — against the preview of the product naming it there:
@@ -93,6 +113,7 @@ import {
   eachStack,
   holdCard,
   holdParity,
+  holdProductRuns,
   holdRerenders,
   layoutsOf,
   nameableOf,
@@ -107,7 +128,7 @@ describe('composition grid: composite', () => {
   sweepGrid({
     name: 'composite',
     here: import.meta.url,
-    holds: ['I1', 'I2', 'I3', 'I4', 'I6', 'I7', 'I9', 'I11'],
+    holds: ['I1', 'I2', 'I3', 'I4', 'I6', 'I7', 'I9', 'I11', 'I13'],
     sweep: async (grid) => {
       const catalog = await grid.read(catalogQuery());
       const verticals = catalog.verticals.map((vertical) => vertical.id);
@@ -129,6 +150,10 @@ describe('composition grid: composite', () => {
           const { target, included } = await settle(grid, stack, { layout });
           const scaffold = await grid.cell(`new:${product}`, installCommandFor(target, runIn(cwd)));
           if (scaffold.verdict !== OK) continue;
+          const composed = await holdProductRuns(grid, `new:${product}`, cwd);
+          if (composed !== (layout === 'monorepo')) {
+            throw new Error(`'${product}' has ${composed ? 'a' : 'no'} root compose.yaml`);
+          }
 
           const scopes = [
             { scope: product, dir: cwd },

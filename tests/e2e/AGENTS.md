@@ -14,6 +14,39 @@ passed.** `tests/ci-workflow.test.ts` parses `ci.yml` and fails in
 `verify` when the matrix and this directory disagree. A new suite goes
 into a shard in the same change.
 
+**A suite declares what it proves.** One that builds a dial cell as
+keel scaffolds it is that cell's row in
+`src/domain/core/support-tier.json`, every dial spelled out, and the
+row is what makes the cell first-class (roadmap T). One that proves no
+cell has its role in `tests/support/e2e-roles.ts`: it changes the cell
+before it builds, checks an aspect of another suite's cell, builds
+nothing, or drives `keel ui`. `tests/support-tier.test.ts` fails in
+`verify` when a file is neither or both, and when the shard running a
+proving suite does not probe for its cell's toolchain. A new suite
+declares itself in the same change. A new row, role or seed moves the
+docs' support tiers, so the same change regenerates them
+(`KEEL_UPDATE_GOLDEN=1 pnpm exec vitest run tests/generated-docs.test.ts`);
+`verify` fails until it does. A role whose suite scaffolds
+in-process names the cells it seeds there. `modulith-baseline` and the
+four `modulith-*-peer-context` suites, which the grids below call no
+cell, each build a dial cell as it is scaffolded, so each is that
+cell's row.
+
+**A suite scaffolds through `e2eMediator`**
+(`tests/support/e2e-cell.ts`), never `installMediator`, and so does
+every helper here (`support/*-e2e.ts`). It settles each `keel new`
+through `keel.dials` and fails the test when the cell is not one the
+running file claims, as a row or as a seed of its role; a proving
+suite scaffolds its cell with no extras. When the file ends, it fails
+unless the file scaffolded every cell it claims (D1); a file in which
+any test skipped skips that completeness check whole, since which
+cells the skipped test would have reached is not known. The hooks
+register when the module is imported, so a suite calls nothing for
+them; the record is per file because vitest isolates files.
+`support-tier.test.ts` fails in `verify` on an `installMediator(` in
+this directory or in an e2e helper (D0), and on a config that stops
+isolating files.
+
 **A test file is the unit of CI scheduling.** Vitest parallelises across
 files and runs the tests inside one file in sequence, so the slowest
 single file floors the whole job regardless of sharding. Long cases get
@@ -47,9 +80,12 @@ modulith suite is `-modulith`, `-persistence` and `-maven`.
   `modulith-rust-{cli,http}.test.ts` plus `modulith-rust-peer-context`,
   which is not a cell — it is the Rust counterpart of
   `modulith-baseline`, the one suite proving the peer-context adapter
-  family is additive. All of it stays in the single `rust` shard:
-  measured on the shipped shape that shard is already floor-bound by its
-  slowest file, so a split would buy attribution and no wall clock.
+  family is additive. All of it stays in the single `rust` shard, by
+  choice: with the combo cell and `fullstack-rust-cli` (roadmap T.4c
+  and T.4f) its nine files are throughput-bound rather than floored by
+  one, near 203–209 s and still inside the e2e phase's critical path
+  _(inference, until a PR's run measures it)_. `ci.yml`'s comment
+  weighs what a split would cost.
 - **Go, the TypeScript stacks and `web-components` follow the same
   shape, and their grids are small.** Go is 2 stacks × 1 build system
   (`modulith-go-{cli,http}`); each TypeScript stack is 1 stack × 2
@@ -64,15 +100,18 @@ modulith suite is `-modulith`, `-persistence` and `-maven`.
   invisible to `ls tests/e2e/` and floors that file, which is exactly
   the state I.6 found and fixed.
 
-## The combo grid — 21 cells, two halves, two depths
+## The combo grid — 23 cells, two halves, two depths
 
 The stacks pairing `arch.cli` with `arch.server-http` ship one hexagon
-with two deployment units, and `combo-<layout>-<stack>-<build>.test.ts`
-is one file per cell, same rule as above. The `modulith` half is
+with two deployment units, and `combo-<layout>-<stack>[-<build>].test.ts`
+is one file per cell, same rule as above; the build segment is absent
+where the stack offers no build system (`combo-basic-go-cli-http`,
+`combo-basic-rust-cli-http`). The `modulith` half is
 **exhausted** — 6 JVM combo stacks × 2 build systems, plus `ts-cli-http`
 × npm and pnpm = 14 — because that is the half issue #108 was about and
 no build had ever compiled one. The `basic` half is **sampled at one
-build per stack** (7), the build system alternating so both appear
+build per stack** (9: Go's and Rust's have one cell each, having no
+build system to sample), the build system alternating so both appear
 against each framework and each language, and the TypeScript sample
 taking pnpm rather than npm: PR #110 built the whole `basic` half by
 hand before shipping the mechanism, so what was missing there was a
@@ -92,6 +131,18 @@ shards would buy eighteen cold JDK+Gradle provisions for a red X that
 framework × language already names. `web-combo` gets a shard rather than
 riding `web` because its cells render nothing, so a shard probing for
 Chromium would misdescribe them.
+
+**Go's and Rust's cells are the exception to the three paragraphs
+around this one.** Each rides its family's shard rather than a combo
+shard of its own: `combo-basic-go-cli-http` the `go` shard, on the Go
+home every Go suite there shares, and `combo-basic-rust-cli-http` the
+`rust` shard. Each drives its units with its family's harness
+(`driveGreetCli` and `driveGreetContract`, in `go-e2e.ts` and in
+`rust-e2e.ts`), the same drives as the family's walking skeleton. Neither has modules to
+register: a Go module has no root build file, and the Rust cell checks
+instead that its root `Cargo.toml` is one package naming both binaries.
+The `modulith` half stays the JVM's and TypeScript's: `go-cli-http` and
+`rust-cli-http` on `modulith` have no combo file.
 
 Within the heaviest combo shard the two Gradle cells are effectively
 tied and the Maven one is roughly half either, so no single file is that
@@ -118,7 +169,10 @@ modulith combo suite scaffolds with the peer context, so the fourteen
 of them — the JVM's twelve and TypeScript's two — cover the peer
 moduliths that grow into them, since roadmap R.3d lifted the last
 family's refusal. None adds a `keel add module` history, so a grown
-modulith with one has no suite by proof.
+modulith with one has no suite by proof. `combo-basic-go-cli-http`
+covers the `basic` `go-cli` and `go-http` projects that grow into it,
+and `combo-basic-rust-cli-http` the `basic` `rust-cli` and `rust-http`
+ones, so Go's and Rust's basic grown cells have a suite.
 
 ## The add-module grid — a job per cell, on the JVM only
 
@@ -162,6 +216,28 @@ fails alike, as does a `ts-http` modulith given the same `keel add
 module` with no growth at all. A pnpm cell for it, and the fix, are
 the roadmap Backlog's _A TypeScript context declares the context it
 consumes_.
+
+## The products — one file each, at the default setting
+
+**A product suite builds one service and proves the other by P2.** Each
+`fullstack*` file, one per product that has a suite, scaffolds its product as `keel new` leaves it on its
+default dials, a monorepo, through `scaffoldProduct`
+(`tests/support/product-e2e.ts`), and is that product cell's row. The
+frontend is the same `web-components` service on every product, so
+`fullstack` builds it and fakes the backend's toolchain; every other
+product suite builds its backend and fakes the frontend's install,
+which P2 reads as built by `fullstack`. The fake is keyed by scope: a
+TypeScript backend queues `walking-skeleton/npm-install` too, and its
+install runs for real. Each suite checks that every image
+`compose.yaml` builds has a `Dockerfile` under its context, and never
+builds one: an image is deployment glue, which no e2e suite vouches
+for. A suite that builds its backend boots it once, with its dev-only
+CORS accommodation on, and `driveGatewayContract` drives the wire the
+frontend encodes; a backend with a CLI beside its server greets
+through the CLI too, with its family's `driveGreetCli`. No suite
+builds a JVM product's backend, so those
+backends stay best-effort (roadmap DT12): a suite for them needs shards
+of its own, and new shards wait on the user's word.
 
 ## The suites that are not cells
 

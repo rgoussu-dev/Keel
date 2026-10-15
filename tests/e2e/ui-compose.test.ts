@@ -44,6 +44,11 @@
  * out as that service's (`services`), `--with backend:persistence` on
  * the command line. Never generated: the backend is a JVM one.
  *
+ * **How far keel vouches for it.** Options says _best-effort_ where
+ * the setting picked is a cell no CI job builds as `keel new` leaves
+ * it, read off `keel.dials`' `support`, and nothing where a suite does
+ * (roadmap T.2e). The setting is moved, never generated.
+ *
  * **A preset move keeps them.** Ticking HTTP on a tuned CLI preset
  * lands on the composed one with the build system, the module layout,
  * the extras and the package still set — the plan redrawn under
@@ -98,7 +103,8 @@ import {
   type PresetAnswers,
 } from '../../src/domain/contract/commands.js';
 import type { RunActionsInputs } from '../../src/domain/core/actions.js';
-import { expectOk, installMediator } from '../support/factory.js';
+import { e2eMediator } from '../support/e2e-cell.js';
+import { expectOk } from '../support/factory.js';
 import { E2E_TIMEOUT_MS, mkTempDir, skipE2E } from '../support/web-e2e.js';
 import {
   act,
@@ -254,6 +260,29 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — composing extr
       // the question open for the preview to ask.
       expect(lastPreviewed(traffic)).toEqual([]);
       expect(await page.locator('#q-extraVerticals').count()).toBe(0);
+    },
+    E2E_TIMEOUT_MS,
+  );
+
+  it(
+    'says on Options when the setting picked is best-effort, and only then',
+    async () => {
+      const support = page.locator('keel-new-form [data-role="support"]');
+      await until(async () => (await box(page, 'ci').count()) > 0, 'the extras to render');
+      expect(await support.count()).toBe(0);
+
+      // quarkus-cli-rest-kotlin's basic suite builds it on Maven: on
+      // Gradle, its default, no CI job builds it as keel new leaves it.
+      await act(traffic, () => control(page, 'stack').selectOption('quarkus-cli-rest-kotlin'));
+      await stackIs(page, 'quarkus-cli-rest-kotlin');
+      expect(await valueOf(page, 'buildSystem')).toBe('gradle');
+      await until(async () => (await support.count()) === 1, 'the best-effort line');
+      expect(await support.textContent()).toBe(
+        'Best-effort: no CI job builds this setting as keel new leaves it.',
+      );
+
+      await act(traffic, () => control(page, 'buildSystem').selectOption('maven'));
+      await until(async () => (await support.count()) === 0, 'the line to go on Maven');
     },
     E2E_TIMEOUT_MS,
   );
@@ -552,7 +581,7 @@ const fakeActions = (inputs: RunActionsInputs): Promise<void> => {
 async function seeded(stack: string, buildSystem: string, prefix: string): Promise<string> {
   const dir = await mkTempDir(prefix);
   expectOk(
-    await installMediator({ runDeferred: fakeActions }).dispatch(
+    await e2eMediator({ runDeferred: fakeActions }).dispatch(
       newProjectCommand({
         cwd: dir,
         stack,
@@ -893,7 +922,7 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a product and 
     // nothing is generated anyway: the claim is where the page goes.
     product = await mkTempDir('keel-ui-compose-product-e2e-');
     expectOk(
-      await installMediator({ runDeferred: fakeActions }).dispatch(
+      await e2eMediator({ runDeferred: fakeActions }).dispatch(
         newProjectCommand({
           cwd: product,
           stack: 'fullstack-ts',
@@ -1058,7 +1087,7 @@ describe.skipIf(skipE2E() || browserBinary === null)(
               answers: PresetAnswers;
             };
             const report = expectOk(
-              await installMediator({ runDeferred: fakeActions }).dispatch(
+              await e2eMediator({ runDeferred: fakeActions }).dispatch(
                 installCommandFor(body.target, {
                   cwd: body.cwd,
                   answers: body.answers,

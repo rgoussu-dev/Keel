@@ -605,7 +605,7 @@ function givenIn(service: PresetService, member: boolean): readonly string[] {
 }
 
 /** A service of a registered product, with the product: where `keel new` of it plans the service's extras. */
-interface ProductService {
+interface ConvergingService {
   readonly product: Stack;
   readonly service: PresetService;
 }
@@ -621,7 +621,7 @@ function serviceGiving(
   preset: string,
   given: readonly string[],
   member: boolean,
-): ProductService | null {
+): ConvergingService | null {
   for (const product of registry.stacks()) {
     for (const service of presetServicesOf(registry, product)) {
       if (service.stack.id !== preset) continue;
@@ -653,7 +653,7 @@ function extrasScope(
   preset: Stack,
   tags: readonly Tag[],
   member: boolean,
-  service: ProductService | null,
+  service: ConvergingService | null,
 ): PlanScope {
   if (service !== null) {
     return presetServiceScope(
@@ -1060,7 +1060,7 @@ function serviceAt(
   registry: Registry,
   place: { readonly product: string; readonly path: string },
   preset: string,
-): ProductService {
+): ConvergingService {
   const product = registry.stack(place.product);
   // Matched on the preset too: nothing stops a plugin's product listing
   // two services at one path, and the scope `keel new` staged there is

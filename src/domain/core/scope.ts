@@ -49,6 +49,7 @@ import type { Registry } from '../contract/ports/registry.js';
 import { conflictsOf } from './compatibility.js';
 import { defaultScope, seedFor, type PlanScope } from './planner.js';
 import { matches } from './predicate.js';
+import { servesStack } from './product-services.js';
 import { installedVertical } from './registry.js';
 import { stackTagsFor, type Stack } from './stacks.js';
 
@@ -564,7 +565,7 @@ export function provisionsFor(
   for (const id of root.installed) {
     for (const adapter of installedVertical(registry, id)?.adapters ?? []) {
       const provides = adapter.providesInServices;
-      if (provides === undefined || !provides.stacks.includes(stack)) continue;
+      if (provides === undefined || !servesStack(provides, stack, registry.stack(stack))) continue;
       if (!matches(adapter.predicate, tags)) continue;
       const vertical = registry.vertical(provides.vertical);
       if (vertical === null || provisions.some((given) => given.vertical.id === vertical.id)) {

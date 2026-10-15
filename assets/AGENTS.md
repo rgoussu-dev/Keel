@@ -20,7 +20,8 @@ it compiled.
   phases: `src/steps.js` says which steps the rail has — the directory
   decides the flow, a new project's preset steps or a keel project's
   Project step, then the Options step both share —
-  `src/finder.js` walks the drill-down tree, and `src/target.js` says
+  `src/finder.js` walks the drill-down tree (and says which preset a
+  card lands on, whose tier its badge shows), and `src/target.js` says
   how a change moves the run — which of the target, the answers, the
   dials and the request generation it clears, which dials and extras a
   new preset carries, where the answers it holds land once the new

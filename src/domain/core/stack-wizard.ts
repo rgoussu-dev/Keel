@@ -3,7 +3,7 @@
  * framework → user-side adapters**, resolving to a stack id the
  * ordinary `--stack` path already knows how to install.
  *
- * The 34-entry stack list is a fine reference and a poor menu. A
+ * The 46-entry stack list is a fine reference and a poor menu. A
  * newcomer knows they want "a backend, in Kotlin, on Spring, with a
  * CLI and an HTTP endpoint" long before they know that spelling is
  * `spring-cli-rest-kotlin`. This module turns the catalog inside out
@@ -498,6 +498,22 @@ export function pathFor(
       sameCombination(path.entrypoints, entrypoints),
     ) ?? null
   );
+}
+
+/**
+ * A drill-down path in the finder's words — `Backend or tool · Java ·
+ * Quarkus · CLI + HTTP server` — what the drill-down's resolution line
+ * and a spelled `--stack`'s note say a preset is.
+ */
+export function pathSummary(path: WizardAxes): string {
+  return [
+    shapeLabel(path.shape).split(' — ')[0],
+    languageLabel(path.language),
+    path.framework === null || path.framework === '' ? null : frameworkLabel(path.framework),
+    entrypointsLabel(path.entrypoints),
+  ]
+    .filter((part) => part !== null && part !== '')
+    .join(' · ');
 }
 
 /** Human-readable label of a language node, for menus and messages. */

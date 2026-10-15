@@ -15,14 +15,18 @@ import {
   verticalTitle,
   listStackIds,
   listVerticalIds,
+  KEEL_ORIGIN,
   pluginOrigin,
   registryOf,
   REGISTRY_ERROR_CODE,
   RESERVED_VERTICAL_IDS,
   shippedRegistry,
   shippedSource,
+  shippedSupport,
 } from '../../../src/domain/core/registry.js';
+import { stackSpelled } from '../../../src/domain/core/stack-spelling.js';
 import { STACKS } from '../../../src/domain/core/stacks.js';
+import { SHIPPED_SUPPORT_FACTS } from '../../../src/domain/core/support-tier.js';
 import { SHIPPED_VERTICALS } from '../../../src/domain/core/verticals/index.js';
 
 /** A vertical with one adapter covering its one dimension. */
@@ -59,6 +63,13 @@ describe('shippedRegistry', () => {
     expect(listVerticalIds(shippedRegistry)).toEqual(
       SHIPPED_VERTICALS.map((vertical) => vertical.id).sort(),
     );
+  });
+});
+
+describe('shippedSupport', () => {
+  it("vouches for keel's presets with keel's facts, and for no plugin's", () => {
+    expect(shippedSupport.stacks.map((stack) => stack.id)).toEqual(Object.keys(STACKS));
+    expect(shippedSupport.facts).toBe(SHIPPED_SUPPORT_FACTS);
   });
 });
 
@@ -151,6 +162,66 @@ describe('registryOf', () => {
     expect((error as { code?: string }).code).toBe(REGISTRY_ERROR_CODE);
   });
 
+  it.each([
+    'Acme-http',
+    'acme+http',
+    'acme/http',
+    'acme#1',
+    'acme:http',
+    'acme,http',
+    'acme http',
+    'acme--http',
+    '-acme',
+    'acme-',
+    'acme_http',
+    'acme.http',
+    'acme@http',
+    'café',
+  ])("refuses a stack id '%s', which is not lowercase words joined by '-'", (id) => {
+    const error = refusal(() =>
+      registryOf([{ origin: ACME, stacks: [stackOn(id, wellFormed('acme'))] }]),
+    );
+    expect(error.message).toContain(
+      `${ACME} registers stack '${id}', whose id is not lowercase words joined by '-'`,
+    );
+    expect((error as { code?: string }).code).toBe(REGISTRY_ERROR_CODE);
+  });
+
+  it("refuses an id outside the rule from keel's own presets, as from a plugin's", () => {
+    // A preset is generated from facets: a facet word that broke the
+    // rule must fail keel at load, not reach a user's --stack.
+    const error = refusal(() =>
+      registryOf([{ origin: KEEL_ORIGIN, stacks: [stackOn('Quarkus_cli', wellFormed('acme'))] }]),
+    );
+    expect(error.message).toContain(
+      "keel registers stack 'Quarkus_cli', whose id is not lowercase words joined by '-'",
+    );
+    expect((error as { code?: string }).code).toBe(REGISTRY_ERROR_CODE);
+  });
+
+  it.each([
+    [42, '42'],
+    [undefined, 'undefined'],
+    [null, 'null'],
+  ])(
+    'refuses a stack id that is not a string (%s), as plain JavaScript can hand it',
+    (id, said) => {
+      const stack = { ...stackOn('acme-http', wellFormed('acme')), id: id as unknown as string };
+      const error = refusal(() => registryOf([{ origin: ACME, stacks: [stack] }]));
+      expect(error.message).toContain(
+        `${ACME} registers a stack whose id is not a string (${said})`,
+      );
+      expect((error as { code?: string }).code).toBe(REGISTRY_ERROR_CODE);
+    },
+  );
+
+  it('takes a stack id with digits among its words', () => {
+    const registry = registryOf([
+      { origin: ACME, stacks: [stackOn('acme2-http', wellFormed('acme'))] },
+    ]);
+    expect(registry.stack('acme2-http')).not.toBeNull();
+  });
+
   it('spells a title out of the id where a vertical declares none', () => {
     // A plugin's vertical is the case: keel's own all declare one, so
     // the fallback would go untested exactly where it is load-bearing.
@@ -209,6 +280,113 @@ describe('registryOf', () => {
       placement: { scope: 'repository', because: 'read at the root only' },
     };
     expect(registryOf([{ origin: ACME, verticals: [placed] }]).vertical('acme')).toBe(placed);
+  });
+
+  describe("an adapter building its part in a product's services", () => {
+    /** `wellFormed('acme')` whose adapter declares `providesInServices: provision`. */
+    const providing = (provision: unknown): Vertical => {
+      const base = wellFormed('acme');
+      return {
+        ...base,
+        adapters: base.adapters.map((adapter) => ({ ...adapter, providesInServices: provision })),
+      } as unknown as Vertical;
+    };
+    const refused = (provision: unknown): Error =>
+      refusal(() => registryOf([{ origin: ACME, verticals: [providing(provision)] }]));
+    const WHERE = `${ACME} vertical 'acme' adapter 'acme/one'`;
+
+    it('refuses one naming no service, naming the plugin', () => {
+      for (const provision of [
+        { vertical: 'containerization' },
+        { vertical: 'containerization', stacks: [] },
+        { vertical: 'containerization', stacks: [], serves: [] },
+      ]) {
+        const error = refused(provision);
+        expect(error.message).toBe(
+          `${WHERE} declares 'providesInServices' naming no service — neither 'stacks' nor 'serves' lists one`,
+        );
+        expect((error as { code?: string }).code).toBe(REGISTRY_ERROR_CODE);
+      }
+    });
+
+    it('refuses stacks that are not a list of ids, naming the plugin', () => {
+      for (const stacks of ['acme-http', [1]]) {
+        const error = refused({ vertical: 'containerization', stacks });
+        expect(error.message).toBe(
+          `${WHERE} declares 'providesInServices.stacks' that is not a list of stack ids`,
+        );
+        expect((error as { code?: string }).code).toBe(REGISTRY_ERROR_CODE);
+      }
+    });
+
+    it('refuses serves that is not a list, naming the plugin', () => {
+      const error = refused({ vertical: 'containerization', serves: { requires: ['lang.go'] } });
+      expect(error.message).toBe(
+        `${WHERE} declares 'providesInServices.serves' that is not a list of predicates`,
+      );
+      expect((error as { code?: string }).code).toBe(REGISTRY_ERROR_CODE);
+    });
+
+    it('refuses a serves predicate with no requires, which would name every service', () => {
+      for (const predicate of [{}, { requires: [] }, { excludes: ['arch.spa'] }, null]) {
+        const error = refused({ vertical: 'containerization', serves: [predicate] });
+        expect(error.message).toBe(
+          `${WHERE} declares a 'providesInServices.serves' predicate with no 'requires' — it would name every service, whatever its stack`,
+        );
+        expect((error as { code?: string }).code).toBe(REGISTRY_ERROR_CODE);
+      }
+    });
+
+    it('refuses a serves predicate whose requires or excludes is not a list', () => {
+      for (const [predicate, field] of [
+        [{ requires: 'lang.go' }, 'requires'],
+        [{ requires: ['lang.go', 3] }, 'requires'],
+        [{ requires: ['lang.go'], excludes: 'arch.spa' }, 'excludes'],
+      ] as const) {
+        const error = refused({ vertical: 'containerization', serves: [predicate] });
+        expect(error.message).toBe(
+          `${WHERE} declares a 'providesInServices.serves' predicate whose '${field}' is not a list of tag patterns`,
+        );
+        expect((error as { code?: string }).code).toBe(REGISTRY_ERROR_CODE);
+      }
+    });
+
+    it('refuses a serves predicate whose pattern the matcher cannot read', () => {
+      for (const [predicate, why] of [
+        [
+          { requires: ['lang.*go'] },
+          "predicate pattern 'lang.*go' may only contain '*' at the end",
+        ],
+        [
+          { requires: ['lang.go'], excludes: ['*spa'] },
+          "predicate pattern '*spa' must not start with '*'",
+        ],
+        [{ requires: [''] }, 'predicate pattern must not be empty'],
+      ] as const) {
+        const error = refused({ vertical: 'containerization', serves: [predicate] });
+        expect(error.message).toBe(
+          `${WHERE} declares a 'providesInServices.serves' predicate that keel cannot read: ${why}`,
+        );
+        expect((error as { code?: string }).code).toBe(REGISTRY_ERROR_CODE);
+      }
+    });
+
+    it('registers one naming its services by stacks, by serves, or both', () => {
+      for (const provision of [
+        { vertical: 'containerization', stacks: ['acme-http'] },
+        { vertical: 'containerization', serves: [{ requires: ['lang.go'] }] },
+        {
+          vertical: 'containerization',
+          stacks: [],
+          serves: [{ requires: ['lang.go'], excludes: ['arch.spa'] }],
+        },
+      ]) {
+        const vertical = providing(provision);
+        expect(registryOf([{ origin: ACME, verticals: [vertical] }]).vertical('acme')).toBe(
+          vertical,
+        );
+      }
+    });
   });
 
   it('refuses a question marked shared with anything but the project, naming the plugin', () => {
@@ -311,4 +489,147 @@ describe('registryOf', () => {
       shippedRegistry.stacks().map((stack) => stack.id),
     );
   });
+});
+
+/**
+ * A typed `--stack` that is not an id is read by its facet words, and
+ * an id is taken first — so a stack registered under a spelling of
+ * another would take what users type for that one, and one another's
+ * id reads as would make that id's spellings name two. Refused at load,
+ * naming both claimants, as a second claim on an id is.
+ */
+describe('a stack whose id and another’s read as one another, by their facets', () => {
+  /** A plugin stack on `tags`, under `id`. */
+  const plugged = (id: string, tags: readonly string[]): Stack => ({
+    ...stackOn(id, wellFormed(`${id}-v`)),
+    tags,
+  });
+  const QUARKUS_CLI = ['lang.java', 'runtime.jvm', 'framework.quarkus', 'arch.cli'];
+  const reads = (id: string, other: string, by = 'keel') =>
+    `${ACME} registers stack '${id}', which reads by its facets as '${other}', registered by ${by} — a typed --stack must read one way; rename it`;
+  const readAs = (id: string, other: string) =>
+    `${ACME} registers stack '${id}', which '${other}', registered by keel reads as by its facets — a typed --stack must read one way; rename it`;
+
+  it.each([
+    // Its id reads as keel's.
+    [
+      'quarkus-cli-http',
+      [...QUARKUS_CLI, 'arch.server-http'],
+      reads('quarkus-cli-http', 'quarkus-cli-rest'),
+    ],
+    ['java-quarkus-cli', QUARKUS_CLI, reads('java-quarkus-cli', 'quarkus-cli')],
+    // Its own tags make `go` a framework too, which must not hide that
+    // `cli-go` reads as keel's go-cli.
+    ['cli-go', ['lang.java', 'runtime.jvm', 'framework.go', 'arch.cli'], reads('cli-go', 'go-cli')],
+    // Keel's id reads as it.
+    ['cli', QUARKUS_CLI, readAs('cli', 'quarkus-cli')],
+  ])('refuses %s', (id, tags, message) => {
+    const error = refusal(() =>
+      registryOf([shippedSource, { origin: ACME, stacks: [plugged(id, tags)] }]),
+    );
+    expect(error.message).toBe(message);
+    expect((error as { code?: string }).code).toBe(REGISTRY_ERROR_CODE);
+  });
+
+  it('refuses a clash however another stack’s tags make a word name two facets', () => {
+    // `framework.go` on a sibling, or on an earlier plugin's stack,
+    // would make `go` ambiguous over every stack; each pair is judged
+    // in its own words, so `cli-go` is still keel's go-cli.
+    const hider = plugged('acme-x', ['lang.java', 'runtime.jvm', 'framework.go', 'arch.cli']);
+    const clash = plugged('cli-go', ['lang.java', 'runtime.jvm', 'framework.acme', 'arch.cli']);
+    const expected = reads('cli-go', 'go-cli');
+    for (const sources of [
+      [{ origin: ACME, stacks: [hider, clash] }],
+      [
+        { origin: pluginOrigin('beta'), stacks: [hider] },
+        { origin: ACME, stacks: [clash] },
+      ],
+    ]) {
+      expect(refusal(() => registryOf([shippedSource, ...sources])).message).toBe(expected);
+    }
+  });
+
+  it('refuses a stack an earlier plugin’s id reads as, naming that plugin', () => {
+    const beta = pluginOrigin('beta');
+    const python = ['lang.python', 'arch.hexagonal', 'arch.cli'];
+    const error = refusal(() =>
+      registryOf([
+        shippedSource,
+        { origin: beta, stacks: [plugged('python-cli', python)] },
+        { origin: ACME, stacks: [plugged('cli', python)] },
+      ]),
+    );
+    expect(error.message).toBe(
+      `${ACME} registers stack 'cli', which 'python-cli', registered by ${beta} reads as by its facets — a typed --stack must read one way; rename it`,
+    );
+  });
+
+  it('refuses a composite over its own services that a keel id reads as', () => {
+    // Placed only once both its services are, wherever they sit: keel's
+    // `go-http` would read as this `go` product too, its spellings two.
+    const api = plugged('acme-api', [
+      'lang.go',
+      'pkg.go-modules',
+      'arch.hexagonal',
+      'arch.server-http',
+    ]);
+    const web = plugged('acme-web', [
+      'lang.typescript',
+      'runtime.browser',
+      'framework.web-components',
+      'arch.spa',
+    ]);
+    const product: Stack = {
+      ...plugged('go', []),
+      services: [
+        { path: 'backend', stack: 'acme-api' },
+        { path: 'frontend', stack: 'acme-web' },
+      ],
+    };
+    for (const stacks of [
+      [api, web, product],
+      [product, api, web],
+    ]) {
+      expect(() => registryOf([shippedSource, { origin: ACME, stacks }])).toThrow(
+        `${ACME} registers stack 'go', which 'go-http', registered by keel reads as by its facets — a typed --stack must read one way; rename it`,
+      );
+    }
+  });
+
+  it('refuses the later of two plugins’ stacks, naming the earlier plugin', () => {
+    const beta = pluginOrigin('beta');
+    const python = ['lang.python', 'arch.hexagonal', 'arch.cli'];
+    const error = refusal(() =>
+      registryOf([
+        shippedSource,
+        { origin: ACME, stacks: [plugged('python-cli', python)] },
+        { origin: beta, stacks: [plugged('cli-python', python)] },
+      ]),
+    );
+    expect(error.message).toBe(
+      `${beta} registers stack 'cli-python', which reads by its facets as 'python-cli', registered by ${ACME} — a typed --stack must read one way; rename it`,
+    );
+  });
+
+  it.each([
+    ['acme-cli', QUARKUS_CLI],
+    ['gin-http', ['lang.go', 'pkg.go-modules', 'framework.gin', 'arch.server-http']],
+  ])('registers %s, and keel’s spellings read as before', (id, tags) => {
+    const registry = registryOf([shippedSource, { origin: ACME, stacks: [plugged(id, tags)] }]);
+    expect(registry.stack(id)).not.toBeNull();
+    const spelling = stackSpelled(registry, 'go-rest');
+    expect(spelling.kind === 'spelled' ? spelling.stack.id : null).toBe('go-http');
+  });
+
+  it.each([[undefined], [['lang.go', 1]]])(
+    'refuses a stack whose tags are %j, naming it',
+    (tags) => {
+      const stack = { ...plugged('acme-x', []), tags: tags as unknown as string[] };
+      const error = refusal(() => registryOf([shippedSource, { origin: ACME, stacks: [stack] }]));
+      expect(error.message).toBe(
+        `${ACME} registers stack 'acme-x', whose tags are not a list of strings`,
+      );
+      expect((error as { code?: string }).code).toBe(REGISTRY_ERROR_CODE);
+    },
+  );
 });

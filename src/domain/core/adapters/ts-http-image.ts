@@ -4,7 +4,7 @@
  * all — Node runs the sources directly — so "copy the built
  * artifact" degenerates to copying the sources onto `node:22-alpine`
  * and linking the workspace packages, the same single-stage image
- * `fullstack/product-compose` ships for `ts-http` backends.
+ * `fullstack/product-compose` ships for TypeScript HTTP backends.
  *
  * The install command follows the package manager read from the
  * manifest tags: `npm ci` under `pkg.npm`, corepack-provisioned

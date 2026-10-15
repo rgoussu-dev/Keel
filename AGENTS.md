@@ -96,12 +96,13 @@ bootstrap, `keel add <vertical>` for brownfield layering. Local loops
   PR targets `main`. Rules and the PR review loop:
   [`.github/`](.github/AGENTS.md).
 - **A change updates its docs in the same commit.** A new stack,
-  vertical or CLI flag touches the matching `docs/` page and the README
-  matrix; every user-visible change gets a `CHANGELOG.md` `[Unreleased]`
-  entry; a new e2e suite goes into a shard in `ci.yml`; a grid verdict
-  that moves regenerates the docs' compatibility matrix. Seven guard
-  suites in `verify` exist because each of those indexes rots silently
-  otherwise — see [`tests/`](tests/AGENTS.md).
+  vertical or CLI flag touches the matching `docs/` page and regenerates
+  the README's stack matrix; every user-visible change gets a
+  `CHANGELOG.md` `[Unreleased]` entry; a new e2e suite goes into a shard
+  in `ci.yml` and declares the cells it proves, or its role; a grid
+  verdict or a tier that moves regenerates the docs' tables. Eight
+  guard suites in `verify` exist because each of those indexes rots
+  silently otherwise — see [`tests/`](tests/AGENTS.md).
 - **Extract knowledge to the nearest document.** A non-obvious discovery
   about this repo goes into the `AGENTS.md` of the directory it is about,
   and gets a map row here if that directory had none. It does not go in

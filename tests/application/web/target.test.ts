@@ -103,6 +103,7 @@ const jvmDials = (target: DialOptions['target']): DialOptions => ({
   extraVerticals: [],
   verticals: [],
   adjustments: [],
+  support: null,
 });
 
 async function finder(): Promise<Catalog['finder']> {
@@ -691,6 +692,7 @@ describe('an "Also scaffold" box', () => {
         extraVerticals: [],
         verticals: [],
         adjustments: [],
+        support: null,
       }),
     };
   };
@@ -769,6 +771,7 @@ describe('what a preset move could not keep', () => {
         extraVerticals: [],
         verticals: [],
         adjustments: [],
+        support: null,
       }),
     );
     expect(settled.notice).toBe(
@@ -823,6 +826,7 @@ describe('what a preset move could not keep', () => {
         extraVerticals: [],
         verticals: [],
         adjustments: [],
+        support: null,
       }),
     );
     expect(settled.notice).toBe('Moving to fullstack did not keep the agent harness off.');
@@ -844,6 +848,7 @@ describe('what a preset move could not keep', () => {
         extraVerticals: [],
         verticals: [],
         adjustments: [],
+        support: null,
       }),
     );
     expect(settled.notice).toBe('');
@@ -881,6 +886,7 @@ describe('what a preset move could not keep', () => {
         extraVerticals: [],
         verticals: [],
         adjustments: [],
+        support: null,
       }),
     };
     const moved = retarget(product, { stack: 'quarkus-rest' });
@@ -929,21 +935,22 @@ describe('what a preset move could not keep', () => {
         extraVerticals: [],
         verticals: [],
         adjustments: [],
+        support: null,
       }),
     );
     expect(settled.notice).toBe('Moving to go-cli-http did not keep build system maven.');
   });
 
   it('says the language jumped where the new shape has no preset in the old one', async () => {
-    const kotlin: Run = {
+    const go: Run = {
       ...greenfield(),
-      target: { kind: 'new-project', stack: 'spring-cli-rest-kotlin', buildSystem: 'gradle' },
+      target: { kind: 'new-project', stack: 'go-cli' },
     };
-    const moved = retarget(kotlin, { stack: 'fullstack-spring' });
+    const moved = retarget(go, { stack: 'web-components' });
     const settled = settle(
       moved,
       reply({
-        target: { kind: 'new-project', stack: 'fullstack-spring', layout: 'monorepo' },
+        target: { kind: 'new-project', stack: 'web-components', buildSystem: 'npm' },
         buildSystems: [],
         moduleLayouts: [],
         services: [],
@@ -952,18 +959,21 @@ describe('what a preset move could not keep', () => {
         extraVerticals: [],
         verticals: [],
         adjustments: [],
+        support: null,
       }),
       await finder(),
     );
-    expect(settled.notice).toBe('Kotlin has no fullstack preset, so the language is now Java.');
+    expect(settled.notice).toBe(
+      'Go has no frontend preset, so the language is now TypeScript (browser).',
+    );
 
-    // A framework picked on the new shape before the reply landed does
-    // not swallow the jump: the move is still one away from Kotlin.
-    const hurried = retarget(moved, { stack: 'fullstack-micronaut' });
+    // A dial picked on the new shape before the reply landed does not
+    // swallow the jump: the move is still one away from Go.
+    const hurried = retarget(moved, { buildSystem: 'pnpm' });
     const later = settle(
       hurried,
       reply({
-        target: { kind: 'new-project', stack: 'fullstack-micronaut', layout: 'monorepo' },
+        target: { kind: 'new-project', stack: 'web-components', buildSystem: 'pnpm' },
         buildSystems: [],
         moduleLayouts: [],
         services: [],
@@ -972,10 +982,13 @@ describe('what a preset move could not keep', () => {
         extraVerticals: [],
         verticals: [],
         adjustments: [],
+        support: null,
       }),
       await finder(),
     );
-    expect(later.notice).toBe('Kotlin has no fullstack preset, so the language is now Java.');
+    expect(later.notice).toBe(
+      'Go has no frontend preset, so the language is now TypeScript (browser).',
+    );
   });
 
   it('names a product’s build systems by service, and only the ones it lost', () => {
@@ -995,6 +1008,7 @@ describe('what a preset move could not keep', () => {
       extraVerticals: [],
       verticals: [],
       adjustments: [],
+      support: null,
     });
     // Maven for the backend moved one service off its default; npm for
     // the front end is the default, so it is nothing to lose.
@@ -1142,6 +1156,7 @@ describe('what a preset move could not keep', () => {
         extraVerticals: [],
         verticals: [],
         adjustments: [],
+        support: null,
       }),
     );
     expect(settled.notice).toBe(

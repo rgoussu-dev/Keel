@@ -54,9 +54,11 @@ Conventions for coding agents working in this repo are in
 
 ## Good first contributions
 
-- A new **stack** — an entry in `src/domain/core/stack-presets.json`
-  (plus its row in `tests/domain/core/stack-registry.golden.json`)
-  once the adapters exist.
+- A new **stack** — a cell of the table in
+  `src/domain/core/stack-presets.json` (plus its row in
+  `tests/domain/core/stack-registry.golden.json`)
+  once the adapters exist. An e2e suite that builds it declares the
+  cell it proves in `src/domain/core/support-tier.json`.
 - A sibling **adapter** filling a `⛔` cell of the
   [compatibility matrix](docs/verticals/README.md#compatibility-matrix)
   (e.g. distribution for Go/Rust CLIs).

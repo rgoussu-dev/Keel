@@ -240,4 +240,4 @@ cargo run --bin my-service
 
 - [Stack catalog](README.md) · [CLI reference](../cli.md) ·
   [Composition model](../composition.md)
-- Fullstack twin: [`fullstack-rust`](fullstack.md)
+- Fullstack twins: [`fullstack-rust` and `fullstack-rust-cli`](fullstack.md)

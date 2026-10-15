@@ -687,6 +687,270 @@
         }
       ],
       "conflicts": []
+    },
+    {
+      "id": "fullstack-kotlin",
+      "description": "Fullstack product: quarkus-rest-kotlin backend + web-components frontend, monorepo or polyrepo.",
+      "tags": [],
+      "buildSystems": [],
+      "moduleLayouts": [],
+      "verticals": ["vcs", "fullstack"],
+      "projects": [],
+      "services": [
+        {
+          "path": "backend",
+          "stack": "quarkus-rest-kotlin",
+          "extraVerticals": ["gateway"]
+        },
+        {
+          "path": "frontend",
+          "stack": "web-components",
+          "extraVerticals": ["gateway"]
+        }
+      ],
+      "conflicts": []
+    },
+    {
+      "id": "fullstack-cli",
+      "description": "Fullstack product: quarkus-cli-rest backend + web-components frontend, monorepo or polyrepo.",
+      "tags": [],
+      "buildSystems": [],
+      "moduleLayouts": [],
+      "verticals": ["vcs", "fullstack"],
+      "projects": [],
+      "services": [
+        {
+          "path": "backend",
+          "stack": "quarkus-cli-rest",
+          "extraVerticals": ["gateway"]
+        },
+        {
+          "path": "frontend",
+          "stack": "web-components",
+          "extraVerticals": ["gateway"]
+        }
+      ],
+      "conflicts": []
+    },
+    {
+      "id": "fullstack-cli-kotlin",
+      "description": "Fullstack product: quarkus-cli-rest-kotlin backend + web-components frontend, monorepo or polyrepo.",
+      "tags": [],
+      "buildSystems": [],
+      "moduleLayouts": [],
+      "verticals": ["vcs", "fullstack"],
+      "projects": [],
+      "services": [
+        {
+          "path": "backend",
+          "stack": "quarkus-cli-rest-kotlin",
+          "extraVerticals": ["gateway"]
+        },
+        {
+          "path": "frontend",
+          "stack": "web-components",
+          "extraVerticals": ["gateway"]
+        }
+      ],
+      "conflicts": []
+    },
+    {
+      "id": "fullstack-spring-kotlin",
+      "description": "Fullstack product: spring-rest-kotlin backend + web-components frontend, monorepo or polyrepo.",
+      "tags": [],
+      "buildSystems": [],
+      "moduleLayouts": [],
+      "verticals": ["vcs", "fullstack"],
+      "projects": [],
+      "services": [
+        {
+          "path": "backend",
+          "stack": "spring-rest-kotlin",
+          "extraVerticals": ["gateway"]
+        },
+        {
+          "path": "frontend",
+          "stack": "web-components",
+          "extraVerticals": ["gateway"]
+        }
+      ],
+      "conflicts": []
+    },
+    {
+      "id": "fullstack-spring-cli",
+      "description": "Fullstack product: spring-cli-rest backend + web-components frontend, monorepo or polyrepo.",
+      "tags": [],
+      "buildSystems": [],
+      "moduleLayouts": [],
+      "verticals": ["vcs", "fullstack"],
+      "projects": [],
+      "services": [
+        {
+          "path": "backend",
+          "stack": "spring-cli-rest",
+          "extraVerticals": ["gateway"]
+        },
+        {
+          "path": "frontend",
+          "stack": "web-components",
+          "extraVerticals": ["gateway"]
+        }
+      ],
+      "conflicts": []
+    },
+    {
+      "id": "fullstack-spring-cli-kotlin",
+      "description": "Fullstack product: spring-cli-rest-kotlin backend + web-components frontend, monorepo or polyrepo.",
+      "tags": [],
+      "buildSystems": [],
+      "moduleLayouts": [],
+      "verticals": ["vcs", "fullstack"],
+      "projects": [],
+      "services": [
+        {
+          "path": "backend",
+          "stack": "spring-cli-rest-kotlin",
+          "extraVerticals": ["gateway"]
+        },
+        {
+          "path": "frontend",
+          "stack": "web-components",
+          "extraVerticals": ["gateway"]
+        }
+      ],
+      "conflicts": []
+    },
+    {
+      "id": "fullstack-micronaut-kotlin",
+      "description": "Fullstack product: micronaut-rest-kotlin backend + web-components frontend, monorepo or polyrepo.",
+      "tags": [],
+      "buildSystems": [],
+      "moduleLayouts": [],
+      "verticals": ["vcs", "fullstack"],
+      "projects": [],
+      "services": [
+        {
+          "path": "backend",
+          "stack": "micronaut-rest-kotlin",
+          "extraVerticals": ["gateway"]
+        },
+        {
+          "path": "frontend",
+          "stack": "web-components",
+          "extraVerticals": ["gateway"]
+        }
+      ],
+      "conflicts": []
+    },
+    {
+      "id": "fullstack-micronaut-cli",
+      "description": "Fullstack product: micronaut-cli-rest backend + web-components frontend, monorepo or polyrepo.",
+      "tags": [],
+      "buildSystems": [],
+      "moduleLayouts": [],
+      "verticals": ["vcs", "fullstack"],
+      "projects": [],
+      "services": [
+        {
+          "path": "backend",
+          "stack": "micronaut-cli-rest",
+          "extraVerticals": ["gateway"]
+        },
+        {
+          "path": "frontend",
+          "stack": "web-components",
+          "extraVerticals": ["gateway"]
+        }
+      ],
+      "conflicts": []
+    },
+    {
+      "id": "fullstack-micronaut-cli-kotlin",
+      "description": "Fullstack product: micronaut-cli-rest-kotlin backend + web-components frontend, monorepo or polyrepo.",
+      "tags": [],
+      "buildSystems": [],
+      "moduleLayouts": [],
+      "verticals": ["vcs", "fullstack"],
+      "projects": [],
+      "services": [
+        {
+          "path": "backend",
+          "stack": "micronaut-cli-rest-kotlin",
+          "extraVerticals": ["gateway"]
+        },
+        {
+          "path": "frontend",
+          "stack": "web-components",
+          "extraVerticals": ["gateway"]
+        }
+      ],
+      "conflicts": []
+    },
+    {
+      "id": "fullstack-go-cli",
+      "description": "Fullstack product: go-cli-http backend + web-components frontend, monorepo or polyrepo.",
+      "tags": [],
+      "buildSystems": [],
+      "moduleLayouts": [],
+      "verticals": ["vcs", "fullstack"],
+      "projects": [],
+      "services": [
+        {
+          "path": "backend",
+          "stack": "go-cli-http",
+          "extraVerticals": ["gateway"]
+        },
+        {
+          "path": "frontend",
+          "stack": "web-components",
+          "extraVerticals": ["gateway"]
+        }
+      ],
+      "conflicts": []
+    },
+    {
+      "id": "fullstack-ts-cli",
+      "description": "Fullstack product: ts-cli-http backend + web-components frontend, monorepo or polyrepo.",
+      "tags": [],
+      "buildSystems": [],
+      "moduleLayouts": [],
+      "verticals": ["vcs", "fullstack"],
+      "projects": [],
+      "services": [
+        {
+          "path": "backend",
+          "stack": "ts-cli-http",
+          "extraVerticals": ["gateway"]
+        },
+        {
+          "path": "frontend",
+          "stack": "web-components",
+          "extraVerticals": ["gateway"]
+        }
+      ],
+      "conflicts": []
+    },
+    {
+      "id": "fullstack-rust-cli",
+      "description": "Fullstack product: rust-cli-http backend + web-components frontend, monorepo or polyrepo.",
+      "tags": [],
+      "buildSystems": [],
+      "moduleLayouts": [],
+      "verticals": ["vcs", "fullstack"],
+      "projects": [],
+      "services": [
+        {
+          "path": "backend",
+          "stack": "rust-cli-http",
+          "extraVerticals": ["gateway"]
+        },
+        {
+          "path": "frontend",
+          "stack": "web-components",
+          "extraVerticals": ["gateway"]
+        }
+      ],
+      "conflicts": []
     }
   ]
 }

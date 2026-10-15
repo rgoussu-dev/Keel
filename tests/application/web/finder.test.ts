@@ -27,11 +27,16 @@ import {
   pickFramework,
   pickLanguage,
   pickShape,
+  tierBadge,
+  withEntrypoint,
 } from '../../../assets/web/src/finder.js';
 import { expectOk, installMediator } from '../../support/factory.js';
 
+/** One mediator, so the catalog's tiers are settled once (`CatalogHandler`). */
+const mediator = installMediator();
+
 async function finder(): Promise<Catalog['finder']> {
-  const catalog: Catalog = expectOk(await installMediator().dispatch(catalogQuery()));
+  const catalog: Catalog = expectOk(await mediator.dispatch(catalogQuery()));
   return catalog.finder;
 }
 
@@ -99,12 +104,14 @@ describe('the page’s stack finder', () => {
     expect(pickShape(tree, 'frontend', here)).toBe('web-components');
   });
 
-  it('lands a language the new shape lacks on its kin with the same framework', async () => {
+  it('carries a backend to its own product, its language and entrypoints with it', async () => {
     const tree = await finder();
     const here = at(tree, 'spring-cli-rest-kotlin');
-    // No product is written in Kotlin. Java on Spring is one step
-    // away; Go — first, because languages sort by label — is not.
-    expect(pickShape(tree, 'fullstack', here)).toBe('fullstack-spring');
+    // Every backend that serves HTTP has a product, so nothing is left
+    // behind; the kin a missing language lands on is held over a
+    // finder of its own, below.
+    expect(pickShape(tree, 'fullstack', here)).toBe('fullstack-spring-cli-kotlin');
+    expect(pickShape(tree, 'fullstack', at(tree, 'spring-cli'))).toBe('fullstack-spring-cli');
   });
 
   it('lands a front end moving to the backend where a blank form opens', async () => {
@@ -127,7 +134,11 @@ describe('the page’s stack finder', () => {
     // framework Kotlin has, on the same runtime — so the tree is
     // written out, typed against the contract so it cannot drift from
     // it. Each wrong rung lands somewhere different here.
-    const leaf = (stack: string, entrypoints: string[]): Combination => ({ entrypoints, stack });
+    const leaf = (stack: string, entrypoints: string[]): Combination => ({
+      entrypoints,
+      stack,
+      support: null,
+    });
     const framework = (id: string, ...combinations: Combination[]): FrameworkNode => ({
       id,
       label: id,
@@ -226,10 +237,13 @@ describe('the page’s stack finder', () => {
 
   it('reports a language the move had to leave behind, and the one it landed on', async () => {
     const tree = await finder();
-    const jump = languageJump(tree, 'spring-cli-rest-kotlin', 'fullstack-spring');
-    expect(jump?.shape.id).toBe('fullstack');
+    // Every back-end language has a product, so the jump is a backend
+    // moving to the front end, where only the browser is.
+    const jump = languageJump(tree, 'spring-cli-rest-kotlin', 'web-components');
+    expect(jump?.shape.id).toBe('frontend');
     expect(jump?.from.label).toBe('Kotlin');
-    expect(jump?.to.label).toBe('Java');
+    expect(jump?.to.label).toBe('TypeScript (browser)');
+    expect(languageJump(tree, 'spring-cli-rest-kotlin', 'fullstack-spring-cli-kotlin')).toBeNull();
     expect(languageJump(tree, 'web-components', 'quarkus-cli')?.to.id).toBe('java@jvm');
   });
 
@@ -264,7 +278,87 @@ describe('the page’s stack finder', () => {
         }
       }
     }
-    const catalog: Catalog = expectOk(await installMediator().dispatch(catalogQuery()));
+    const catalog: Catalog = expectOk(await mediator.dispatch(catalogQuery()));
     expect(catalog.stacks.filter((stack) => !reachable.has(stack.id)).map((s) => s.id)).toEqual([]);
+  });
+
+  it('badges a card by the preset it lands on, best-effort at its default setting', async () => {
+    const tree = await finder();
+    expect(tierBadge(tree, 'spring-cli-rest')).toBe('best-effort');
+    expect(tierBadge(tree, 'go-cli-http')).toBeUndefined();
+    expect(tierBadge(tree, 'nonsense')).toBeUndefined();
+    expect(tierBadge(tree, null)).toBeUndefined();
+
+    // The Fullstack shape card, from the default preset, lands on the
+    // Quarkus product with a CLI beside its server, which no suite
+    // builds; Go's language card there on Go's, and from an HTTP server
+    // on Go's other product, each built by a suite, as TypeScript's
+    // lands on the TypeScript product a suite builds.
+    const here = at(tree, 'quarkus-cli');
+    expect(pickShape(tree, 'fullstack', here)).toBe('fullstack-cli');
+    expect(tierBadge(tree, 'fullstack-cli')).toBe('best-effort');
+    const fullstack = at(tree, 'fullstack-go').shape;
+    expect(pickLanguage(fullstack, 'go', here)).toBe('fullstack-go-cli');
+    expect(tierBadge(tree, 'fullstack-go-cli')).toBeUndefined();
+    const server = at(tree, 'quarkus-rest');
+    expect(tierBadge(tree, pickLanguage(fullstack, 'go', server))).toBeUndefined();
+    expect(pickLanguage(fullstack, 'typescript@node', server)).toBe('fullstack-ts');
+    expect(tierBadge(tree, 'fullstack-ts')).toBeUndefined();
+    expect(pickLanguage(fullstack, 'java@jvm', server)).toBe('fullstack');
+    expect(tierBadge(tree, 'fullstack')).toBe('best-effort');
+  });
+
+  it('badges a box by the preset it lands on with the box ticked', async () => {
+    const tree = await finder();
+    const go = at(tree, 'go-cli');
+    const ticked = (id: string) =>
+      pickEntrypoints(
+        go.framework,
+        withEntrypoint(encodeSelection(go.combination.entrypoints), id),
+      );
+    expect(ticked('cli')).toBe('go-cli');
+    expect(ticked('server-http')).toBe('go-cli-http');
+    expect(tierBadge(tree, ticked('server-http'))).toBeUndefined();
+    const spring = at(tree, 'spring-cli');
+    expect(
+      tierBadge(
+        tree,
+        pickEntrypoints(
+          spring.framework,
+          withEntrypoint(encodeSelection(spring.combination.entrypoints), 'server-http'),
+        ),
+      ),
+    ).toBe('best-effort');
+    expect(withEntrypoint('cli,server-http', 'cli')).toBe('cli,server-http');
+  });
+
+  it('gives a leaf no badge where the catalog gives it no tier, as a plugin’s', () => {
+    const tree: Catalog['finder'] = {
+      defaultStack: 'acme',
+      shapes: [
+        {
+          id: 'backend',
+          label: 'Backend',
+          doc: '',
+          languages: [
+            {
+              id: 'acme',
+              label: 'Acme',
+              doc: '',
+              runtime: null,
+              frameworks: [
+                {
+                  id: '',
+                  label: '',
+                  entrypointStep: null,
+                  combinations: [{ entrypoints: ['cli'], stack: 'acme', support: null }],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    expect(tierBadge(tree, 'acme')).toBeUndefined();
   });
 });

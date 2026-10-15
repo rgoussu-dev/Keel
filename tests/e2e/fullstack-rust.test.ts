@@ -6,22 +6,28 @@
  * absent-name request, the RFC 9457 rejection, and the CORS header
  * the `rust-cors` decoration added for the SPA's dev origin.
  *
- * The frontend's own npm gates are exercised by the quarkus-pair
- * fullstack e2e (the frontend is identical); here `npm install` is
- * no-op'd alongside the actions every Rust e2e fakes. The backend
- * pulls axum from crates.io, so this test needs network access. Skip
- * rules and cargo isolation live in `tests/support/rust-e2e.ts`.
+ * The frontend's own npm gates are exercised by `fullstack.test.ts`
+ * (the frontend is identical); here its `npm install` is faked in the
+ * frontend's scope, and the backend's deferred `cargo check` in the
+ * backend's, as every Rust e2e fakes it. The backend pulls axum from
+ * crates.io, so this test needs network access. The scaffolding is
+ * `tests/support/product-e2e.ts`'s, and the skip rules and cargo
+ * isolation are `tests/support/rust-e2e.ts`'s.
  */
 
 import path from 'node:path';
 import fs from 'fs-extra';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
+  driveGatewayContract,
+  expectComposeBuildContexts,
+  scaffoldProduct,
+} from '../support/product-e2e.js';
+import {
   cargoRun,
   debugBin,
   E2E_TIMEOUT_MS,
   mkTempDir,
-  scaffold,
   skipRustE2E,
   withServer,
 } from '../support/rust-e2e.js';
@@ -43,52 +49,31 @@ describe.skipIf(skipRustE2E)('fullstack-rust e2e (monorepo)', () => {
   it(
     'scaffolds a product whose Rust backend serves the wire the frontend gateway encodes',
     async () => {
-      const project = await scaffold(
+      const { backend, frontend } = await scaffoldProduct(
         {
           stack: 'fullstack-rust',
-          projectName: 'backend',
-          alsoStubbed: ['walking-skeleton/npm-install'],
-          servicePath: 'backend',
+          fakes: {
+            backend: ['walking-skeleton/rust-bootstrap'],
+            frontend: ['walking-skeleton/npm-install'],
+          },
+          answers: { 'walking-skeleton/rust-bootstrap': { projectName: 'backend' } },
         },
         cwd,
-        cargoHome,
       );
+      expect(await fs.pathExists(path.join(frontend, 'node_modules'))).toBe(false);
+      // The backend's `cargo check` was faked too: nothing is built yet.
+      expect(await fs.pathExists(path.join(backend, 'target'))).toBe(false);
+      await expectComposeBuildContexts(cwd);
 
-      expect(await fs.pathExists(path.join(cwd, 'frontend', 'package.json'))).toBe(true);
-      expect(await fs.pathExists(path.join(project.root, 'contract', 'greet.openapi.yaml'))).toBe(
-        true,
-      );
-
+      const project = { root: backend, cargoHome };
       cargoRun(project, ['test']);
       cargoRun(project, ['build']);
 
+      // The debug build carries the dev-only CORS accommodation.
       await withServer(
         debugBin(project, 'backend-http'),
-        { cwd: project.root, env: { ...process.env, PORT: '0' } },
-        async (base) => {
-          // The wire the frontend gateway encodes, per the contract.
-          const named = await fetch(`${base}/greet?name=E2E`);
-          expect(named.status).toBe(200);
-          expect(await named.json()).toEqual({ greeting: 'Hello, E2E!' });
-          expect(named.headers.get('access-control-allow-origin')).toBe('http://localhost:5173');
-
-          const defaulted = await fetch(`${base}/greet`);
-          expect(defaulted.status).toBe(200);
-          expect(await defaulted.json()).toEqual({ greeting: 'Hello, world!' });
-
-          const rejected = await fetch(`${base}/greet?name=`);
-          expect(rejected.status).toBe(400);
-          expect(rejected.headers.get('content-type')).toBe('application/problem+json');
-
-          // The debug build carries the dev-only CORS accommodation.
-          const preflight = await fetch(`${base}/greet`, {
-            method: 'OPTIONS',
-            headers: { 'access-control-request-headers': 'x-requested-with' },
-          });
-          expect(preflight.status).toBe(204);
-          expect(preflight.headers.get('access-control-allow-methods')).toBe('GET');
-          expect(preflight.headers.get('access-control-allow-headers')).toBe('x-requested-with');
-        },
+        { cwd: backend, env: { ...process.env, PORT: '0' } },
+        driveGatewayContract,
       );
     },
     E2E_TIMEOUT_MS,

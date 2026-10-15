@@ -26,7 +26,8 @@ import {
   newProjectCommand,
 } from '../../src/domain/contract/commands.js';
 import type { DeferredAction } from '../../src/domain/contract/composition.js';
-import { expectOk, installMediator } from '../support/factory.js';
+import { e2eMediator } from '../support/e2e-cell.js';
+import { expectOk } from '../support/factory.js';
 
 /** Generous: a cold Go build compiles the stdlib once. */
 export const E2E_TIMEOUT_MS = 5 * 60 * 1000;
@@ -137,7 +138,7 @@ export interface GoProjectSpec {
  * the install promises.
  */
 export async function scaffold(spec: GoProjectSpec, cwd: string): Promise<void> {
-  const mediator = installMediator({
+  const mediator = e2eMediator({
     keelVersion: '0.0.0-e2e',
     runDeferred: stubActions(new Set(['vcs/git-init'])),
   });
@@ -174,7 +175,7 @@ export async function addVertical(
   cwd: string,
   answers: Readonly<Record<string, Record<string, string>>> = {},
 ): Promise<void> {
-  const mediator = installMediator({ keelVersion: '0.0.0-e2e' });
+  const mediator = e2eMediator({ keelVersion: '0.0.0-e2e' });
   expectOk(
     await mediator.dispatch(
       addVerticalCommand({
@@ -214,17 +215,37 @@ export function goRunFails(cwd: string, goHome: string, args: readonly string[])
 }
 
 /**
+ * Runs a built CLI unit twice in `cwd`: it greets a name on stdout, and
+ * refuses a blank one with exit code 2, the domain's no.
+ */
+export function driveGreetCli(binary: string, cwd: string): void {
+  const run = spawnSync(binary, ['--name', 'E2E'], { cwd, encoding: 'utf8' });
+  expect(run.status, run.stderr).toBe(0);
+  expect(run.stdout).toBe('Hello, E2E!\n');
+
+  const rejected = spawnSync(binary, ['--name', '  '], { cwd, encoding: 'utf8' });
+  expect(rejected.status).toBe(2);
+  expect(rejected.stderr).toContain('name must not be empty');
+}
+
+/**
  * Boots a built HTTP unit on an OS-assigned port, hands its port to
  * `drive`, and kills it afterwards however that goes.
+ *
+ * The unit boots with `PORT=0` and `OTEL_SDK_DISABLED=true`, and `env`
+ * is laid over that: a product's backend takes `GO_ENV=dev`, which
+ * turns on its dev-only CORS accommodation, and the Go products' suites
+ * turn OpenTelemetry back on.
  */
 export async function withHttpUnit(
   binary: string,
   cwd: string,
   drive: (port: string) => Promise<void>,
+  env: NodeJS.ProcessEnv = {},
 ): Promise<void> {
   const server = spawn(binary, [], {
     cwd,
-    env: { ...process.env, PORT: '0', OTEL_SDK_DISABLED: 'true' },
+    env: { ...process.env, PORT: '0', OTEL_SDK_DISABLED: 'true', ...env },
   });
   try {
     const port = await new Promise<string>((resolve, reject) => {
@@ -301,7 +322,7 @@ export async function addModule(
   consumes: string | null,
   cwd: string,
 ): Promise<void> {
-  const mediator = installMediator({ keelVersion: '0.0.0-e2e' });
+  const mediator = e2eMediator({ keelVersion: '0.0.0-e2e' });
   expectOk(
     await mediator.dispatch(
       addModuleCommand({

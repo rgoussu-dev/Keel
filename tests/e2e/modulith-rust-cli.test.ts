@@ -21,6 +21,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import {
   cargoRun,
   debugBin,
+  driveGreetCli,
   E2E_TIMEOUT_MS,
   mkTempDir,
   scaffold,
@@ -77,14 +78,7 @@ describe.skipIf(skipRustE2E)('rust-cli modulith e2e', () => {
 
       // The binary keeps the project's name even though the assembly
       // crate is `application-cli` — the dial must not rename it.
-      const bin = debugBin(project, 'skel');
-      const run = spawnSync(bin, ['--name', 'E2E'], { cwd: project.root, encoding: 'utf8' });
-      expect(run.status).toBe(0);
-      expect(run.stdout).toBe('Hello, E2E!\n');
-
-      const rejected = spawnSync(bin, ['--name', '  '], { cwd: project.root, encoding: 'utf8' });
-      expect(rejected.status).toBe(2);
-      expect(rejected.stderr).toContain('name must not be empty');
+      driveGreetCli(debugBin(project, 'skel'), project.root);
     },
     E2E_TIMEOUT_MS,
   );

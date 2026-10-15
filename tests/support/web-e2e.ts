@@ -20,13 +20,14 @@ import path from 'node:path';
 import os from 'node:os';
 import { createServer } from 'node:http';
 import net from 'node:net';
-import { spawn, spawnSync } from 'node:child_process';
+import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import fs from 'fs-extra';
 import { expect } from 'vitest';
 import { runActions, type RunActionsInputs } from '../../src/domain/core/actions.js';
 import { addModuleCommand, newProjectCommand } from '../../src/domain/contract/commands.js';
 import type { DeferredAction } from '../../src/domain/contract/composition.js';
-import { expectOk, installMediator } from '../support/factory.js';
+import { e2eMediator } from '../support/e2e-cell.js';
+import { expectOk } from '../support/factory.js';
 
 /** Generous: a cold `npm install` dominates every one of these. */
 export const E2E_TIMEOUT_MS = 10 * 60 * 1000;
@@ -142,7 +143,7 @@ const BOOTSTRAP: Readonly<Record<WebProjectSpec['stack'], readonly string[]>> = 
  * what is being verified.
  */
 export async function scaffold(spec: WebProjectSpec, cwd: string): Promise<void> {
-  const mediator = installMediator({
+  const mediator = e2eMediator({
     keelVersion: '0.0.0-e2e',
     runDeferred: stubActions(new Set(['vcs/git-init'])),
   });
@@ -398,6 +399,105 @@ export async function startDevServer(appCwd: string): Promise<DevServer> {
   throw new Error(`dev server never answered on ${baseUrl}\n${stdout}\n${stderr}`);
 }
 
+/** How long the REST assembly may take to say it is listening. */
+const REST_START_TIMEOUT_MS = 30 * 1000;
+
+/** Starts the REST assembly on `port`, resolving once it says it is listening. */
+function startRestAssembly(
+  cwd: string,
+  port: number,
+  env: NodeJS.ProcessEnv,
+): Promise<ChildProcess> {
+  return new Promise((resolve, reject) => {
+    const child = spawn('node', ['application/rest/src/main.ts'], {
+      cwd,
+      env: { ...process.env, PORT: String(port), ...env },
+    });
+    let output = '';
+    const timer = setTimeout(() => {
+      child.kill('SIGKILL');
+      reject(new Error(`server did not start within 30s; output so far:\n${output}`));
+    }, REST_START_TIMEOUT_MS);
+    const onData = (chunk: Buffer): void => {
+      output += chunk.toString();
+      if (output.includes('listening on')) {
+        clearTimeout(timer);
+        resolve(child);
+      }
+    };
+    child.stdout.on('data', onData);
+    child.stderr.on('data', onData);
+    child.on('error', (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+    child.on('exit', (code) => {
+      clearTimeout(timer);
+      reject(new Error(`server exited before listening (exit ${code}):\n${output}`));
+    });
+  });
+}
+
+async function stopRestAssembly(child: ChildProcess): Promise<void> {
+  if (child.exitCode !== null) return;
+  await new Promise<void>((resolve) => {
+    child.once('exit', () => {
+      resolve();
+    });
+    child.kill('SIGTERM');
+    setTimeout(() => child.kill('SIGKILL'), 5000).unref();
+  });
+}
+
+/**
+ * Runs a TypeScript workspace's CLI assembly
+ * (`application/cli/src/main.ts`, from `cwd`) twice: it greets a name
+ * on stdout, and refuses a blank one with exit code 2, the domain's
+ * no — the CLI counterpart of a 400 on the wire.
+ */
+export function driveGreetCli(cwd: string): void {
+  const greeted = spawnSync('node', ['application/cli/src/main.ts', '--name', 'E2E'], {
+    cwd,
+    encoding: 'utf8',
+  });
+  expect(greeted.status, greeted.stderr).toBe(0);
+  expect(greeted.stdout).toBe('Hello, E2E!\n');
+  const refused = spawnSync('node', ['application/cli/src/main.ts', '--name', '  '], {
+    cwd,
+    encoding: 'utf8',
+  });
+  expect(refused.status).toBe(2);
+  expect(refused.stderr).toContain('name must not be blank');
+}
+
+/**
+ * Starts a TypeScript workspace's REST assembly
+ * (`application/rest/src/main.ts`, run from `cwd`), hands `drive` its
+ * base URL once it says it is listening, and stops it however `drive`
+ * ends.
+ *
+ * The emitted `main.ts` logs the port it was *asked* for rather than
+ * the one it bound, which is why this picks a free port itself instead
+ * of passing `PORT=0` and parsing the announcement back out.
+ *
+ * `env` is laid over the assembly's environment: a product's backend
+ * takes `NODE_ENV=development`, under which its dev-only CORS
+ * accommodation is on whatever this process was started with.
+ */
+export async function withRestAssembly(
+  cwd: string,
+  drive: (baseUrl: string) => Promise<void>,
+  env: NodeJS.ProcessEnv = {},
+): Promise<void> {
+  const port = await findFreePort();
+  const server = await startRestAssembly(cwd, port, env);
+  try {
+    await drive(`http://127.0.0.1:${port}`);
+  } finally {
+    await stopRestAssembly(server);
+  }
+}
+
 /**
  * Adds a bounded context to the already-scaffolded project, exactly as
  * `keel add module <name>` does.
@@ -413,7 +513,7 @@ export async function addModule(
   consumes: string | null,
   cwd: string,
 ): Promise<void> {
-  const mediator = installMediator({ keelVersion: '0.0.0-e2e' });
+  const mediator = e2eMediator({ keelVersion: '0.0.0-e2e' });
   expectOk(
     await mediator.dispatch(
       addModuleCommand({

@@ -4,12 +4,13 @@
  * Dockerfile beside each deployment unit (per the house rule:
  * containerisation lives next to its unit).
  *
- *   - the backend image is chosen by the service's stack — a JVM
- *     multi-stage build for `quarkus-rest` / `spring-rest` /
- *     `micronaut-rest`, a Go multi-stage build onto distroless for
- *     `go-http`, a musl-static cargo build onto distroless for
- *     `rust-http`, and a single Node stage running the TypeScript
- *     sources for `ts-http`;
+ *   - the backend image is chosen by what the service is — its facets,
+ *     never its preset id (`./product-families.ts`): a JVM multi-stage
+ *     build for a Quarkus, Spring or Micronaut HTTP service, Java or
+ *     Kotlin, with a CLI beside it or not; a Go multi-stage build onto
+ *     distroless for a Go one; a musl-static cargo build onto
+ *     distroless for a Rust one; and a single Node stage running the
+ *     TypeScript sources for a Node one;
  *   - the frontend image builds the Vite bundle into an **assets
  *     image** whose entrypoint populates a named volume
  *     (clear-then-copy + `env.js` templated from the environment) as
@@ -34,14 +35,17 @@
  * Runs at the product root (the `fullstack` vertical), so it writes
  * into the service directories via path-prefixed contributions. Which
  * services get an image is declared, not only done:
- * `providesInServices` names the stacks it has a Dockerfile for, and
- * the contribution writes one for a service exactly when its stack is
- * listed there — so in such a service `containerization` reads as
- * there already (`../scope.ts`), and `keel add containerization`
- * there is an Ok that installs nothing rather than a collision with
- * the files written here. A service whose stack is not listed — a
- * plugin's backend — gets none, keeps `containerization` to add, and
- * the product's `keel new` report says so.
+ * `providesInServices` names the families it has a Dockerfile for, by
+ * the predicates their stacks' tags match (`serves`), and the
+ * contribution writes one for a service exactly when its facets
+ * (`Ctx.services`) match one there, whatever its place among the
+ * product's services — so in such a service
+ * `containerization` reads as there already (`../scope.ts`), and
+ * `keel add containerization` there is an Ok that installs nothing
+ * rather than a collision with the files written here. A service no
+ * family matches — a plugin's backend on a platform keel does not
+ * build — gets none, keeps `containerization` to add, and the
+ * product's `keel new` report says so.
  */
 
 import type {
@@ -50,108 +54,22 @@ import type {
   Ctx,
   ServiceProvision,
 } from '../../contract/composition.js';
-import type { ServiceRef } from '../../contract/manifest.js';
-import { jvmRestArtifact, type JvmBuildSystem, type JvmRestFramework } from './container-image.js';
-import { jvmLayout } from './jvm-module-layout.js';
+import { familyOf, SERVICE_FAMILIES } from './product-families.js';
 
 export const PRODUCT_COMPOSE_ID = 'fullstack/product-compose';
 
 const TEMPLATE_ROOT = 'composition/fullstack/product-compose';
 
-const BACKEND_IMAGES: Readonly<Record<string, string>> = {
-  'quarkus-rest': 'backend-quarkus',
-  'spring-rest': 'backend-spring',
-  'micronaut-rest': 'backend-micronaut',
-  'go-http': 'backend-go',
-  'rust-http': 'backend-rust',
-  'ts-http': 'backend-ts',
-};
-
-const JVM_FRAMEWORKS: Readonly<Record<string, JvmRestFramework>> = {
-  'quarkus-rest': 'quarkus',
-  'spring-rest': 'spring',
-  'micronaut-rest': 'micronaut',
-};
-
 /**
- * The builder stage per JVM build system. The compose Dockerfiles
- * build in-image (unlike the `containerization` images, which copy a
- * host build), so the stage carries the tool itself rather than the
- * project's wrapper — the wrapper would re-download its distribution
- * on every image build.
- */
-const JVM_BUILDERS: Readonly<Record<JvmBuildSystem, { image: string; command: string }>> = {
-  gradle: { image: 'gradle:jdk25', command: 'gradle build -x test' },
-  maven: { image: 'maven:3-eclipse-temurin-25', command: 'mvn -B package -DskipTests' },
-};
-
-const FRONTEND_IMAGES: Readonly<Record<string, string>> = {
-  'web-components': 'frontend-spa',
-};
-
-/**
- * The service stacks this adapter builds an image for, as it declares
- * them — every stack either table has a Dockerfile for.
+ * The services this adapter builds an image for, as it declares them —
+ * every family it has a Dockerfile for, by what a service is.
  */
 const BUILDS: ServiceProvision = {
   // The id of `containerization`, whose part in the service this is;
   // an adapter does not import a vertical, which imports adapters.
   vertical: 'containerization',
-  stacks: [...Object.keys(BACKEND_IMAGES), ...Object.keys(FRONTEND_IMAGES)],
+  serves: SERVICE_FAMILIES.map((family) => family.serves),
 };
-
-/** The image template a table names for `service`, when the declaration lists its stack. */
-function imageFor(
-  table: Readonly<Record<string, string>>,
-  service: ServiceRef,
-): string | undefined {
-  return BUILDS.stacks.includes(service.stack) ? table[service.stack] : undefined;
-}
-
-/**
- * The recorded JVM build system of a service ref, defaulting to
- * Gradle for refs that predate the per-service choice.
- */
-function jvmBuild(service: ServiceRef): JvmBuildSystem {
-  const id = service.buildSystem ?? 'gradle';
-  if (id !== 'gradle' && id !== 'maven') {
-    throw new Error(
-      `${PRODUCT_COMPOSE_ID}: service '${service.path}' (${service.stack}) records unknown JVM build system '${id}'`,
-    );
-  }
-  return id;
-}
-
-/**
- * The recorded package manager of a Node service ref, defaulting to
- * npm for refs that predate the per-service choice.
- */
-function nodePm(service: ServiceRef): 'npm' | 'pnpm' {
-  const id = service.buildSystem ?? 'npm';
-  if (id !== 'npm' && id !== 'pnpm') {
-    throw new Error(
-      `${PRODUCT_COMPOSE_ID}: service '${service.path}' (${service.stack}) records unknown package manager '${id}'`,
-    );
-  }
-  return id;
-}
-
-/** Template vars for a backend Dockerfile, per stack family. */
-function backendVars(service: ServiceRef): Readonly<Record<string, unknown>> {
-  const framework = JVM_FRAMEWORKS[service.stack];
-  if (framework) {
-    const build = jvmBuild(service);
-    const builder = JVM_BUILDERS[build];
-    const artifact = jvmRestArtifact(framework, build, 'jvm', jvmLayout([]).restRuntime);
-    return {
-      builderImage: builder.image,
-      buildCommand: builder.command,
-      artifactPath: artifact.artifactPath,
-    };
-  }
-  if (service.stack === 'ts-http') return { pm: nodePm(service) };
-  return {};
-}
 
 export const productComposeAdapter: Adapter = {
   id: PRODUCT_COMPOSE_ID,
@@ -160,7 +78,7 @@ export const productComposeAdapter: Adapter = {
   predicate: {},
   providesInServices: BUILDS,
   async contribute(ctx: Ctx) {
-    const services = ctx.manifest.services;
+    const services = ctx.services;
     const backend = services[0];
     const frontend = services[services.length - 1];
     if (!backend || !frontend) {
@@ -171,23 +89,17 @@ export const productComposeAdapter: Adapter = {
       backend,
       frontend,
     });
-    const backendImage = imageFor(BACKEND_IMAGES, backend);
-    if (backendImage) {
+    // Every service a family matches, each once: a middle service of
+    // a three-service product too, since `serves` declares it.
+    for (const service of services) {
+      const family = familyOf(service);
+      if (family === undefined) continue;
       files.push(
         ...(await ctx.templates.render(
-          `${TEMPLATE_ROOT}/${backendImage}`,
-          backend.path,
-          backendVars(backend),
+          `${TEMPLATE_ROOT}/${family.image}`,
+          service.path,
+          family.imageVars(service),
         )),
-      );
-    }
-    const frontendImage = imageFor(FRONTEND_IMAGES, frontend);
-    if (frontendImage) {
-      files.push(
-        ...(await ctx.templates.render(`${TEMPLATE_ROOT}/${frontendImage}`, frontend.path, {
-          backendService: backend.path,
-          pm: nodePm(frontend),
-        })),
       );
     }
     return { files };

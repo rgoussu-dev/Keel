@@ -1,0 +1,742 @@
+{
+  "//": [
+    "The support tier as data: which e2e suite builds which dial cell.",
+    "",
+    "Each row says that one suite under tests/e2e/ scaffolds the cell, as",
+    "`keel.dials` settles it, and builds it with its real toolchain. Every",
+    "dial is spelled out, the defaults among them, so a default that moves",
+    "never moves a claim. `singles` are single-service cells; `products`",
+    "are product cells, each naming the services its suite compiles",
+    "(`builds`). The suite fakes the build of the others.",
+    "",
+    "A cell no row names can still be first-class. The rules in",
+    "`support-tier.ts` read a cell without the agent harness as its twin",
+    "with it (P1), and a product's service as any service with the same",
+    "bytes (P2). Every other cell keel offers is best-effort. A suite name",
+    "is provenance, for the docs: nothing at run time resolves it.",
+    "",
+    "`support-tier.ts` validates this file at load.",
+    "`tests/support-tier.test.ts` holds it to `tests/e2e/`, the CI shard",
+    "matrix and the paths golden, and `tests/support-tier.premises.test.ts`",
+    "holds P1 and P2 on every cell. A new e2e suite that builds a cell as",
+    "keel scaffolds it adds its row here in the same change. One that",
+    "proves no cell declares its role in `tests/support/e2e-roles.ts`."
+  ],
+  "singles": [
+    {
+      "suite": "walking-skeleton",
+      "stack": "quarkus-cli",
+      "buildSystem": "gradle",
+      "moduleLayout": "basic",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "walking-skeleton-quarkus-cli-kotlin",
+      "stack": "quarkus-cli-kotlin",
+      "buildSystem": "gradle",
+      "moduleLayout": "basic",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "walking-skeleton-rest",
+      "stack": "quarkus-rest",
+      "buildSystem": "gradle",
+      "moduleLayout": "basic",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "walking-skeleton-kotlin",
+      "stack": "quarkus-rest-kotlin",
+      "buildSystem": "gradle",
+      "moduleLayout": "basic",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "walking-skeleton-spring-cli",
+      "stack": "spring-cli",
+      "buildSystem": "gradle",
+      "moduleLayout": "basic",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "walking-skeleton-spring-cli-kotlin",
+      "stack": "spring-cli-kotlin",
+      "buildSystem": "gradle",
+      "moduleLayout": "basic",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "walking-skeleton-spring",
+      "stack": "spring-rest",
+      "buildSystem": "gradle",
+      "moduleLayout": "basic",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "walking-skeleton-spring-kotlin",
+      "stack": "spring-rest-kotlin",
+      "buildSystem": "gradle",
+      "moduleLayout": "basic",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "walking-skeleton-micronaut-cli",
+      "stack": "micronaut-cli",
+      "buildSystem": "gradle",
+      "moduleLayout": "basic",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "walking-skeleton-micronaut-cli-kotlin",
+      "stack": "micronaut-cli-kotlin",
+      "buildSystem": "gradle",
+      "moduleLayout": "basic",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "walking-skeleton-micronaut",
+      "stack": "micronaut-rest",
+      "buildSystem": "gradle",
+      "moduleLayout": "basic",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "walking-skeleton-micronaut-kotlin",
+      "stack": "micronaut-rest-kotlin",
+      "buildSystem": "gradle",
+      "moduleLayout": "basic",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-quarkus-rest-gradle",
+      "stack": "quarkus-rest",
+      "buildSystem": "gradle",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-quarkus-rest-maven",
+      "stack": "quarkus-rest",
+      "buildSystem": "maven",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-quarkus-cli-gradle",
+      "stack": "quarkus-cli",
+      "buildSystem": "gradle",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-quarkus-cli-maven",
+      "stack": "quarkus-cli",
+      "buildSystem": "maven",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-baseline",
+      "stack": "quarkus-rest",
+      "buildSystem": "gradle",
+      "moduleLayout": "modulith",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-quarkus-rest-kotlin-gradle",
+      "stack": "quarkus-rest-kotlin",
+      "buildSystem": "gradle",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-quarkus-rest-kotlin-maven",
+      "stack": "quarkus-rest-kotlin",
+      "buildSystem": "maven",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-quarkus-cli-kotlin-gradle",
+      "stack": "quarkus-cli-kotlin",
+      "buildSystem": "gradle",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-quarkus-cli-kotlin-maven",
+      "stack": "quarkus-cli-kotlin",
+      "buildSystem": "maven",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-spring-rest-gradle",
+      "stack": "spring-rest",
+      "buildSystem": "gradle",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-spring-rest-maven",
+      "stack": "spring-rest",
+      "buildSystem": "maven",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-spring-cli-gradle",
+      "stack": "spring-cli",
+      "buildSystem": "gradle",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-spring-cli-maven",
+      "stack": "spring-cli",
+      "buildSystem": "maven",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-spring-rest-kotlin-gradle",
+      "stack": "spring-rest-kotlin",
+      "buildSystem": "gradle",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-spring-rest-kotlin-maven",
+      "stack": "spring-rest-kotlin",
+      "buildSystem": "maven",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-spring-cli-kotlin-gradle",
+      "stack": "spring-cli-kotlin",
+      "buildSystem": "gradle",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-spring-cli-kotlin-maven",
+      "stack": "spring-cli-kotlin",
+      "buildSystem": "maven",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-micronaut-rest-gradle",
+      "stack": "micronaut-rest",
+      "buildSystem": "gradle",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-micronaut-rest-maven",
+      "stack": "micronaut-rest",
+      "buildSystem": "maven",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-micronaut-cli-gradle",
+      "stack": "micronaut-cli",
+      "buildSystem": "gradle",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-micronaut-cli-maven",
+      "stack": "micronaut-cli",
+      "buildSystem": "maven",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-micronaut-rest-kotlin-gradle",
+      "stack": "micronaut-rest-kotlin",
+      "buildSystem": "gradle",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-micronaut-rest-kotlin-maven",
+      "stack": "micronaut-rest-kotlin",
+      "buildSystem": "maven",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-micronaut-cli-kotlin-gradle",
+      "stack": "micronaut-cli-kotlin",
+      "buildSystem": "gradle",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-micronaut-cli-kotlin-maven",
+      "stack": "micronaut-cli-kotlin",
+      "buildSystem": "maven",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "combo-modulith-quarkus-cli-rest-gradle",
+      "stack": "quarkus-cli-rest",
+      "buildSystem": "gradle",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "combo-modulith-quarkus-cli-rest-maven",
+      "stack": "quarkus-cli-rest",
+      "buildSystem": "maven",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "combo-basic-quarkus-cli-rest-gradle",
+      "stack": "quarkus-cli-rest",
+      "buildSystem": "gradle",
+      "moduleLayout": "basic",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "combo-modulith-quarkus-cli-rest-kotlin-gradle",
+      "stack": "quarkus-cli-rest-kotlin",
+      "buildSystem": "gradle",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "combo-modulith-quarkus-cli-rest-kotlin-maven",
+      "stack": "quarkus-cli-rest-kotlin",
+      "buildSystem": "maven",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "combo-basic-quarkus-cli-rest-kotlin-maven",
+      "stack": "quarkus-cli-rest-kotlin",
+      "buildSystem": "maven",
+      "moduleLayout": "basic",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "combo-modulith-spring-cli-rest-gradle",
+      "stack": "spring-cli-rest",
+      "buildSystem": "gradle",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "combo-modulith-spring-cli-rest-maven",
+      "stack": "spring-cli-rest",
+      "buildSystem": "maven",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "combo-basic-spring-cli-rest-maven",
+      "stack": "spring-cli-rest",
+      "buildSystem": "maven",
+      "moduleLayout": "basic",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "combo-modulith-spring-cli-rest-kotlin-gradle",
+      "stack": "spring-cli-rest-kotlin",
+      "buildSystem": "gradle",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "combo-modulith-spring-cli-rest-kotlin-maven",
+      "stack": "spring-cli-rest-kotlin",
+      "buildSystem": "maven",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "combo-basic-spring-cli-rest-kotlin-gradle",
+      "stack": "spring-cli-rest-kotlin",
+      "buildSystem": "gradle",
+      "moduleLayout": "basic",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "combo-modulith-micronaut-cli-rest-gradle",
+      "stack": "micronaut-cli-rest",
+      "buildSystem": "gradle",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "combo-modulith-micronaut-cli-rest-maven",
+      "stack": "micronaut-cli-rest",
+      "buildSystem": "maven",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "combo-basic-micronaut-cli-rest-gradle",
+      "stack": "micronaut-cli-rest",
+      "buildSystem": "gradle",
+      "moduleLayout": "basic",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "combo-modulith-micronaut-cli-rest-kotlin-gradle",
+      "stack": "micronaut-cli-rest-kotlin",
+      "buildSystem": "gradle",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "combo-modulith-micronaut-cli-rest-kotlin-maven",
+      "stack": "micronaut-cli-rest-kotlin",
+      "buildSystem": "maven",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "combo-basic-micronaut-cli-rest-kotlin-maven",
+      "stack": "micronaut-cli-rest-kotlin",
+      "buildSystem": "maven",
+      "moduleLayout": "basic",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "walking-skeleton-go",
+      "stack": "go-cli",
+      "buildSystem": null,
+      "moduleLayout": "basic",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "walking-skeleton-go",
+      "stack": "go-http",
+      "buildSystem": null,
+      "moduleLayout": "basic",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "combo-basic-go-cli-http",
+      "stack": "go-cli-http",
+      "buildSystem": null,
+      "moduleLayout": "basic",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-go-cli",
+      "stack": "go-cli",
+      "buildSystem": null,
+      "moduleLayout": "modulith",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-go-http",
+      "stack": "go-http",
+      "buildSystem": null,
+      "moduleLayout": "modulith",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-go-peer-context",
+      "stack": "go-cli",
+      "buildSystem": null,
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "walking-skeleton-rust",
+      "stack": "rust-cli",
+      "buildSystem": null,
+      "moduleLayout": "basic",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "walking-skeleton-rust",
+      "stack": "rust-http",
+      "buildSystem": null,
+      "moduleLayout": "basic",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-rust-cli",
+      "stack": "rust-cli",
+      "buildSystem": null,
+      "moduleLayout": "modulith",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-rust-http",
+      "stack": "rust-http",
+      "buildSystem": null,
+      "moduleLayout": "modulith",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-rust-peer-context",
+      "stack": "rust-cli",
+      "buildSystem": null,
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "ts-walking-skeleton",
+      "stack": "ts-http",
+      "buildSystem": "npm",
+      "moduleLayout": "basic",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "ts-walking-skeleton",
+      "stack": "ts-http",
+      "buildSystem": "pnpm",
+      "moduleLayout": "basic",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "ts-cli-walking-skeleton",
+      "stack": "ts-cli",
+      "buildSystem": "npm",
+      "moduleLayout": "basic",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "ts-cli-walking-skeleton",
+      "stack": "ts-cli",
+      "buildSystem": "pnpm",
+      "moduleLayout": "basic",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-ts-http-npm",
+      "stack": "ts-http",
+      "buildSystem": "npm",
+      "moduleLayout": "modulith",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-ts-http-pnpm",
+      "stack": "ts-http",
+      "buildSystem": "pnpm",
+      "moduleLayout": "modulith",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-ts-cli-npm",
+      "stack": "ts-cli",
+      "buildSystem": "npm",
+      "moduleLayout": "modulith",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-ts-cli-pnpm",
+      "stack": "ts-cli",
+      "buildSystem": "pnpm",
+      "moduleLayout": "modulith",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-ts-peer-context",
+      "stack": "ts-http",
+      "buildSystem": "npm",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "wc-walking-skeleton",
+      "stack": "web-components",
+      "buildSystem": "npm",
+      "moduleLayout": "basic",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-web-components-npm",
+      "stack": "web-components",
+      "buildSystem": "npm",
+      "moduleLayout": "modulith",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-web-components-pnpm",
+      "stack": "web-components",
+      "buildSystem": "pnpm",
+      "moduleLayout": "modulith",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "modulith-wc-peer-context",
+      "stack": "web-components",
+      "buildSystem": "npm",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "combo-modulith-ts-cli-http-npm",
+      "stack": "ts-cli-http",
+      "buildSystem": "npm",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "combo-modulith-ts-cli-http-pnpm",
+      "stack": "ts-cli-http",
+      "buildSystem": "pnpm",
+      "moduleLayout": "modulith",
+      "peerContext": true,
+      "agentHarness": true
+    },
+    {
+      "suite": "combo-basic-ts-cli-http-pnpm",
+      "stack": "ts-cli-http",
+      "buildSystem": "pnpm",
+      "moduleLayout": "basic",
+      "peerContext": false,
+      "agentHarness": true
+    },
+    {
+      "suite": "combo-basic-rust-cli-http",
+      "stack": "rust-cli-http",
+      "buildSystem": null,
+      "moduleLayout": "basic",
+      "peerContext": false,
+      "agentHarness": true
+    }
+  ],
+  "products": [
+    {
+      "suite": "fullstack-ts",
+      "stack": "fullstack-ts",
+      "layout": "monorepo",
+      "buildSystem": "backend=npm,frontend=npm",
+      "builds": ["backend"]
+    },
+    {
+      "suite": "fullstack-ts-cli",
+      "stack": "fullstack-ts-cli",
+      "layout": "monorepo",
+      "buildSystem": "backend=npm,frontend=npm",
+      "builds": ["backend"]
+    },
+    {
+      "suite": "fullstack-go",
+      "stack": "fullstack-go",
+      "layout": "monorepo",
+      "buildSystem": "frontend=npm",
+      "builds": ["backend"]
+    },
+    {
+      "suite": "fullstack-go-cli",
+      "stack": "fullstack-go-cli",
+      "layout": "monorepo",
+      "buildSystem": "frontend=npm",
+      "builds": ["backend"]
+    },
+    {
+      "suite": "fullstack-rust",
+      "stack": "fullstack-rust",
+      "layout": "monorepo",
+      "buildSystem": "frontend=npm",
+      "builds": ["backend"]
+    },
+    {
+      "suite": "fullstack-rust-cli",
+      "stack": "fullstack-rust-cli",
+      "layout": "monorepo",
+      "buildSystem": "frontend=npm",
+      "builds": ["backend"]
+    },
+    {
+      "suite": "fullstack",
+      "stack": "fullstack",
+      "layout": "monorepo",
+      "buildSystem": "backend=gradle,frontend=npm",
+      "builds": ["frontend"]
+    }
+  ]
+}

@@ -14,6 +14,7 @@ import type { StackDescriptor, StackFinder } from '../../src/domain/contract/que
 import { shippedRegistry } from '../../src/domain/core/registry.js';
 import { ENTRYPOINTS } from '../../src/domain/core/stack-wizard.js';
 import { answerBodies, eachStack } from './composition-grid.js';
+import { walkDials } from './dial-walk.js';
 import {
   addStep,
   menuOf,
@@ -49,9 +50,11 @@ export const PATHS_NEW: PathsFamilySweep = {
     await eachStack(
       stacks.filter((stack) => stack.services.length > 0),
       async (stack) => {
-        for (const layout of await paths.layouts(stack.id)) {
-          const settled = await paths.dials({ kind: 'new-project', stack: stack.id, layout });
-          await paths.cell(null, [newStep(settled.target as NewProjectTarget)]);
+        const seeds = (await paths.layouts(stack.id)).map(
+          (layout): NewProjectTarget => ({ kind: 'new-project', stack: stack.id, layout }),
+        );
+        for (const reply of await walkDials((target) => paths.dials(target), seeds)) {
+          await paths.cell(null, [newStep(reply.target as NewProjectTarget)]);
         }
       },
     );

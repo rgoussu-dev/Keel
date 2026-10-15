@@ -38,7 +38,7 @@ sweep (`sweep/`).
 
 ## The guard tests
 
-Seven suites in `verify` exist because an index nobody checks rots
+Eight suites in `verify` exist because an index nobody checks rots
 silently. They check structure, never prose — a generated table is
 structure too, checked as the projection it claims to be — and they
 are the reason a matching change lands in the same commit as the thing
@@ -49,7 +49,8 @@ it guards:
   passed. The same file holds `composition-sweep.yml` to running
   `tests/sweep/` opted in, with no `if:` to skip it and no
   `continue-on-error` to pass it red, and to a schedule and dispatch
-  only (the weekly sweep, below).
+  only (the weekly sweep, below). It reads the matrix through
+  `support/ci-shards.ts`, as `support-tier.test.ts` does.
 - `version-pins.test.ts` — `assets/composition/version-pins.json` against
   the templates. Extend the registry, never the sweep's blind spots; see
   [`assets/`](../assets/AGENTS.md).
@@ -62,23 +63,48 @@ it guards:
   preaches a ≤ 120-line root; this is what keeps it one.
 - `mise-toolchain.test.ts` and `toolchain-pins.test.ts` — `mise.toml`
   against the shard matrix's tool lists and against `GRADLE_VERSION`.
-- `generated-docs.test.ts` — the two tables `docs/` does not write by
-  hand, the verticals compatibility matrix and the stack catalog's
-  defaults, against what `support/generated-docs.ts` renders from the
-  grid's goldens, `keel.dials` and the registry. It fails when
-  regenerating would change a committed file, as `prettier --check`
+- `generated-docs.test.ts` — the five tables in three files nobody
+  writes by hand: the verticals compatibility matrix; the stack matrix,
+  in the root `README.md` and in the stack catalog; and the catalog's
+  defaults and support tiers. It holds them against what
+  `support/generated-docs.ts` renders from the grid's goldens,
+  `keel.dials`, the registry, the support tier's facts and
+  `support/e2e-roles.ts`. It fails
+  when regenerating would change a committed file, as `prettier --check`
   does, and `KEEL_UPDATE_GOLDEN=1` rewrites what lies between each
   region's `generated:` sentinels, and nothing around them:
   `KEEL_UPDATE_GOLDEN=1 pnpm exec vitest run tests/generated-docs.test.ts`.
   See [`docs/`](../docs/AGENTS.md).
+- `support-tier.test.ts` — `src/domain/core/support-tier.json`, the
+  support tier's facts (roadmap T.2b), against `tests/e2e/`, the shard
+  matrix and the paths golden. Every e2e file is the suite of a row or
+  has a role in `support/e2e-roles.ts`, never both (G1). The shard
+  that runs a proving suite probes for the toolchain of each cell it
+  claims, since a suite in a shard without it skips and reads as a pass
+  (G2). Every claimed cell is a `paths-new` cell, spelled as that golden
+  keys it, as is every cell a role seeds (G3), and none is claimed
+  twice (G4). No e2e suite or helper calls `installMediator(` (D0):
+  each scaffolds through `support/e2e-cell.ts`'s `e2eMediator`, which
+  holds the running file to the cells it claims in the e2e job, where
+  what a suite dispatches can be read (D1). Its premises run here:
+  every row, dispatched as a command and read back as the job reads
+  it, settles to the spelling it is claimed by, and nothing turns off
+  vitest's per-file isolation. G5 is a file of its own,
+  `support-tier.premises.test.ts`, because it scaffolds: on every dial
+  cell `keel.dials` offers, each single-service cell without the agent
+  harness is its twin with it, less the agent files (P1), and every
+  product service with one key (`serviceKeys`) has the same files, its
+  manifest among them, and queues the same actions (P2). Its 428
+  scaffolds run in memory in a `beforeAll`, so mutation testing leaves
+  it out.
 
 ## The composition grid
 
 `domain/core/composition-grid/` sweeps keel's whole composition surface
 through the real mediator, over `support/composition-grid.ts`: the
 measure behind roadmap epic Q, whose invariants (I1–I9) it
-holds, epic R's I10, and epic S's I11 and I12. Four suites, split so
-vitest runs them in parallel:
+holds, epic R's I10, epic S's I11 and I12, and epic T's I13. Four
+suites, split so vitest runs them in parallel:
 
 - `greenfield` — every stack × every vertical as its one extra, held
   against the `keel.dials` menu (I2 offered ⇒ Ok, I3 accepted ⇒
@@ -160,7 +186,29 @@ vitest runs them in parallel:
   product root is not: its glue, `fullstack`, is a row no `keel add`
   names, and the root is roadmap epic U's. There the sweep only throws
   unless `nameableOf` leaves out the glue and nothing else, the one
-  place it drops a row.
+  place it drops a row. Each scaffold's root is held to I13 as soon as
+  it is written (`holdProductRuns`): every service its `compose.yaml`
+  builds finds its `Dockerfile` under its context, every file a
+  service mounts from the root, short-form or long, is there, a build
+  context or a `cd` that is absolute fails, a service with no body
+  fails, and its `README.md` has a `cd <service> && …` line for each
+  context the compose file builds. Each such line `cd`s into one
+  relative directory inside the root, not the root itself, and each
+  step after it, split on `&&` with any leading `VAR=value` dropped,
+  names what its runner needs there — a Gradle project, a Maven
+  module, a Go package, an npm script, a Cargo manifest, a single
+  Cargo binary, built by a debug `cargo build` earlier on the line. A runner
+  it does not know, an HTML entity, or a character no plain run line
+  holds fails the line: `;`, `|`, `&` but in `&&`, a backtick, `$(`,
+  `<`, `>`, a quote, a backslash. A polyrepo root has no
+  `compose.yaml`, and holds trivially; the axis throws if a monorepo
+  root has none, or a polyrepo one has one. It reads files, not a verdict,
+  so the golden gains no key. The axis scaffolds default build
+  systems, all Gradle on the JVM, so no cell reaches the Maven clause:
+  `product-runs.test.ts`, beside the axes, holds every clause both
+  ways on product roots built by hand, 59 cases in about a second. Each failing case fails on one clause alone, so weakening
+  that clause alone turns it red; a new clause gets a case that does
+  the same.
 - `growth` — every single-entrypoint backend preset the stack finder
   lists, on every dial setting `keel.dials` offers it (build system,
   module layout, the peer context, each again with the agent harness
@@ -237,10 +285,11 @@ the record can only shrink. Beside each suite:
   the day it landed too, with S.1b, on the projects whose recorded
   composition was a fixed point already — widened hard by S.7 to each
   vertical re-rendered alone, growth's twins and the whole menus where
-  the dev environment is an extra — and I12 hard from the day it
-  landed, with S.8. Every known file is empty now but brownfield's I5
-  key; growth's holds only hard invariants, and is `{}` because
-  `sweepGrid` reads each axis's known file whatever it holds.
+  the dev environment is an extra — I12 hard from the day it landed,
+  with S.8, and I13 hard from the day it landed, with T.3a. Every
+  known file is empty now but brownfield's I5 key; growth's holds only
+  hard invariants, and is `{}` because `sweepGrid` reads each axis's
+  known file whatever it holds.
 - brownfield's I5 reads `greenfield.golden.json`, so when a change moves
   both, regenerate greenfield first. Where either side refuses, it
   previews the greenfield twin again (`Grid.twin`, which records
@@ -259,20 +308,22 @@ and history, which both directions share — 384 real `keel add module`
 runs, 320 real adds, 960 dry-run dispatches for I9, and since S.7 a
 status read and a dry-run whole re-render on each of the 160 twins for
 I11, some 7 s paired with the axis before it, less than the load swings
-it by; the JVM's are the heaviest), greenfield ~23 s, of which I8's
+it by; the JVM's are the heaviest), greenfield about 45 s alone (1,699
+keys since T.3f's twelve products), of which I8's
 orderings are about 3.5 s and I9's bodies — some 260 whole-menu
 dispatches — about 14 s, brownfield about 53 s alone and 58 s
 in the full suite (1,891 cells, 1,208 of them S.1b's I9 and I11 cells
 and 180 S.7's, 28 real modulith scaffolds and 10 whole-menu ones
 beside the 28 opening ones, and S.8's 628 real I12 runs), and
-composite about 11 to 15 s alone and 13 to 18 s in the full suite
-(1,656 cells, 984 of them S.1b's).
+composite about 47 s alone at a load average near 5 (4,968 cells
+since T.3f's twelve products, 3,312 of them theirs; 1,656 before, 984
+of those S.1b's).
 
 **The weekly sweep beside it.** The grid's preview axes read each
 preset's opening dials only, each extra alone and the whole menu, and
 its growth axis every dial setting with no extras, because `verify`
 has to stay fast. What that leaves out is `sweep/`: three opt-in
-suites over `support/composition-sweep.ts`, self-skipping unless
+suites in six files over `support/composition-sweep.ts`, self-skipping unless
 `KEEL_RUN_SWEEP=1`, run weekly by
 `.github/workflows/composition-sweep.yml` and never on a PR. They
 sweep every dial setting `keel.dials` offers. The settings come
@@ -286,7 +337,20 @@ again with the agent harness left out wherever that is allowed.
   to a preview, which must be Ok, and to a dry-run install, which must
   stage the same changes (I1, I2, I9). It is also named backwards, in
   every order for up to three extras, and in every order its boxes can
-  be ticked in for up to three boxes (I8).
+  be ticked in for up to three boxes (I8). It is four of the six
+  files: one per JVM framework, and one for every other family, since a file runs in one worker and the
+  products' sets are most of the lane: `extras.quarkus.test.ts`,
+  `extras.spring.test.ts` and `extras.micronaut.test.ts` each take one
+  framework's presets and the products whose backend is one of them,
+  and `extras.test.ts` every preset whose family has no file. A
+  preset's family is its `framework.` tag's word, else its `lang.`
+  tag's, and a product's is its backend's (`sweepFamilyOf`). Each file
+  is a header and one call to `support/extras-sweep.ts`, which reads
+  its family off its name. The directory is the list: a new platform
+  falls into `extras.test.ts` with no edit, and a file
+  `extras.<family>.test.ts` gives its family a file of its own, which
+  CI's three vitest workers take in turn alongside `arrival` and
+  `choices`, not a worker of its own.
 - `arrival` installs every ordered pair of offered extras for real,
   once in one run and once in two runs (`keel new --with x`, then
   `keel add y` with the `--refresh` its preview proposes), and each
@@ -311,7 +375,11 @@ that reproduces each one listed underneath; a dispatch that throws or
 refuses, `keel.dials` on a setting included, is a finding, never the
 end of the preset — all but the blank preview a product's repository
 layouts are read from, which the composite grid holds in `verify`.
-`KEEL_SWEEP_STACKS=go-http,ts-cli` narrows a run. What a full run
+`KEEL_SWEEP_STACKS=go-http,ts-cli` narrows a run, and a run that
+includes `extras.test.ts`, `arrival` or `choices` fails on an id the
+catalog lacks. A family file such as `extras.spring.test.ts` run alone
+does not check the filter: narrowed to none of its family, it passes
+having swept nothing. What a full run
 costs, and how to read one, is in `docs/development.md` → The
 composition sweep. `sweep/machinery.test.ts` is the one file there
 that is not opted in. It holds the lane's helpers in `verify` (the
@@ -319,9 +387,13 @@ settings walked, a setting `keel.dials` refuses, the powerset and its
 cap, a tick and its closure, a product's ticks and keys per service,
 its two spellings, the read-back of what a dispatch staged, both
 comparisons, the report), so a helper that rots shows on a PR rather
-than as a weekly run that swept nothing. The skipped suites read
-nothing when they are collected, but they still import the engine, a
-couple of seconds each.
+than as a weekly run that swept nothing. It holds the `extras` split
+there too: every preset in exactly one file, an `extras.test.ts` for
+the families with none, no family file empty, as one would be
+whose tag was renamed, and each share cut from the whole catalog
+before `KEEL_SWEEP_STACKS` narrows it (`sharedSweep`). That an empty
+share logs no totals line is held by an opted-in run alone. The skipped suites read nothing when they are
+collected, but they still import the engine, a couple of seconds each.
 
 Only I9 posts answers, and only one non-default choice per question —
 on each preset's opening dials, and on every dial setting of a grown
@@ -461,7 +533,8 @@ the converge golden (below) enumerates the same cells:
   harness on and off), the whole menu on every setting with the
   harness, each offered extra alone on the opening dials, the whole
   menu there under the grid's I9 answer bodies (`answered`, `borrowed`,
-  `twice`), and every product under each repository layout;
+  `twice`), and every product on every dial setting `keel.dials`
+  offers it: each repository layout × each service's build system;
 - `paths-add` — `keel add`: each offered extra alone on each preset's
   opening scaffold, on default answers and with every question its
   preview asks answered away from its default; each after the module

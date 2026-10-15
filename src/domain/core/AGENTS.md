@@ -3,13 +3,15 @@
 <!-- keel:purpose: the engine, the composition adapters and verticals, the stack presets, the handlers -->
 
 What lives here: the engine (`predicate`, `resolver`, `refusals`,
-`nearest-id`, `compatibility`, `planner`, `plan-refusal`, `scope`, `add-readiness`, `profile`, `growth`, `contexts`, `converge`, `converge-run`, `dials`, `answers`,
+`nearest-id`, `stack-spelling`, `compatibility`, `planner`, `plan-refusal`, `scope`, `product-services`, `add-readiness`, `profile`, `growth`, `contexts`, `converge`, `converge-run`, `dials`, `answers`,
 `supplied-answers`, `apply`, `install`, `actions`, `docs-index`, `hook-settings`, `rank`), the composition
-`adapters/` and `verticals/`, the stack presets as data (`stack-presets.json`) with
-the schema and id resolution over them (`stacks.ts`), `handlers/` (new-project,
-add-vertical, docs-sync, docs-check), `registry.ts` (`registryOf` and
-the shipped source, every refusal naming its origin) and
-`RegistryMediator`.
+`adapters/` and `verticals/`, the stack presets as data (`stack-presets.json`, a
+platform × entrypoint table `stack-table.ts` expands) with
+the schema and id resolution over them (`stacks.ts`), the support tier as
+data (`support-tier.json`) with the rules that read it (`support-tier.ts`),
+`handlers/` (new-project, add-vertical, docs-sync, docs-check), `registry.ts`
+(`registryOf`, the shipped source and the shipped support, every refusal
+naming its origin) and `RegistryMediator`.
 
 - Never import `application/` or `infrastructure/` — reach the world
   through the ports in `domain/contract/ports/` only. `node:path` is
@@ -115,7 +117,33 @@ what goes in — keel's own pieces, plus whatever `infrastructure/registry/`
 loaded from `<cwd>/.keel/plugins`. A handler that imports `STACKS` or
 `SHIPPED_VERTICALS` directly has re-made the catalog a property of the
 build, which is exactly what a plugin cannot extend. See
-`docs/plugins.md`.
+`docs/plugins.md`. A front door taking a stack a user typed — `stage`
+(`keel new`, `keel.preview`, the page's install) and `keel.dials` —
+resolves it with `stackSpelled` (`stack-spelling.ts`): the id, or the
+one preset its facets name. Every reader of an id keel produced — a
+product's services, a drill-down placement, a recorded
+`services[].stack`, converge's preset — calls `Registry.stack()`, which
+stays exact, so a corrupt record is never read leniently. An adapter
+has no registry, so the engine hands a product root's adapters their
+services already resolved to facets (`Ctx.services`,
+`product-services.ts`, roadmap T.3b), and the fullstack glue picks
+each one's image and run hint by family off them, never by id
+(`adapters/product-families.ts`, T.3c). The support tier is handed in
+as the registry is (roadmap T.2b): `support-tier.ts`'s rules read a `SupportSource` — the
+facts, and the stacks keel vouches for — and never `STACKS`.
+`registry.ts` builds keel's own beside the shipped source
+(`shippedSupport`), and the composition root hands it to `keel.catalog`
+and `keel.dials` as it hands them the registry (T.2e), so their tests
+hand in facts of their own (the Factory's `support`). A plugin's stack
+is not among the stacks keel vouches for, so it has no tier. Both read
+it through `dials.ts`: `dialOptionsFor` settles the target, then reads
+its cell's tier (`tierOf`); `stackDials` returns the menus alone
+(`DialMenus`). Settling every preset's default costs some 100 to 400 ms,
+so `CatalogHandler` settles each leaf once per handler, and the CLI
+reads `defaultTier` only for `keel new --list`. `defaultTier` answers
+null for a stack the source does not vouch for before it settles, so a
+plugin's dials never run for the catalog or `--list`. `keel new`'s
+report carries no tier (DT9).
 
 **Compatibility is a declaration, never a hand-written check.** A
 `Conflict` on the vertical or stack that owns the rule is read three
@@ -479,15 +507,22 @@ manifest, then each scope's deferred actions.
 
 **The stack presets are data.** `stack-presets.json`, because nothing in
 a `Stack` is code — `tags` and `projects` are strings and every other
-field names something registered under an id. `stacks.ts` holds the zod
-schema for that file, resolves the ids against the registries at load,
-and keeps `Stack` as the resolved in-memory shape. It is a JSON _module
+field names something registered under an id. It writes no preset out:
+it is a table, platforms × the entrypoint sets each takes, and a rule
+crossing those cells into products, and `stack-table.ts` expands it
+into the preset document `stacks.ts` resolves — the one a preset from
+outside the repository would be — so a generated preset passes every
+check a written one does. `stacks.ts` holds the zod schema for that
+document, resolves the ids against the registries at load, and keeps
+`Stack` as the resolved in-memory shape. An id is permanent: a product
+root records its services' ids, so a table edit may add a cell, never
+rename one. The file is a JSON _module
 import_ rather than a file read: `getStack`/`listStacks` are synchronous
 everywhere, so the registry has to resolve at load, and a module import
 gets that without `node:fs` or a port in the domain.
 `tests/domain/core/stack-registry.golden.json` freezes what the registry
 projects onto, the way `version-pins.json` and its test do one level up —
-edit a preset, edit the golden.
+edit a cell, edit the golden.
 
 **Refusals are data, worded once.** A refusal of a vertical or a file is
 a `RefusalError` (`domain/contract/refusal.ts`), and `refusals.ts` is the

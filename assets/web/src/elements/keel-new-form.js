@@ -39,6 +39,12 @@
  * conditional still comes back from the preview and is rendered by
  * `<keel-question-list>`.
  *
+ * **How far keel vouches for it.** A drill-down card whose choice lands
+ * on a preset that is best-effort at its default setting says so in
+ * its badge slot, read off the catalog's finder; the Options step says
+ * it of the setting picked, read off the dials (roadmap T.2e). A
+ * first-class cell, and a plugin's, say nothing.
+ *
  * **Focus survives a re-render.** Every reply redraws the step, and a
  * box ticked from the keyboard would otherwise hand the focus back to
  * the page body — so the focused control is found again by its id, or
@@ -60,6 +66,8 @@ import {
   pickFramework,
   pickLanguage,
   pickShape,
+  tierBadge,
+  withEntrypoint,
 } from '../finder.js';
 import {
   alsoScaffold,
@@ -194,6 +202,22 @@ export class KeelNewForm extends HTMLElement {
     return [];
   }
 
+  /**
+   * A drill-down card's badge: best-effort where the preset choosing
+   * it lands on is, at its default setting (`../finder.js`'
+   * `tierBadge`) — on a box of a multi-select step, the preset with
+   * the box ticked. The badge's title names the preset.
+   */
+  #tier(stack) {
+    const badge = tierBadge(this.#catalog.finder, stack);
+    return badge === undefined
+      ? {}
+      : {
+          badge,
+          badgeDoc: `${stack} is best-effort at its default setting: no CI job builds it as keel new leaves it.`,
+        };
+  }
+
   /* ---- the drill-down ------------------------------------------ */
 
   #shapeField(here) {
@@ -205,6 +229,7 @@ export class KeelNewForm extends HTMLElement {
         value: shape.id,
         label: shape.label,
         doc: shape.doc,
+        ...this.#tier(pickShape(finder, shape.id, here)),
       })),
       onChange: (value) => this.#moveTo(pickShape(finder, value, here)),
     });
@@ -218,6 +243,7 @@ export class KeelNewForm extends HTMLElement {
         value: language.id,
         label: language.label,
         doc: language.doc,
+        ...this.#tier(pickLanguage(here.shape, language.id, here)),
       })),
       onChange: (value) => this.#moveTo(pickLanguage(here.shape, value, here)),
     });
@@ -231,6 +257,7 @@ export class KeelNewForm extends HTMLElement {
         value: framework.id,
         label: framework.label,
         doc: framework.combinations.map((combination) => combination.stack).join(', '),
+        ...this.#tier(pickFramework(here.language, framework.id, here)),
       })),
       onChange: (value) => this.#moveTo(pickFramework(here.language, value, here)),
     });
@@ -253,6 +280,7 @@ export class KeelNewForm extends HTMLElement {
           value: choice.id,
           label: choice.label,
           doc: choice.doc,
+          ...this.#tier(pickEntrypoints(here.framework, choice.id)),
         })),
         onChange: (value) => this.#moveTo(pickEntrypoints(here.framework, value)),
       });
@@ -264,6 +292,7 @@ export class KeelNewForm extends HTMLElement {
         value: choice.id,
         label: choice.label,
         doc: choice.doc,
+        ...this.#tier(pickEntrypoints(here.framework, withEntrypoint(chosen, choice.id))),
       })),
       onChange: (values) => this.#moveTo(pickEntrypoints(here.framework, encodeSelection(values))),
     });
@@ -274,8 +303,9 @@ export class KeelNewForm extends HTMLElement {
   #optionFields() {
     const stack = this.#stack();
     if (!stack) return [note(UNPLACEABLE)];
+    const support = this.#supportNote();
     if (stack.services.length > 0) {
-      const fields = [this.#layoutField()];
+      const fields = [...support, this.#layoutField()];
       for (const service of stack.services) {
         if (service.buildSystems.length > 1) {
           fields.push(this.#serviceBuildField(service, this.#serviceOptions(service)));
@@ -289,7 +319,7 @@ export class KeelNewForm extends HTMLElement {
       }
       return fields;
     }
-    const fields = [];
+    const fields = [...support];
     // The catalog says whether the control exists; the dials say what
     // may be on it.
     if (stack.buildSystems.length > 1) fields.push(this.#buildField(this.#buildSystems(stack)));
@@ -299,15 +329,33 @@ export class KeelNewForm extends HTMLElement {
     if (this.#dials?.peerContext === true) fields.push(this.#peerContextField());
     const extras = extrasGroup(this.#dials, this.#target);
     if (extras !== null) fields.push(this.#extrasField(stack, extras));
-    if (fields.length > 0) return fields;
+    if (fields.length > support.length) return fields;
     // Every preset has this step, so one pinning both dials is drawn
     // before its extras have arrived — and "nothing to choose" would
     // be wrong for as long as the first reply takes.
     return [
+      ...support,
       note(
         this.#dials === null
           ? 'Reading what this preset can take…'
           : 'This preset pins every dial — nothing to choose.',
+      ),
+    ];
+  }
+
+  /**
+   * What the Options step says of the setting picked, where keel's CI
+   * does not build it: the tier of the cell `keel.dials` settled
+   * (`dials.support`). Nothing for a first-class cell, nor for a
+   * plugin's, which has no tier — and nothing before the first reply.
+   */
+  #supportNote() {
+    if (this.#dials?.support !== 'best-effort') return [];
+    return [
+      el(
+        'p',
+        { class: 'muted', attrs: { 'data-role': 'support' } },
+        prose('Best-effort: no CI job builds this setting as `keel new` leaves it.'),
       ),
     ];
   }

@@ -23,6 +23,7 @@ import { previewQuery, projectStatusQuery } from '../../../../src/domain/contrac
 import { RefusalError } from '../../../../src/domain/contract/refusal.js';
 import type { Clock } from '../../../../src/domain/contract/ports/clock.js';
 import type { Tree } from '../../../../src/domain/contract/ports/tree.js';
+import { listStackIds, shippedRegistry } from '../../../../src/domain/core/registry.js';
 import { STACKS } from '../../../../src/domain/core/stacks.js';
 import { FakeClock } from '../../../../src/infrastructure/commons/fake-clock.js';
 import { FakeLogger } from '../../../../src/infrastructure/commons/fake-logger.js';
@@ -439,22 +440,118 @@ describe('keel.new-project (keel new)', () => {
   /**
    * The spellings users guess are real facets in the family's other
    * word — `-http` where the JVM presets say `-rest`, a product named by
-   * its engine — so the refusal names the preset they meant before the
-   * list of every id, and writes nothing.
+   * its engine — so each names its preset: the run goes on under the
+   * preset's own id, which the report carries, and says so first.
    */
   it.each([
-    ['quarkus-cli-http', 'quarkus-cli-rest'],
-    ['fullstack-quarkus', 'fullstack'],
-    ['go-rest', 'go-http'],
-  ])('suggests the nearest stack for --stack=%s', async (typed, meant) => {
+    [
+      'quarkus-cli-http',
+      'quarkus-cli-rest',
+      'Backend or tool · Java · Quarkus · CLI + HTTP server',
+    ],
+    ['fullstack-quarkus', 'fullstack', 'Fullstack · Java · Quarkus · HTTP server + Browser SPA'],
+    ['go-rest', 'go-http', 'Backend or tool · Go · HTTP server'],
+  ])('reads --stack=%s as %s', async (typed, meant, summary) => {
+    const report = expectOk(
+      await installMediator().dispatch(
+        newProjectCommand({ cwd, stack: typed, answers: {}, interactive: false, dryRun: true }),
+      ),
+    );
+    expect(report.subject).toBe(meant);
+    expect(report.notes?.[0]).toBe(`'${typed}' is ${meant} — ${summary}`);
+    expect(await fs.readdir(cwd)).toEqual([]);
+  });
+
+  it('says which preset a spelling read first, before the notes of its run, and only then', async () => {
+    const notes = async (stack: string): Promise<readonly string[] | undefined> =>
+      expectOk(
+        await installMediator().dispatch(
+          newProjectCommand({
+            cwd,
+            stack,
+            extraVerticals: ['iac'],
+            answers: {},
+            interactive: false,
+            dryRun: true,
+          }),
+        ),
+      ).notes;
+    const needed = 'added Container image, Distribution — needed by Infrastructure as code';
+    expect(await notes('quarkus-http')).toEqual([
+      "'quarkus-http' is quarkus-rest — Backend or tool · Java · Quarkus · HTTP server",
+      needed,
+    ]);
+    expect(await notes('quarkus-rest')).toEqual([needed]);
+  });
+
+  /**
+   * Words that name no preset are refused as an id keel does not know
+   * always was — word for word, the nearest id first.
+   */
+  it.each([
+    ['go-spa', 'fullstack-go'],
+    ['cli-spa', 'fullstack-cli'],
+    ['java-cli', 'quarkus-cli'],
+    ['quarkus-kotlin', 'quarkus-cli-kotlin'],
+    ['fullstack-kotlin-go', 'fullstack-kotlin'],
+  ])('refuses --stack=%s, naming %s first', async (typed, nearest) => {
     const error = expectErr(
       await installMediator().dispatch(
-        newProjectCommand({ cwd, stack: typed, answers: {}, interactive: false, dryRun: false }),
+        newProjectCommand({ cwd, stack: typed, answers: {}, interactive: false, dryRun: true }),
+      ),
+    );
+    expect(error.code).toBe('keel.unknown-stack');
+    expect(error.message).toBe(
+      `unknown stack '${typed}' — did you mean '${nearest}'? Available: ${listStackIds(shippedRegistry).join(', ')}`,
+    );
+  });
+
+  /**
+   * A spelling only ever chooses the preset: the project, its manifest
+   * included, is byte for byte the one the preset's own id makes.
+   */
+  it.each([
+    ['kotlin-quarkus-rest', 'quarkus-rest-kotlin'],
+    ['fullstack-go-http', 'fullstack-go'],
+  ])('writes for --stack=%s exactly what --stack=%s writes', async (typed, meant) => {
+    const written = async (stack: string): Promise<Readonly<Record<string, string>>> => {
+      const root = path.join(cwd, stack, 'demo');
+      await fs.mkdirp(root);
+      expectOk(
+        await installMediator({ runDeferred: () => Promise.resolve() }).dispatch(
+          newProjectCommand({ cwd: root, stack, answers: {}, interactive: false, dryRun: false }),
+        ),
+      );
+      const files: Record<string, string> = {};
+      for (const file of await filesUnder(root)) {
+        files[file] = await fs.readFile(path.join(root, file), 'utf8');
+      }
+      return files;
+    };
+    const spelled = await written(typed);
+    expect(Object.keys(spelled).length).toBeGreaterThan(0);
+    expect(spelled).toEqual(await written(meant));
+  });
+
+  /**
+   * A slip inside a word names no facet, so it is refused — naming the
+   * preset meant before the list of every id, and writing nothing.
+   */
+  it('suggests the nearest stack for a spelling that names none', async () => {
+    const error = expectErr(
+      await installMediator().dispatch(
+        newProjectCommand({
+          cwd,
+          stack: 'quarkus-cli-kotin',
+          answers: {},
+          interactive: false,
+          dryRun: false,
+        }),
       ),
     );
     expect(error.code).toBe('keel.unknown-stack');
     expect(error.message).toMatch(
-      new RegExp(`^unknown stack '${typed}' — did you mean '${meant}'\\? Available: .*go-cli`),
+      /^unknown stack 'quarkus-cli-kotin' — did you mean 'quarkus-cli-kotlin'\? Available: .*go-cli/,
     );
     expect(await fs.readdir(cwd)).toEqual([]);
   });
@@ -1383,6 +1480,7 @@ describe('keel.new-project stack selection', () => {
     const prompt = new FakePrompt({
       shape: 'fullstack',
       language: 'go',
+      entrypoints: 'server-http,spa',
       layout: 'monorepo',
       'buildSystem:frontend': 'npm',
       modulePath: 'example.com/demo',
@@ -1405,11 +1503,39 @@ describe('keel.new-project stack selection', () => {
       ),
     );
     expect(report.subject).toBe('fullstack-go');
-    // Go has one framework and the product one entrypoint set, so two
-    // of the four steps answer themselves.
-    expect(prompt.asked.slice(0, 2)).toEqual(['shape', 'language']);
+    // Go has one framework, so that step answers itself; its two
+    // products, over `go-http` and `go-cli-http`, differ by entrypoints.
+    expect(prompt.asked.slice(0, 3)).toEqual(['shape', 'language', 'entrypoints']);
     expect(prompt.asked).not.toContain('framework');
-    expect(prompt.asked).not.toContain('entrypoints');
+  });
+
+  it('drills down to a product over a CLI backend when its entrypoints say so', async () => {
+    const prompt = new FakePrompt({
+      shape: 'fullstack',
+      language: 'go',
+      entrypoints: 'cli,server-http,spa',
+      layout: 'monorepo',
+      'buildSystem:frontend': 'npm',
+      modulePath: 'example.com/demo',
+      npmScope: 'demo',
+      projectName: 'demo',
+      remote: '',
+      commitHook: 'yes',
+      changelog: 'yes',
+      defaultBranch: 'main',
+      // `observability/monitoring-compose` declares a question under
+      // this id; the wizard's own flat list is not asked here.
+      stack: 'granular',
+      extraVerticals: '',
+      'keel.review': 'proceed',
+    });
+    const mediator = installMediator({ prompt });
+    const report = expectOk(
+      await mediator.dispatch(
+        newProjectCommand({ cwd, answers: {}, interactive: true, dryRun: true }),
+      ),
+    );
+    expect(report.subject).toBe('fullstack-go-cli');
   });
 
   it('falls through to the flat preset list from the first menu’s escape hatch', async () => {
@@ -2804,3 +2930,14 @@ describe('keel.new-project --yes stays fully non-interactive', () => {
     expect(report.committed).toBe(true);
   });
 });
+
+/** Every file under `root`, relative to it, sorted. */
+async function filesUnder(root: string, dir = ''): Promise<readonly string[]> {
+  const files: string[] = [];
+  for (const entry of await fs.readdir(path.join(root, dir), { withFileTypes: true })) {
+    const relative = path.posix.join(dir, entry.name);
+    if (entry.isDirectory()) files.push(...(await filesUnder(root, relative)));
+    else files.push(relative);
+  }
+  return files.sort();
+}

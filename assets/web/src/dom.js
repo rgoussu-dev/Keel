@@ -23,7 +23,7 @@
  * `finder.js` and `steps.js`, which are pure and tested without a
  * browser.
  *
- * @typedef {{ value: string, label: string, doc?: string, meta?: string, badge?: string }} Choice
+ * @typedef {{ value: string, label: string, doc?: string, meta?: string, badge?: string, badgeDoc?: string }} Choice
  */
 
 import { flagSpans } from './command.js';
@@ -111,6 +111,7 @@ function body(choice) {
     const badge = document.createElement('span');
     badge.className = 'badge';
     badge.textContent = choice.badge;
+    if (choice.badgeDoc) badge.title = choice.badgeDoc;
     heading.append(badge);
   }
   column.append(heading);

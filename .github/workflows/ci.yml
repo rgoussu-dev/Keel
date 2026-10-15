@@ -399,7 +399,7 @@ jobs:
               tests/e2e/combo-modulith-micronaut-cli-rest-kotlin-gradle.test.ts
               tests/e2e/combo-modulith-micronaut-cli-rest-kotlin-maven.test.ts
               tests/e2e/combo-basic-micronaut-cli-rest-kotlin-maven.test.ts
-          # Six files where there were two, and the shape came from
+          # Ten files where there were two, and the shape came from
           # a measurement that twice contradicted the obvious answer.
           #
           # When the modulith cells first landed, `modulith-go-http`
@@ -418,22 +418,28 @@ jobs:
           # per run instead of once per file. The shipped shape is
           # comfortably faster than either earlier one.
           #
-          # Still one shard, and now for a reason it did not have
-          # before: the floor is `fullstack-go`, a file none of this
-          # work added, so splitting further would buy attribution and
-          # no wall clock. `docker` is for the two persistence cells,
-          # whose pgx contract test takes its Postgres from
-          # testcontainers-go; `fullstack-go` needs none.
+          # Still one shard: every file shares that one Go home since
+          # `fullstack-go` took it too (roadmap T.4a), so a file peeled
+          # off would pay the cold compile again, and splitting would
+          # buy attribution and no wall clock. `docker` is for the two
+          # persistence cells, whose pgx contract test takes its
+          # Postgres from testcontainers-go; neither product,
+          # `fullstack-go` nor `fullstack-go-cli` (roadmap T.4e), needs
+          # it.
           # `modulith-go-persistence-liquibase` rides here rather than
           # in a shard of its own: it is the persistence cell's shape
           # again with a different migrations/ unit, and a parallel
-          # file under the floor costs nothing, where a new shard
-          # would need the exact-match `Setup Go` condition widened to
-          # earn the same.
+          # file on the warm shared Go home costs little, where a new
+          # shard would need the exact-match `Setup Go` condition
+          # widened to earn the same. `combo-basic-go-cli-http`
+          # (roadmap T.4b) rides here for the same reason: Go's walking
+          # skeleton retargeted at `go-cli-http`'s default, a few
+          # seconds on a warm Go home.
           - id: go
             tools: go docker
             files: >-
               tests/e2e/walking-skeleton-go.test.ts
+              tests/e2e/combo-basic-go-cli-http.test.ts
               tests/e2e/modulith-go-cli.test.ts
               tests/e2e/modulith-go-http.test.ts
               tests/e2e/modulith-go-persistence.test.ts
@@ -441,7 +447,8 @@ jobs:
               tests/e2e/modulith-go-peer-context.test.ts
               tests/e2e/add-module-go.test.ts
               tests/e2e/fullstack-go.test.ts
-          # Six files, one shard — and unlike every earlier revision
+              tests/e2e/fullstack-go-cli.test.ts
+          # Nine files, one shard — and unlike every earlier revision
           # of this comment, that is now a choice with a cost rather
           # than a free one.
           #
@@ -454,12 +461,12 @@ jobs:
           #
           # How much, nobody has measured, and the honest bound
           # matters: that file's cost is a *contended* one — it shares
-          # the runner's cores with five others for much of its life,
+          # the runner's cores with the others for much of its life,
           # and run alone it would be faster, so a split lands this
           # job well short of what "max of the two halves" suggests.
           # Kept as one shard until someone measures the uncontended
-          # cost instead of estimating it; that is the one thing the
-          # decision still turns on.
+          # cost instead of estimating it, and, since roadmap T.4f, the
+          # shard's throughput beside it.
           #
           # `tools:` stays `cargo`, and the persistence cell is why
           # that is worth stating: `tools:` is what a shard installs
@@ -474,11 +481,31 @@ jobs:
           # way. On a machine where no daemon answers, the emitted
           # test returns early and `cargo test` still compiles every
           # crate, which is what the cell exists to prove.
+          #
+          # `combo-basic-rust-cli-http` (roadmap T.4c) rides here, not
+          # in a combo shard: it needs cargo and nothing else, as every
+          # file here does, and one cell would not earn a shard of its
+          # own. It is `walking-skeleton-rust` retargeted at the combo
+          # stack: one package, two binaries, the same cold axum
+          # compile in a `CARGO_HOME` of its own. It runs beside the
+          # persistence file rather than after it (inference); the
+          # shard's time on a PR's run is what says so.
+          #
+          # `fullstack-rust-cli` (roadmap T.4f) is `fullstack-rust` with
+          # the CLI beside its server, another cold axum compile. With
+          # it and the combo cell the shard carries more cargo work than
+          # its workers absorb in parallel, so its wall is no longer the
+          # persistence file's alone: the research's packing model puts
+          # it near 203–209 s, throughput-bound, and still well inside
+          # the e2e phase's critical path (inference, until a PR's run
+          # measures it).
           - id: rust
             tools: cargo
             files: >-
               tests/e2e/walking-skeleton-rust.test.ts
+              tests/e2e/combo-basic-rust-cli-http.test.ts
               tests/e2e/fullstack-rust.test.ts
+              tests/e2e/fullstack-rust-cli.test.ts
               tests/e2e/modulith-rust-cli.test.ts
               tests/e2e/modulith-rust-http.test.ts
               tests/e2e/modulith-rust-peer-context.test.ts
@@ -564,26 +591,31 @@ jobs:
               tests/e2e/ui-plugin-stack.test.ts
               tests/e2e/ui-refusal.test.ts
               tests/e2e/ui-compose.test.ts
-          # The TypeScript half of the composed-entrypoint grid, in a
-          # shard of its own rather than as three more files above.
-          # Two reasons, and neither is wall clock inside this job:
-          # the `web` shard carries `browser` in `tools:` because
-          # four of its suites render in Chromium, and these render
-          # nothing — a shard that probes for a browser it never uses
-          # is a provisioning cost and a lie about what the suites
-          # need. And `web` already carries fifteen files with real
-          # headroom to spare; three more real installs would push its
-          # wall up, where one more parallel shard pushes the
-          # phase's up by nothing — this shard lands an order of
-          # magnitude inside the matrix floor. There is no build step
-          # to pay for; the install is the cost, and npm's is the best
-          # part of twice pnpm's on the same layout.
+          # The TypeScript suites that render nothing, in a shard of
+          # their own rather than as more files above: the TypeScript
+          # half of the composed-entrypoint grid, and the TypeScript
+          # products' backends. Two reasons, and neither is wall clock
+          # inside this job: the `web` shard carries `browser` in
+          # `tools:` because four of its suites render in Chromium, and
+          # these render nothing — a shard that probes for a browser it
+          # never uses is a provisioning cost and a lie about what the
+          # suites need. And `web` already carries eighteen files; more
+          # real installs would push its wall up, where one more
+          # parallel shard pushes the phase's up by nothing — this
+          # shard lands an order of magnitude inside the matrix floor.
+          # There is no build step to pay for; the install is the cost,
+          # and npm's is the best part of twice pnpm's on the same
+          # layout. `fullstack-ts` and `fullstack-ts-cli` (roadmap T.4d
+          # and T.4g) install the backend alone, on npm, and fake the
+          # frontend's install, which `fullstack` in `web` builds.
           - id: web-combo
             tools: npm pnpm
             files: >-
               tests/e2e/combo-modulith-ts-cli-http-npm.test.ts
               tests/e2e/combo-modulith-ts-cli-http-pnpm.test.ts
               tests/e2e/combo-basic-ts-cli-http-pnpm.test.ts
+              tests/e2e/fullstack-ts.test.ts
+              tests/e2e/fullstack-ts-cli.test.ts
           # The only shard whose suite compiles nothing, and the only
           # one that runs an emitted `dev/compose.yaml`. Every other
           # docker-using suite reaches its database through

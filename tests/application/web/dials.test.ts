@@ -711,16 +711,16 @@ describe('a preset move, the way the page makes it', () => {
     const before = await settledOn(mediator, {
       kind: 'new-project',
       stack: 'spring-cli-rest-kotlin',
-      moduleLayout: 'modulith',
+      buildSystem: 'maven',
     });
     const here = locate(catalog.finder, 'spring-cli-rest-kotlin');
-    const landed = pickShape(catalog.finder, 'fullstack', here);
-    expect(landed).toBe('fullstack-spring');
+    const landed = pickShape(catalog.finder, 'frontend', here);
+    expect(landed).toBe('web-components');
 
     const after = await moveTo(mediator, before, landed ?? '');
     expect(after.notice).toBe(
-      'Kotlin has no fullstack preset, so the language is now Java. ' +
-        'Moving to fullstack-spring did not keep module layout modulith.',
+      'Kotlin has no frontend preset, so the language is now TypeScript (browser). ' +
+        'Moving to web-components did not keep build system maven.',
     );
   });
 

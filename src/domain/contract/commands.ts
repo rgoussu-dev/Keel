@@ -28,9 +28,12 @@ export interface InstallReport {
   readonly committed: boolean;
   /**
    * What the run decided that the caller did not spell out, one
-   * sentence each: first the verticals it installed because a named
-   * one needs them — `added Container image, Distribution — needed by
-   * Infrastructure as code`; then `installed in dependency order:
+   * sentence each: first, where `--stack` named a preset by its facets,
+   * the preset it read — `'quarkus-cli-http' is quarkus-cli-rest —
+   * Backend or tool · Java · Quarkus · CLI + HTTP server`; then the
+   * verticals it installed because a named one needs them — `added
+   * Container image, Distribution — needed by Infrastructure as code`;
+   * then `installed in dependency order:
    * containerization, persistence, distribution` when the order named
    * put one ahead of a vertical it needs or reads; then, where a
    * re-render moved a vertical off an adapter that ran, what that
@@ -146,7 +149,9 @@ export interface NewProjectCommand extends Command<InstallReport> {
   readonly agentHarness?: boolean;
   readonly cwd: string;
   /**
-   * Stack preset id, e.g. `quarkus-cli`. When absent, interactive
+   * Stack preset id, e.g. `quarkus-cli`, or its facets' words in any
+   * order (`kotlin-spring-http`), which name that preset; the report
+   * and every record carry the preset's own id. When absent, interactive
    * installs prompt for it (the wizard's first and most consequential
    * question) and non-interactive installs default to `quarkus-cli`.
    */
@@ -510,7 +515,10 @@ export type InstallTarget =
 /** Bootstrap a greenfield project — the subject of {@link NewProjectCommand}. */
 export interface NewProjectTarget {
   readonly kind: 'new-project';
-  /** Absent asks for it, exactly as an omitted `--stack` does. */
+  /**
+   * A preset id, or its facets' words, as {@link NewProjectCommand.stack}
+   * takes it. Absent asks for it, exactly as an omitted `--stack` does.
+   */
   readonly stack?: string;
   readonly layout?: RepoLayout;
   readonly buildSystem?: string;

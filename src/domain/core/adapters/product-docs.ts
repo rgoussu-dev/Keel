@@ -1,8 +1,10 @@
 /**
  * `fullstack/product-docs` adapter — emits the product root's README
  * (what the services are, how they talk, the run order) and a
- * minimal root `.gitignore`. Reads the service list from the product
- * manifest the composite orchestrator seeds before glue installs.
+ * minimal root `.gitignore`. Reads the services as facets
+ * (`Ctx.services`) and gives each its development run hint by family
+ * (`./product-families.ts`), or _see its README_ where no family
+ * matches.
  *
  * Fires unconditionally within its vertical: the orchestrator only
  * installs the `fullstack` vertical when a shared product root
@@ -15,6 +17,7 @@
 
 import type { Adapter } from '../../contract/composition.js';
 import { adoptingRootFiles } from './adopted-files.js';
+import { familyOf } from './product-families.js';
 
 export const PRODUCT_DOCS_ID = 'fullstack/product-docs';
 
@@ -27,7 +30,13 @@ export const productDocsAdapter: Adapter = {
   predicate: {},
   async contribute(ctx) {
     const files = await ctx.templates.render(TEMPLATE_ID, '', {
-      services: ctx.manifest.services,
+      // Each with the command that runs it in development, read off
+      // what it is (`./product-families.ts`); one the glue does not
+      // know points at its own README.
+      services: ctx.services.map((service) => ({
+        ...service,
+        runHint: familyOf(service)?.runHint(service) ?? 'see its README',
+      })),
     });
     return adoptingRootFiles(files);
   },

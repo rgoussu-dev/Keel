@@ -22,79 +22,19 @@
  * then proved by running both.
  */
 
-import net from 'node:net';
 import path from 'node:path';
-import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import fs from 'fs-extra';
 import { expect } from 'vitest';
-import { runStep, scaffold, type PackageManager } from './web-e2e.js';
+import {
+  driveGreetCli,
+  runStep,
+  scaffold,
+  withRestAssembly,
+  type PackageManager,
+} from './web-e2e.js';
 
 export { E2E_TIMEOUT_MS, mkTempDir, skipWebE2E } from './web-e2e.js';
 export type { PackageManager } from './web-e2e.js';
-
-const SERVER_START_TIMEOUT_MS = 30 * 1000;
-
-/** A port nothing is listening on, borrowed and handed straight back. */
-const freePort = (): Promise<number> =>
-  new Promise((resolve, reject) => {
-    const probe = net.createServer();
-    probe.on('error', reject);
-    probe.listen(0, '127.0.0.1', () => {
-      const { port } = probe.address() as net.AddressInfo;
-      probe.close(() => {
-        resolve(port);
-      });
-    });
-  });
-
-/**
- * Starts the REST assembly on `port` and resolves once it says it is
- * listening.
- *
- * The emitted `main.ts` logs the port it was *asked* for rather than
- * the one it bound, which is why the harness picks a free port itself
- * instead of passing `PORT=0` and parsing the announcement back out.
- */
-const startServer = (cwd: string, port: number): Promise<ChildProcess> =>
-  new Promise((resolve, reject) => {
-    const child = spawn('node', ['application/rest/src/main.ts'], {
-      cwd,
-      env: { ...process.env, PORT: String(port) },
-    });
-    let output = '';
-    const timer = setTimeout(() => {
-      child.kill('SIGKILL');
-      reject(new Error(`server did not start within 30s; output so far:\n${output}`));
-    }, SERVER_START_TIMEOUT_MS);
-    const onData = (chunk: Buffer): void => {
-      output += chunk.toString();
-      if (output.includes('listening on')) {
-        clearTimeout(timer);
-        resolve(child);
-      }
-    };
-    child.stdout.on('data', onData);
-    child.stderr.on('data', onData);
-    child.on('error', (err) => {
-      clearTimeout(timer);
-      reject(err);
-    });
-    child.on('exit', (code) => {
-      clearTimeout(timer);
-      reject(new Error(`server exited before listening (exit ${code}):\n${output}`));
-    });
-  });
-
-const stopServer = async (child: ChildProcess): Promise<void> => {
-  if (child.exitCode !== null) return;
-  await new Promise<void>((resolve) => {
-    child.once('exit', () => {
-      resolve();
-    });
-    child.kill('SIGTERM');
-    setTimeout(() => child.kill('SIGKILL'), 5000).unref();
-  });
-};
 
 /** One cell of the TypeScript composed-entrypoint grid. */
 export interface TsComboCell {
@@ -147,36 +87,19 @@ export async function runTsComboE2E(cell: TsComboCell, cwd: string): Promise<voi
   runStep(cwd, `${pm} test`, pm, ['test']);
   if (moduleLayout === 'modulith') runStep(cwd, `${pm} run lint`, pm, ['run', 'lint']);
 
-  // The CLI assembly runs: the greeting on stdout, and the domain's
-  // no as exit code 2 — the CLI counterpart of a 400 on the wire.
-  const greeted = spawnSync('node', ['application/cli/src/main.ts', '--name', 'E2E'], {
-    cwd,
-    encoding: 'utf8',
-  });
-  expect(greeted.status, greeted.stderr).toBe(0);
-  expect(greeted.stdout).toBe('Hello, E2E!\n');
-  const refused = spawnSync('node', ['application/cli/src/main.ts', '--name', '  '], {
-    cwd,
-    encoding: 'utf8',
-  });
-  expect(refused.status).toBe(2);
-  expect(refused.stderr).toContain('name must not be blank');
+  driveGreetCli(cwd);
 
   // The REST assembly runs, off the same domain, in the same
   // workspace, without the CLI having been rebuilt or reinstalled.
-  const port = await freePort();
-  const server = await startServer(cwd, port);
-  try {
-    const ok = await fetch(`http://127.0.0.1:${port}/greet?name=E2E`);
+  await withRestAssembly(cwd, async (baseUrl) => {
+    const ok = await fetch(`${baseUrl}/greet?name=E2E`);
     expect(ok.status).toBe(200);
     expect(await ok.json()).toEqual({ greeting: 'Hello, E2E!' });
 
-    const rejected = await fetch(`http://127.0.0.1:${port}/greet?name=%20%20`);
+    const rejected = await fetch(`${baseUrl}/greet?name=%20%20`);
     expect(rejected.status).toBe(400);
     expect(rejected.headers.get('content-type')).toContain('application/problem+json');
     const problem = (await rejected.json()) as Record<string, unknown>;
     expect(problem.detail).toBe('name must not be blank');
-  } finally {
-    await stopServer(server);
-  }
+  });
 }

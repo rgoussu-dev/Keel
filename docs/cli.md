@@ -22,7 +22,7 @@ keel new --stack=<id> [options]
 
 | Option                    | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `-s, --stack <id>`        | Stack preset id (see the [stack catalog](stacks/README.md)). Omitted interactively, the wizard **drills down to it** — what you are building → language → framework → user-side adapters (see below) — instead of asking for an id. Defaults to `quarkus-cli` non-interactively.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `-s, --stack <id>`        | Stack preset id (see the [stack catalog](stacks/README.md)), or its facets' words in any order — `kotlin-spring-http` is `spring-rest-kotlin` (see _A preset named by its facets_ below). Omitted interactively, the wizard **drills down to it** — what you are building → language → framework → user-side adapters (see below) — instead of asking for an id. Defaults to `quarkus-cli` non-interactively.                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `--layout <layout>`       | Composite stacks only: `monorepo` (default) or `polyrepo`. Prompted when interactive and omitted.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | `--build-system <choice>` | Stacks offering a choice: `gradle` (default) or `maven` on the JVM stacks, `npm` (default) or `pnpm` on the TypeScript stacks. On composite stacks the choice is per service, named as `path=id` pairs, comma-separated: `--build-system backend=maven,frontend=pnpm`. Services left unnamed are prompted when interactive and take their stack's default otherwise.                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `--module-layout <id>`    | Every single-service stack: `basic` (default, the flat trisection) or `modulith` (one hexagon per bounded context). Prompted when interactive and omitted. Distinct from `--layout`, which is about repositories.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
@@ -31,7 +31,7 @@ keel new --stack=<id> [options]
 | `-y, --yes`               | Non-interactive — use defaults for unanswered questions. Skips the wizard and the review step entirely.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | `--no-agent-harness`      | Single-service stacks: omit agent documents, cross-tool shims, skills and hooks; retain the project manifest and formatter configuration. Adopt later with `keel add agent-harness`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `--dry-run`               | Print the plan without writing any file. Interactively, the review step still runs (see below) but nothing is committed regardless of the choice made there.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
-| `--list`                  | List every stack id with its one-line description, then exit — nothing is scaffolded.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `--list`                  | List every stack id with its one-line description, then exit — nothing is scaffolded. A stack that is best-effort at its default setting is marked ◻ (see _How far keel vouches for a preset_ below).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `--set <k=v>`             | Preset an answer as `adapterId:questionId=value` (repeatable). Only for an adapter this run resolves — see [Answers](#answers-stickiness-and---set).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 
 Examples:
@@ -48,24 +48,79 @@ keel new --stack=go-http --yes                      # all defaults, no prompts
 keel new --stack=rust-cli --dry-run                 # inspect the plan first
 keel new --stack=quarkus-cli-rest                   # one hexagon, a CLI and a REST entrypoint both
 keel new --stack=quarkus-rest --with persistence,ci # layer extra verticals in the same run
+keel new --stack=kotlin-spring-http                 # a preset named by its facets: spring-rest-kotlin
 ```
 
-**An id keel does not know.** An unknown `--stack` is refused as
-`keel.unknown-stack` with every id there is — and, first, the one it
-most likely meant: _"unknown stack 'quarkus-cli-http' — did you mean
-'quarkus-cli-rest'? Available: …"_. Preset ids grew family by family,
-so the guess is usually a real facet in the family's other word: the
-JVM presets say `rest` where Go, Rust and TypeScript say `http`, and
-the Quarkus product is plain `fullstack`. So the nearest id is read by
-**facet words first** — what an id spells, then what its tags and the
-entrypoint's words say (`go-rest` finds `go-http`), then what a
-product's services say (`fullstack-quarkus` finds `fullstack`) — and
-by edit distance only where no word matches (`quarkuscli`). An id
+**A preset named by its facets.** `--stack` takes a preset's id, or
+its facets' words in any order: its language, framework and
+entrypoints, and `fullstack` for a product, which is named by its
+backend. Preset ids grew family by family, so the spelling a user
+types is often the right preset in the family's other word: the JVM
+presets say `rest` where Go, Rust and TypeScript say `http`, an id
+leaves its family's default unsaid (Java under Quarkus, Spring and
+Micronaut; Quarkus, Java and the HTTP server in a product), and the
+Quarkus product is plain `fullstack`. Where the words name exactly one
+preset, that is the preset: `quarkus-cli-http` is `quarkus-cli-rest`,
+`kotlin-quarkus-rest` is `quarkus-rest-kotlin`, `go-rest` is
+`go-http`, `fullstack-go-http` is `fullstack-go`,
+`fullstack-quarkus-cli-rest` is `fullstack-cli`, whatever their case
+and the spaces around them. The run goes on under the preset's id —
+what the report and every record carry — and says so first:
+_'quarkus-cli-http' is quarkus-cli-rest — Backend or tool · Java ·
+Quarkus · CLI + HTTP server_. The same holds in a preview and a dry
+run, and in `keel ui`'s API, where `keel.dials` settles a spelled
+target at the preset's id.
+
+**How far keel vouches for a preset.** Every setting of a preset's
+dials has a support tier. It is _first-class_ where an e2e suite builds
+it as `keel new` leaves it, or each part of it is proven
+byte-identical to a part a suite builds; _best-effort_ where no CI job builds it as
+`keel new` leaves it. The composition grid in `verify` holds only each
+preset's default setting; the weekly, report-only sweep reads every
+setting. The tiers are tabled in
+[the stacks overview](stacks/README.md#support-tiers).
+`keel new --list` marks ◻ each preset that is best-effort at its
+default setting, the setting `keel new --stack=<id> --yes` scaffolds,
+and says what the mark means under the list:
+
+```text
+Available stacks:
+  fullstack ◻                       Fullstack product: quarkus-rest backend + web-components frontend, …
+  fullstack-cli ◻                   Fullstack product: quarkus-cli-rest backend + web-components frontend, …
+  …
+  fullstack-go                      Fullstack product: go-http backend + web-components frontend, …
+  …
+  spring-cli-rest ◻                 Spring Boot 4 CLI + REST service (Java 25), …
+
+◻ best-effort at its default setting: no CI job builds it as keel new leaves it (see docs/stacks/README.md#support-tiers).
+```
+
+The mark is the default setting's alone: `quarkus-cli-rest-kotlin` is
+marked, being best-effort on Gradle, its default, and is first-class
+with `--build-system maven`. A plugin's preset is never marked, since
+keel's CI vouches only for keel's presets. The run's own report carries
+no tier. `keel ui` shows the same tiers on its cards and its Options
+step (see [`keel ui`](ui.md#how-far-keel-vouches-for-a-preset)).
+
+**An id keel does not know.** A `--stack` that names no preset — a
+word no facet answers to, or words that name several presets or none
+— is refused as `keel.unknown-stack` with every id there is, and,
+first, the one it most likely meant: _"unknown stack
+'quarkus-cli-kotin' — did you mean 'quarkus-cli-kotlin'? Available:
+…"_. The nearest id is read by **facet words first** — what an id
+spells, then what its tags and the entrypoint's words say, then what a
+product's services say. A word that runs several of the ids' words
+together is split into them first: `quarkuscli` is _quarkus cli_, and
+`gocli-http` names `go-cli-http`, where `gocli`, read whole, counted
+for nothing and left `go-http`. Edit distance breaks a tie, and is the
+whole reading only where no word matches and nothing splits. An id
 near nothing is refused with the list alone. An unknown vertical, in
 `--with` or `keel add`, is answered the same way under
 `keel.unknown-vertical`, read by its id and its title's words
 (`container` finds `containerization`, the Container image;
-`persistance` finds `persistence`).
+`persistance` finds `persistence`). Several vertical ids typed as one
+— `ci,persistence`, `ci-persistence`, `vcsci` — name none of them,
+since naming one would drop the rest.
 
 **A directory that is not empty.** `keel new` needs only that no keel
 project holds the directory — no manifest there, and none above it
@@ -210,10 +265,11 @@ order they resolve.
 
 #### Finding a stack: the drill-down
 
-There are 34 presets. Knowing you want "a backend, in Kotlin, on
+There are 46 presets. Knowing you want "a backend, in Kotlin, on
 Spring, with a CLI and an HTTP endpoint" is easy; knowing that is
-spelled `spring-cli-rest-kotlin` is not. So with no `--stack`, the
-wizard asks for the stack in **up to four narrowing questions**
+spelled `spring-cli-rest-kotlin` is not, though its facets in any
+order — `--stack=kotlin-spring-cli-http` — name it too (see _A preset
+named by its facets_). With no `--stack` at all, the wizard asks for the stack in **up to four narrowing questions**
 instead of one wide one, widest first, and it says so before it
 starts:
 
@@ -238,8 +294,10 @@ starts:
    **composed** preset — one project, one domain, both entrypoints
    (`quarkus-cli-rest`, `go-cli-http`, `ts-cli-http`, …) — and never
    to two services; two services is the fullstack shape, which was
-   the first question. Skipped where the answers above reach only one
-   combination, as a fullstack product does.
+   the first question. On that shape it is one choice of two, _HTTP
+   server + Browser SPA_ or _CLI + HTTP server + Browser SPA_: whether
+   the backend carries a CLI beside its server. Skipped where the
+   answers above reach only one combination.
 
 **Why shape comes first, and why the adapters come last.** Shape is
 the widest cut there is and it is the one a newcomer already knows

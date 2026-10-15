@@ -45,7 +45,8 @@ import {
   jvmTestEnv,
   type JvmProjectSpec,
 } from '../support/jvm-e2e.js';
-import { expectOk, installMediator } from '../support/factory.js';
+import { e2eMediator } from '../support/e2e-cell.js';
+import { expectOk } from '../support/factory.js';
 import { addVerticalCommand } from '../../src/domain/contract/commands.js';
 import { upsertFormatStep } from '../../src/domain/core/adapters/claude-kit.js';
 
@@ -133,7 +134,7 @@ describe.skipIf(skipJvmE2E)('code-style e2e (JVM)', () => {
       const hookPath = path.join(cwd, '.claude', 'hooks', 'pre-commit-format.sh');
       await fs.writeFile(hookPath, upsertFormatStep(hook, undefined));
       expectOk(
-        await installMediator({ runDeferred: () => Promise.resolve() }).dispatch(
+        await e2eMediator({ runDeferred: () => Promise.resolve() }).dispatch(
           addVerticalCommand({
             cwd,
             verticals: ['code-style'],

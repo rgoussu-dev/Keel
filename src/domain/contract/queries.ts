@@ -28,6 +28,7 @@ import type { QuestionChoice } from './composition.js';
 import type { InstalledModule, ServiceRef } from './manifest.js';
 import type { TreeChange } from './ports/tree.js';
 import type { GrowAction, Refusal } from './refusal.js';
+import type { SupportTier } from './support-tier.js';
 import type { Tag } from './tags.js';
 
 /* ------------------------------------------------------------------ *
@@ -108,8 +109,8 @@ export interface LanguageNode {
    *
    * Reported beside the id rather than left in it, so a front end
    * that has to tell kin from strangers — Kotlin moving to a shape
-   * that offers only Java lands on Java, not on whatever sorts first —
-   * never has to take the id apart to find out.
+   * that offered only Java would land on Java, not on whatever sorts
+   * first — never has to take the id apart to find out.
    */
   readonly runtime: string | null;
   /**
@@ -156,6 +157,15 @@ export interface EntrypointCombination {
   readonly entrypoints: readonly string[];
   /** The stack id this leaf resolves to — a `StackDescriptor.id`. */
   readonly stack: string;
+  /**
+   * How far keel vouches for this leaf at its default setting — the
+   * cell `keel.dials` settles a target naming the stack alone at — or
+   * null for a plugin's stack, which keel's CI does not vouch for. The
+   * one place the catalog carries a tier: {@link StackDescriptor} stays
+   * a flat description of a preset, and a setting's own tier is
+   * {@link DialOptions.support}.
+   */
+  readonly support: SupportTier | null;
 }
 
 /** One selectable value of a dial, as a front end would render it. */
@@ -277,7 +287,8 @@ export interface DialOptions {
    * front end that re-derived it would be a second implementation of
    * the resolution order the handler already runs, and the two would
    * disagree the first time a rule moved. A caller adopts this target
-   * and posts it back verbatim.
+   * and posts it back verbatim. A stack named by its facets is settled
+   * at the preset's own id (`go-rest` comes back as `go-http`).
    *
    * Dials are **set** rather than left absent, which is what stops
    * the install asking about them: a stack-level dial the install
@@ -361,6 +372,16 @@ export interface DialOptions {
    * takes it, or `dropped` where none or several would.
    */
   readonly adjustments: readonly DialAdjustment[];
+  /**
+   * How far keel vouches for the dial cell {@link DialOptions.target}
+   * settles at: `first-class` where an e2e suite builds it, or each
+   * part of it is proven byte-identical to a part a suite builds;
+   * `best-effort` where no CI job builds it as `keel new` leaves it.
+   * Null on a brownfield target, an unknown stack, and a plugin's
+   * stack. Extras are not a dial: the tier is the cell's, whatever is
+   * ticked on it.
+   */
+  readonly support: SupportTier | null;
 }
 
 /**
@@ -690,13 +711,13 @@ export interface InstallPreview {
   /** Harness elements omitted because the project has no agent-harness; absent when none. */
   readonly skippedHarnessElements?: number;
   /**
-   * What the run decided that the request did not spell out, one
-   * sentence each — the install report's own notes
-   * (`InstallReport.notes`): the prerequisites it adds and what needs
-   * them, the order it installs in when the one named could not be
-   * kept, a vertical already there, what a re-render moved a vertical
-   * off and leaves in place, each re-render it proposes. Absent when
-   * there is nothing to say.
+   * What the run decided that the request did not spell out, one sentence
+   * each — the install report's own notes (`InstallReport.notes`): the
+   * preset a stack spelled by its facets names, the prerequisites it adds
+   * and what needs them, the order it installs in when the one named
+   * could not be kept, a vertical already there, what a re-render moved a
+   * vertical off and leaves in place, each re-render it proposes. Absent
+   * when there is nothing to say.
    */
   readonly notes?: readonly string[];
   /**

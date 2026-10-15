@@ -14,6 +14,25 @@ use to keep a long-lived changelog scannable — and the root keeps
 
 ### Fixed
 
+- **An unknown `--stack` typed with words run together is answered
+  with the id it spells.** `keel new --stack=gocli-http` was answered
+  _did you mean 'go-http'?_: `gocli` is no id's word, so only `http`
+  counted, and the id with the fewest other words won. A typed
+  word that runs several of the ids' words together is now split into
+  them before it is read, so `gocli-http` names `go-cli-http`,
+  `quarkus-clirest` names `quarkus-cli-rest` and `fullstackts` names
+  `fullstack-ts`. Edit distance is the whole reading only where no word
+  matches and nothing splits. Of the 924 typos that name no preset,
+  made from the 34 ids keel had before its twelve new products — a
+  letter dropped or two swapped, a word dropped or two swapped, the
+  dashes dropped — 768 are now answered with the id they came from,
+  against 739. Without the split the twelve would have pulled six of
+  them away, `quarkuscli-kotlin` to `fullstack-kotlin`; of the 470
+  typos of the twelve themselves, 383 are answered right. An unknown vertical made of several vertical
+  ids typed as one (`ci-persistence`, `vcsci`) is answered with the
+  list alone, as `ci,persistence` already was, where it named one of
+  them and dropped the rest.
+
 - **`keel add walking-skeleton --reapply` keeps what observability,
   persistence, code-style, the gateway and each added context wrote
   into the files it rewrites.** A re-render put the bootstrap's files
@@ -584,9 +603,9 @@ new` the terminal adds the way past it (move it aside, or start in
   to the alphabetically first one, so a Kotlin backend moved to
   fullstack became `fullstack-go`. It now prefers a language with the
   same framework, then one on the same runtime, then the default
-  preset's — Kotlin on Spring lands on `fullstack-spring`, the browser
-  front end moved to a backend on `quarkus-cli` — and the line says
-  the language changed. The catalog's language nodes
+  preset's — the browser front end moved to a backend lands on
+  `quarkus-cli`, and a backend moved to the front end on the browser's
+  one preset — and the line says the language changed. The catalog's language nodes
   (`Catalog.finder`) gain `runtime`, which is what the page compares.
 
 - **An answer outside its question's choices is a refusal rather than
@@ -641,6 +660,138 @@ new` the terminal adds the way past it (move it aside, or start in
   either can no longer alias two distinct regions into a collision.
 
 ### Changed
+
+- **`fullstack-ts-cli` reads first-class at its default setting.**
+  `fullstack-ts-cli`, in the `web-combo` e2e shard, scaffolds the
+  product as `keel new` leaves it, installs, typechecks and tests its
+  TypeScript CLI + HTTP backend, greets through its CLI assembly,
+  checks that each image `compose.yaml` builds has its `Dockerfile`,
+  and drives the wire the frontend's gateway encodes against the
+  backend's REST server. The frontend is the one `fullstack` builds.
+  The stack matrix and the support-tier table drop its ◻, and
+  `keel new --list` and `keel ui`'s finder no longer mark it
+  best-effort. With it, every product off the JVM is first-class at
+  its default setting.
+
+- **`fullstack-rust-cli` reads first-class at its default setting.**
+  `fullstack-rust-cli`, in the `rust` e2e shard, scaffolds the product
+  as `keel new` leaves it, tests and builds its Rust CLI + HTTP
+  backend, greets through the CLI binary, checks that each image
+  `compose.yaml` builds has its `Dockerfile`, and drives the wire the
+  frontend's gateway encodes against the backend's server binary. The
+  frontend is the one `fullstack` builds. The stack matrix and the
+  support-tier table drop its ◻, and `keel new --list` and `keel ui`'s
+  finder no longer mark it best-effort.
+
+- **`fullstack-go-cli` reads first-class at its default setting.**
+  `fullstack-go-cli`, in the `go` e2e shard, scaffolds the product as
+  `keel new` leaves it, vets and tests its Go CLI + HTTP backend,
+  builds both binaries, greets through the CLI, checks that each image
+  `compose.yaml` builds has its `Dockerfile`, and drives the wire the
+  frontend's gateway encodes against the backend's server. The
+  frontend is the one `fullstack` builds. The stack matrix and the
+  support-tier table drop its ◻, and `keel new --list` and `keel ui`'s
+  finder no longer mark it best-effort.
+
+- **`fullstack-ts` reads first-class at its default setting.**
+  `fullstack-ts`, in the `web-combo` e2e shard, scaffolds the product
+  as `keel new` leaves it, installs, typechecks and tests its
+  TypeScript backend, checks that each image `compose.yaml` builds has
+  its `Dockerfile`, and drives the wire the frontend's gateway encodes
+  against the backend's REST server: the greetings, the RFC 9457
+  rejection and the dev-only CORS accommodation. The frontend is the
+  one `fullstack` builds. The stack matrix and the support-tier table
+  drop its ◻, and `keel new --list` and `keel ui`'s finder no longer
+  mark it best-effort.
+
+- **`rust-cli-http` reads first-class at its default setting.**
+  `combo-basic-rust-cli-http`, in the `rust` e2e shard and the
+  composed-entrypoint grid's 23rd cell, tests and builds the package, greets through its CLI binary, and drives the
+  HTTP contract and health probes through its server binary. The stack
+  matrix and the support-tier table drop its ◻, and `keel new --list`
+  and `keel ui`'s finder no longer mark it best-effort. It also covers
+  the `basic` `rust-cli` and `rust-http` projects `keel add entrypoint`
+  grows into it.
+
+- **`go-cli-http` reads first-class at its default setting.**
+  `combo-basic-go-cli-http`, in the `go` e2e shard and the
+  composed-entrypoint grid's 22nd cell, vets and tests the module, greets through its CLI, and drives the HTTP contract and
+  health probes through its server. The stack matrix and the
+  support-tier table drop its ◻, and `keel new --list` and `keel ui`'s
+  finder no longer mark it best-effort. It also covers the `basic`
+  `go-cli` and `go-http` projects `keel add entrypoint` grows into it.
+
+- **keel's product glue serves any stack tagged like a family it
+  builds.** In a monorepo product, the `fullstack` glue picks a
+  service's image and its run hint in the product README by what the
+  service is, where it picked them from a list of preset ids. A family
+  is the predicate keel's own `containerization` adapter selects on:
+  Quarkus, Spring or Micronaut with `arch.server-http`, Go, Rust or
+  TypeScript on Node with `arch.server-http`, and web-components with
+  `arch.spa`. The glue declares them as `providesInServices.serves`.
+  So a plugin's stack whose own tags match one (`lang.go` +
+  `arch.server-http`), as any service of a product, now reads
+  `containerization` as there already in it, and gets keel's image and
+  a run hint rather than _see its README_: always for Go and Rust; for
+  TypeScript on Node and web-components with pnpm under `pkg.pnpm`
+  and npm otherwise; and for Quarkus, Spring and Micronaut only on
+  `pkg.gradle` or `pkg.maven`: on any other build system the glue
+  refuses with `keel.unbuildable-service`, naming the service and its
+  stack, as the service's own image adapter could not build it either.
+  The service records no Gradle or Maven build: build it with Gradle
+  or Maven (offer one among the stack's build systems and pick it for
+  the service), or give the product a glue of its own. A plugin product that relied on keel's glue
+  skipping such a backend gives the product a glue of its own. Every
+  service a family matches gets its Dockerfile, a middle one of three
+  included, and a one-service product gets its one.
+  A backend with a CLI beside its HTTP server runs the HTTP one: its
+  Gradle hint names the project
+  (`./gradlew :application:rest:executable:quarkusDev`), a Go one runs
+  `./cmd/http`, a Rust one `cargo build && ./target/debug/*-http`, and
+  a TypeScript one `dev:rest`, as in `fullstack-cli`,
+  `fullstack-go-cli` and the other `-cli` products; the six products
+  keel shipped before keep every byte.
+
+- **A `Ctx` built by hand needs `services`.** `Ctx.services` is
+  present on every `Ctx` keel hands an adapter, so a plugin's own test
+  that builds a `Ctx` literal adds `services: []` to type-check.
+
+- **`providesInServices.stacks` is optional.** A declaration may name
+  its services by `serves` alone, so a plugin adapter that reads
+  `stacks` off a value typed `ServiceProvision` no longer type-checks
+  as it stands: it needs a guard, or keeps its id list in a constant
+  of its own and declares that.
+
+- **A plugin's stack id is lowercase words joined by `-`.** A plugin
+  registering a stack whose id is anything but words of `a`–`z` and
+  `0`–`9` joined by single `-`s — an uppercase or accented letter, a
+  `_`, a `.`, a space or any of `+ / @ # , :`, or a doubled, leading or
+  trailing `-` — is refused when keel loads it, naming the plugin and
+  the id: _plugin 'acme' registers stack 'Acme_web', whose id is not
+  lowercase words joined by '-'_; an id that is not a string at all
+  is refused as one. keel reads an id as its words — lowercased and
+  broken at every character but `a`–`z` and `0`–`9`, as the nearest
+  id an unknown `--stack` is answered with is read — so `Acme-Web`,
+  `acme_web` and `acme.web` would be three ids that read as
+  `acme-web`, and `AcmeWeb` one that reads as a single word. The rule
+  leaves each id one spelling; and `+ / @ # , :` or a space would
+  break the keys and hints keel builds from an id. Every stack keel
+  ships already complies. `docs/plugins.md` lists both refusals.
+
+- **A plugin's stack cannot take a spelling of another.** A plugin stack
+  whose id and an earlier stack's read as one another by their facets is
+  refused when keel loads it, naming both: _plugin 'acme' registers
+  stack 'quarkus-cli-http', which reads by its facets as
+  'quarkus-cli-rest', registered by keel — a typed --stack must read one
+  way; rename it_, or, for a bare `cli` that keel's `quarkus-cli` reads
+  as, _which 'quarkus-cli', registered by keel reads as by its facets_.
+  `--stack` takes a preset's facets in any order, and an id is taken
+  before any spelling, so such a stack would quietly take what users
+  type for one of keel's, or leave a keel id's spellings naming two. An
+  id with a word no facet answers to (`acme-cli`), or a language or
+  framework keel does not ship, still registers. A plugin stack whose
+  `tags` are not a list of strings is refused too, naming it.
+  `docs/plugins.md` lists the refusals.
 
 - **A re-render that moves a vertical onto another adapter names the
   files the first one wrote, which keel leaves in place.** On
@@ -990,7 +1141,7 @@ ci/go-pipeline:provider=github-actions` there, which the older keel
 
 - **`keel new` keeps your `README.md` and `.gitignore`, on every
   stack.** Create a repository with a README on a hosting service,
-  clone it, run `keel new` in it: that now works on all 34 stacks.
+  clone it, run `keel new` in it: that now works on every stack.
   The Go, Rust and `web-components` stacks and the composite products
   refused both files (`keel.path-conflict`, and before that a crash).
   A `README.md` keeps its content, title included, and gains keel's
@@ -1357,6 +1508,112 @@ distribution iac`) — _Not for this project_, collapsed, each with the
 
 ### Added
 
+- **Twelve more fullstack products: every preset that serves HTTP now
+  has one.** `keel new --stack=fullstack-kotlin` pairs
+  `quarkus-rest-kotlin` with the `web-components` front end, as
+  `fullstack` pairs `quarkus-rest`. The new products are
+  `fullstack-kotlin`, `fullstack-cli` and `fullstack-cli-kotlin`, the
+  same three on Spring and on Micronaut (`fullstack-spring-kotlin`,
+  `fullstack-spring-cli`, `fullstack-spring-cli-kotlin`, and
+  `fullstack-micronaut-…` alike), and `fullstack-go-cli`,
+  `fullstack-ts-cli` and `fullstack-rust-cli`. A product is named by
+  its backend, less `quarkus`, `rest` and `http`, so a CLI + HTTP
+  backend makes a `-cli` product, whose image runs its HTTP server.
+  The composition grid holds them to every invariant. The three off
+  the JVM, `fullstack-go-cli`, `fullstack-ts-cli` and
+  `fullstack-rust-cli`, are first-class at their default setting; the
+  nine JVM ones are best-effort on every setting, no CI job building
+  one, so `keel new --list` marks each ◻. `keel new --list` lists 46
+  presets, where it listed 34. In the drill-down, in the terminal and
+  in `keel ui`, every back-end language now has a product, and the
+  _Fullstack_ shape asks for its adapters: _HTTP server + Browser SPA_
+  or _CLI + HTTP server + Browser SPA_. Moving `spring-cli` to
+  _Fullstack_ lands on `fullstack-spring-cli`. A facet spelling names
+  them too: `fullstack-quarkus-cli-rest` is `fullstack-cli`. See
+  [Fullstack products](docs/stacks/fullstack.md).
+
+- **Product glue can name a service by what it is, and reads each
+  service's facets.** A plugin adapter's `providesInServices` takes
+  `serves`, predicates over a service stack's own tags, beside
+  `stacks`, its ids. A `serves` entry of
+  `{ requires: ['lang.go', 'arch.server-http'] }` names every Go HTTP
+  service, whatever its preset is called. A service either one names
+  is served, and `stacks` is now optional. Registration refuses, as
+  `keel.invalid-piece` naming the plugin, a declaration whose lists
+  name no service, a `stacks` or `serves` that is not a list, a
+  `serves` entry with no `requires`, which would name every service,
+  and one whose `requires` or `excludes` is not a list of tag patterns
+  keel can read; a stack
+  keel does not register is named by its id alone. At a product root,
+  every adapter's `ctx.services` lists the product's services, each
+  `{ path, stack, tags }`: its directory, its preset id, and the tags
+  it was scaffolded on, its build system and module layout included.
+  Anywhere else the list is empty. keel's own fullstack glue now
+  declares `serves`, one predicate per family it builds, and reads
+  `ctx.services` (see _Changed_).
+  [`docs/plugins.md`](docs/plugins.md#where-a-vertical-goes-in-a-product)
+  describes both.
+
+- **`keel new --list` and `keel ui` say which presets keel's CI does not
+  build.** Every setting of a preset's dials has a support tier, as the
+  [stack catalog](docs/stacks/README.md#support-tiers) defines it:
+  _first-class_ where an e2e suite builds it as `keel new` leaves it, or
+  each part of it is proven identical to a part one builds;
+  _best-effort_ where no CI job builds it. `keel new --list` marks ◻ the
+  presets that are best-effort at their default setting — the new
+  JVM products (above), `fullstack`, `fullstack-spring`,
+  `fullstack-micronaut`, `ts-cli-http`,
+  `spring-cli-rest`, `quarkus-cli-rest-kotlin` and
+  `micronaut-cli-rest-kotlin` — and says what the mark means. In
+  `keel ui`, a drill-down card says _best-effort_ in its badge where the
+  preset choosing it lands on is, and the Options step says so of the
+  setting picked, which moves with the dials: `quarkus-cli-rest-kotlin`
+  is best-effort on Gradle, its default, and first-class on Maven. The
+  API carries the tier too: on each leaf of `keel.catalog`'s finder
+  (`support`, at its default setting) and on the `keel.dials` reply
+  (`support`, the settled cell's). A plugin's preset has no tier, and
+  `keel new`'s report carries none.
+
+- **The docs say how far keel vouches for each setting.** A new
+  _Support tiers_ section in the [stack catalog](docs/stacks/README.md#support-tiers)
+  gives every setting `keel new` offers a tier. A setting is
+  _first-class_ where an e2e suite builds it as `keel new` leaves it,
+  or where each part of it is proven identical to a part a suite
+  builds. It is _best-effort_ where no CI job builds it as `keel new`
+  leaves it. The composition grid in `verify` holds each preset's
+  default setting to its hard invariants, and the weekly, report-only
+  composition sweep reads every setting. Each single-service preset
+  gets a row per build system, with a column per module layout, and
+  each product a row per layout and build systems, with what proves
+  each service. Today 83 of the 150 single-service settings are
+  first-class, and 6 of the 128 product settings. The stack matrix in
+  the README and in the catalog marks ◻ the 16 presets that are
+  best-effort on their default setting. Both copies are now generated
+  from the presets, so they can no longer drift apart. The matrix
+  gains a _Product, CLI + HTTP server_ column, and no
+  longer lists `web-components` as a product cell; the sentence under
+  it says each product pairs the row's preset with `web-components`.
+
+- **`--stack` takes a preset's facets, in any order.**
+  `keel new --stack=kotlin-spring-http` scaffolds `spring-rest-kotlin`:
+  where the words of a typed id — a language, a framework, its
+  entrypoints, and `fullstack` for a product, named by its backend —
+  name exactly one preset, that is the preset. An id leaves its family's
+  default unsaid (Java under Quarkus, Spring and Micronaut; Quarkus,
+  Java and the HTTP server in a product), and either of `rest` and
+  `http` names the HTTP server, so `quarkus-cli-http` is
+  `quarkus-cli-rest`, `go-rest` is `go-http`, `fullstack-quarkus` is
+  `fullstack` and `fullstack-go-http` is `fullstack-go`, whatever their
+  case and the spaces around them. Each of those was refused as an
+  unknown stack; each now scaffolds, and the report says so first:
+  _'quarkus-cli-http' is quarkus-cli-rest — Backend or tool · Java ·
+  Quarkus · CLI + HTTP server_. What runs, and what is recorded, is the
+  preset's own id, so the project is byte for byte the one its id makes.
+  The preview and a dry run say the same, and `keel.dials` settles a
+  spelled target at the preset's id. Words that name no preset — or,
+  among a plugin's stacks, more than one — are refused as before, with
+  the nearest id first (`quarkus-cli-kotin`, `java-cli`).
+
 - **A project's entrypoints can grow: `keel add entrypoint <cli|http>`.**
   A project's entrypoints were fixed at `keel new`: `keel add
 observability` on a CLI project was refused, its hint naming the
@@ -1457,8 +1714,9 @@ entrypoint http` on a CLI project, or `keel add entrypoint cli` on an
 
   A red run is the report: one failing test per preset, its findings
   grouped by kind, each with the command lines that reproduce it.
-  A full run takes 57 minutes on four vCPUs, about 179,000
-  dispatches. What it found when it landed is recorded in
+  Its first runs on CI took 29 to 48 minutes on four vCPUs, most of
+  it the `extras` suite's 136,436 dispatches, which now runs in a
+  file per family. What it found when it landed is recorded in
   `docs/roadmap.md` → Q3.4, for later steps. The first run turned up
   one throw on a dial setting the grid never reads: `persistence` on
   the modulith layout with the peer context, on the Micronaut REST
@@ -1469,17 +1727,15 @@ entrypoint http` on a CLI project, or `keel add entrypoint cli` on an
   `docs/verticals/distribution.md` now says so.
 
 - **An unknown `--stack` or vertical id names the one it most likely
-  meant.** `keel new --stack=quarkus-cli-http` answered with the 34
-  ids there are and left the reader to spot `quarkus-cli-rest`. The
-  refusal now names it first — _unknown stack 'quarkus-cli-http' — did
-  you mean 'quarkus-cli-rest'? Available: …_ — still
-  `keel.unknown-stack`, still writing nothing. Preset ids grew family
-  by family, so a guess is usually a real facet in the family's other
-  word, and the nearest id is read by facet words before spelling:
-  what an id spells, then what its tags and entrypoint say
-  (`go-rest` → `go-http`), then what a product's services say
-  (`fullstack-quarkus` → `fullstack`), and edit distance only where no
-  word matches (`quarkuscli`); an id near nothing names nothing. An
+  meant.** `keel new --stack=java-cli` answered with every id there
+  is and left the reader to spot `quarkus-cli`. The refusal now names
+  it first — _unknown stack 'java-cli' — did you mean 'quarkus-cli'?
+  Available: …_ — still `keel.unknown-stack`, still writing nothing.
+  The nearest id is read by facet words before spelling: what an id
+  spells, then what its tags and entrypoint say (`java-cli` →
+  `quarkus-cli`), then what a product's services say (`go-spa` →
+  `fullstack-go`), and edit distance only where no word matches
+  (`qurkuscli`); an id near nothing names nothing. An
   unknown vertical in `--with` or `keel add` is answered the same way
   (`keel.unknown-vertical`), by its id and its title (`container` →
   `containerization`, `persistance` → `persistence`). The page shows
@@ -2174,10 +2430,12 @@ supporting? }`, zod-schema'd in `domain/contract/skill.ts` — and the
   - **A step with one answer is not a step.** Which steps exist is
     derived from the same tree the terminal wizard skips a question
     from: a language reaching one framework has no framework step, a
-    product has no adapters step, and the frontend shape has neither.
+    set of answers reaching one combination has no adapters step, and
+    the frontend shape has neither.
   - **Stepping back keeps what still fits.** Moving the shape from
-    backend to fullstack with Java + Spring chosen lands on
-    `fullstack-spring`; coming out of a product into a backend carries
+    backend to fullstack with `spring-rest` chosen lands on
+    `fullstack-spring`, and from `spring-cli` on
+    `fullstack-spring-cli`; coming out of a product into a backend carries
     the half of its entrypoints a backend can still take.
   - **The preset picker sits above the rail and is on screen
     throughout** — it names the id the answers have landed on, it is
@@ -2343,6 +2601,22 @@ assets }` and its pieces are written against the ordinary
     thing.
   - Groundwork for presets supplied from outside this repository
     (#117).
+
+- **No preset is written out any more: the stack registry is a
+  table.** Each platform — a language on a runtime and framework,
+  with the build systems it offers — is a row of
+  `src/domain/core/stack-presets.json`, and the entrypoint sets it
+  takes are its cells (`cli`, `http`, `cli+http`, `spa`); one rule
+  crosses those cells into products (`fullstack-go` is the `go-http`
+  backend's). `src/domain/core/stack-table.ts` expands it into the
+  preset document `stacks.ts` resolves, so a generated preset passes
+  every check a written one does, and refuses a typo in the table — a
+  key it does not know, an entrypoint word it does not define, a row
+  naming no platform, two services at one path — rather than expanding
+  it into the wrong presets. The 34 presets come out exactly as they were, ids, fields
+  and order, which the registry golden holds; the file went from 614
+  lines to about 200. Adding a stack is a cell, a platform a row, and
+  an id is permanent, since a product root records its services' ids.
 
 - **`keel add module` refuses the flat layout by declaration now, and
   the form greys the control out by the same sentence.** The rule that

@@ -1,31 +1,43 @@
 /**
  * The regions of keel's own documentation that are **generated, not
- * written**: the compatibility matrix in `docs/verticals/README.md` and
- * the defaults table in `docs/stacks/README.md`. Each is a projection
- * of the composition grid's verdicts and of the registry, rendered here
- * and held to its committed text by `tests/generated-docs.test.ts`.
+ * written**: the compatibility matrix in `docs/verticals/README.md`;
+ * the stack matrix, twice, in `README.md` and `docs/stacks/README.md`;
+ * and the defaults table and the support tiers in
+ * `docs/stacks/README.md`. Each is a projection of the composition
+ * grid's verdicts, of the registry, or of the support tier's facts,
+ * rendered here and held to its committed text by
+ * `tests/generated-docs.test.ts`.
  *
- * Both used to be written by hand, and both rotted the way an index
- * nobody checks does: the matrix showed `distribution` and `iac` as
- * addable in a monorepo service after the grid had them refused there,
- * and the defaults table left out `agent-harness` and `code-style`
- * long after every preset installed them. A cell here is what the
- * grid's goldens record, so a verdict that moves is a document that
- * moves, in the same commit, or the guard goes red.
+ * All of them used to be written by hand, or were never written, and
+ * the written ones rotted the way an index nobody checks does: the
+ * matrix showed `distribution` and `iac` as addable in a monorepo
+ * service after the grid had them refused there, the defaults table
+ * left out `agent-harness` and `code-style` long after every preset
+ * installed them, and the two stack matrices drifted apart. A cell here
+ * is what the grid's goldens, `keel.dials` or the tier's rules say, so
+ * a verdict or a tier that moves is a document that moves, in the same
+ * commit, or the guard goes red.
  *
  * **Scenario.** The brownfield and composite grid goldens
  * (`tests/domain/core/composition-grid/`) for every verdict;
  * `keel.dials` for what each preset, product root and service comes
- * with (`included`), on default dials; the registry for the order a
- * preset installs its verticals in. Stacks, verticals, layouts and
- * services are read from those, never listed here, so a preset or a
- * vertical registered tomorrow shows up in both documents on the next
- * regeneration.
+ * with (`included`), on default dials, and for every setting each
+ * preset offers; the registry for the order a preset installs its
+ * verticals in; the finder's tree (`keel.catalog`) for the platforms;
+ * `supportOf` over `shippedSupport` for each cell's tier, and
+ * `support/e2e-roles.ts` for the suites that build a cell only after
+ * changing it. Stacks, verticals, layouts, settings and services are
+ * read from those, never listed here, so a preset or a vertical
+ * registered tomorrow shows up in every document on the next
+ * regeneration. Only the platforms' names and pages are listed
+ * ({@link PLATFORM_LABELS}), since the registry does not hold them.
  *
  * **Factory.** `installMediator` — the queries read no disk.
  *
- * **Port.** `Mediator.dispatch` (`keel.catalog`, `keel.dials`), and
- * the goldens as the grid's suites wrote them.
+ * **Port.** `Mediator.dispatch` (`keel.catalog`, `keel.dials`); the
+ * goldens as the grid's suites wrote them; `supportOf` over
+ * `shippedSupport`, and `support/e2e-roles.ts`; and the disk, for the
+ * pages under `docs/stacks/` and `docs/verticals/` a table links.
  *
  * A region is the text between two sentinel comments,
  * `<!-- generated:<name>:begin -->` and `<!-- generated:<name>:end -->`.
@@ -39,7 +51,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as prettier from 'prettier';
-import type { RepoLayout } from '../../src/domain/contract/commands.js';
+import type { NewProjectTarget, RepoLayout } from '../../src/domain/contract/commands.js';
 import type { Registry } from '../../src/domain/contract/ports/registry.js';
 import {
   catalogQuery,
@@ -47,10 +59,21 @@ import {
   type DialOptions,
   type VerticalOption,
 } from '../../src/domain/contract/queries.js';
+import type {
+  CellSupport,
+  DialCell,
+  ProductCell,
+  SingleCell,
+  SupportTier,
+} from '../../src/domain/contract/support-tier.js';
 import type { Mediator } from '../../src/domain/kernel/mediator.js';
 import { UNCOVERED_CODE, WRONG_SCOPE_CODE } from '../../src/domain/core/refusals.js';
-import { shippedRegistry } from '../../src/domain/core/registry.js';
+import { shippedRegistry, shippedSupport } from '../../src/domain/core/registry.js';
 import { ENTRYPOINTS, entrypointsLabel } from '../../src/domain/core/stack-wizard.js';
+import { supportOf, type SupportSource } from '../../src/domain/core/support-tier.js';
+import { walkDials } from './dial-walk.js';
+import { cellLine } from './e2e-claims.js';
+import { E2E_ROLES } from './e2e-roles.js';
 import { expectOk } from './factory.js';
 
 /** The repository root, which every {@link GeneratedRegion.file} is relative to. */
@@ -117,7 +140,10 @@ export interface ProductFacts {
   readonly layouts: readonly LayoutFacts[];
 }
 
-/** Everything the generated regions are rendered from. */
+/**
+ * What the compatibility matrix and the defaults table are rendered
+ * from. {@link DocFacts} extends it for the other regions.
+ */
 export interface GridFacts {
   /** Every vertical the catalog offers `keel add`, id-sorted. */
   readonly verticals: readonly string[];
@@ -222,6 +248,181 @@ export async function gridFacts(
 
 function includedIn(options: readonly VerticalOption[]): readonly string[] {
   return options.filter((option) => option.readiness === 'included').map((option) => option.id);
+}
+
+/** Where the finder places presets: one language and framework, and what each set of ways in names. */
+export interface PlatformFacts {
+  /** The finder's language node and framework, as `<language>/<framework>` (`go/`, `java@jvm/quarkus`). */
+  readonly key: string;
+  /** Each preset the finder reaches here: its entrypoints, its id, and whether it is a product. */
+  readonly presets: readonly {
+    readonly entrypoints: readonly string[];
+    readonly stack: string;
+    readonly product: boolean;
+  }[];
+}
+
+/** One single-service dial cell with the agent harness, and how far keel vouches for it. */
+export interface SingleTierFacts {
+  readonly cell: SingleCell;
+  readonly support: CellSupport;
+  /** The `variant` suites that build the cell only after changing it (`support/e2e-roles.ts`). */
+  readonly variants: readonly string[];
+}
+
+/** One product dial cell, and how far keel vouches for each of its services. */
+export interface ProductTierFacts {
+  readonly cell: ProductCell;
+  readonly support: CellSupport;
+  /** Its services' paths, in the order the product declares them. */
+  readonly services: readonly string[];
+}
+
+/** What the stack matrix and the support tiers are rendered from. */
+export interface TierFacts {
+  /** Every platform the finder offers, in the order it first reaches each. */
+  readonly platforms: readonly PlatformFacts[];
+  /** Each preset's tier on the setting `keel.dials` settles a bare `--stack` to. */
+  readonly defaults: Readonly<Record<string, SupportTier>>;
+  /** Every single-service cell with the harness, preset by preset in id order, each as walked. */
+  readonly singles: readonly SingleTierFacts[];
+  /**
+   * Every product cell, product by product in id order, then by
+   * repository layout, each layout's settings as walked.
+   */
+  readonly products: readonly ProductTierFacts[];
+}
+
+/** Everything every generated region is rendered from. */
+export interface DocFacts extends GridFacts {
+  readonly tiers: TierFacts;
+}
+
+/**
+ * Reads {@link DocFacts}: {@link gridFacts}, and the support tier of
+ * every cell `keel.dials` offers with the agent harness, by `support`.
+ *
+ * A single-service preset's cells are the setting walk the paths golden
+ * scaffolds (`walkDials`), and a product's start from each repository
+ * layout the composite grid swept it under. The finder's tree gives the
+ * platforms, and a bare `--stack` settled through `keel.dials` gives
+ * each preset's default cell.
+ */
+export async function docFacts(
+  mediator: Mediator,
+  registry: Registry = shippedRegistry,
+  support: SupportSource = shippedSupport,
+): Promise<DocFacts> {
+  const grid = await gridFacts(mediator, registry);
+  const catalog = expectOk(await mediator.dispatch(catalogQuery()));
+  const dials = async (target: NewProjectTarget): Promise<DialOptions> =>
+    expectOk(await mediator.dispatch(dialsQuery({ target })));
+  const products = new Set(
+    catalog.stacks.filter((stack) => stack.services.length > 0).map((stack) => stack.id),
+  );
+  const tierOf = (cell: DialCell): CellSupport => {
+    const tier = supportOf(cell, support);
+    if (tier === null) throw new Error(`${cell.stack}: the support source does not vouch for it`);
+    return tier;
+  };
+
+  const platforms = new Map<string, PlatformFacts['presets'][number][]>();
+  for (const shape of catalog.finder.shapes) {
+    for (const language of shape.languages) {
+      for (const framework of language.frameworks) {
+        const key = `${language.id}/${framework.id}`;
+        const presets = platforms.get(key) ?? [];
+        for (const combination of framework.combinations) {
+          presets.push({
+            entrypoints: combination.entrypoints,
+            stack: combination.stack,
+            product: products.has(combination.stack),
+          });
+        }
+        platforms.set(key, presets);
+      }
+    }
+  }
+
+  const defaults: Record<string, SupportTier> = {};
+  for (const stack of catalog.stacks) {
+    const settled = (await dials({ kind: 'new-project', stack: stack.id }))
+      .target as NewProjectTarget;
+    defaults[stack.id] = tierOf(dialCellOf(settled, products.has(stack.id))).tier;
+  }
+
+  const variants = new Map<string, string[]>();
+  for (const [suite, role] of Object.entries(E2E_ROLES)) {
+    if (role.role !== 'variant') continue;
+    for (const seed of role.seeds ?? []) variants.set(seed, [...(variants.get(seed) ?? []), suite]);
+  }
+  const singles: SingleTierFacts[] = [];
+  for (const stack of grid.stacks) {
+    for (const reply of await walkDials(dials, [{ kind: 'new-project', stack: stack.id }])) {
+      const target = reply.target as NewProjectTarget;
+      const cell = dialCellOf(target, false);
+      if (cell.kind !== 'single') continue;
+      singles.push({ cell, support: tierOf(cell), variants: variants.get(cellLine(target)) ?? [] });
+    }
+  }
+  const productTiers: ProductTierFacts[] = [];
+  for (const product of grid.products) {
+    const seeds = product.layouts.map(
+      ({ layout }): NewProjectTarget => ({
+        kind: 'new-project',
+        stack: product.id,
+        layout: layout as RepoLayout,
+      }),
+    );
+    const walked: ProductTierFacts[] = [];
+    for (const reply of await walkDials(dials, seeds)) {
+      const cell = dialCellOf(reply.target as NewProjectTarget, true);
+      if (cell.kind !== 'product') continue;
+      walked.push({
+        cell,
+        support: tierOf(cell),
+        services: product.services.map((service) => service.path),
+      });
+    }
+    const layouts = seeds.map((seed) => seed.layout);
+    productTiers.push(
+      ...walked.sort((a, b) => layouts.indexOf(a.cell.layout) - layouts.indexOf(b.cell.layout)),
+    );
+  }
+
+  return {
+    ...grid,
+    tiers: {
+      platforms: [...platforms].map(([key, presets]) => ({ key, presets })),
+      defaults,
+      singles,
+      products: productTiers,
+    },
+  };
+}
+
+function missing(target: NewProjectTarget, dial: string): never {
+  throw new Error(`keel.dials settled ${target.stack ?? '?'} with no ${dial}`);
+}
+
+/** A settled `keel new` target as the dial cell the tier's rules read. */
+function dialCellOf(target: NewProjectTarget, product: boolean): DialCell {
+  if (product) {
+    return {
+      kind: 'product',
+      stack: target.stack ?? '',
+      layout: target.layout ?? missing(target, 'repository layout'),
+      buildSystem: target.buildSystem ?? '',
+    };
+  }
+  return {
+    kind: 'single',
+    stack: target.stack ?? '',
+    buildSystem: target.buildSystem ?? null,
+    moduleLayout: target.moduleLayout ?? null,
+    peerContext: target.withPeerContext === true,
+    agentHarness: target.agentHarness !== false,
+  };
 }
 
 /** One grid golden's `keel add` cells, read by scope and vertical. */
@@ -332,16 +533,19 @@ function shapes(stacks: readonly StackFacts[]): readonly (readonly [string, Stac
     const key = stack.entrypoints.join('+');
     byShape.set(key, [...(byShape.get(key) ?? []), stack]);
   }
-  const rank = (entrypoints: readonly string[]): readonly number[] => {
+  return [...byShape.values()]
+    .sort((a, b) => byShapeRank(a[0]!.entrypoints, b[0]!.entrypoints))
+    .map((members) => [shapeLabel(members[0]!.entrypoints), members] as const);
+}
+
+/** Orders two entrypoint sets as {@link shapes} lists them. */
+function byShapeRank(a: readonly string[], b: readonly string[]): number {
+  const rank = (entrypoints: readonly string[]): readonly [number, number] => {
     const indices = entrypoints.map((id) => ENTRYPOINTS.findIndex((entry) => entry.id === id));
     return [Math.max(...indices), indices.length];
   };
-  return [...byShape.values()]
-    .sort((a, b) => {
-      const [left, right] = [rank(a[0]!.entrypoints), rank(b[0]!.entrypoints)];
-      return left[0]! - right[0]! || left[1]! - right[1]!;
-    })
-    .map((members) => [shapeLabel(members[0]!.entrypoints), members] as const);
+  const [left, right] = [rank(a), rank(b)];
+  return left[0] - right[0] || left[1] - right[1];
 }
 
 function shapeLabel(entrypoints: readonly string[]): string {
@@ -592,6 +796,298 @@ export function renderDefaults(facts: GridFacts): string {
   return table(['Shape', 'Verticals installed at bootstrap'], rows);
 }
 
+/**
+ * The name of each platform the finder offers, and the page under
+ * `docs/stacks/` its family is documented on: what the registry does
+ * not say (a framework's major version, Go's standard library, Rust's
+ * axum). Keyed as {@link PlatformFacts.key}; the stack matrix lists its
+ * rows in this order.
+ */
+export const PLATFORM_LABELS: Readonly<
+  Record<string, { readonly name: string; readonly page: string }>
+> = {
+  'java@jvm/quarkus': { name: 'Java · Quarkus 3', page: 'jvm.md' },
+  'kotlin@jvm/quarkus': { name: 'Kotlin · Quarkus 3', page: 'jvm.md' },
+  'java@jvm/spring': { name: 'Java · Spring Boot 4', page: 'jvm.md' },
+  'kotlin@jvm/spring': { name: 'Kotlin · Spring Boot 4', page: 'jvm.md' },
+  'java@jvm/micronaut': { name: 'Java · Micronaut 4', page: 'jvm.md' },
+  'kotlin@jvm/micronaut': { name: 'Kotlin · Micronaut 4', page: 'jvm.md' },
+  'go/': { name: 'Go · stdlib', page: 'go.md' },
+  'rust/': { name: 'Rust · stdlib / axum', page: 'rust.md' },
+  'typescript@node/': { name: 'TypeScript · Node', page: 'ts-http.md' },
+  'typescript@browser/web-components': {
+    name: 'TypeScript · web components',
+    page: 'web-components.md',
+  },
+};
+
+/** Where a rendered stack matrix sits: what its links are relative to. */
+export interface MatrixLinks {
+  /** The path from the document to `docs/stacks/`, empty or ending in `/`. */
+  readonly pages: string;
+  /** The link to the support tiers section. */
+  readonly tiers: string;
+}
+
+/**
+ * The stack matrix: a row per platform the finder offers, a column per
+ * single-service entrypoint set, then a product column per back
+ * entrypoint set a product takes — every set holding what every
+ * product's backend holds. A cell is the preset's id, marked ◻ where
+ * it is best-effort on its default setting, or `—` where the table
+ * generates none.
+ *
+ * Throws on a platform {@link PLATFORM_LABELS} does not name, a label
+ * that reaches no platform, a page that does not exist, two presets in
+ * one cell, a preset placed with no default tier, a product service
+ * whose preset is not among `facts.stacks`, or a product whose backend
+ * is not the preset its row places at that backend's entrypoints.
+ */
+export function renderStackMatrix(
+  facts: Pick<DocFacts, 'stacks' | 'products' | 'tiers'>,
+  links: MatrixLinks,
+  labels: typeof PLATFORM_LABELS = PLATFORM_LABELS,
+): string {
+  const { tiers } = facts;
+  const keys = tiers.platforms.map((platform) => platform.key);
+  const unnamed = keys.filter((key) => labels[key] === undefined);
+  if (unnamed.length > 0) {
+    throw new Error(`PLATFORM_LABELS has no label for ${unnamed.map(code).join(', ')}`);
+  }
+  const idle = Object.keys(labels).filter((key) => !keys.includes(key));
+  if (idle.length > 0) {
+    throw new Error(`PLATFORM_LABELS names ${idle.map(code).join(', ')}, which reaches no preset`);
+  }
+  const back = (entrypoints: readonly string[]): readonly string[] =>
+    entrypoints.filter((id) => ENTRYPOINTS.find((entry) => entry.id === id)?.side === 'back');
+  const presets = tiers.platforms.flatMap((platform) => platform.presets);
+  const sets = new Map<string, readonly string[]>();
+  for (const preset of presets.filter((each) => !each.product)) {
+    sets.set(preset.entrypoints.join('+'), preset.entrypoints);
+  }
+  const productBacks = presets.filter((each) => each.product).map((each) => back(each.entrypoints));
+  const shared = (productBacks[0] ?? []).filter((id) =>
+    productBacks.every((entrypoints) => entrypoints.includes(id)),
+  );
+  const backSets = new Map<string, readonly string[]>();
+  if (productBacks.length > 0) {
+    for (const entrypoints of [...sets.values(), ...productBacks]) {
+      const allBack = back(entrypoints).length === entrypoints.length;
+      if (allBack && shared.every((id) => entrypoints.includes(id))) {
+        backSets.set(entrypoints.join('+'), entrypoints);
+      }
+    }
+  }
+  const columns = [
+    ...[...sets.values()].sort(byShapeRank).map((entrypoints) => ({
+      header: entrypointsLabel(entrypoints),
+      holds: (preset: PlatformFacts['presets'][number]) =>
+        !preset.product && preset.entrypoints.join('+') === entrypoints.join('+'),
+    })),
+    ...[...backSets.values()].sort(byShapeRank).map((entrypoints) => ({
+      header: `Product, ${entrypointsLabel(entrypoints)}`,
+      holds: (preset: PlatformFacts['presets'][number]) =>
+        preset.product && back(preset.entrypoints).join('+') === entrypoints.join('+'),
+    })),
+  ];
+  const rows = Object.entries(labels).map(([key, label]) => {
+    if (!fs.existsSync(path.join(REPO_ROOT, 'docs', 'stacks', label.page))) {
+      throw new Error(`docs/stacks/${label.page} does not exist`);
+    }
+    const platform = tiers.platforms.find((each) => each.key === key)!;
+    return [
+      `**${label.name}** ([docs](${links.pages}${label.page}))`,
+      ...columns.map((column) => {
+        const held = platform.presets.filter(column.holds);
+        if (held.length > 1) {
+          throw new Error(
+            `${label.name}, ${column.header}: ${held.map((each) => code(each.stack)).join(' and ')} share a cell`,
+          );
+        }
+        const preset = held[0];
+        if (preset === undefined) return '—';
+        if (preset.product) backedByRow(facts, platform, preset, label.name);
+        const tier = tiers.defaults[preset.stack];
+        if (tier === undefined) throw new Error(`${code(preset.stack)} has no default tier`);
+        return tier === 'best-effort' ? `${code(preset.stack)} ◻` : code(preset.stack);
+      }),
+    ];
+  });
+  return [
+    table(['Language / framework', ...columns.map((column) => column.header)], rows),
+    '',
+    ...(backSets.size === 0 ? [] : [productSentence(facts), '']),
+    `◻ best-effort on its default setting ([support tiers](${links.tiers})): ${BEST_EFFORT} ·`,
+    '— the table generates no such preset',
+  ].join('\n');
+}
+
+/**
+ * Throws unless `product`'s backend is the preset `platform` places at
+ * that backend's entrypoints, as {@link productSentence} says it is.
+ */
+function backedByRow(
+  facts: Pick<DocFacts, 'stacks' | 'products'>,
+  platform: PlatformFacts,
+  product: PlatformFacts['presets'][number],
+  row: string,
+): void {
+  const found = facts.products.find((each) => each.id === product.stack);
+  if (found === undefined) throw new Error(`${code(product.stack)} is no product preset`);
+  for (const service of found.services) {
+    const stack = singleStack(facts, service.stack);
+    if (frontOnly(stack)) continue;
+    const placed = platform.presets.find(
+      (each) => !each.product && each.entrypoints.join('+') === stack.entrypoints.join('+'),
+    );
+    if (placed?.stack !== service.stack) {
+      throw new Error(
+        `${row}: ${code(product.stack)} builds ${code(`${service.path}/`)} on ${code(service.stack)}, but the row places ${placed === undefined ? 'nothing' : code(placed.stack)} at ${entrypointsLabel(stack.entrypoints)}`,
+      );
+    }
+  }
+}
+
+function singleStack(facts: Pick<DocFacts, 'stacks'>, stack: string): StackFacts {
+  const found = facts.stacks.find((each) => each.id === stack);
+  if (found === undefined) {
+    throw new Error(`a product service's preset '${stack}' is no single-service preset`);
+  }
+  return found;
+}
+
+function frontOnly(stack: StackFacts): boolean {
+  return stack.entrypoints.every(
+    (id) => ENTRYPOINTS.find((entry) => entry.id === id)?.side === 'front',
+  );
+}
+
+/**
+ * What a product column holds, in a sentence: the row's backend and
+ * the one front end every product pairs it with. Throws where products
+ * pair their backends with different front ends, which the sentence
+ * cannot say, and where a service's preset is not among `facts.stacks`.
+ */
+function productSentence(facts: Pick<DocFacts, 'stacks' | 'products'>): string {
+  const front = (stack: string): boolean => frontOnly(singleStack(facts, stack));
+  const spell = (service: ServiceFacts): string =>
+    `${code(service.stack)} in ${code(`${service.path}/`)}`;
+  const fronts = new Set<string>();
+  const backs = new Set<string>();
+  for (const product of facts.products) {
+    for (const service of product.services) {
+      if (front(service.stack)) fronts.add(spell(service));
+      else backs.add(code(`${service.path}/`));
+    }
+  }
+  if (fronts.size !== 1 || backs.size !== 1) {
+    throw new Error(
+      `products pair ${[...backs].join(', ')} with ${[...fronts].join(', ')}: say what a product column holds anew`,
+    );
+  }
+  return `A product column's preset pairs the row's preset for that column's entrypoints, in ${[...backs][0]}, with ${[...fronts][0]}.`;
+}
+
+/**
+ * What best-effort means, as measured. The hand-written prose of
+ * `docs/stacks/README.md` and the generated legend say it in these
+ * words, which `tests/generated-docs.test.ts` holds.
+ */
+export const BEST_EFFORT =
+  "no CI job builds it as `keel new` leaves it; the composition grid in `verify` holds each preset's default setting to its hard invariants, and the weekly, report-only composition sweep reads every setting";
+
+/**
+ * The support tiers: a row per single-service preset and build system,
+ * a column per module layout (the modulith twice, without and with the
+ * peer context); then a row per product cell, with what proves each of
+ * its services; then the two sentences that bound what first-class
+ * means.
+ *
+ * Throws on two cells of one preset and build system in one layout,
+ * and on a first-class cell whose proof the table cannot name.
+ */
+export function renderSupportTiers(tiers: TierFacts): string {
+  const layoutOf = (cell: SingleCell): string =>
+    `${cell.moduleLayout ?? ''}${cell.peerContext ? '+peer' : ''}`;
+  const layoutHeader = (layout: string): string => {
+    const [name, peer] = layout.split('+');
+    const named = name === undefined || name === '' ? 'no module layout' : code(name);
+    return peer === undefined ? named : `${named} + peer context`;
+  };
+  const layouts: string[] = [];
+  const rows = new Map<string, Map<string, SingleTierFacts>>();
+  for (const single of tiers.singles) {
+    const layout = layoutOf(single.cell);
+    if (!layouts.includes(layout)) layouts.push(layout);
+    const row = `${single.cell.stack}\0${single.cell.buildSystem ?? ''}`;
+    const cells = rows.get(row) ?? new Map<string, SingleTierFacts>();
+    if (cells.has(layout)) {
+      throw new Error(`${code(single.cell.stack)}: two cells share ${layoutHeader(layout)}`);
+    }
+    rows.set(row, cells.set(layout, single));
+  }
+  const singleRows = [...rows].map(([row, cells]) => {
+    const [stack, buildSystem] = row.split('\0');
+    return [
+      code(stack ?? ''),
+      buildSystem === undefined || buildSystem === '' ? '—' : code(buildSystem),
+      ...layouts.map((layout) => {
+        const single = cells.get(layout);
+        if (single === undefined) return '—';
+        if (single.support.tier === 'best-effort') {
+          return ['◻', ...single.variants.map(code)].join(' ');
+        }
+        const proof = single.support.proof;
+        if (proof?.by !== 'suite') {
+          throw new Error(
+            `${code(single.cell.stack)}, ${layoutHeader(layout)}: first-class by ${proof?.by ?? 'nothing'}, which the table cannot name`,
+          );
+        }
+        return `✅ ${code(proof.suite)}`;
+      }),
+    ];
+  });
+
+  const paths = [...new Set(tiers.products.flatMap((product) => product.services))];
+  const productRows = tiers.products.map(({ cell, support, services }) => {
+    if (support.tier === 'first-class' && support.proof?.by !== 'services') {
+      throw new Error(
+        `${code(cell.stack)}, ${cell.layout}: first-class by ${support.proof?.by ?? 'nothing'}, which the table cannot name`,
+      );
+    }
+    const proven = support.proof?.by === 'services' ? support.proof.suites : {};
+    return [
+      `${code(cell.stack)} ${support.tier === 'first-class' ? '✅' : '◻'}`,
+      cell.layout,
+      cell.buildSystem === '' ? '—' : code(cell.buildSystem.split(',').join(', ')),
+      ...paths.map((servicePath) => {
+        if (!services.includes(servicePath)) return '—';
+        const suite = proven[servicePath];
+        return suite === undefined ? '◻' : `✅ ${code(suite)}`;
+      }),
+    ];
+  });
+
+  return [
+    "✅ first-class: the e2e suite named builds it as `keel new` leaves it, or, for a product's service, builds an identical service ·",
+    `◻ best-effort: ${BEST_EFFORT}; a suite named beside ◻ builds it only after changing it, by \`keel add module\` or by adding a vertical first ·`,
+    '— not a setting the preset offers',
+    '',
+    table(['Preset', 'Build system', ...layouts.map(layoutHeader)], singleRows),
+    '',
+    'A product is first-class where every service is. A service is proven where a suite builds it, on this product or on any other whose service has the same files.',
+    '',
+    table(
+      ['Product', 'Layout', 'Build systems', ...paths.map((each) => code(`${each}/`))],
+      productRows,
+    ),
+    '',
+    'A cell scaffolded with `--no-agent-harness` has the tier of its twin with the harness. It is that twin less the agent files, and `verify` checks it on every cell.',
+    '',
+    "No cell's deployment glue is ever built: no suite builds a `Dockerfile` into an image or runs a product's `compose.yaml`. First-class vouches for the code, not for its deployment.",
+  ].join('\n');
+}
+
 /** Each vertical linked to its page, in the order given. */
 function links(verticals: readonly string[]): string {
   return verticals
@@ -617,30 +1113,65 @@ export interface GeneratedRegion {
   readonly file: string;
   /** The `<name>` of its `generated:<name>` sentinels. */
   readonly name: string;
+  /** What the region is rendered from, as its provenance comment names it. */
+  readonly sources: string;
   /** The region's body, from the facts and the document as committed. */
-  readonly render: (facts: GridFacts, document: string) => string;
+  readonly render: (facts: DocFacts, document: string) => string;
 }
+
+const STACK_MATRIX_SOURCES =
+  "the registry, the finder's tree, `keel.dials` and the support tier's facts";
 
 /** Every generated region in the repository. */
 export const GENERATED: readonly GeneratedRegion[] = [
   {
+    file: 'README.md',
+    name: 'stack-matrix',
+    sources: STACK_MATRIX_SOURCES,
+    render: (facts) =>
+      renderStackMatrix(facts, {
+        pages: 'docs/stacks/',
+        tiers: 'docs/stacks/README.md#support-tiers',
+      }),
+  },
+  {
+    file: 'docs/stacks/README.md',
+    name: 'stack-matrix',
+    sources: STACK_MATRIX_SOURCES,
+    render: (facts) => renderStackMatrix(facts, { pages: '', tiers: '#support-tiers' }),
+  },
+  {
     file: 'docs/verticals/README.md',
     name: 'compatibility-matrix',
+    sources: "the registry, `keel.dials` and the composition grid's goldens",
     render: (facts, document) => renderMatrix(facts, catalogOrder(document)),
   },
   {
     file: 'docs/stacks/README.md',
     name: 'stack-defaults',
+    sources: "the registry and the composition grid's composite golden",
     render: (facts) => renderDefaults(facts),
+  },
+  {
+    file: 'docs/stacks/README.md',
+    name: 'support-tiers',
+    sources:
+      "the registry, `keel.dials`, the support tier's facts and `tests/support/e2e-roles.ts`",
+    render: (facts) => renderSupportTiers(facts.tiers),
   },
 ];
 
 /**
  * `document` with the body of its `name` region replaced by `body`,
- * under a comment saying where it comes from. Throws unless the region
+ * under a comment saying it comes from `sources`. Throws unless the region
  * is there exactly once, opened before it is closed.
  */
-export function spliceRegion(document: string, name: string, body: string): string {
+export function spliceRegion(
+  document: string,
+  name: string,
+  body: string,
+  sources: string,
+): string {
   const begin = `<!-- generated:${name}:begin -->`;
   const end = `<!-- generated:${name}:end -->`;
   const at = document.indexOf(begin);
@@ -653,7 +1184,7 @@ export function spliceRegion(document: string, name: string, body: string): stri
   ) {
     throw new Error(`expected one '${begin}' … '${end}' region, in that order`);
   }
-  const provenance = `<!-- Generated by tests/support/generated-docs.ts from the registry and the composition grid's goldens: edit the generator, not this region. Regenerate with ${REGENERATE} -->`;
+  const provenance = `<!-- Generated by tests/support/generated-docs.ts from ${sources}: edit the generator, not this region. Regenerate with ${REGENERATE} -->`;
   return `${document.slice(0, at)}${begin}\n${provenance}\n\n${body}\n\n${document.slice(until)}`;
 }
 
@@ -663,11 +1194,16 @@ export function spliceRegion(document: string, name: string, body: string): stri
  */
 export async function regenerated(
   region: GeneratedRegion,
-  facts: GridFacts,
+  facts: DocFacts,
   document: string,
 ): Promise<string> {
   const file = path.join(REPO_ROOT, region.file);
-  const spliced = spliceRegion(document, region.name, region.render(facts, document));
+  const spliced = spliceRegion(
+    document,
+    region.name,
+    region.render(facts, document),
+    region.sources,
+  );
   const options = (await prettier.resolveConfig(file)) ?? {};
   return prettier.format(spliced, { ...options, filepath: file });
 }

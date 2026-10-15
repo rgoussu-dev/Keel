@@ -27,6 +27,7 @@
  * that is not there.
  */
 
+import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import fs from 'fs-extra';
 import { chromium as browserType, type Browser, type Page } from 'playwright';
@@ -205,6 +206,12 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a plugin stack
     "resolves the plugin's preset when its language is chosen",
     async () => {
       await goToStep(traffic, page, 'language');
+      // keel's CI vouches for keel's presets only: the plugin's card
+      // carries no tier, so no badge, and its Options no tier line.
+      const card = page.locator('#language label.card', {
+        has: page.locator(`input[value="${LANGUAGE}"]`),
+      });
+      expect(await card.locator('.badge').count()).toBe(0);
       await act(traffic, () => choice(page, 'language', LANGUAGE).check());
       await stackIs(page, STACK);
 
@@ -213,6 +220,7 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a plugin stack
       // it knows.
       await goToStep(traffic, page, 'options');
       expect(await rendered(page, 'moduleLayout')).toBe(true);
+      expect(await page.locator('keel-new-form [data-role="support"]').count()).toBe(0);
       // A single project, not a product.
       expect(await rendered(page, 'layout')).toBe(false);
       // One language, one framework, one entrypoint set: both those
@@ -220,6 +228,25 @@ describe.skipIf(skipE2E() || browserBinary === null)('keel ui — a plugin stack
       // exactly as the framework one does for Go.
       expect(await hasStep(page, 'framework')).toBe(false);
       expect(await hasStep(page, 'entrypoints')).toBe(false);
+    },
+    E2E_TIMEOUT_MS,
+  );
+
+  it(
+    "marks keel's best-effort presets in `keel new --list`, and not the plugin's",
+    () => {
+      // The composition root's own wiring of the mark, read off the
+      // binary in the directory the page runs in.
+      const run = spawnSync(
+        process.execPath,
+        [path.join(repoRoot, 'bin', 'keel.js'), 'new', '--list'],
+        { cwd, encoding: 'utf8', env: { ...process.env, FORCE_COLOR: '0', NO_COLOR: '1' } },
+      );
+      expect(run.status, run.stderr).toBe(0);
+      // The console logger writes to stderr, its level before each line.
+      expect(run.stderr).toMatch(/ {2}spring-cli-rest ◻ /);
+      expect(run.stderr).toMatch(/ {2}go-cli +Go CLI/);
+      expect(run.stderr).toMatch(new RegExp(` {2}${STACK} +Acme`));
     },
     E2E_TIMEOUT_MS,
   );

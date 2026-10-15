@@ -44,7 +44,8 @@ import {
   newProjectCommand,
 } from '../../src/domain/contract/commands.js';
 import type { DeferredAction } from '../../src/domain/contract/composition.js';
-import { expectOk, installMediator } from './factory.js';
+import { e2eMediator } from './e2e-cell.js';
+import { expectOk } from './factory.js';
 
 /**
  * How long a Rust e2e may take. The `rust-cli` skeleton is
@@ -106,18 +107,6 @@ export interface RustProjectSpec {
   readonly projectName: string;
   /** Module layout to scaffold; the stack's default when omitted. */
   readonly moduleLayout?: string;
-  /**
-   * Deferred actions to no-op *beyond* {@link ALWAYS_STUBBED} — the
-   * composite stacks also carry `walking-skeleton/npm-install` for
-   * their frontend.
-   */
-  readonly alsoStubbed?: readonly string[];
-  /**
-   * Where the Rust project lands relative to the scaffold root, for
-   * composite stacks that put the service in a subdirectory
-   * (`fullstack-rust` → `backend`). The root itself when omitted.
-   */
-  readonly servicePath?: string;
   /** Also scaffold the peer bounded context (modulith only). */
   readonly withPeerContext?: boolean;
 }
@@ -157,9 +146,9 @@ export async function scaffold(
   cwd: string,
   cargoHome: string,
 ): Promise<RustProject> {
-  const mediator = installMediator({
+  const mediator = e2eMediator({
     keelVersion: '0.0.0-e2e',
-    runDeferred: stubActions(new Set([...ALWAYS_STUBBED, ...(spec.alsoStubbed ?? [])])),
+    runDeferred: stubActions(new Set(ALWAYS_STUBBED)),
   });
   expectOk(
     await mediator.dispatch(
@@ -178,10 +167,7 @@ export async function scaffold(
     ),
   );
   expect(await fs.pathExists(path.join(cwd, '.git'))).toBe(false);
-  return {
-    root: spec.servicePath === undefined ? cwd : path.join(cwd, spec.servicePath),
-    cargoHome,
-  };
+  return { root: cwd, cargoHome };
 }
 
 /**
@@ -195,7 +181,7 @@ export async function scaffold(
  * `~/.cargo` rather than the isolated home.
  */
 export async function addVertical(vertical: string, cwd: string): Promise<void> {
-  const mediator = installMediator({
+  const mediator = e2eMediator({
     keelVersion: '0.0.0-e2e',
     runDeferred: stubActions(new Set([`${vertical}/rust-${vertical}`])),
   });
@@ -229,6 +215,49 @@ export function cargoRun(project: RustProject, args: readonly string[]): void {
 /** Absolute path of a binary the debug build just produced. */
 export function debugBin(project: RustProject, name: string): string {
   return path.join(project.root, 'target', 'debug', `${name}${EXE}`);
+}
+
+/**
+ * Runs a built CLI binary twice in `cwd`: it greets a name on stdout,
+ * and refuses a blank one with exit code 2, the domain's no.
+ */
+export function driveGreetCli(bin: string, cwd: string): void {
+  const run = spawnSync(bin, ['--name', 'E2E'], { cwd, encoding: 'utf8' });
+  expect(run.status, run.stderr).toBe(0);
+  expect(run.stdout).toBe('Hello, E2E!\n');
+
+  const rejected = spawnSync(bin, ['--name', '  '], { cwd, encoding: 'utf8' });
+  expect(rejected.status).toBe(2);
+  expect(rejected.stderr).toContain('name must not be empty');
+}
+
+/**
+ * Drives a booted HTTP binary at `base` through the `/greet` wire
+ * contract: a named and a defaulted greeting, the RFC 9457 rejection,
+ * both health probes, and the correlation id echoed when supplied and
+ * minted when absent.
+ */
+export async function driveGreetContract(base: string): Promise<void> {
+  const ok = await fetch(`${base}/greet?name=E2E`);
+  expect(ok.status).toBe(200);
+  expect(await ok.json()).toEqual({ greeting: 'Hello, E2E!' });
+
+  const defaulted = await fetch(`${base}/greet`);
+  expect(defaulted.status).toBe(200);
+  expect(await defaulted.json()).toEqual({ greeting: 'Hello, world!' });
+
+  const rejected = await fetch(`${base}/greet?name=`);
+  expect(rejected.status).toBe(400);
+  expect(rejected.headers.get('content-type')).toBe('application/problem+json');
+
+  expect((await fetch(`${base}/health/live`)).status).toBe(200);
+  expect((await fetch(`${base}/health/ready`)).status).toBe(200);
+  const correlated = await fetch(`${base}/greet?name=E2E`, {
+    headers: { 'X-Correlation-Id': 'corr-e2e' },
+  });
+  expect(correlated.headers.get('x-correlation-id')).toBe('corr-e2e');
+  const minted = await fetch(`${base}/greet?name=E2E`);
+  expect(minted.headers.get('x-correlation-id')).toBeTruthy();
 }
 
 /** How long to wait for a booted binary to announce its port. */
@@ -305,7 +334,7 @@ export async function addModule(
   consumes: string | null,
   cwd: string,
 ): Promise<void> {
-  const mediator = installMediator({ keelVersion: '0.0.0-e2e' });
+  const mediator = e2eMediator({ keelVersion: '0.0.0-e2e' });
   expectOk(
     await mediator.dispatch(
       addModuleCommand({

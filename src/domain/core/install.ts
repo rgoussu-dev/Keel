@@ -85,6 +85,7 @@ import {
 } from './apply.js';
 import { conflictsOf, violatedBy } from './compatibility.js';
 import { brokenRulesRefusal, type RefusalNames } from './refusals.js';
+import { productServices } from './product-services.js';
 import { installedVertical } from './registry.js';
 import { matchingAdapters, resolveVertical } from './resolver.js';
 import type {
@@ -201,10 +202,13 @@ export interface InstallVerticalInputs {
    */
   readonly patchesOnto?: ReadonlySet<string>;
   /**
-   * What the run composes from — read only to word a refusal: a
-   * vertical whose dimension is left uncovered for want of a
-   * capability names the vertical that adds it. Absent, the refusal
-   * can name only the vertical being installed.
+   * What the run composes from — read to word a refusal, and to give
+   * a product root's adapters their services' facets
+   * (`Ctx.services`, `./product-services.ts`). A vertical whose
+   * dimension is left uncovered for want of a capability names the
+   * vertical that adds it. Absent, the refusal can name only the
+   * vertical being installed, and each service is handed with no
+   * facets.
    */
   readonly registry?: Registry;
 }
@@ -436,6 +440,7 @@ export async function installVertical(
 ): Promise<InstallVerticalResult> {
   if (inputs.patchesOnto !== undefined) return replayPatches(inputs, inputs.patchesOnto);
   const ordered = resolveVertical(inputs.vertical, effectiveTags(inputs.manifest), inputs.registry);
+  const services = productServices(inputs.registry, inputs.manifest);
 
   let running: ManifestV2 = inputs.manifest;
   const collectedActions: DeferredAction[] = [];
@@ -491,6 +496,7 @@ export async function installVertical(
       cwd: inputs.cwd,
       templates: inputs.templates,
       processes: inputs.processes,
+      services,
     });
     const contribution = await adapter.contribute(ctx);
     assertDeclared('skills', inputs.vertical, adapter, contribution.skills ?? []);
@@ -615,7 +621,10 @@ export async function contributedPaths(
 export async function recordedContribution(
   adapter: Adapter,
   manifest: ManifestV2,
-  inputs: Pick<InstallVerticalInputs, 'prompt' | 'logger' | 'cwd' | 'templates' | 'processes'>,
+  inputs: Pick<
+    InstallVerticalInputs,
+    'prompt' | 'logger' | 'cwd' | 'templates' | 'processes' | 'registry'
+  >,
 ): Promise<Contribution> {
   const tags = effectiveTags(manifest);
   const resolution = await resolveAdapterAnswers(
@@ -633,6 +642,7 @@ export async function recordedContribution(
       cwd: inputs.cwd,
       templates: inputs.templates,
       processes: inputs.processes,
+      services: productServices(inputs.registry, manifest),
     }),
   );
 }
